@@ -1,0 +1,73 @@
+model Product {
+    id            Int       @id @default(autoincrement())
+    name          String
+    price         Decimal   @db.Decimal(10, 2)
+    costprice     Decimal   @db.Decimal(10, 2)
+    categoryId    Int
+    subcategoryId Int?
+    remaining     Int       @default(0)
+    deletedAt     DateTime?
+
+    category         Category         @relation(fields: [categoryId], references: [id])
+    subcategory      Subcategory?     @relation(fields: [subcategoryId], references: [id])
+    productHistories ProductHistory[]
+    orderItems       OrderItem[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([deletedAt])
+}
+
+model Category {
+    id   Int    @id @default(autoincrement())
+    name String
+
+    products      Product[]
+    subcategories Subcategory[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Subcategory {
+    id         Int    @id @default(autoincrement())
+    name       String
+    categoryId Int
+
+    products Product[]
+    category Category  @relation(fields: [categoryId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+enum Operation {
+    CREATE
+    UPDATE
+    DELETE
+    RESTORE
+    INVENTORY_ADD
+    INVENTORY_REMOVE
+}
+
+model ProductHistory {
+    id           Int       @id @default(autoincrement())
+    productId    Int
+    staffId      Int?
+    operation    Operation
+    quantity     Int?
+    previousData Json?
+    newData      Json?
+    changeReason String?
+
+    product Product @relation(fields: [productId], references: [id])
+    staff   Staff?  @relation(fields: [staffId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([productId])
+    @@index([staffId])
+    @@index([createdAt])
+}

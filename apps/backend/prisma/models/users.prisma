@@ -1,0 +1,14 @@
+model Users {
+    id         Int      @id @default(autoincrement())
+    fullname   String
+    username   String
+    phone      String   @unique
+    photo      String?
+    telegramId String?  @unique
+
+    orders       Order[]
+    refreshToken RefreshToken[]
+
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+}

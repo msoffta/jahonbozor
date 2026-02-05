@@ -1,15 +1,29 @@
 {
   "name": "jahonbozor",
-  "version": "1.0.50",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
-  },
-  "dependencies": {
-    "elysia": "latest"
+    "dev": "bun run dev:backend",
+    "dev:backend": "bun run --cwd apps/backend --env-file .env dev",
+    "dev:frontend": "bun run --cwd apps/frontend --env-file .env dev",
+    "test": "bun run --cwd apps/backend test",
+    "test:watch": "bun run --cwd apps/backend test:watch",
+    "test:coverage": "bun run --cwd apps/backend test:coverage",
+    "prisma:generate": "bun run --cwd apps/backend prisma:generate",
+    "prisma:seed": "bun run --cwd apps/backend prisma:seed",
+    "prisma:migrate": "bunx --cwd apps/backend prisma migrate dev",
+    "prisma:studio": "bunx --cwd apps/backend prisma studio",
+    "db:up": "docker-compose up -d",
+    "db:down": "docker-compose down"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "@types/bun": "latest"
   },
-  "module": "src/index.js"
+  "peerDependencies": {
+    "typescript": "^5"
+  }
 }

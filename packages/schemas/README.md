@@ -1,4 +1,4 @@
-# jahonbozor
+# types
 
 To install dependencies:
 

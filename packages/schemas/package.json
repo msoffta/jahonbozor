@@ -1,0 +1,17 @@
+{
+  "name": "@jahonbozor/schemas",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "type": "module",
+  "types": "src/index.ts",
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}
