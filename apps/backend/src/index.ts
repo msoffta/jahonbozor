@@ -14,6 +14,6 @@ const app = new Elysia()
     .use(cors())
     .use(openapi())
     .use(staticPlugin())
-    .use(publicRoutes.prefix("/api"))
-    .use(privateRoutes.prefix("/api"))
+    .use(publicRoutes)
+    .use(privateRoutes)
     .listen(3000);

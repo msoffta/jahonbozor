@@ -7,7 +7,7 @@ import { products } from "./products/products.index";
 import { productHistory } from "./product-history/product-history.index";
 import { orders } from "./orders/orders.index";
 
-export const privateRoutes = new Elysia({ prefix: "/private" })
+export const privateRoutes = new Elysia({ prefix: "/api/private" })
     .use(users)
     .use(staff)
     .use(categories)
