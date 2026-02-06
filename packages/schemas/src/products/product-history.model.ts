@@ -7,8 +7,8 @@ export const ProductHistory = BaseModel.extend({
     staffId: z.number().nullable(),
     operation: Operation,
     quantity: z.number().nullable(),
-    previousData: z.record(z.string(), z.any()).nullable(),
-    newData: z.record(z.string(), z.any()).nullable(),
+    previousData: z.record(z.string(), z.unknown()).nullable(),
+    newData: z.record(z.string(), z.unknown()).nullable(),
     changeReason: z.string().nullable(),
 });
 

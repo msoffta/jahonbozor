@@ -6,18 +6,21 @@ import {
     Permission,
     hasPermission,
 } from "@jahonbozor/schemas";
+import { createChildLogger } from "@jahonbozor/logger";
 import { prisma } from "@lib/prisma";
 import { Elysia } from "elysia";
-import logger from "./logger";
+import baseLogger from "./logger";
+import { requestContext } from "./request-context";
 
 if (!process.env.JWT_SECRET) {
-    logger.error("Auth: JWT_SECRET is not configured");
+    baseLogger.error("Auth: JWT_SECRET is not configured");
     process.exit(1);
 }
 
 export const authMiddleware = new Elysia({
     name: "authMiddleware",
 })
+    .use(requestContext)
     .use(
         jwt({
             name: "jwt",
@@ -27,7 +30,12 @@ export const authMiddleware = new Elysia({
     .use(bearer())
     .macro({
         auth: {
-            resolve: async ({ jwt, bearer, status }) => {
+            resolve: async ({ jwt, bearer, status, set }) => {
+                const requestId = set.headers["x-request-id"] as string | undefined;
+                const logger = requestId
+                    ? createChildLogger(baseLogger, { requestId })
+                    : baseLogger;
+
                 if (!bearer) {
                     logger.debug("Auth: Token not found");
                     return status(401, "Unauthorized");
@@ -76,7 +84,12 @@ export const authMiddleware = new Elysia({
         },
 
         permissions: (requiredPermissions: Permission[]) => ({
-            resolve: async ({ jwt, bearer, status }) => {
+            resolve: async ({ jwt, bearer, status, set }) => {
+                const requestId = set.headers["x-request-id"] as string | undefined;
+                const logger = requestId
+                    ? createChildLogger(baseLogger, { requestId })
+                    : baseLogger;
+
                 if (!bearer) {
                     logger.debug("Auth: Token not found");
                     return status(401, "Unauthorized");
@@ -98,7 +111,6 @@ export const authMiddleware = new Elysia({
 
                 const user = payload.data;
 
-                // Only staff can have permissions
                 if (user.type !== "staff") {
                     logger.warn("Auth: User type does not support permissions", {
                         userId: user.id,
@@ -107,7 +119,6 @@ export const authMiddleware = new Elysia({
                     return status(403, "Forbidden");
                 }
 
-                // Check if staff exists and get permissions from role
                 const staff = await prisma.staff.findUnique({
                     where: { id: user.id },
                     select: {
@@ -127,7 +138,6 @@ export const authMiddleware = new Elysia({
                     return status(401, "Unauthorized");
                 }
 
-                // Check permissions
                 const userPermissions = staff.role.permissions as Permission[];
                 const hasAllRequired = requiredPermissions.every((p) =>
                     hasPermission(userPermissions, p),
@@ -149,4 +159,5 @@ export const authMiddleware = new Elysia({
                 };
             },
         }),
-    });
+    })
+    .as("scoped");

@@ -5,10 +5,10 @@ import {
     UpdateStaffBody,
     StaffPagination,
 } from "@jahonbozor/schemas/src/staff";
-import logger from "@lib/logger";
 import { authMiddleware } from "@lib/middleware";
 import { Elysia, t } from "elysia";
 import { StaffService } from "./staff.service";
+import { roles } from "./roles/roles.index";
 
 const staffIdParams = t.Object({
     id: t.Numeric(),
@@ -18,14 +18,9 @@ export const staff = new Elysia({ prefix: "/staff" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query: { page, limit, searchQuery, roleId } }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<ReturnSchema> => {
             try {
-                return await StaffService.getAllStaff({
-                    page,
-                    limit,
-                    searchQuery,
-                    roleId,
-                });
+                return await StaffService.getAllStaff(query, logger);
             } catch (error) {
                 logger.error("Staff: Unhandled error in GET /staff", { error });
                 return { success: false, error };
@@ -38,7 +33,7 @@ export const staff = new Elysia({ prefix: "/staff" })
     )
     .get(
         "/:id",
-        async ({ params, user, permissions, set }): Promise<ReturnSchema> => {
+        async ({ params, user, permissions, set, logger }): Promise<ReturnSchema> => {
             try {
                 const targetStaffId = params.id;
                 const requestingStaffId = user.id;
@@ -55,7 +50,7 @@ export const staff = new Elysia({ prefix: "/staff" })
                     return { success: false, error: "Forbidden" };
                 }
 
-                const result = await StaffService.getStaff(targetStaffId);
+                const result = await StaffService.getStaff(targetStaffId, logger);
 
                 if (!result.success) {
                     set.status = 404;
@@ -77,9 +72,13 @@ export const staff = new Elysia({ prefix: "/staff" })
     )
     .post(
         "/",
-        async ({ body, set }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await StaffService.createStaff(body);
+                const result = await StaffService.createStaff(
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -98,7 +97,7 @@ export const staff = new Elysia({ prefix: "/staff" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, permissions, set }): Promise<ReturnSchema> => {
+        async ({ params, body, user, permissions, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
                 const targetStaffId = params.id;
                 const requestingStaffId = user.id;
@@ -123,7 +122,12 @@ export const staff = new Elysia({ prefix: "/staff" })
                     return { success: false, error: "Cannot change own role" };
                 }
 
-                const result = await StaffService.updateStaff(targetStaffId, body);
+                const result = await StaffService.updateStaff(
+                    targetStaffId,
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -146,9 +150,13 @@ export const staff = new Elysia({ prefix: "/staff" })
     )
     .delete(
         "/:id",
-        async ({ params, set }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await StaffService.deleteStaff(params.id);
+                const result = await StaffService.deleteStaff(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 404;
@@ -167,4 +175,5 @@ export const staff = new Elysia({ prefix: "/staff" })
             permissions: [Permission.STAFF_DELETE],
             params: staffIdParams,
         },
-    );
+    )
+    .use(roles);

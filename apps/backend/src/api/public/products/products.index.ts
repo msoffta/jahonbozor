@@ -1,6 +1,6 @@
 import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
 import { ProductsPagination } from "@jahonbozor/schemas/src/products";
-import logger from "@lib/logger";
+import { requestContext } from "@lib/request-context";
 import { Elysia, t } from "elysia";
 import { PublicProductsService } from "./products.service";
 
@@ -9,11 +9,12 @@ const productIdParams = t.Object({
 });
 
 export const publicProducts = new Elysia({ prefix: "/products" })
+    .use(requestContext)
     .get(
         "/",
-        async ({ query }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<ReturnSchema> => {
             try {
-                return await PublicProductsService.getAllProducts(query);
+                return await PublicProductsService.getAllProducts(query, logger);
             } catch (error) {
                 logger.error("Products: Unhandled error in GET /products", { error });
                 return { success: false, error };
@@ -23,9 +24,9 @@ export const publicProducts = new Elysia({ prefix: "/products" })
     )
     .get(
         "/:id",
-        async ({ params, set }): Promise<ReturnSchema> => {
+        async ({ params, set, logger }): Promise<ReturnSchema> => {
             try {
-                const result = await PublicProductsService.getProduct(params.id);
+                const result = await PublicProductsService.getProduct(params.id, logger);
 
                 if (!result.success) {
                     set.status = 404;

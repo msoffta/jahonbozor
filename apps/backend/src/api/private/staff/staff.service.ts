@@ -4,9 +4,31 @@ import {
     UpdateStaffBody,
     StaffPagination,
 } from "@jahonbozor/schemas/src/staff";
-import logger from "@lib/logger";
+import type { Token } from "@jahonbozor/schemas";
+import type { Logger } from "@jahonbozor/logger";
 import { prisma } from "@lib/prisma";
+import { auditInTransaction } from "@lib/audit";
 import { password } from "bun";
+
+interface AuditContext {
+    staffId: number;
+    user: Token;
+    requestId?: string;
+}
+
+function createStaffSnapshot(staff: {
+    fullname: string;
+    username: string;
+    roleId: number;
+    telegramId?: bigint | null;
+}) {
+    return {
+        fullname: staff.fullname,
+        username: staff.username,
+        roleId: staff.roleId,
+        telegramId: staff.telegramId?.toString() ?? null,
+    };
+}
 
 const staffSelect = {
     id: true,
@@ -26,12 +48,10 @@ const staffSelect = {
 };
 
 export abstract class StaffService {
-    static async getAllStaff({
-        page,
-        limit,
-        searchQuery,
-        roleId,
-    }: StaffPagination): Promise<ReturnSchema> {
+    static async getAllStaff(
+        { page, limit, searchQuery, roleId }: StaffPagination,
+        logger: Logger,
+    ): Promise<ReturnSchema> {
         try {
             const whereClause = {
                 AND: [
@@ -67,7 +87,7 @@ export abstract class StaffService {
         }
     }
 
-    static async getStaff(staffId: number): Promise<ReturnSchema> {
+    static async getStaff(staffId: number, logger: Logger): Promise<ReturnSchema> {
         try {
             const staffRecord = await prisma.staff.findUnique({
                 where: { id: staffId },
@@ -86,7 +106,11 @@ export abstract class StaffService {
         }
     }
 
-    static async createStaff(staffData: CreateStaffBody): Promise<ReturnSchema> {
+    static async createStaff(
+        staffData: CreateStaffBody,
+        context: AuditContext,
+        logger: Logger,
+    ): Promise<ReturnSchema> {
         try {
             const existingStaff = await prisma.staff.findFirst({
                 where: { username: staffData.username },
@@ -101,20 +125,36 @@ export abstract class StaffService {
                 algorithm: "argon2id",
             });
 
-            const newStaff = await prisma.staff.create({
-                data: {
-                    fullname: staffData.fullname,
-                    username: staffData.username,
-                    passwordHash,
-                    telegramId: BigInt(staffData.telegramId),
-                    roleId: staffData.roleId,
-                },
-                select: staffSelect,
+            const [newStaff] = await prisma.$transaction(async (transaction) => {
+                const staff = await transaction.staff.create({
+                    data: {
+                        fullname: staffData.fullname,
+                        username: staffData.username,
+                        passwordHash,
+                        telegramId: BigInt(staffData.telegramId),
+                        roleId: staffData.roleId,
+                    },
+                    select: staffSelect,
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "staff",
+                        entityId: staff.id,
+                        action: "CREATE",
+                        newData: createStaffSnapshot(staff),
+                    },
+                );
+
+                return [staff];
             });
 
             logger.info("Staff: Staff created", {
                 staffId: newStaff.id,
                 username: staffData.username,
+                createdBy: context.staffId,
             });
 
             return { success: true, data: newStaff };
@@ -127,6 +167,8 @@ export abstract class StaffService {
     static async updateStaff(
         staffId: number,
         staffData: UpdateStaffBody,
+        context: AuditContext,
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
             const existingStaff = await prisma.staff.findUnique({
@@ -153,6 +195,7 @@ export abstract class StaffService {
             }
 
             const updateData: Record<string, unknown> = {};
+            const passwordChanged = staffData.password !== undefined;
 
             if (staffData.fullname !== undefined) {
                 updateData.fullname = staffData.fullname;
@@ -160,8 +203,8 @@ export abstract class StaffService {
             if (staffData.username !== undefined) {
                 updateData.username = staffData.username;
             }
-            if (staffData.password !== undefined) {
-                updateData.passwordHash = await password.hash(staffData.password, {
+            if (passwordChanged) {
+                updateData.passwordHash = await password.hash(staffData.password!, {
                     algorithm: "argon2id",
                 });
             }
@@ -172,13 +215,35 @@ export abstract class StaffService {
                 updateData.roleId = staffData.roleId;
             }
 
-            const updatedStaff = await prisma.staff.update({
-                where: { id: staffId },
-                data: updateData,
-                select: staffSelect,
+            const auditAction = passwordChanged ? "PASSWORD_CHANGE" : "UPDATE";
+
+            const [updatedStaff] = await prisma.$transaction(async (transaction) => {
+                const staff = await transaction.staff.update({
+                    where: { id: staffId },
+                    data: updateData,
+                    select: staffSelect,
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "staff",
+                        entityId: staffId,
+                        action: auditAction,
+                        previousData: createStaffSnapshot(existingStaff),
+                        newData: createStaffSnapshot(staff),
+                    },
+                );
+
+                return [staff];
             });
 
-            logger.info("Staff: Staff updated", { staffId });
+            logger.info("Staff: Staff updated", {
+                staffId,
+                passwordChanged,
+                updatedBy: context.staffId,
+            });
 
             return { success: true, data: updatedStaff };
         } catch (error) {
@@ -187,7 +252,11 @@ export abstract class StaffService {
         }
     }
 
-    static async deleteStaff(staffId: number): Promise<ReturnSchema> {
+    static async deleteStaff(
+        staffId: number,
+        context: AuditContext,
+        logger: Logger,
+    ): Promise<ReturnSchema> {
         try {
             const existingStaff = await prisma.staff.findUnique({
                 where: { id: staffId },
@@ -198,22 +267,39 @@ export abstract class StaffService {
                 return { success: false, error: "Staff not found" };
             }
 
-            await prisma.refreshToken.deleteMany({
-                where: { staffId },
-            });
+            const [deletedStaff] = await prisma.$transaction(async (transaction) => {
+                // Revoke all refresh tokens before deleting staff
+                await transaction.refreshToken.deleteMany({
+                    where: { staffId },
+                });
 
-            const deletedStaff = await prisma.staff.delete({
-                where: { id: staffId },
-                select: {
-                    id: true,
-                    fullname: true,
-                    username: true,
-                },
+                const staff = await transaction.staff.delete({
+                    where: { id: staffId },
+                    select: {
+                        id: true,
+                        fullname: true,
+                        username: true,
+                    },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "staff",
+                        entityId: staffId,
+                        action: "DELETE",
+                        previousData: createStaffSnapshot(existingStaff),
+                    },
+                );
+
+                return [staff];
             });
 
             logger.info("Staff: Staff deleted", {
                 staffId,
                 username: deletedStaff.username,
+                deletedBy: context.staffId,
             });
 
             return { success: true, data: deletedStaff };

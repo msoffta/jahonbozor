@@ -1,7 +1,8 @@
 import z from "zod";
 import { BaseModel } from "../base.model";
 
-const telegramIdSchema = z
+// Telegram ID может быть bigint, string или number — преобразуем в string для хранения
+export const telegramIdSchema = z
     .union([z.bigint(), z.string(), z.number()])
     .transform((telegramId) => telegramId.toString());
 
@@ -11,6 +12,7 @@ export const User = BaseModel.extend({
     phone: z.string(),
     photo: z.string().nullable(),
     telegramId: telegramIdSchema.nullable(),
+    deletedAt: z.coerce.date().nullable(),
 });
 
 export const TokenUser = User.pick({

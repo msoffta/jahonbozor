@@ -4,9 +4,17 @@ import {
     UpdateProductBody,
     ProductsPagination,
 } from "@jahonbozor/schemas/src/products";
-import logger from "@lib/logger";
+import type { Token } from "@jahonbozor/schemas";
+import type { Logger } from "@jahonbozor/logger";
 import { prisma } from "@lib/prisma";
+import { auditInTransaction } from "@lib/audit";
 import type { ProductModel } from "@generated/prisma/models/Product";
+
+interface AuditContext {
+    staffId: number;
+    user: Token;
+    requestId?: string;
+}
 
 function createProductSnapshot(product: ProductModel) {
     return {
@@ -14,31 +22,61 @@ function createProductSnapshot(product: ProductModel) {
         price: Number(product.price),
         costprice: Number(product.costprice),
         categoryId: product.categoryId,
-        subcategoryId: product.subcategoryId,
         remaining: product.remaining,
     };
 }
 
+/**
+ * Get all descendant category IDs for hierarchical filtering
+ */
+async function getCategoryWithDescendants(categoryId: number): Promise<number[]> {
+    const ids = [categoryId];
+
+    const children = await prisma.category.findMany({
+        where: { parentId: categoryId },
+        select: { id: true },
+    });
+
+    for (const child of children) {
+        const descendantIds = await getCategoryWithDescendants(child.id);
+        ids.push(...descendantIds);
+    }
+
+    return ids;
+}
+
 export abstract class ProductsService {
-    static async getAllProducts({
-        page,
-        limit,
-        searchQuery,
-        categoryId,
-        subcategoryId,
-        minPrice,
-        maxPrice,
-        includeDeleted,
-    }: ProductsPagination): Promise<ReturnSchema> {
+    static async getAllProducts(
+        params: ProductsPagination,
+        logger: Logger,
+    ): Promise<ReturnSchema> {
         try {
-            const whereClause = {
-                ...(includeDeleted ? {} : { deletedAt: null }),
-                ...(searchQuery && { name: { contains: searchQuery } }),
-                ...(categoryId && { categoryId }),
-                ...(subcategoryId && { subcategoryId }),
-                ...(minPrice && { price: { gte: minPrice } }),
-                ...(maxPrice && { price: { lte: maxPrice } }),
-            };
+            const { page, limit, searchQuery, categoryId, minPrice, maxPrice, includeDeleted } = params;
+
+            // Build where clause with hierarchical category filter
+            const whereClause: Record<string, unknown> = {};
+
+            if (!includeDeleted) {
+                whereClause.deletedAt = null;
+            }
+
+            if (searchQuery) {
+                whereClause.name = { contains: searchQuery };
+            }
+
+            // Hierarchical category filter - include all descendants
+            if (categoryId) {
+                const categoryIds = await getCategoryWithDescendants(categoryId);
+                whereClause.categoryId = { in: categoryIds };
+            }
+
+            if (minPrice) {
+                whereClause.price = { ...(whereClause.price as object || {}), gte: minPrice };
+            }
+
+            if (maxPrice) {
+                whereClause.price = { ...(whereClause.price as object || {}), lte: maxPrice };
+            }
 
             const [count, products] = await prisma.$transaction([
                 prisma.product.count({ where: whereClause }),
@@ -47,8 +85,13 @@ export abstract class ProductsService {
                     take: limit,
                     where: whereClause,
                     include: {
-                        category: { select: { id: true, name: true } },
-                        subcategory: { select: { id: true, name: true } },
+                        category: {
+                            select: {
+                                id: true,
+                                name: true,
+                                parent: { select: { id: true, name: true } },
+                            },
+                        },
                     },
                     orderBy: { createdAt: "desc" },
                 }),
@@ -56,18 +99,23 @@ export abstract class ProductsService {
 
             return { success: true, data: { count, products } };
         } catch (error) {
-            logger.error("Products: Error in getAllProducts", { page, limit, error });
+            logger.error("Products: Error in getAllProducts", { page: params.page, limit: params.limit, error });
             return { success: false, error };
         }
     }
 
-    static async getProduct(productId: number): Promise<ReturnSchema> {
+    static async getProduct(productId: number, logger: Logger): Promise<ReturnSchema> {
         try {
             const product = await prisma.product.findUnique({
                 where: { id: productId },
                 include: {
-                    category: { select: { id: true, name: true } },
-                    subcategory: { select: { id: true, name: true } },
+                    category: {
+                        select: {
+                            id: true,
+                            name: true,
+                            parent: { select: { id: true, name: true } },
+                        },
+                    },
                 },
             });
 
@@ -85,7 +133,8 @@ export abstract class ProductsService {
 
     static async createProduct(
         productData: CreateProductBody,
-        staffId: number,
+        context: AuditContext,
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
             const categoryExists = await prisma.category.findUnique({
@@ -97,25 +146,6 @@ export abstract class ProductsService {
                 return { success: false, error: "Category not found" };
             }
 
-            if (productData.subcategoryId) {
-                const subcategoryExists = await prisma.subcategory.findUnique({
-                    where: { id: productData.subcategoryId },
-                });
-
-                if (!subcategoryExists) {
-                    logger.warn("Products: Subcategory not found", { subcategoryId: productData.subcategoryId });
-                    return { success: false, error: "Subcategory not found" };
-                }
-
-                if (subcategoryExists.categoryId !== productData.categoryId) {
-                    logger.warn("Products: Subcategory does not belong to category", {
-                        subcategoryId: productData.subcategoryId,
-                        categoryId: productData.categoryId,
-                    });
-                    return { success: false, error: "Subcategory does not belong to specified category" };
-                }
-            }
-
             const [newProduct] = await prisma.$transaction(async (transaction) => {
                 const product = await transaction.product.create({
                     data: {
@@ -123,7 +153,6 @@ export abstract class ProductsService {
                         price: productData.price,
                         costprice: productData.costprice,
                         categoryId: productData.categoryId,
-                        subcategoryId: productData.subcategoryId ?? null,
                         remaining: productData.remaining ?? 0,
                     },
                 });
@@ -131,16 +160,27 @@ export abstract class ProductsService {
                 await transaction.productHistory.create({
                     data: {
                         productId: product.id,
-                        staffId,
+                        staffId: context.staffId,
                         operation: "CREATE",
                         newData: createProductSnapshot(product),
                     },
                 });
 
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "product",
+                        entityId: product.id,
+                        action: "CREATE",
+                        newData: createProductSnapshot(product),
+                    },
+                );
+
                 return [product];
             });
 
-            logger.info("Products: Product created", { productId: newProduct.id, name: productData.name, staffId });
+            logger.info("Products: Product created", { productId: newProduct.id, name: productData.name, staffId: context.staffId });
             return { success: true, data: newProduct };
         } catch (error) {
             logger.error("Products: Error in createProduct", { name: productData.name, error });
@@ -151,7 +191,8 @@ export abstract class ProductsService {
     static async updateProduct(
         productId: number,
         productData: UpdateProductBody,
-        staffId: number,
+        context: AuditContext,
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
             const existingProduct = await prisma.product.findUnique({
@@ -178,26 +219,6 @@ export abstract class ProductsService {
                 }
             }
 
-            if (productData.subcategoryId !== undefined) {
-                const targetCategoryId = productData.categoryId ?? existingProduct.categoryId;
-                if (productData.subcategoryId !== null) {
-                    const subcategoryExists = await prisma.subcategory.findUnique({
-                        where: { id: productData.subcategoryId },
-                    });
-                    if (!subcategoryExists) {
-                        logger.warn("Products: Target subcategory not found", { subcategoryId: productData.subcategoryId });
-                        return { success: false, error: "Subcategory not found" };
-                    }
-                    if (subcategoryExists.categoryId !== targetCategoryId) {
-                        logger.warn("Products: Subcategory does not belong to category", {
-                            subcategoryId: productData.subcategoryId,
-                            categoryId: targetCategoryId,
-                        });
-                        return { success: false, error: "Subcategory does not belong to specified category" };
-                    }
-                }
-            }
-
             const [updatedProduct] = await prisma.$transaction(async (transaction) => {
                 const product = await transaction.product.update({
                     where: { id: productId },
@@ -207,17 +228,29 @@ export abstract class ProductsService {
                 await transaction.productHistory.create({
                     data: {
                         productId,
-                        staffId,
+                        staffId: context.staffId,
                         operation: "UPDATE",
                         previousData: createProductSnapshot(existingProduct),
                         newData: createProductSnapshot(product),
                     },
                 });
 
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "product",
+                        entityId: productId,
+                        action: "UPDATE",
+                        previousData: createProductSnapshot(existingProduct),
+                        newData: createProductSnapshot(product),
+                    },
+                );
+
                 return [product];
             });
 
-            logger.info("Products: Product updated", { productId, staffId });
+            logger.info("Products: Product updated", { productId, staffId: context.staffId });
             return { success: true, data: updatedProduct };
         } catch (error) {
             logger.error("Products: Error in updateProduct", { productId, error });
@@ -225,7 +258,11 @@ export abstract class ProductsService {
         }
     }
 
-    static async deleteProduct(productId: number, staffId: number): Promise<ReturnSchema> {
+    static async deleteProduct(
+        productId: number,
+        context: AuditContext,
+        logger: Logger,
+    ): Promise<ReturnSchema> {
         try {
             const existingProduct = await prisma.product.findUnique({
                 where: { id: productId },
@@ -250,16 +287,27 @@ export abstract class ProductsService {
                 await transaction.productHistory.create({
                     data: {
                         productId,
-                        staffId,
+                        staffId: context.staffId,
                         operation: "DELETE",
                         previousData: createProductSnapshot(existingProduct),
                     },
                 });
 
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "product",
+                        entityId: productId,
+                        action: "DELETE",
+                        previousData: createProductSnapshot(existingProduct),
+                    },
+                );
+
                 return [product];
             });
 
-            logger.info("Products: Product deleted", { productId, name: existingProduct.name, staffId });
+            logger.info("Products: Product deleted", { productId, name: existingProduct.name, staffId: context.staffId });
             return { success: true, data: deletedProduct };
         } catch (error) {
             logger.error("Products: Error in deleteProduct", { productId, error });
@@ -267,7 +315,11 @@ export abstract class ProductsService {
         }
     }
 
-    static async restoreProduct(productId: number, staffId: number): Promise<ReturnSchema> {
+    static async restoreProduct(
+        productId: number,
+        context: AuditContext,
+        logger: Logger,
+    ): Promise<ReturnSchema> {
         try {
             const existingProduct = await prisma.product.findUnique({
                 where: { id: productId },
@@ -292,17 +344,29 @@ export abstract class ProductsService {
                 await transaction.productHistory.create({
                     data: {
                         productId,
-                        staffId,
+                        staffId: context.staffId,
                         operation: "RESTORE",
                         previousData: { deletedAt: existingProduct.deletedAt },
                         newData: createProductSnapshot(product),
                     },
                 });
 
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "product",
+                        entityId: productId,
+                        action: "RESTORE",
+                        previousData: { deletedAt: existingProduct.deletedAt },
+                        newData: createProductSnapshot(product),
+                    },
+                );
+
                 return [product];
             });
 
-            logger.info("Products: Product restored", { productId, name: existingProduct.name, staffId });
+            logger.info("Products: Product restored", { productId, name: existingProduct.name, staffId: context.staffId });
             return { success: true, data: restoredProduct };
         } catch (error) {
             logger.error("Products: Error in restoreProduct", { productId, error });

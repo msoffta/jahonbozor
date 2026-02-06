@@ -4,11 +4,14 @@ import {
     CreateProductBody,
     UpdateProductBody,
     ProductsPagination,
+    CreateInventoryAdjustmentBody,
+    ProductHistoryPagination,
 } from "@jahonbozor/schemas/src/products";
-import logger from "@lib/logger";
 import { authMiddleware } from "@lib/middleware";
 import { Elysia, t } from "elysia";
 import { ProductsService } from "./products.service";
+import { HistoryService } from "./history/history.service";
+import { history } from "./history/history.index";
 
 const productIdParams = t.Object({
     id: t.Numeric(),
@@ -18,9 +21,9 @@ export const products = new Elysia({ prefix: "/products" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<ReturnSchema> => {
             try {
-                return await ProductsService.getAllProducts(query);
+                return await ProductsService.getAllProducts(query, logger);
             } catch (error) {
                 logger.error("Products: Unhandled error in GET /products", { error });
                 return { success: false, error };
@@ -31,11 +34,12 @@ export const products = new Elysia({ prefix: "/products" })
             query: ProductsPagination,
         },
     )
+    .use(history)
     .get(
         "/:id",
-        async ({ params, set }): Promise<ReturnSchema> => {
+        async ({ params, set, logger }): Promise<ReturnSchema> => {
             try {
-                const result = await ProductsService.getProduct(params.id);
+                const result = await ProductsService.getProduct(params.id, logger);
 
                 if (!result.success) {
                     set.status = 404;
@@ -54,9 +58,13 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .post(
         "/",
-        async ({ body, user, set }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await ProductsService.createProduct(body, user.id);
+                const result = await ProductsService.createProduct(
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -75,9 +83,14 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, set }): Promise<ReturnSchema> => {
+        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await ProductsService.updateProduct(params.id, body, user.id);
+                const result = await ProductsService.updateProduct(
+                    params.id,
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -97,9 +110,13 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .delete(
         "/:id",
-        async ({ params, user, set }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await ProductsService.deleteProduct(params.id, user.id);
+                const result = await ProductsService.deleteProduct(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -118,9 +135,13 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .post(
         "/:id/restore",
-        async ({ params, user, set }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await ProductsService.restoreProduct(params.id, user.id);
+                const result = await ProductsService.restoreProduct(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -135,5 +156,48 @@ export const products = new Elysia({ prefix: "/products" })
         {
             permissions: [Permission.PRODUCTS_UPDATE],
             params: productIdParams,
+        },
+    )
+    .get(
+        "/:id/history",
+        async ({ params, query, logger }): Promise<ReturnSchema> => {
+            try {
+                return await HistoryService.getProductHistory(params.id, query, logger);
+            } catch (error) {
+                logger.error("Products: Unhandled error in GET /products/:id/history", { id: params.id, error });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.PRODUCT_HISTORY_LIST],
+            params: productIdParams,
+            query: ProductHistoryPagination,
+        },
+    )
+    .post(
+        "/:id/inventory",
+        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+            try {
+                const result = await HistoryService.createInventoryAdjustment(
+                    params.id,
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    set.status = 400;
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Products: Unhandled error in POST /products/:id/inventory", { id: params.id, error });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.PRODUCT_HISTORY_CREATE],
+            params: productIdParams,
+            body: CreateInventoryAdjustmentBody,
         },
     );

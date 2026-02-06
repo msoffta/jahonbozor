@@ -5,7 +5,6 @@ import {
     UpdateOrderBody,
     OrdersPagination,
 } from "@jahonbozor/schemas/src/orders";
-import logger from "@lib/logger";
 import { authMiddleware } from "@lib/middleware";
 import { Elysia, t } from "elysia";
 import { OrdersService } from "./orders.service";
@@ -18,9 +17,9 @@ export const orders = new Elysia({ prefix: "/orders" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, user, permissions }): Promise<ReturnSchema> => {
+        async ({ query, user, permissions, logger }): Promise<ReturnSchema> => {
             try {
-                return await OrdersService.getAllOrders(query, user.id, permissions);
+                return await OrdersService.getAllOrders(query, user.id, permissions, logger);
             } catch (error) {
                 logger.error("Orders: Unhandled error in GET /orders", { error });
                 return { success: false, error };
@@ -33,9 +32,9 @@ export const orders = new Elysia({ prefix: "/orders" })
     )
     .get(
         "/:id",
-        async ({ params, user, permissions, set }): Promise<ReturnSchema> => {
+        async ({ params, user, permissions, set, logger }): Promise<ReturnSchema> => {
             try {
-                const result = await OrdersService.getOrder(params.id, user.id, permissions);
+                const result = await OrdersService.getOrder(params.id, user.id, permissions, logger);
 
                 if (!result.success) {
                     set.status = result.error === "Forbidden" ? 403 : 404;
@@ -57,9 +56,13 @@ export const orders = new Elysia({ prefix: "/orders" })
     )
     .post(
         "/",
-        async ({ body, user, set }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await OrdersService.createOrder(body, user.id);
+                const result = await OrdersService.createOrder(
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -78,13 +81,14 @@ export const orders = new Elysia({ prefix: "/orders" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, permissions, set }): Promise<ReturnSchema> => {
+        async ({ params, body, user, permissions, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
                 const result = await OrdersService.updateOrder(
                     params.id,
                     body,
-                    user.id,
+                    { staffId: user.id, user, requestId },
                     permissions,
+                    logger,
                 );
 
                 if (!result.success) {
@@ -108,9 +112,13 @@ export const orders = new Elysia({ prefix: "/orders" })
     )
     .delete(
         "/:id",
-        async ({ params, user, set }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await OrdersService.deleteOrder(params.id, user.id);
+                const result = await OrdersService.deleteOrder(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 404;

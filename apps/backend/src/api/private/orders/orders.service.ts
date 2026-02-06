@@ -1,19 +1,37 @@
 import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
-import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
+import { Permission, hasAnyPermission, type Token } from "@jahonbozor/schemas";
 import {
     CreateOrderBody,
     UpdateOrderBody,
     OrdersPagination,
 } from "@jahonbozor/schemas/src/orders";
-import logger from "@lib/logger";
+import type { Logger } from "@jahonbozor/logger";
 import { prisma } from "@lib/prisma";
-import type { Prisma } from "@generated/prisma/client";
+import { auditInTransaction } from "@lib/audit";
+import type { Prisma, Order } from "@generated/prisma/client";
+
+interface ServiceContext {
+    staffId: number;
+    user: Token;
+    requestId?: string;
+}
+
+function createOrderSnapshot(order: Pick<Order, "userId" | "staffId" | "paymentType" | "status" | "data">) {
+    return {
+        userId: order.userId,
+        staffId: order.staffId,
+        paymentType: order.paymentType,
+        status: order.status,
+        data: order.data,
+    };
+}
 
 export abstract class OrdersService {
     static async getAllOrders(
         query: OrdersPagination,
         staffId: number,
         permissions: Permission[],
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
             const { page, limit, searchQuery, userId, staffId: filterStaffId, paymentType, status, dateFrom, dateTo } = query;
@@ -64,6 +82,7 @@ export abstract class OrdersService {
         orderId: number,
         staffId: number,
         permissions: Permission[],
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
             const order = await prisma.order.findUnique({
@@ -103,9 +122,11 @@ export abstract class OrdersService {
 
     static async createOrder(
         orderData: CreateOrderBody,
-        staffId: number,
+        context: ServiceContext,
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
+            const { staffId, user, requestId } = context;
             const productIds = orderData.items.map(item => item.productId);
 
             const products = await prisma.product.findMany({
@@ -203,6 +224,17 @@ export abstract class OrdersService {
                     });
                 }
 
+                await auditInTransaction(
+                    transaction,
+                    { requestId, user, logger },
+                    {
+                        entityType: "order",
+                        entityId: newOrder.id,
+                        action: "CREATE",
+                        newData: createOrderSnapshot(newOrder),
+                    },
+                );
+
                 return newOrder;
             });
 
@@ -222,10 +254,13 @@ export abstract class OrdersService {
     static async updateOrder(
         orderId: number,
         orderData: UpdateOrderBody,
-        staffId: number,
+        context: ServiceContext,
         permissions: Permission[],
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
+            const { staffId, user, requestId } = context;
+
             const existingOrder = await prisma.order.findUnique({
                 where: { id: orderId },
             });
@@ -245,22 +280,41 @@ export abstract class OrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
-            const updatedOrder = await prisma.order.update({
-                where: { id: orderId },
-                data: {
-                    ...(orderData.paymentType && { paymentType: orderData.paymentType }),
-                    ...(orderData.status && { status: orderData.status }),
-                    ...(orderData.data && { data: orderData.data as Prisma.JsonObject }),
-                },
-                include: {
-                    items: {
-                        include: {
-                            product: { select: { id: true, name: true } },
-                        },
+            const isStatusChange = orderData.status && orderData.status !== existingOrder.status;
+            const auditAction = isStatusChange ? "ORDER_STATUS_CHANGE" : "UPDATE";
+
+            const [updatedOrder] = await prisma.$transaction(async (transaction) => {
+                const order = await transaction.order.update({
+                    where: { id: orderId },
+                    data: {
+                        ...(orderData.paymentType && { paymentType: orderData.paymentType }),
+                        ...(orderData.status && { status: orderData.status }),
+                        ...(orderData.data && { data: orderData.data as Prisma.JsonObject }),
                     },
-                    user: { select: { id: true, fullname: true } },
-                    staff: { select: { id: true, fullname: true } },
-                },
+                    include: {
+                        items: {
+                            include: {
+                                product: { select: { id: true, name: true } },
+                            },
+                        },
+                        user: { select: { id: true, fullname: true } },
+                        staff: { select: { id: true, fullname: true } },
+                    },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId, user, logger },
+                    {
+                        entityType: "order",
+                        entityId: orderId,
+                        action: auditAction,
+                        previousData: createOrderSnapshot(existingOrder),
+                        newData: createOrderSnapshot(order),
+                    },
+                );
+
+                return [order];
             });
 
             logger.info("Orders: Order updated", { orderId, staffId });
@@ -271,8 +325,14 @@ export abstract class OrdersService {
         }
     }
 
-    static async deleteOrder(orderId: number, staffId: number): Promise<ReturnSchema> {
+    static async deleteOrder(
+        orderId: number,
+        context: ServiceContext,
+        logger: Logger,
+    ): Promise<ReturnSchema> {
         try {
+            const { staffId, user, requestId } = context;
+
             const existingOrder = await prisma.order.findUnique({
                 where: { id: orderId },
                 include: {
@@ -321,6 +381,17 @@ export abstract class OrdersService {
                 await transaction.order.delete({
                     where: { id: orderId },
                 });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId, user, logger },
+                    {
+                        entityType: "order",
+                        entityId: orderId,
+                        action: "DELETE",
+                        previousData: createOrderSnapshot(existingOrder),
+                    },
+                );
             });
 
             logger.info("Orders: Order deleted and stock restored", {

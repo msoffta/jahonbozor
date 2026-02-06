@@ -39,13 +39,6 @@ export const Permission = {
     CATEGORIES_DELETE: "categories:delete",
     CATEGORIES_LIST: "categories:list",
 
-    // === SUBCATEGORIES ===
-    SUBCATEGORIES_CREATE: "subcategories:create",
-    SUBCATEGORIES_READ: "subcategories:read",
-    SUBCATEGORIES_UPDATE: "subcategories:update",
-    SUBCATEGORIES_DELETE: "subcategories:delete",
-    SUBCATEGORIES_LIST: "subcategories:list",
-
     // === ORDERS ===
     ORDERS_CREATE: "orders:create",
     ORDERS_READ_OWN: "orders:read:own",
@@ -60,6 +53,10 @@ export const Permission = {
     PRODUCT_HISTORY_CREATE: "product-history:create",
     PRODUCT_HISTORY_READ: "product-history:read",
     PRODUCT_HISTORY_LIST: "product-history:list",
+
+    // === AUDIT LOGS (read-only by design) ===
+    AUDIT_LOGS_LIST: "audit-logs:list",
+    AUDIT_LOGS_READ: "audit-logs:read",
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -107,13 +104,6 @@ export const PermissionGroups = {
         Permission.CATEGORIES_DELETE,
         Permission.CATEGORIES_LIST,
     ],
-    SUBCATEGORIES_ALL: [
-        Permission.SUBCATEGORIES_CREATE,
-        Permission.SUBCATEGORIES_READ,
-        Permission.SUBCATEGORIES_UPDATE,
-        Permission.SUBCATEGORIES_DELETE,
-        Permission.SUBCATEGORIES_LIST,
-    ],
     ORDERS_ALL: [
         Permission.ORDERS_CREATE,
         Permission.ORDERS_READ_ALL,
@@ -125,5 +115,9 @@ export const PermissionGroups = {
         Permission.PRODUCT_HISTORY_CREATE,
         Permission.PRODUCT_HISTORY_READ,
         Permission.PRODUCT_HISTORY_LIST,
+    ],
+    AUDIT_LOGS_ALL: [
+        Permission.AUDIT_LOGS_LIST,
+        Permission.AUDIT_LOGS_READ,
     ],
 } as const;

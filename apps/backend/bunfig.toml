@@ -1,0 +1,6 @@
+[test]
+# Load mocks before tests run
+preload = ["./test/setup.ts"]
+
+# Default timeout per test (5 seconds)
+timeout = 5000

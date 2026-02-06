@@ -1,15 +1,13 @@
 model Product {
-    id            Int       @id @default(autoincrement())
-    name          String
-    price         Decimal   @db.Decimal(10, 2)
-    costprice     Decimal   @db.Decimal(10, 2)
-    categoryId    Int
-    subcategoryId Int?
-    remaining     Int       @default(0)
-    deletedAt     DateTime?
+    id         Int       @id @default(autoincrement())
+    name       String
+    price      Decimal   @db.Decimal(10, 2)
+    costprice  Decimal   @db.Decimal(10, 2)
+    categoryId Int
+    remaining  Int       @default(0)
+    deletedAt  DateTime?
 
     category         Category         @relation(fields: [categoryId], references: [id])
-    subcategory      Subcategory?     @relation(fields: [subcategoryId], references: [id])
     productHistories ProductHistory[]
     orderItems       OrderItem[]
 
@@ -17,29 +15,22 @@ model Product {
     updatedAt DateTime @updatedAt
 
     @@index([deletedAt])
+    @@index([categoryId])
 }
 
 model Category {
-    id   Int    @id @default(autoincrement())
-    name String
+    id       Int    @id @default(autoincrement())
+    name     String
+    parentId Int?
 
-    products      Product[]
-    subcategories Subcategory[]
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-}
-
-model Subcategory {
-    id         Int    @id @default(autoincrement())
-    name       String
-    categoryId Int
-
+    parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+    children Category[] @relation("CategoryHierarchy")
     products Product[]
-    category Category  @relation(fields: [categoryId], references: [id])
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@index([parentId])
 }
 
 enum Operation {

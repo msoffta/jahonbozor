@@ -4,7 +4,6 @@ import { Operation } from "../common/enums";
 import { ProductHistory } from "./product-history.model";
 
 export const CreateInventoryAdjustmentBody = ProductHistory.pick({
-    productId: true,
     changeReason: true,
 }).extend({
     operation: z.enum(["INVENTORY_ADD", "INVENTORY_REMOVE"]),

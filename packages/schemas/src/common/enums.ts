@@ -15,3 +15,20 @@ export const Operation = z.enum([
     "INVENTORY_REMOVE",
 ]);
 export type Operation = z.infer<typeof Operation>;
+
+export const AuditAction = z.enum([
+    "CREATE",
+    "UPDATE",
+    "DELETE",
+    "RESTORE",
+    "LOGIN",
+    "LOGOUT",
+    "PASSWORD_CHANGE",
+    "PERMISSION_CHANGE",
+    "ORDER_STATUS_CHANGE",
+    "INVENTORY_ADJUST",
+]);
+export type AuditAction = z.infer<typeof AuditAction>;
+
+export const ActorType = z.enum(["STAFF", "USER", "SYSTEM"]);
+export type ActorType = z.infer<typeof ActorType>;

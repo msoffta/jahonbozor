@@ -1,14 +1,17 @@
 model Users {
-    id         Int      @id @default(autoincrement())
+    id         Int       @id @default(autoincrement())
     fullname   String
     username   String
-    phone      String   @unique
+    phone      String    @unique
     photo      String?
-    telegramId String?  @unique
+    telegramId String?   @unique
+    deletedAt  DateTime?
 
     orders       Order[]
     refreshToken RefreshToken[]
 
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt
+
+    @@index([deletedAt])
 }

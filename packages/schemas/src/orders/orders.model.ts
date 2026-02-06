@@ -7,7 +7,7 @@ export const OrderItem = BaseModel.extend({
     productId: z.number(),
     quantity: z.number().positive(),
     price: z.number().positive(),
-    data: z.record(z.string(), z.any()).nullable(),
+    data: z.record(z.string(), z.unknown()).nullable(),
 });
 
 export const Order = BaseModel.extend({
@@ -15,7 +15,7 @@ export const Order = BaseModel.extend({
     staffId: z.number().nullable(),
     paymentType: PaymentType,
     status: OrderStatus,
-    data: z.record(z.string(), z.any()).nullable(),
+    data: z.record(z.string(), z.unknown()).nullable(),
     items: z.array(OrderItem.omit({ orderId: true })).optional(),
 });
 

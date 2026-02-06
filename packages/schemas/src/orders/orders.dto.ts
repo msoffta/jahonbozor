@@ -9,7 +9,7 @@ export const CreateOrderItemBody = OrderItem.omit({
     updatedAt: true,
     orderId: true,
 }).extend({
-    data: z.record(z.string(), z.any()).nullish(),
+    data: z.record(z.string(), z.unknown()).nullish(),
 });
 
 export const CreateOrderBody = Order.omit({
@@ -21,7 +21,7 @@ export const CreateOrderBody = Order.omit({
     items: true,
 }).extend({
     userId: z.number().nullish(),
-    data: z.record(z.string(), z.any()).nullish(),
+    data: z.record(z.string(), z.unknown()).nullish(),
     items: z.array(CreateOrderItemBody).min(1),
 });
 

@@ -1,15 +1,35 @@
 import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
 import { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
-import logger from "@lib/logger";
+import type { Token } from "@jahonbozor/schemas";
+import type { Logger } from "@jahonbozor/logger";
 import { prisma } from "@lib/prisma";
-import type { Prisma } from "@generated/prisma/client";
+import { auditInTransaction } from "@lib/audit";
+import type { Prisma, Order } from "@generated/prisma/client";
+
+interface ServiceContext {
+    userId: number;
+    user: Token;
+    requestId?: string;
+}
+
+function createOrderSnapshot(order: Pick<Order, "userId" | "staffId" | "paymentType" | "status" | "data">) {
+    return {
+        userId: order.userId,
+        staffId: order.staffId,
+        paymentType: order.paymentType,
+        status: order.status,
+        data: order.data,
+    };
+}
 
 export abstract class PublicOrdersService {
     static async createOrder(
         orderData: CreateOrderBody,
-        userId: number,
+        context: ServiceContext,
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
+            const { userId, user, requestId } = context;
             const productIds = orderData.items.map(item => item.productId);
 
             const products = await prisma.product.findMany({
@@ -54,7 +74,7 @@ export abstract class PublicOrdersService {
                 };
             }
 
-            const order = await prisma.$transaction(async (transaction) => {
+            const [order] = await prisma.$transaction(async (transaction) => {
                 const newOrder = await transaction.order.create({
                     data: {
                         userId,
@@ -106,7 +126,18 @@ export abstract class PublicOrdersService {
                     });
                 }
 
-                return newOrder;
+                await auditInTransaction(
+                    transaction,
+                    { requestId, user, logger },
+                    {
+                        entityType: "order",
+                        entityId: newOrder.id,
+                        action: "CREATE",
+                        newData: createOrderSnapshot(newOrder),
+                    },
+                );
+
+                return [newOrder];
             });
 
             logger.info("PublicOrders: Order created", {
@@ -117,7 +148,7 @@ export abstract class PublicOrdersService {
 
             return { success: true, data: order };
         } catch (error) {
-            logger.error("PublicOrders: Error in createOrder", { userId, error });
+            logger.error("PublicOrders: Error in createOrder", { userId: context.userId, error });
             return { success: false, error };
         }
     }
@@ -125,6 +156,7 @@ export abstract class PublicOrdersService {
     static async getUserOrders(
         userId: number,
         query: OrdersPagination,
+        logger: Logger,
     ): Promise<ReturnSchema> {
         try {
             const { page, limit, paymentType, status, dateFrom, dateTo } = query;
@@ -161,7 +193,11 @@ export abstract class PublicOrdersService {
         }
     }
 
-    static async getUserOrder(orderId: number, userId: number): Promise<ReturnSchema> {
+    static async getUserOrder(
+        orderId: number,
+        userId: number,
+        logger: Logger,
+    ): Promise<ReturnSchema> {
         try {
             const order = await prisma.order.findUnique({
                 where: { id: orderId },

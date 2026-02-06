@@ -1,15 +1,15 @@
 import { prettifyError, SignInBody } from "@jahonbozor/schemas";
 import { AuthStaff } from "@jahonbozor/schemas/src/staff/staff.model";
-import logger from "@lib/logger";
+import type { Logger } from "@jahonbozor/logger";
 import { prisma } from "@lib/prisma";
 
 import { password } from "bun";
 
 export default abstract class Auth {
-    static async checkIfStaffExists({
-        username,
-        password: staffPassword,
-    }: SignInBody) {
+    static async checkIfStaffExists(
+        { username, password: staffPassword }: SignInBody,
+        logger: Logger,
+    ) {
         try {
             const staffQuery = await prisma.staff.findFirst({
                 where: {
@@ -60,15 +60,11 @@ export default abstract class Auth {
             throw new Error("Auth: Failed to login user");
         }
     }
-    static async saveRefreshToken({
-        token,
-        exp,
-        staffId,
-    }: {
-        token: string;
-        exp: Date;
-        staffId: number;
-    }) {
+
+    static async saveRefreshToken(
+        { token, exp, staffId }: { token: string; exp: Date; staffId: number },
+        logger: Logger,
+    ) {
         try {
             const responseToken = await prisma.refreshToken.create({
                 data: {
@@ -86,7 +82,7 @@ export default abstract class Auth {
         }
     }
 
-    static async validateRefreshToken(token: string) {
+    static async validateRefreshToken(token: string, logger: Logger) {
         try {
             const tokenRecord = await prisma.refreshToken.findUnique({
                 where: { token },
@@ -121,7 +117,7 @@ export default abstract class Auth {
         }
     }
 
-    static async revokeRefreshToken(token: string) {
+    static async revokeRefreshToken(token: string, logger: Logger) {
         try {
             await prisma.refreshToken.update({
                 where: { token },
@@ -133,7 +129,7 @@ export default abstract class Auth {
         }
     }
 
-    static async getStaffById(staffId: number) {
+    static async getStaffById(staffId: number, logger: Logger) {
         try {
             const staffRecord = await prisma.staff.findUnique({
                 where: { id: staffId },
@@ -167,7 +163,7 @@ export default abstract class Auth {
         }
     }
 
-    static async getUserById(userId: number) {
+    static async getUserById(userId: number, logger: Logger) {
         try {
             const userRecord = await prisma.users.findUnique({
                 where: { id: userId },

@@ -2,10 +2,9 @@ import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
 import { Permission } from "@jahonbozor/schemas";
 import {
     CreateUserBody,
-    TelegramAuthBody,
+    UpdateUserBody,
     UsersPagination,
 } from "@jahonbozor/schemas/src/users";
-import logger from "@lib/logger";
 import { authMiddleware } from "@lib/middleware";
 import { Elysia, t } from "elysia";
 import { Users } from "./users.service";
@@ -18,22 +17,12 @@ export const users = new Elysia({ prefix: "/users" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({
-            query: { page, limit, searchQuery, includeOrders },
-        }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<ReturnSchema> => {
             try {
-                return await Users.getAllUsers({
-                    page,
-                    limit,
-                    searchQuery,
-                    includeOrders,
-                });
+                return await Users.getAllUsers(query, logger);
             } catch (error) {
                 logger.error("Users: Unhandled error in GET /users", { error });
-                return {
-                    success: false,
-                    error,
-                };
+                return { success: false, error };
             }
         },
         {
@@ -43,18 +32,21 @@ export const users = new Elysia({ prefix: "/users" })
     )
     .get(
         "/:id",
-        async ({ params }): Promise<ReturnSchema> => {
+        async ({ params, set, logger }): Promise<ReturnSchema> => {
             try {
-                return await Users.getUser(params.id);
+                const result = await Users.getUser(params.id, logger);
+
+                if (!result.success) {
+                    set.status = 404;
+                }
+
+                return result;
             } catch (error) {
                 logger.error("Users: Unhandled error in GET /users/:id", {
                     id: params.id,
                     error,
                 });
-                return {
-                    success: false,
-                    error,
-                };
+                return { success: false, error };
             }
         },
         {
@@ -63,61 +55,19 @@ export const users = new Elysia({ prefix: "/users" })
         },
     )
     .post(
-        "/telegram",
-        async ({ body, set }): Promise<ReturnSchema> => {
+        "/",
+        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const botToken = process.env.TELEGRAM_BOT_TOKEN;
-                if (!botToken) {
-                    logger.error("Users: TELEGRAM_BOT_TOKEN is not configured");
-                    set.status = 500;
-                    return {
-                        success: false,
-                        error: "Server configuration error",
-                    };
-                }
-
-                const isValidHash = Users.validateTelegramHash(body, botToken);
-                if (!isValidHash) {
-                    logger.warn("Users: Invalid Telegram hash", {
-                        telegramId: body.id,
-                    });
-                    set.status = 401;
-                    return {
-                        success: false,
-                        error: "Invalid authentication data",
-                    };
-                }
-
-                return await Users.createOrUpdateFromTelegram(body);
+                const result = await Users.createUser(
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+                if (!result.success) set.status = 400;
+                return result;
             } catch (error) {
-                logger.error("Users: Unhandled error in POST /users/telegram", {
-                    telegramId: body.id,
-                    error,
-                });
-                return {
-                    success: false,
-                    error,
-                };
-            }
-        },
-        {
-            permissions: [Permission.USERS_CREATE],
-            body: TelegramAuthBody,
-        },
-    )
-    .post(
-        "/create",
-        async ({ body }): Promise<ReturnSchema> => {
-            try {
-                return await Users.createUser(body);
-            } catch (error) {
-                logger.error("Users: Unhandled error in POST /users/create", {
-                    error,
-                });
-                return {
-                    success: false,
-                    error,
-                };
+                logger.error("Users: Unhandled error in POST /users", { error });
+                return { success: false, error };
             }
         },
         {
@@ -125,20 +75,85 @@ export const users = new Elysia({ prefix: "/users" })
             body: CreateUserBody,
         },
     )
+    .put(
+        "/:id",
+        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+            try {
+                const result = await Users.updateUser(
+                    params.id,
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    set.status = result.error === "User not found" ? 404 : 400;
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Users: Unhandled error in PUT /users/:id", {
+                    id: params.id,
+                    error,
+                });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.USERS_UPDATE_ALL],
+            params: userIdParams,
+            body: UpdateUserBody,
+        },
+    )
     .delete(
         "/:id",
-        async ({ params }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                return await Users.deleteUser(params.id);
+                const result = await Users.deleteUser(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    set.status = result.error === "User not found" ? 404 : 400;
+                }
+
+                return result;
             } catch (error) {
                 logger.error("Users: Unhandled error in DELETE /users/:id", {
                     id: params.id,
                     error,
                 });
-                return {
-                    success: false,
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.USERS_DELETE],
+            params: userIdParams,
+        },
+    )
+    .post(
+        "/:id/restore",
+        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+            try {
+                const result = await Users.restoreUser(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    set.status = result.error === "User not found" ? 404 : 400;
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Users: Unhandled error in POST /users/:id/restore", {
+                    id: params.id,
                     error,
-                };
+                });
+                return { success: false, error };
             }
         },
         {

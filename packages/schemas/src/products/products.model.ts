@@ -6,7 +6,6 @@ export const Product = BaseModel.extend({
     price: z.number().positive(),
     costprice: z.number().nonnegative(),
     categoryId: z.number(),
-    subcategoryId: z.number().nullable(),
     remaining: z.number().nonnegative().default(0),
     deletedAt: z.coerce.date().nullable(),
 });

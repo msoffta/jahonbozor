@@ -1,19 +1,18 @@
 import z from "zod";
 import { PaginationQuery } from "../common/pagination.model";
-import { User } from "./users.model";
+import { User, telegramIdSchema } from "./users.model";
 
 export const CreateUserBody = User.omit({
     id: true,
     createdAt: true,
     updatedAt: true,
+    deletedAt: true,
 });
 
 export const UpdateUserBody = CreateUserBody.partial();
 
 export const TelegramAuthBody = z.object({
-    id: z
-        .union([z.bigint(), z.string(), z.number()])
-        .transform((id) => id.toString()),
+    id: telegramIdSchema,
     first_name: z.string(),
     last_name: z.string().nullable(),
     username: z.string().nullable(),
@@ -25,6 +24,7 @@ export const TelegramAuthBody = z.object({
 export const UsersPagination = PaginationQuery.extend({
     searchQuery: z.string().optional(),
     includeOrders: z.coerce.boolean().optional(),
+    includeDeleted: z.coerce.boolean().optional(),
 });
 
 export type CreateUserBody = z.infer<typeof CreateUserBody>;

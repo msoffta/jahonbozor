@@ -5,7 +5,6 @@ import {
     UpdateCategoryBody,
     CategoriesPagination,
 } from "@jahonbozor/schemas/src/categories";
-import logger from "@lib/logger";
 import { authMiddleware } from "@lib/middleware";
 import { Elysia, t } from "elysia";
 import { CategoriesService } from "./categories.service";
@@ -18,15 +17,9 @@ export const categories = new Elysia({ prefix: "/categories" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query: { page, limit, searchQuery, includeSubcategories, includeProducts } }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<ReturnSchema> => {
             try {
-                return await CategoriesService.getAllCategories({
-                    page,
-                    limit,
-                    searchQuery,
-                    includeSubcategories,
-                    includeProducts,
-                });
+                return await CategoriesService.getAllCategories(query, logger);
             } catch (error) {
                 logger.error("Categories: Unhandled error in GET /categories", { error });
                 return { success: false, error };
@@ -38,13 +31,34 @@ export const categories = new Elysia({ prefix: "/categories" })
         },
     )
     .get(
+        "/tree",
+        async ({ query, logger }): Promise<ReturnSchema> => {
+            try {
+                const depth = query.depth ?? 3;
+                return await CategoriesService.getCategoryTree(depth, logger);
+            } catch (error) {
+                logger.error("Categories: Unhandled error in GET /categories/tree", { error });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.CATEGORIES_LIST],
+            query: t.Object({
+                depth: t.Optional(t.Numeric({ minimum: 1, maximum: 5 })),
+            }),
+        },
+    )
+    .get(
         "/:id",
-        async ({ params, query, set }): Promise<ReturnSchema> => {
+        async ({ params, query, set, logger }): Promise<ReturnSchema> => {
             try {
                 const result = await CategoriesService.getCategory(
                     params.id,
-                    query.includeSubcategories,
+                    query.includeChildren,
                     query.includeProducts,
+                    query.includeParent,
+                    query.depth,
+                    logger,
                 );
 
                 if (!result.success) {
@@ -65,9 +79,13 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .post(
         "/",
-        async ({ body, set }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await CategoriesService.createCategory(body);
+                const result = await CategoriesService.createCategory(
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -86,9 +104,14 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .patch(
         "/:id",
-        async ({ params, body, set }): Promise<ReturnSchema> => {
+        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await CategoriesService.updateCategory(params.id, body);
+                const result = await CategoriesService.updateCategory(
+                    params.id,
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;
@@ -108,9 +131,13 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .delete(
         "/:id",
-        async ({ params, set }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
             try {
-                const result = await CategoriesService.deleteCategory(params.id);
+                const result = await CategoriesService.deleteCategory(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 400;

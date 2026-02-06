@@ -8,7 +8,6 @@ export const CreateProductBody = Product.omit({
     updatedAt: true,
     deletedAt: true,
 }).extend({
-    subcategoryId: z.number().nullish(),
     remaining: z.number().nonnegative().optional().default(0),
 });
 
@@ -16,7 +15,6 @@ export const UpdateProductBody = CreateProductBody.partial();
 
 export const ProductsPagination = PaginationQuery.extend({
     categoryId: z.coerce.number().optional(),
-    subcategoryId: z.coerce.number().optional(),
     minPrice: z.coerce.number().optional(),
     maxPrice: z.coerce.number().optional(),
     includeDeleted: z.coerce.boolean().optional().default(false),

@@ -6,6 +6,7 @@
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "dev": "bun run --watch src/index.ts",
+    "typecheck": "tsc --noEmit",
     "prisma:generate": "bunx prisma generate",
     "prisma:seed": "bunx prisma seed"
   },
