@@ -3,13 +3,18 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/*",
+    "apps/backend",
+    "apps/frontend/admin",
+    "apps/frontend/user",
     "packages/*"
   ],
   "scripts": {
     "dev": "bun run dev:backend",
     "dev:backend": "bun run --cwd apps/backend --env-file .env dev",
-    "dev:frontend": "bun run --cwd apps/frontend --env-file .env dev",
+    "dev:admin": "bun run --cwd apps/frontend/admin dev",
+    "dev:user": "bun run --cwd apps/frontend/user dev",
+    "build:admin": "bun run --cwd apps/frontend/admin build",
+    "build:user": "bun run --cwd apps/frontend/user build",
     "test": "bun run --cwd apps/backend test",
     "test:watch": "bun run --cwd apps/backend test:watch",
     "test:coverage": "bun run --cwd apps/backend test:coverage",
@@ -21,9 +26,11 @@
     "db:down": "docker-compose down"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "eslint-plugin-react-dom": "^2.12.2",
+    "eslint-plugin-react-x": "^2.12.2"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   }
 }

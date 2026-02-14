@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__brave-search__brave_web_search",
+      "mcp__figma__get_design_context"
     ],
     "deny": [],
     "ask": []

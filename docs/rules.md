@@ -24,6 +24,16 @@ Quick reference for code conventions. See CLAUDE.md for detailed guidance.
 - [Enums](#enums)
 - [Request Context](#request-context)
 - [Unit Testing](#unit-testing)
+- [Frontend File Naming](#frontend-file-naming)
+- [Frontend Component Pattern](#frontend-component-pattern)
+- [Frontend Route Pattern](#frontend-route-pattern)
+- [Frontend State Management](#frontend-state-management)
+- [Frontend API Layer](#frontend-api-layer)
+- [Frontend Forms](#frontend-forms)
+- [Frontend i18n](#frontend-i18n)
+- [Frontend Import Order](#frontend-import-order)
+- [Frontend Tailwind](#frontend-tailwind)
+- [Frontend Testing](#frontend-testing)
 
 ---
 
@@ -547,3 +557,366 @@ beforeEach(() => {
     method.mockImplementation(defaultImpl);
 });
 ```
+
+---
+
+# Frontend
+
+## Frontend File Naming
+
+| Type | Convention | Example |
+|------|-----------|---------|
+| Components | `kebab-case.tsx` | `product-form.tsx` |
+| Stores | `{domain}.store.ts` | `auth.store.ts`, `ui.store.ts` |
+| API files | `{domain}.api.ts` | `products.api.ts` |
+| Route files | TanStack convention | `$productId.tsx`, `_dashboard.tsx` |
+| Tests | `{name}.test.ts(x)` | `product-form.test.tsx` |
+| i18n | `{namespace}.json` | `products.json`, `common.json` |
+| Hooks | `use-{name}.ts` | `use-permissions.ts` |
+
+### Frontend Domain Structure
+
+```
+components/{domain}/
+├── {domain}-form.tsx          # Create/edit form
+├── {domain}-table.tsx         # TanStack Table
+└── {domain}-columns.tsx       # Column definitions
+
+api/
+└── {domain}.api.ts            # Query keys + queryOptions + useMutation hooks
+```
+
+## Frontend Component Pattern
+
+```typescript
+// Named exports only — no default exports
+export function ProductForm({ defaultValues, onSubmit, isLoading }: ProductFormProps) {
+    // 1. Hooks (useTranslation, useForm, useQuery)
+    const { t } = useTranslation("products");
+
+    // 2. Derived state
+    const isEditing = defaultValues !== undefined;
+
+    // 3. Handlers
+    function handleSubmit(data: CreateProductBodyType) { ... }
+
+    // 4. Render
+    return ( ... );
+}
+```
+
+### DO
+- Named exports, no default exports
+- Hooks first, then derived state, then handlers, then render
+- Descriptive prop interfaces
+- Use `useTranslation()` for all user-facing text
+
+### DON'T
+- No default exports
+- No inline styles (`style={}`)
+- No business logic in components — delegate to hooks/api layer
+- No direct `fetch()` calls — use `apiClient`
+
+## Frontend Route Pattern
+
+### Layout Routes (TanStack Router)
+
+```
+_auth.tsx          → Unauthenticated layout (login page)
+_dashboard.tsx     → Authenticated layout (sidebar + header)
+_public.tsx        → Public layout (user app: navbar + footer)
+_user.tsx          → Authenticated user layout
+```
+
+### Protected Route
+
+```typescript
+export const Route = createFileRoute("/_dashboard")({
+    beforeLoad: async () => {
+        const { token } = useAuthStore.getState();
+        if (!token) throw redirect({ to: "/login" });
+    },
+    component: DashboardLayout,
+});
+```
+
+### Permission Guard
+
+```typescript
+export const Route = createFileRoute("/_dashboard/staff/")({
+    beforeLoad: () => {
+        const { permissions } = useAuthStore.getState();
+        if (!hasPermission(permissions, Permission.STAFF_LIST)) {
+            throw redirect({ to: "/" });
+        }
+    },
+    component: StaffListPage,
+});
+```
+
+### Data Loading Route
+
+```typescript
+export const Route = createFileRoute("/_dashboard/products/")({
+    validateSearch: (search) => ProductsPagination.parse(search),
+    loaderDeps: ({ search }) => search,
+    loader: ({ context, deps }) => {
+        context.queryClient.ensureQueryData(productsListOptions(deps));
+    },
+    component: ProductsListPage,
+});
+```
+
+## Frontend State Management
+
+### Rules
+- **Zustand** = client state (auth, UI preferences, cart)
+- **TanStack Query** = server state (products, orders, etc.)
+- **Never** store server data in Zustand
+- **Never** duplicate TanStack Query cache in Zustand
+- Use `persist` only for UI preferences and cart
+
+### Zustand Store
+
+```typescript
+import { create } from "zustand";
+import { persist } from "zustand/middleware";  // only when needed
+
+export const useAuthStore = create<AuthState>((set) => ({
+    token: null,
+    user: null,
+    permissions: [],
+    isAuthenticated: false,
+    setAuth: (token, user, permissions) =>
+        set({ token, user, permissions, isAuthenticated: true }),
+    clearAuth: () =>
+        set({ token: null, user: null, permissions: [], isAuthenticated: false }),
+}));
+```
+
+### TanStack Query Keys
+
+```typescript
+export const productKeys = {
+    all: ["products"] as const,
+    lists: () => [...productKeys.all, "list"] as const,
+    list: (params) => [...productKeys.lists(), params] as const,
+    details: () => [...productKeys.all, "detail"] as const,
+    detail: (id: number) => [...productKeys.details(), id] as const,
+};
+```
+
+### Mutation + Invalidation
+
+```typescript
+export function useCreateProduct() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => apiClient.post("/api/private/products", data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+        },
+    });
+}
+```
+
+## Frontend API Layer
+
+### Elysia Eden (Treaty)
+
+```typescript
+import { api } from "@/lib/api-client";
+
+// Fully typed — autocomplete for paths and params
+const { data } = await api.api.public.products.get({ query: { page: 1 } });
+const { data } = await api.api.private.products.post({ name: "Product" });
+const { data } = await api.api.private.products({ id: 1 }).get();
+
+// Auth header injected automatically from useAuthStore
+// 401 → auto-refresh or logout
+// Uses credentials: "include" for httpOnly cookies
+```
+
+### API File Pattern
+
+```typescript
+// api/{domain}.api.ts
+export const domainKeys = { ... };                    // Query key factory
+export const domainListOptions = (params) => ...;     // queryOptions
+export const domainDetailOptions = (id) => ...;       // queryOptions
+export function useCreateDomain() { ... }             // useMutation
+export function useUpdateDomain(id) { ... }           // useMutation
+export function useDeleteDomain() { ... }             // useMutation
+```
+
+### Vite Proxy (dev)
+
+```typescript
+// vite.config.ts — proxy /api to backend
+server: {
+    proxy: { "/api": { target: "http://localhost:3000", changeOrigin: true } }
+}
+```
+
+## Frontend Forms
+
+```typescript
+import { useForm } from "@tanstack/react-form";
+import { zodValidator } from "@tanstack/zod-form-adapter";
+import { CreateProductBody } from "@jahonbozor/schemas/src/products";
+
+const form = useForm({
+    defaultValues: { name: "", price: 0, ... },
+    onSubmit: async ({ value }) => onSubmit(value),
+    validatorAdapter: zodValidator(),
+});
+
+// Per-field validation
+<form.Field
+    name="name"
+    validators={{ onChange: CreateProductBody.shape.name }}
+    children={(field) => ( ... )}
+/>
+```
+
+### Rules
+- Use `zodValidator()` adapter with schemas from `@jahonbozor/schemas`
+- Per-field validation via `validators.onChange` with Zod shape
+- Accept `defaultValues`, `onSubmit`, `isLoading` as props
+- All labels via `useTranslation()`
+
+## Frontend i18n
+
+### Languages
+- **uz** — Uzbek (default, fallback)
+- **ru** — Russian
+
+### Structure
+
+```
+i18n/
+├── config.ts          # i18next init
+├── uz/
+│   ├── common.json    # Shared: save, cancel, delete, search, loading
+│   ├── auth.json      # Login page labels
+│   ├── products.json  # Product-specific
+│   └── ...per domain
+└── ru/
+    └── ...same structure
+```
+
+### Usage
+
+```typescript
+const { t } = useTranslation("products");
+t("title")         // "Mahsulotlar"
+t("common:save")   // Cross-namespace access
+```
+
+### Language Switch
+
+```typescript
+const locale = useUIStore((state) => state.locale);
+useEffect(() => { i18n.changeLanguage(locale); }, [locale]);
+```
+
+## Frontend Import Order
+
+```typescript
+// 1. React
+import { useState, useEffect } from "react";
+
+// 2. Third-party
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { useForm } from "@tanstack/react-form";
+import { useTranslation } from "react-i18next";
+
+// 3. @jahonbozor/* packages
+import { Permission } from "@jahonbozor/schemas";
+import { Button, Input } from "@jahonbozor/ui";
+
+// 4. Internal (@/ alias)
+import { api } from "@/lib/api-client";
+import { useAuthStore } from "@/stores/auth.store";
+
+// 5. Types
+import type { ProductFormProps } from "./types";
+```
+
+## Frontend Tailwind
+
+### DO
+- Utility classes only — no custom CSS per component
+- `cn()` for conditional classes: `cn("base", condition && "conditional")`
+- Mobile-first responsive: `sm:`, `md:`, `lg:`
+- CSS variables for colors: `text-foreground`, `bg-background`
+- Import `@jahonbozor/ui/globals.css` in `main.tsx`
+
+### DON'T
+- No inline `style` attributes
+- No hardcoded colors — use semantic tokens
+- No custom CSS files per component
+- No `!important`
+
+## Frontend Testing
+
+### Stack
+- `bun:test` — test runner
+- `@testing-library/react` — component rendering
+- `@testing-library/user-event` — user interactions
+- `happy-dom` — DOM implementation
+
+### Test Priority
+1. **Must:** Zustand stores, permission hooks, auth flow, form validation
+2. **Should:** Table components, API layer, route guards
+3. **Nice:** Layout components, i18n switching
+
+### Test Location
+
+```
+src/{layer}/__tests__/{name}.test.ts(x)
+
+# Examples:
+src/stores/__tests__/auth.store.test.ts
+src/hooks/__tests__/use-permissions.test.ts
+src/components/products/__tests__/product-form.test.tsx
+```
+
+### Store Test Pattern
+
+```typescript
+import { describe, test, expect, beforeEach } from "bun:test";
+import { useAuthStore } from "../auth.store";
+
+describe("Auth Store", () => {
+    beforeEach(() => {
+        useAuthStore.setState({
+            token: null, user: null, permissions: [], isAuthenticated: false,
+        });
+    });
+
+    test("should set auth data", () => {
+        useAuthStore.getState().setAuth("token", mockUser, ["products:list"]);
+        expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    });
+
+    test("should clear on logout", () => {
+        useAuthStore.getState().setAuth("token", mockUser, []);
+        useAuthStore.getState().clearAuth();
+        expect(useAuthStore.getState().token).toBeNull();
+    });
+});
+```
+
+### DO
+- Test behavior, not implementation
+- AAA pattern (Arrange-Act-Assert)
+- Reset store state in `beforeEach`
+- Descriptive test names: `"should redirect when unauthenticated"`
+
+### DON'T
+- Don't test internal component state
+- Don't test third-party libraries
+- Don't leave `.only` in commits
+- Don't mock what you don't own (prefer integration over unit for routes)

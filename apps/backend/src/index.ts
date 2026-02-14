@@ -19,3 +19,5 @@ const app = new Elysia()
     .use(publicRoutes)
     .use(privateRoutes)
     .listen(3000);
+
+export type App = typeof app;
