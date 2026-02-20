@@ -137,19 +137,30 @@ When filtering products by `categoryId`, all descendant categories are included:
 
 ## Response Pattern
 
-All endpoints return `Promise<ReturnSchema>`:
+All endpoints return typed `Promise<ReturnSchema<T>>` with pre-composed aliases per module:
 
 ```typescript
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+// packages/schemas/src/common/base.model.ts
+export type ReturnSchema<T = unknown> = { success: true; data: T } | { success: false; error: unknown };
 
-.post("/endpoint", async ({ set, logger }): Promise<ReturnSchema> => {
+// Each module's dto.ts defines concrete aliases:
+export type PublicProductsListResponse = ReturnSchema<{ count: number; products: PublicProductItem[] }>;
+export type AdminOrderDetailResponse = ReturnSchema<AdminOrderItem>;
+
+// Route handler usage:
+import type { PublicProductsListResponse } from "@jahonbozor/schemas/src/products";
+
+.get("/", async ({ query, logger }): Promise<PublicProductsListResponse> => {
     try {
-        return { success: true, data: { user, token } };
+        return { success: true, data: { count, products } };
     } catch (error) {
-        logger.error("Module: Error description", { error });
+        logger.error("Products: List error", { error });
         return { success: false, error };
     }
-}, { body: Schema })
+}, { query: ProductsPagination })
+
+// Service return types:
+static async listProducts(params): Promise<PublicProductsListResponse>
 
 // With HTTP status codes
 set.status = 401;
@@ -201,7 +212,7 @@ const childLogger = createChildLogger(parentLogger, { requestId, userId });
 Tracks all data mutations with `requestId`, actor info, and before/after snapshots.
 
 ```typescript
-import { auditInTransaction, audit } from "@lib/audit";
+import { auditInTransaction, audit } from "@backend/lib/audit";
 
 // Inside transactions (preferred)
 await prisma.$transaction(async (transaction) => {
@@ -271,7 +282,7 @@ interface AuditContext {
 
 ## Enums Reference
 
-### From Prisma (`@generated/prisma/enums`)
+### From Prisma (`@backend/generated/prisma/enums`)
 ```typescript
 AuditAction: CREATE | UPDATE | DELETE | RESTORE | LOGIN | LOGOUT |
              PASSWORD_CHANGE | PERMISSION_CHANGE | ORDER_STATUS_CHANGE | INVENTORY_ADJUST
@@ -406,13 +417,17 @@ const [result] = await prisma.$transaction(async (transaction) => {
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` in root directory:
-- `DATABASE_URL` — PostgreSQL connection string
+Single `.env` file in **monorepo root** — all apps load from there via `bun --env-file` (backend) and Vite `envDir` (frontends).
+
+Copy `.env.example` → `.env` in root directory:
+- `DATABASE_USER` / `DATABASE_PASSWORD` / `DATABASE_NAME` — Docker Compose credentials
+- `DATABASE_URL` — PostgreSQL connection string (Prisma)
 - `JWT_SECRET` — Authentication token secret
 - `TELEGRAM_BOT_TOKEN` — Telegram auth validation
-- `PORT` — Server port (default: 3000)
-- `NODE_ENV` — `development` | `production`
-- `LOG_LEVEL` — `error` | `warn` | `info` | `debug`
+- `SENTRY_DSN` — Sentry error tracking (optional)
+- `VITE_TELEGRAM_BOT_USERNAME` — Telegram bot username for login widget (frontend)
+
+> **Важно:** всегда запускайте команды через корневой `package.json` (`bun run dev`, `bun test`, `bun run prisma:migrate` и т.д.) — они автоматически передают `--env-file .env` в бэкенд. При запуске напрямую из `apps/backend/` скрипты также настроены на `--env-file ../../.env`.
 
 ## Database
 

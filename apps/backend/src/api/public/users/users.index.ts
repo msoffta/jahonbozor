@@ -1,10 +1,11 @@
 import { TelegramAuthBody } from "@jahonbozor/schemas/src/users";
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { TelegramAuthResponse } from "@jahonbozor/schemas/src/users";
 import { Elysia, t } from "elysia";
 import jwt from "@elysiajs/jwt";
 import dayjs from "dayjs";
-import { requestContext } from "@lib/request-context";
-import { Users } from "@api/private/users/users.service";
+import { requestContext } from "@backend/lib/request-context";
+import { Users } from "@backend/api/private/users/users.service";
+import Auth from "@backend/api/public/auth/auth.service";
 
 const authCookieSchema = t.Cookie({
     auth: t.Optional(t.String()),
@@ -20,7 +21,7 @@ export const publicUsers = new Elysia({ prefix: "/users" })
     )
     .post(
         "/telegram",
-        async ({ body, cookie: { auth }, jwt, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, cookie: { auth }, jwt, set, logger, requestId }): Promise<TelegramAuthResponse> => {
             try {
                 const botToken = process.env.TELEGRAM_BOT_TOKEN;
                 if (!botToken) {
@@ -50,9 +51,9 @@ export const publicUsers = new Elysia({ prefix: "/users" })
 
                 const result = await Users.createOrUpdateFromTelegram(body, logger, undefined, requestId);
 
-                if (!result.success || !result.data) {
+                if (!result.success) {
                     set.status = 400;
-                    return result;
+                    return { success: false, error: result.error };
                 }
 
                 const user = result.data;
@@ -71,10 +72,22 @@ export const publicUsers = new Elysia({ prefix: "/users" })
                     fullname: user.fullname,
                     username: user.username,
                     phone: user.phone,
-                    telegramId: user.telegramId,
+                    telegramId: String(user.telegramId),
                     type: "user",
                     exp: dayjs().add(15, "minute").unix(),
                 });
+
+                // Save refresh token to database
+                const isRefreshTokenSaved = await Auth.saveRefreshToken(
+                    { token: refreshToken, exp: refreshTokenExp.toDate(), userId: user.id },
+                    logger,
+                );
+
+                if (!isRefreshTokenSaved) {
+                    logger.error("Users: Refresh token not saved", { userId: user.id });
+                    set.status = 500;
+                    return { success: false, error: "Internal Server Error" };
+                }
 
                 // Set refresh token cookie
                 auth.set({

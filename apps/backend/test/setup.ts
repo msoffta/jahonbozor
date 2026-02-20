@@ -12,7 +12,7 @@ import type {
     OrderItem,
     ProductHistory,
     AuditLog,
-} from "@generated/prisma/client";
+} from "@backend/generated/prisma/client";
 
 // Generic mock type for Prisma model methods
 type MockedModel<T> = {
@@ -82,7 +82,7 @@ export const prismaMock = {
 
 // Mock Prisma module BEFORE it's imported
 // Bun resolves @lib/* alias, so we need to mock the resolved path
-mock.module("@lib/prisma", () => ({ prisma: prismaMock }));
+mock.module("@backend/lib/prisma", () => ({ prisma: prismaMock }));
 
 // Default implementations for model methods
 const defaultModelImplementations = {

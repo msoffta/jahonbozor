@@ -1,4 +1,4 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AdminCategoriesListResponse, AdminCategoryDetailResponse, AdminCategoryTreeResponse } from "@jahonbozor/schemas/src/categories";
 import {
     CreateCategoryBody,
     UpdateCategoryBody,
@@ -6,9 +6,9 @@ import {
 } from "@jahonbozor/schemas/src/categories";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import { auditInTransaction } from "@lib/audit";
-import type { Prisma } from "@generated/prisma/client";
+import { prisma } from "@backend/lib/prisma";
+import { auditInTransaction } from "@backend/lib/audit";
+import type { Prisma } from "@backend/generated/prisma/client";
 
 interface AuditContext {
     staffId: number;
@@ -46,7 +46,7 @@ export abstract class CategoriesService {
     static async getAllCategories(
         params: CategoriesPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminCategoriesListResponse> {
         try {
             const {
                 page,
@@ -120,7 +120,7 @@ export abstract class CategoriesService {
         includeParent: boolean | undefined,
         depth: number = 1,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminCategoryDetailResponse> {
         try {
             const includeClause: Prisma.CategoryInclude = {};
 
@@ -165,7 +165,7 @@ export abstract class CategoriesService {
         categoryData: CreateCategoryBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminCategoryDetailResponse> {
         try {
             // Validate parent exists if parentId provided
             if (categoryData.parentId) {
@@ -264,7 +264,7 @@ export abstract class CategoriesService {
         categoryData: UpdateCategoryBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminCategoryDetailResponse> {
         try {
             const existingCategory = await prisma.category.findUnique({
                 where: { id: categoryId },
@@ -378,7 +378,7 @@ export abstract class CategoriesService {
         categoryId: number,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminCategoryDetailResponse> {
         try {
             const existingCategory = await prisma.category.findUnique({
                 where: { id: categoryId },
@@ -450,7 +450,7 @@ export abstract class CategoriesService {
     /**
      * Get full category tree (all root categories with nested children)
      */
-    static async getCategoryTree(depth: number = 3, logger: Logger): Promise<ReturnSchema> {
+    static async getCategoryTree(depth: number = 3, logger: Logger): Promise<AdminCategoryTreeResponse> {
         try {
             const nestedInclude = this.buildChildrenInclude(depth, false);
 
@@ -460,7 +460,7 @@ export abstract class CategoriesService {
                 orderBy: { name: "asc" },
             });
 
-            return { success: true, data: rootCategories };
+            return { success: true, data: { categories: rootCategories } };
         } catch (error) {
             logger.error("Categories: Error in getCategoryTree", { depth, error });
             return { success: false, error };

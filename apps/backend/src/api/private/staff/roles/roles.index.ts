@@ -1,7 +1,7 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { RolesListResponse, RoleDetailResponse } from "@jahonbozor/schemas/src/roles";
 import { Permission } from "@jahonbozor/schemas";
 import { CreateRoleBody, UpdateRoleBody } from "@jahonbozor/schemas/src/roles";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { RolesService } from "./roles.service";
 
@@ -24,7 +24,7 @@ export const roles = new Elysia({ prefix: "/roles" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<RolesListResponse> => {
             try {
                 return await RolesService.getAllRoles(query, logger);
             } catch (error) {
@@ -39,7 +39,7 @@ export const roles = new Elysia({ prefix: "/roles" })
     )
     .get(
         "/:id",
-        async ({ params, query, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, query, set, logger }): Promise<RoleDetailResponse> => {
             try {
                 const result = await RolesService.getRole(
                     params.id,
@@ -65,7 +65,7 @@ export const roles = new Elysia({ prefix: "/roles" })
     )
     .post(
         "/",
-        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<RoleDetailResponse> => {
             try {
                 const result = await RolesService.createRole(
                     body,
@@ -90,7 +90,7 @@ export const roles = new Elysia({ prefix: "/roles" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, body, user, set, logger, requestId }): Promise<RoleDetailResponse> => {
             try {
                 const result = await RolesService.updateRole(
                     params.id,
@@ -117,7 +117,7 @@ export const roles = new Elysia({ prefix: "/roles" })
     )
     .delete(
         "/:id",
-        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<RoleDetailResponse> => {
             try {
                 const result = await RolesService.deleteRole(
                     params.id,

@@ -6,7 +6,7 @@ export const Staff = BaseModel.extend({
     fullname: z.string(),
     username: z.string(),
     telegramId: z
-        .union([z.bigint(), z.string(), z.number()])
+        .union([z.string(), z.number()])
         .transform((telegramId) => telegramId.toString()),
     passwordHash: z.string(),
     roleId: z.number(),
@@ -28,7 +28,6 @@ export const TokenStaff = Staff.pick({
     id: true,
     fullname: true,
     username: true,
-    telegramId: true,
     roleId: true,
 }).extend({
     type: z.literal("staff"),

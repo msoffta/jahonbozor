@@ -3,9 +3,9 @@ import type { Token } from "@jahonbozor/schemas";
 import type {
     AuditAction as AuditActionType,
     ActorType as ActorTypeEnum,
-} from "@generated/prisma/enums";
-import type { Prisma } from "@generated/prisma/client";
-import { prisma } from "@lib/prisma";
+} from "@backend/generated/prisma/enums";
+import type { Prisma } from "@backend/generated/prisma/client";
+import { prisma } from "@backend/lib/prisma";
 
 type TransactionClient = Prisma.TransactionClient;
 type InputJsonValue = Prisma.InputJsonValue;

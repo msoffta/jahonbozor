@@ -14,9 +14,33 @@ export const ProductHistoryPagination = PaginationQuery.extend({
     productId: z.coerce.number().optional(),
     operation: Operation.optional(),
     staffId: z.coerce.number().optional(),
-    dateFrom: z.coerce.date().optional(),
-    dateTo: z.coerce.date().optional(),
+    dateFrom: z.string().datetime().optional(),
+    dateTo: z.string().datetime().optional(),
 });
 
 export type CreateInventoryAdjustmentBody = z.infer<typeof CreateInventoryAdjustmentBody>;
 export type ProductHistoryPagination = z.infer<typeof ProductHistoryPagination>;
+
+// --- Response types ---
+
+import type { ReturnSchema } from "../common/base.model";
+import type { AdminProductItem } from "./products.dto";
+
+export interface HistoryEntryItem {
+    id: number;
+    productId: number;
+    staffId: number | null;
+    operation: string;
+    quantity: number | null;
+    previousData: unknown;
+    newData: unknown;
+    changeReason: string | null;
+    createdAt: string;
+    updatedAt: string;
+    product?: { id: number; name: string; price?: number };
+    staff?: { id: number; fullname: string } | null;
+}
+
+export type HistoryListResponse = ReturnSchema<{ count: number; history: HistoryEntryItem[] }>;
+export type HistoryDetailResponse = ReturnSchema<HistoryEntryItem>;
+export type InventoryAdjustmentResponse = ReturnSchema<{ product: AdminProductItem; historyEntry: HistoryEntryItem }>;

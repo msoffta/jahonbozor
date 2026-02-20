@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -23,12 +23,58 @@ declare module "@tanstack/react-router" {
     }
 }
 
+const TanStackDevtools = import.meta.env.PROD
+    ? () => null
+    : lazy(() =>
+          Promise.all([
+              import("@tanstack/react-devtools"),
+              import("@tanstack/react-query-devtools"),
+              import("@tanstack/react-router-devtools"),
+              import("@tanstack/react-form-devtools"),
+          ]).then(
+              ([
+                  { TanStackDevtools },
+                  { ReactQueryDevtoolsPanel },
+                  { TanStackRouterDevtoolsPanel },
+                  { formDevtoolsPlugin },
+              ]) => ({
+                  default: () => (
+                      <TanStackDevtools
+                          config={{
+                              position: "top-right",
+                          }}
+                          plugins={[
+                              {
+                                  name: "TanStack Query",
+                                  render: <ReactQueryDevtoolsPanel />,
+                                  defaultOpen: false,
+                              },
+                              {
+                                  name: "TanStack Router",
+                                  render: (
+                                      <TanStackRouterDevtoolsPanel
+                                          router={router}
+                                      />
+                                  ),
+                                  defaultOpen: false,
+                              },
+                              formDevtoolsPlugin(),
+                          ]}
+                      />
+                  ),
+              }),
+          ),
+      );
+
 function App() {
     const auth = useAuthStore();
 
     return (
         <QueryClientProvider client={queryClient}>
             <RouterProvider router={router} context={{ auth }} />
+            <Suspense>
+                {/* <TanStackDevtools /> */}
+            </Suspense>
         </QueryClientProvider>
     );
 }

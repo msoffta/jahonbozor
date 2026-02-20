@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import { CategoriesService } from "../categories.service";
-import type { Category } from "@generated/prisma/client";
+import type { Category } from "@backend/generated/prisma/client";
 
 describe("CategoriesService", () => {
     let mockLogger: ReturnType<typeof createMockLogger>;
@@ -165,7 +165,7 @@ describe("CategoriesService", () => {
             // Arrange
             const mockCategory = createMockCategory({ id: 1, name: "Electronics" });
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
-            prismaMock.$transaction.mockImplementationOnce(async (callback) => {
+            prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
                     category: { create: mock(() => Promise.resolve(mockCategory)) },
                     auditLog: { create: mock(() => Promise.resolve({})) },
@@ -193,7 +193,7 @@ describe("CategoriesService", () => {
             const mockCategory = createMockCategory({ id: 5, name: "Smartphones", parentId: 1 });
             prismaMock.category.findUnique.mockResolvedValueOnce(mockParent);
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
-            prismaMock.$transaction.mockImplementationOnce(async (callback) => {
+            prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
                     category: { create: mock(() => Promise.resolve(mockCategory)) },
                     auditLog: { create: mock(() => Promise.resolve({})) },
@@ -256,7 +256,7 @@ describe("CategoriesService", () => {
             const updatedCategory = createMockCategory({ id: 1, name: "Gadgets" });
             prismaMock.category.findUnique.mockResolvedValueOnce(existingCategory);
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
-            prismaMock.$transaction.mockImplementationOnce(async (callback) => {
+            prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
                     category: { update: mock(() => Promise.resolve(updatedCategory)) },
                     auditLog: { create: mock(() => Promise.resolve({})) },
@@ -341,7 +341,7 @@ describe("CategoriesService", () => {
             prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
             prismaMock.category.count.mockResolvedValueOnce(0);
             prismaMock.product.count.mockResolvedValueOnce(0);
-            prismaMock.$transaction.mockImplementationOnce(async (callback) => {
+            prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
                     category: { delete: mock(() => Promise.resolve(mockCategory)) },
                     auditLog: { create: mock(() => Promise.resolve({})) },
@@ -416,9 +416,61 @@ describe("CategoriesService", () => {
 
             // Assert
             const success = expectSuccess(result);
-            const data = success.data as Array<Category & { children: Category[] }>;
-            expect(data).toHaveLength(1);
-            expect(data[0].children).toHaveLength(1);
+            const data = success.data as { categories: Array<Category & { children: Category[] }> };
+            expect(data.categories).toHaveLength(1);
+            expect(data.categories[0].children).toHaveLength(1);
+        });
+    });
+
+    describe("edge cases", () => {
+        test("getCategory with id=0 should return not found", async () => {
+            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+
+            const result = await CategoriesService.getCategory(0, false, false, false, 1, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Category not found");
+        });
+
+        test("getCategory with negative id should return not found", async () => {
+            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+
+            const result = await CategoriesService.getCategory(-1, false, false, false, 1, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Category not found");
+        });
+
+        test("createCategory with non-existent parentId should return error", async () => {
+            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+
+            const result = await CategoriesService.createCategory(
+                { name: "Test", parentId: 999 },
+                createMockContext(),
+                mockLogger,
+            );
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Parent category not found");
+        });
+
+        test("deleteCategory with id=0 should return not found", async () => {
+            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+
+            const result = await CategoriesService.deleteCategory(0, createMockContext(), mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Category not found");
+        });
+
+        test("getCategoryTree should return empty array when no categories", async () => {
+            prismaMock.category.findMany.mockResolvedValueOnce([]);
+
+            const result = await CategoriesService.getCategoryTree(3, mockLogger);
+
+            const success = expectSuccess(result);
+            const data = success.data as { categories: unknown[] };
+            expect(data.categories).toEqual([]);
         });
     });
 });

@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
-import type { Order, OrderItem, Product, AuditLog, Prisma } from "@generated/prisma/client";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import type { Order, OrderItem, Product, AuditLog, Prisma } from "@backend/generated/prisma/client";
 import { type Token, Permission } from "@jahonbozor/schemas";
 import { OrdersService } from "../orders.service";
 
@@ -711,6 +711,106 @@ describe("Orders Service", () => {
             const failure = expectFailure(result);
             expect(failure.error).toBe(dbError);
             expect(mockLogger.error).toHaveBeenCalled();
+        });
+    });
+
+    describe("edge cases", () => {
+        test("getOrder with id=0 should return not found", async () => {
+            prismaMock.order.findUnique.mockResolvedValueOnce(null);
+
+            const result = await OrdersService.getOrder(0, 1, [Permission.ORDERS_READ_OWN], mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Order not found");
+        });
+
+        test("getOrder with negative id should return not found", async () => {
+            prismaMock.order.findUnique.mockResolvedValueOnce(null);
+
+            const result = await OrdersService.getOrder(-1, 1, [Permission.ORDERS_READ_OWN], mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Order not found");
+        });
+
+        test("createOrder with deleted product should return error", async () => {
+            // DB query has deletedAt: null filter, so deleted products are not returned
+            prismaMock.product.findMany.mockResolvedValueOnce([]);
+
+            const result = await OrdersService.createOrder(
+                { paymentType: "CASH", items: [{ productId: 1, quantity: 1, price: 100 }] },
+                mockContext,
+                mockLogger,
+            );
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Products not found: 1");
+        });
+
+        test("createOrder with multiple items, one missing product", async () => {
+            // Only product 1 exists, product 2 does not
+            prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
+
+            const result = await OrdersService.createOrder(
+                {
+                    paymentType: "CASH",
+                    items: [
+                        { productId: 1, quantity: 1, price: 100 },
+                        { productId: 2, quantity: 1, price: 200 },
+                    ],
+                },
+                mockContext,
+                mockLogger,
+            );
+
+            const failure = expectFailure(result);
+            expect(failure.error).toContain("2");
+        });
+
+        test("createOrder with exact stock quantity should succeed", async () => {
+            const exactStockProduct = { ...mockProduct, remaining: 5 };
+            prismaMock.product.findMany.mockResolvedValueOnce([exactStockProduct]);
+            prismaMock.order.create.mockResolvedValueOnce(mockOrderWithRelations as unknown as Order);
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            const result = await OrdersService.createOrder(
+                { paymentType: "CASH", items: [{ productId: 1, quantity: 5, price: 100 }] },
+                mockContext,
+                mockLogger,
+            );
+
+            expectSuccess(result);
+        });
+
+        test("updateOrder with empty body should succeed", async () => {
+            prismaMock.order.findUnique.mockResolvedValueOnce(mockOrder);
+            prismaMock.order.update.mockResolvedValueOnce(mockOrderWithRelations as unknown as Order);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            const result = await OrdersService.updateOrder(
+                1,
+                {},
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            expectSuccess(result);
+        });
+
+        test("deleteOrder with no items should succeed", async () => {
+            const orderNoItems = { ...mockOrder, items: [] };
+            prismaMock.order.findUnique.mockResolvedValueOnce(orderNoItems as unknown as Order);
+            prismaMock.orderItem.deleteMany.mockResolvedValueOnce({ count: 0 });
+            prismaMock.order.delete.mockResolvedValueOnce(mockOrder);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            const result = await OrdersService.deleteOrder(1, mockContext, mockLogger);
+
+            const success = expectSuccess(result);
+            expect(success.data).toEqual({ orderId: 1, deleted: true });
         });
     });
 });

@@ -12,7 +12,7 @@ export const AuditLog = z.object({
     previousData: z.record(z.string(), z.unknown()).nullable(),
     newData: z.record(z.string(), z.unknown()).nullable(),
     metadata: z.record(z.string(), z.unknown()).nullable(),
-    createdAt: z.coerce.date(),
+    createdAt: z.string().datetime(),
 });
 
 export type AuditLog = z.infer<typeof AuditLog>;

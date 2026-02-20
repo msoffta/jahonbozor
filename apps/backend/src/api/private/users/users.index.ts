@@ -1,11 +1,11 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AdminUsersListResponse, AdminUserDetailResponse } from "@jahonbozor/schemas/src/users";
 import { Permission } from "@jahonbozor/schemas";
 import {
     CreateUserBody,
     UpdateUserBody,
     UsersPagination,
 } from "@jahonbozor/schemas/src/users";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { Users } from "./users.service";
 
@@ -17,7 +17,7 @@ export const users = new Elysia({ prefix: "/users" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<AdminUsersListResponse> => {
             try {
                 return await Users.getAllUsers(query, logger);
             } catch (error) {
@@ -32,7 +32,7 @@ export const users = new Elysia({ prefix: "/users" })
     )
     .get(
         "/:id",
-        async ({ params, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, set, logger }): Promise<AdminUserDetailResponse> => {
             try {
                 const result = await Users.getUser(params.id, logger);
 
@@ -56,7 +56,7 @@ export const users = new Elysia({ prefix: "/users" })
     )
     .post(
         "/",
-        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
             try {
                 const result = await Users.createUser(
                     body,
@@ -77,7 +77,7 @@ export const users = new Elysia({ prefix: "/users" })
     )
     .put(
         "/:id",
-        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, body, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
             try {
                 const result = await Users.updateUser(
                     params.id,
@@ -107,7 +107,7 @@ export const users = new Elysia({ prefix: "/users" })
     )
     .delete(
         "/:id",
-        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
             try {
                 const result = await Users.deleteUser(
                     params.id,
@@ -135,7 +135,7 @@ export const users = new Elysia({ prefix: "/users" })
     )
     .post(
         "/:id/restore",
-        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
             try {
                 const result = await Users.restoreUser(
                     params.id,

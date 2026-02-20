@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@test/setup";
+import { createMockLogger } from "@backend/test/setup";
 import { Permission } from "@jahonbozor/schemas";
 import { ProductsService } from "../products.service";
 import { HistoryService } from "../history/history.service";
@@ -71,7 +71,7 @@ const createTestApp = () => {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
                     searchQuery: query.searchQuery,
-                    categoryId: query.categoryId ? Number(query.categoryId) : undefined,
+                    categoryIds: query.categoryIds || undefined,
                     minPrice: query.minPrice ? Number(query.minPrice) : undefined,
                     maxPrice: query.maxPrice ? Number(query.maxPrice) : undefined,
                     includeDeleted: query.includeDeleted === "true",
@@ -183,7 +183,7 @@ describe("Products API Routes", () => {
             spy.mockRestore();
         });
 
-        test("should apply categoryId filter", async () => {
+        test("should apply categoryIds filter", async () => {
             // Arrange
             const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
                 success: true,
@@ -192,12 +192,12 @@ describe("Products API Routes", () => {
 
             // Act
             await app.handle(
-                new Request("http://localhost/products?categoryId=1"),
+                new Request("http://localhost/products?categoryIds=1,2"),
             );
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
-                expect.objectContaining({ categoryId: 1 }),
+                expect.objectContaining({ categoryIds: "1,2" }),
                 expect.anything(),
             );
 
@@ -636,7 +636,7 @@ describe("Products API Routes", () => {
                 success: true,
                 data: {
                     product: { ...mockProduct, remaining: 15 },
-                    history: { ...mockProductHistory, operation: "INVENTORY_ADD", quantity: 5 },
+                    historyEntry: { ...mockProductHistory, operation: "INVENTORY_ADD", quantity: 5 },
                 },
             });
 
@@ -668,7 +668,7 @@ describe("Products API Routes", () => {
                 success: true,
                 data: {
                     product: { ...mockProduct, remaining: 5 },
-                    history: { ...mockProductHistory, operation: "INVENTORY_REMOVE", quantity: 5 },
+                    historyEntry: { ...mockProductHistory, operation: "INVENTORY_REMOVE", quantity: 5 },
                 },
             });
 
@@ -728,7 +728,7 @@ describe("Products API Routes", () => {
                 success: true,
                 data: {
                     product: mockProduct,
-                    history: mockProductHistory,
+                    historyEntry: mockProductHistory,
                 },
             });
 
@@ -752,6 +752,149 @@ describe("Products API Routes", () => {
                 expect.objectContaining({ staffId: 1, requestId: "test-request-id" }),
                 expect.anything(),
             );
+
+            spy.mockRestore();
+        });
+    });
+
+    describe("edge cases", () => {
+        test("GET /products with no results should return empty list", async () => {
+            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+                success: true,
+                data: { count: 0, products: [] },
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/products"),
+            );
+            const body = await response.json();
+
+            expect(response.status).toBe(200);
+            expect(body.success).toBe(true);
+            expect(body.data.count).toBe(0);
+            expect(body.data.products).toEqual([]);
+
+            spy.mockRestore();
+        });
+
+        test("GET /products with NaN categoryIds should still call service", async () => {
+            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+                success: true,
+                data: { count: 0, products: [] },
+            });
+
+            await app.handle(
+                new Request("http://localhost/products?categoryIds=abc"),
+            );
+
+            expect(spy).toHaveBeenCalledWith(
+                expect.objectContaining({ categoryIds: "abc" }),
+                expect.anything(),
+            );
+
+            spy.mockRestore();
+        });
+
+        test("GET /products/:id with id=0 should call service with 0", async () => {
+            const spy = spyOn(ProductsService, "getProduct").mockResolvedValue({
+                success: false,
+                error: "Product not found",
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/products/0"),
+            );
+            const body = await response.json();
+
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("Product not found");
+
+            spy.mockRestore();
+        });
+
+        test("POST /products should return 400 when service fails", async () => {
+            const spy = spyOn(ProductsService, "createProduct").mockResolvedValue({
+                success: false,
+                error: "Database error",
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/products", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: "Test",
+                        price: 100,
+                        costprice: 50,
+                        categoryId: 1,
+                    }),
+                }),
+            );
+            const body = await response.json();
+
+            expect(body.success).toBe(false);
+
+            spy.mockRestore();
+        });
+
+        test("POST /products/:id/inventory should return error for deleted product", async () => {
+            const spy = spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
+                success: false,
+                error: "Product is deleted",
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/products/1/inventory", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        operation: "INVENTORY_ADD",
+                        quantity: 5,
+                        changeReason: null,
+                    }),
+                }),
+            );
+            const body = await response.json();
+
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("Product is deleted");
+
+            spy.mockRestore();
+        });
+
+        test("PATCH /products/:id with empty body should call service", async () => {
+            const spy = spyOn(ProductsService, "updateProduct").mockResolvedValue({
+                success: true,
+                data: mockProduct,
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/products/1", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({}),
+                }),
+            );
+            const body = await response.json();
+
+            expect(response.status).toBe(200);
+            expect(body.success).toBe(true);
+
+            spy.mockRestore();
+        });
+
+        test("DELETE /products/:id should handle service error response", async () => {
+            const spy = spyOn(ProductsService, "deleteProduct").mockResolvedValue({
+                success: false,
+                error: "Database error",
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/products/1", { method: "DELETE" }),
+            );
+            const body = await response.json();
+
+            expect(body.success).toBe(false);
 
             spy.mockRestore();
         });

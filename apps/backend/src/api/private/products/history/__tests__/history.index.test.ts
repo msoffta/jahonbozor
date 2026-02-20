@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@test/setup";
+import { createMockLogger } from "@backend/test/setup";
 import { Permission } from "@jahonbozor/schemas";
 import { HistoryService } from "../history.service";
 
@@ -258,6 +258,61 @@ describe("History API Routes", () => {
 
             // Assert
             expect(spy).toHaveBeenCalledWith(42, expect.anything());
+
+            spy.mockRestore();
+        });
+    });
+
+    describe("edge cases", () => {
+        test("GET /history with empty results should return empty list", async () => {
+            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+                success: true,
+                data: { count: 0, history: [] },
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/history"),
+            );
+            const body = await response.json();
+
+            expect(response.status).toBe(200);
+            expect(body.success).toBe(true);
+            expect(body.data.count).toBe(0);
+            expect(body.data.history).toEqual([]);
+
+            spy.mockRestore();
+        });
+
+        test("GET /history/:historyId with id=0 should call service with 0", async () => {
+            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+                success: false,
+                error: "History entry not found",
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/history/0"),
+            );
+            const body = await response.json();
+
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("History entry not found");
+
+            spy.mockRestore();
+        });
+
+        test("GET /history/:historyId when service fails should return error", async () => {
+            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+                success: false,
+                error: "History entry not found",
+            });
+
+            const response = await app.handle(
+                new Request("http://localhost/history/999"),
+            );
+            const body = await response.json();
+
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("History entry not found");
 
             spy.mockRestore();
         });

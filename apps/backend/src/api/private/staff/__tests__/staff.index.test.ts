@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger } from "@test/setup";
-import type { Staff } from "@generated/prisma/client";
+import { prismaMock, createMockLogger } from "@backend/test/setup";
+import type { Staff } from "@backend/generated/prisma/client";
 import { Permission } from "@jahonbozor/schemas";
 import { StaffService } from "../staff.service";
 
@@ -544,6 +544,88 @@ describe("Staff Service Integration", () => {
             expect.objectContaining({ staffId: 1, requestId: "test-request-id" }),
             expect.anything(),
         );
+
+        spy.mockRestore();
+    });
+});
+
+describe("Staff API edge cases", () => {
+    let app: ReturnType<typeof createTestApp>;
+
+    beforeEach(() => {
+        app = createTestApp();
+    });
+
+    test("GET /staff/:id with id=0 should call service", async () => {
+        const spy = spyOn(StaffService, "getStaff").mockResolvedValue({
+            success: false,
+            error: "Staff not found",
+        });
+
+        const response = await app.handle(new Request("http://localhost/staff/0"));
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error).toBe("Staff not found");
+
+        spy.mockRestore();
+    });
+
+    test("GET /staff with no results should return empty list", async () => {
+        const spy = spyOn(StaffService, "getAllStaff").mockResolvedValue({
+            success: true,
+            data: { count: 0, staff: [] },
+        });
+
+        const response = await app.handle(new Request("http://localhost/staff"));
+        const body = await response.json();
+
+        expect(body.success).toBe(true);
+        expect(body.data.count).toBe(0);
+        expect(body.data.staff).toEqual([]);
+
+        spy.mockRestore();
+    });
+
+    test("POST /staff should handle duplicate username error", async () => {
+        const spy = spyOn(StaffService, "createStaff").mockResolvedValue({
+            success: false,
+            error: "Username already exists",
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/staff", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    fullname: "Test",
+                    username: "duplicate",
+                    password: "password123",
+                    telegramId: "123",
+                    roleId: 1,
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error).toBe("Username already exists");
+
+        spy.mockRestore();
+    });
+
+    test("DELETE /staff/:id should handle service error", async () => {
+        const spy = spyOn(StaffService, "deleteStaff").mockResolvedValue({
+            success: false,
+            error: "Database error",
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/staff/1", { method: "DELETE" }),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
 
         spy.mockRestore();
     });

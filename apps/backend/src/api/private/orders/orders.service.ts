@@ -1,4 +1,4 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AdminOrdersListResponse, AdminOrderDetailResponse, AdminOrderDeleteResponse } from "@jahonbozor/schemas/src/orders";
 import { Permission, hasAnyPermission, type Token } from "@jahonbozor/schemas";
 import {
     CreateOrderBody,
@@ -6,9 +6,9 @@ import {
     OrdersPagination,
 } from "@jahonbozor/schemas/src/orders";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import { auditInTransaction } from "@lib/audit";
-import type { Prisma, Order } from "@generated/prisma/client";
+import { prisma } from "@backend/lib/prisma";
+import { auditInTransaction } from "@backend/lib/audit";
+import type { Prisma, Order } from "@backend/generated/prisma/client";
 
 interface ServiceContext {
     staffId: number;
@@ -32,9 +32,9 @@ export abstract class OrdersService {
         staffId: number,
         permissions: Permission[],
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminOrdersListResponse> {
         try {
-            const { page, limit, searchQuery, userId, staffId: filterStaffId, paymentType, status, dateFrom, dateTo } = query;
+            const { page, limit, searchQuery: _searchQuery, userId, staffId: filterStaffId, paymentType, status, dateFrom, dateTo } = query;
 
             const canListAll = hasAnyPermission(permissions, [Permission.ORDERS_LIST_ALL]);
 
@@ -71,7 +71,16 @@ export abstract class OrdersService {
                 }),
             ]);
 
-            return { success: true, data: { count, orders } };
+            const mapped = orders.map(order => ({
+                ...order,
+                items: order.items.map(item => ({
+                    ...item,
+                    price: Number(item.price),
+                    product: { ...item.product, price: Number(item.product.price) },
+                })),
+            }));
+
+            return { success: true, data: { count, orders: mapped } };
         } catch (error) {
             logger.error("Orders: Error in getAllOrders", { error });
             return { success: false, error };
@@ -83,7 +92,7 @@ export abstract class OrdersService {
         staffId: number,
         permissions: Permission[],
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminOrderDetailResponse> {
         try {
             const order = await prisma.order.findUnique({
                 where: { id: orderId },
@@ -113,7 +122,16 @@ export abstract class OrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
-            return { success: true, data: order };
+            const mapped = {
+                ...order,
+                items: order.items.map(item => ({
+                    ...item,
+                    price: Number(item.price),
+                    product: { ...item.product, price: Number(item.product.price) },
+                })),
+            };
+
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("Orders: Error in getOrder", { orderId, error });
             return { success: false, error };
@@ -124,7 +142,7 @@ export abstract class OrdersService {
         orderData: CreateOrderBody,
         context: ServiceContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminOrderDetailResponse> {
         try {
             const { staffId, user, requestId } = context;
             const productIds = orderData.items.map(item => item.productId);
@@ -244,7 +262,15 @@ export abstract class OrdersService {
                 itemCount: order.items.length,
             });
 
-            return { success: true, data: order };
+            const mapped = {
+                ...order,
+                items: order.items.map(item => ({
+                    ...item,
+                    price: Number(item.price),
+                })),
+            };
+
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("Orders: Error in createOrder", { error });
             return { success: false, error };
@@ -257,7 +283,7 @@ export abstract class OrdersService {
         context: ServiceContext,
         permissions: Permission[],
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminOrderDetailResponse> {
         try {
             const { staffId, user, requestId } = context;
 
@@ -318,7 +344,14 @@ export abstract class OrdersService {
             });
 
             logger.info("Orders: Order updated", { orderId, staffId });
-            return { success: true, data: updatedOrder };
+            const mapped = {
+                ...updatedOrder,
+                items: updatedOrder.items.map(item => ({
+                    ...item,
+                    price: Number(item.price),
+                })),
+            };
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("Orders: Error in updateOrder", { orderId, error });
             return { success: false, error };
@@ -329,7 +362,7 @@ export abstract class OrdersService {
         orderId: number,
         context: ServiceContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminOrderDeleteResponse> {
         try {
             const { staffId, user, requestId } = context;
 

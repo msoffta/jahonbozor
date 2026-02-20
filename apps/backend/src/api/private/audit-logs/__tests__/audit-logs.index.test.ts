@@ -1,9 +1,9 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import { Permission } from "@jahonbozor/schemas";
 import { AuditLogService } from "../audit-logs.service";
-import type { AuditLog } from "@generated/prisma/client";
+import type { AuditLog } from "@backend/generated/prisma/client";
 
 // Mock audit log data
 const mockAuditLog: AuditLog = {
@@ -63,11 +63,12 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    searchQuery: "",
                     entityType: query.entityType as string | undefined,
                     entityId: query.entityId ? Number(query.entityId) : undefined,
                     actorId: query.actorId ? Number(query.actorId) : undefined,
                     actorType: query.actorType as "STAFF" | "USER" | "SYSTEM" | undefined,
-                    action: query.action as string | undefined,
+                    action: query.action as "CREATE" | "UPDATE" | "DELETE" | "RESTORE" | "LOGIN" | "LOGOUT" | "PASSWORD_CHANGE" | "PERMISSION_CHANGE" | "ORDER_STATUS_CHANGE" | "INVENTORY_ADJUST" | undefined,
                     requestId: query.requestId as string | undefined,
                     dateFrom: query.dateFrom ? new Date(query.dateFrom as string) : undefined,
                     dateTo: query.dateTo ? new Date(query.dateTo as string) : undefined,
@@ -308,6 +309,60 @@ describe("AuditLogs API Endpoints", () => {
             expect(response.status).toBe(200);
             const body = await response.json();
             expect(body.data).toEqual({ count: 0, auditLogs: [] });
+        });
+    });
+
+    describe("edge cases", () => {
+        test("GET /audit-logs/:id with id=0 should return 404", async () => {
+            prismaMock.auditLog.findUnique.mockResolvedValue(null);
+
+            const response = await app.handle(
+                new Request("http://localhost/audit-logs/0"),
+            );
+
+            expect(response.status).toBe(404);
+            const body = await response.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("Audit log entry not found");
+        });
+
+        test("GET /audit-logs/by-request/:requestId with non-existent requestId should return empty", async () => {
+            prismaMock.auditLog.findMany.mockResolvedValue([]);
+
+            const response = await app.handle(
+                new Request("http://localhost/audit-logs/by-request/non-existent-id"),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.data.count).toBe(0);
+            expect(body.data.auditLogs).toEqual([]);
+        });
+
+        test("GET /audit-logs with all filters combined should return results", async () => {
+            prismaMock.$transaction.mockResolvedValue([1, [mockAuditLog]]);
+
+            const response = await app.handle(
+                new Request("http://localhost/audit-logs?entityType=product&entityId=100&actorId=10&actorType=STAFF&action=CREATE&requestId=req-123&dateFrom=2024-01-01&dateTo=2024-12-31"),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.success).toBe(true);
+            expect(body.data.count).toBe(1);
+        });
+
+        test("GET /audit-logs with empty results should return empty list", async () => {
+            prismaMock.$transaction.mockResolvedValue([0, []]);
+
+            const response = await app.handle(
+                new Request("http://localhost/audit-logs"),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.data.count).toBe(0);
+            expect(body.data.auditLogs).toEqual([]);
         });
     });
 });

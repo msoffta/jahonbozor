@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, mock, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger } from "@test/setup";
-import type { Category } from "@generated/prisma/client";
+import { prismaMock, createMockLogger } from "@backend/test/setup";
+import type { Category } from "@backend/generated/prisma/client";
 import { Permission } from "@jahonbozor/schemas";
 import { CategoriesService } from "../categories.service";
 
@@ -216,8 +216,8 @@ describe("Categories API Routes", () => {
             // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
-            expect(body.data).toHaveLength(1);
-            expect(body.data[0].children).toHaveLength(1);
+            expect(body.data.categories).toHaveLength(1);
+            expect(body.data.categories[0].children).toHaveLength(1);
         });
 
         test("should accept depth parameter", async () => {
@@ -613,5 +613,81 @@ describe("Categories Service Integration", () => {
         );
 
         spy.mockRestore();
+    });
+});
+
+describe("Categories API edge cases", () => {
+    let app: ReturnType<typeof createTestApp>;
+
+    beforeEach(() => {
+        app = createTestApp();
+    });
+
+    test("GET /categories/:id with id=0 should return not found", async () => {
+        prismaMock.category.findUnique.mockResolvedValueOnce(null);
+
+        const response = await app.handle(
+            new Request("http://localhost/categories/0"),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error).toBe("Category not found");
+    });
+
+    test("GET /categories with empty results should return empty list", async () => {
+        prismaMock.$transaction.mockResolvedValueOnce([0, []]);
+
+        const response = await app.handle(
+            new Request("http://localhost/categories"),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.data.count).toBe(0);
+        expect(body.data.categories).toEqual([]);
+    });
+
+    test("GET /categories/tree should return empty tree when no categories", async () => {
+        prismaMock.category.findMany.mockResolvedValueOnce([]);
+
+        const response = await app.handle(
+            new Request("http://localhost/categories/tree"),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.data.categories).toEqual([]);
+    });
+
+    test("POST /categories with duplicate name should return error", async () => {
+        prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
+
+        const response = await app.handle(
+            new Request("http://localhost/categories", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: "Electronics" }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error).toBe("Category name already exists at this level");
+    });
+
+    test("DELETE /categories/:id with children should return constraint error", async () => {
+        prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+        prismaMock.category.count.mockResolvedValueOnce(2);
+
+        const response = await app.handle(
+            new Request("http://localhost/categories/1", { method: "DELETE" }),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error).toBe("Cannot delete category with child categories");
     });
 });

@@ -1,14 +1,14 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AuditLogsListResponse, AuditLogDetailResponse } from "@jahonbozor/schemas/src/audit-logs";
 import { AuditLogPagination } from "@jahonbozor/schemas/src/audit-logs";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import type { Prisma } from "@generated/prisma/client";
+import { prisma } from "@backend/lib/prisma";
+import type { Prisma } from "@backend/generated/prisma/client";
 
 export abstract class AuditLogService {
     static async getAll(
         params: AuditLogPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AuditLogsListResponse> {
         try {
             const {
                 page,
@@ -64,7 +64,7 @@ export abstract class AuditLogService {
     static async getById(
         auditLogId: number,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AuditLogDetailResponse> {
         try {
             const auditLog = await prisma.auditLog.findUnique({
                 where: { id: auditLogId },
@@ -85,7 +85,7 @@ export abstract class AuditLogService {
     static async getByRequestId(
         requestId: string,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AuditLogsListResponse> {
         try {
             const auditLogs = await prisma.auditLog.findMany({
                 where: { requestId },
@@ -106,7 +106,7 @@ export abstract class AuditLogService {
         entityType: string,
         entityId: number,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AuditLogsListResponse> {
         try {
             const auditLogs = await prisma.auditLog.findMany({
                 where: { entityType, entityId },

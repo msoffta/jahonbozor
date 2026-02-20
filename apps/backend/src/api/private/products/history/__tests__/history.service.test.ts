@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import { HistoryService } from "../history.service";
 import type { Token } from "@jahonbozor/schemas";
-import type { Product, ProductHistory, AuditLog } from "@generated/prisma/client";
+import type { Product, ProductHistory, AuditLog } from "@backend/generated/prisma/client";
 
 const mockUser: Token = {
     id: 1,
@@ -286,6 +286,100 @@ describe("HistoryService", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("Insufficient stock");
+        });
+
+        test("should allow INVENTORY_REMOVE with exact remaining (boundary)", async () => {
+            // Arrange
+            const mockProduct = createMockProduct({ id: 1, remaining: 5 });
+            const mockUpdatedProduct = createMockProduct({ id: 1, remaining: 0 });
+            const mockHistoryEntry = createMockProductHistory({
+                id: 1,
+                productId: 1,
+                operation: "INVENTORY_REMOVE",
+                quantity: 5,
+            });
+
+            prismaMock.product.findUnique.mockResolvedValue(mockProduct);
+            prismaMock.product.update.mockResolvedValue(mockUpdatedProduct);
+            prismaMock.productHistory.create.mockResolvedValue(mockHistoryEntry);
+            prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "INVENTORY_ADJUST" }));
+
+            // Act
+            const result = await HistoryService.createInventoryAdjustment(
+                1,
+                { operation: "INVENTORY_REMOVE", quantity: 5, changeReason: null },
+                mockContext,
+                mockLogger,
+            );
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data?.product.remaining).toBe(0);
+        });
+
+        test("should fail INVENTORY_REMOVE with quantity = remaining + 1", async () => {
+            // Arrange
+            const mockProduct = createMockProduct({ id: 1, remaining: 5 });
+            prismaMock.product.findUnique.mockResolvedValue(mockProduct);
+
+            // Act
+            const result = await HistoryService.createInventoryAdjustment(
+                1,
+                { operation: "INVENTORY_REMOVE", quantity: 6, changeReason: null },
+                mockContext,
+                mockLogger,
+            );
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Insufficient stock");
+        });
+    });
+
+    describe("edge cases", () => {
+        test("getHistoryEntry with id=0 should return not found", async () => {
+            prismaMock.productHistory.findUnique.mockResolvedValue(null);
+
+            const result = await HistoryService.getHistoryEntry(0, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("History entry not found");
+        });
+
+        test("getHistoryEntry with negative id should return not found", async () => {
+            prismaMock.productHistory.findUnique.mockResolvedValue(null);
+
+            const result = await HistoryService.getHistoryEntry(-1, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("History entry not found");
+        });
+
+        test("getAllHistory with empty results should return empty list", async () => {
+            prismaMock.productHistory.count.mockResolvedValue(0);
+            prismaMock.productHistory.findMany.mockResolvedValue([]);
+
+            const result = await HistoryService.getAllHistory(
+                { page: 1, limit: 20, searchQuery: "" },
+                mockLogger,
+            );
+
+            const success = expectSuccess(result);
+            expect(success.data).toEqual({ count: 0, history: [] });
+        });
+
+        test("createInventoryAdjustment with non-existent product should return error", async () => {
+            prismaMock.product.findUnique.mockResolvedValue(null);
+
+            const result = await HistoryService.createInventoryAdjustment(
+                999,
+                { operation: "INVENTORY_ADD", quantity: 5, changeReason: null },
+                mockContext,
+                mockLogger,
+            );
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Product not found");
         });
     });
 });

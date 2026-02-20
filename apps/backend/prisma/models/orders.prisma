@@ -6,6 +6,7 @@ enum PaymentType {
 enum OrderStatus {
     NEW
     ACCEPTED
+    CANCELLED
 }
 
 model Order {

@@ -1,12 +1,12 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { HistoryListResponse, HistoryDetailResponse, InventoryAdjustmentResponse } from "@jahonbozor/schemas/src/products";
 import {
     CreateInventoryAdjustmentBody,
     ProductHistoryPagination,
 } from "@jahonbozor/schemas/src/products";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import { auditInTransaction } from "@lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import { auditInTransaction } from "@backend/lib/audit";
 
 interface AuditContext {
     staffId: number;
@@ -18,7 +18,7 @@ export abstract class HistoryService {
     static async getAllHistory(
         params: ProductHistoryPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<HistoryListResponse> {
         try {
             const { page, limit, searchQuery, productId, operation, staffId, dateFrom, dateTo } = params;
             const whereClause = {
@@ -44,14 +44,19 @@ export abstract class HistoryService {
                 }),
             ]);
 
-            return { success: true, data: { count, history } };
+            const mapped = history.map(h => ({
+                ...h,
+                product: h.product ? { ...h.product, price: Number(h.product.price) } : undefined,
+            }));
+
+            return { success: true, data: { count, history: mapped } };
         } catch (error) {
             logger.error("History: Error in getAllHistory", { page: params.page, limit: params.limit, error });
             return { success: false, error };
         }
     }
 
-    static async getHistoryEntry(historyId: number, logger: Logger): Promise<ReturnSchema> {
+    static async getHistoryEntry(historyId: number, logger: Logger): Promise<HistoryDetailResponse> {
         try {
             const historyEntry = await prisma.productHistory.findUnique({
                 where: { id: historyId },
@@ -66,7 +71,12 @@ export abstract class HistoryService {
                 return { success: false, error: "History entry not found" };
             }
 
-            return { success: true, data: historyEntry };
+            const mapped = {
+                ...historyEntry,
+                product: historyEntry.product ? { ...historyEntry.product, price: Number(historyEntry.product.price) } : undefined,
+            };
+
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("History: Error in getHistoryEntry", { historyId, error });
             return { success: false, error };
@@ -77,7 +87,7 @@ export abstract class HistoryService {
         productId: number,
         params: ProductHistoryPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<HistoryListResponse> {
         try {
             const { page, limit, operation, staffId, dateFrom, dateTo } = params;
             const whereClause = {
@@ -113,7 +123,7 @@ export abstract class HistoryService {
         adjustmentData: CreateInventoryAdjustmentBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<InventoryAdjustmentResponse> {
         try {
             const product = await prisma.product.findUnique({
                 where: { id: productId },
@@ -188,7 +198,9 @@ export abstract class HistoryService {
                 staffId: context.staffId,
             });
 
-            return { success: true, data: { product: updatedProduct, historyEntry } };
+            const mappedProduct = { ...updatedProduct, price: Number(updatedProduct.price), costprice: Number(updatedProduct.costprice) };
+
+            return { success: true, data: { product: mappedProduct, historyEntry } };
         } catch (error) {
             logger.error("History: Error in createInventoryAdjustment", { productId, error });
             return { success: false, error };

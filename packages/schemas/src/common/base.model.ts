@@ -2,8 +2,8 @@ import z from "zod";
 
 export const BaseModel = z.object({
     id: z.number(),
-    createdAt: z.coerce.date(),
-    updatedAt: z.coerce.date(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
 });
 
 export type BaseModel = z.infer<typeof BaseModel>;
@@ -19,4 +19,6 @@ export const ReturnSchema = z.discriminatedUnion("success", [
     }),
 ]);
 
-export type ReturnSchema = z.infer<typeof ReturnSchema>;
+export type ReturnSchema<T = Record<string, any> | null> =
+    | { success: true; data: T }
+    | { success: false; error: unknown };

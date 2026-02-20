@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@test/setup";
+import { createMockLogger } from "@backend/test/setup";
 import { PublicOrdersService } from "../orders.service";
 
 const mockOrderWithRelations = {
@@ -85,6 +85,16 @@ const createTestApp = (userType: "user" | "staff" = "user") => {
                 return { success: false, error: "Only users can access this endpoint" };
             }
             return await PublicOrdersService.getUserOrder(Number(params.id), user.id, logger);
+        })
+        .patch("/orders/:id/cancel", async ({ params, user, type, logger, requestId }) => {
+            if (type !== "user") {
+                return { success: false, error: "Only users can cancel orders via public API" };
+            }
+            return await PublicOrdersService.cancelOrder(
+                Number(params.id),
+                { userId: user.id, user, requestId },
+                logger,
+            );
         });
 };
 
@@ -317,6 +327,133 @@ describe("Public Orders API Routes", () => {
             spy.mockRestore();
         });
     });
+
+    describe("PATCH /orders/:id/cancel", () => {
+        const mockCancelledOrder = { ...mockOrderWithRelations, status: "CANCELLED" };
+
+        test("should cancel order for user", async () => {
+            // Arrange
+            const app = createTestApp("user");
+            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+                success: true,
+                data: mockCancelledOrder,
+            });
+
+            // Act
+            const response = await app.handle(
+                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+            );
+            const body = await response.json();
+
+            // Assert
+            expect(response.status).toBe(200);
+            expect(body.success).toBe(true);
+            expect(body.data.status).toBe("CANCELLED");
+
+            spy.mockRestore();
+        });
+
+        test("should reject if type is not user", async () => {
+            // Arrange
+            const app = createTestApp("staff");
+
+            // Act
+            const response = await app.handle(
+                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+            );
+            const body = await response.json();
+
+            // Assert
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("Only users can cancel orders via public API");
+        });
+
+        test("should return error when order not found", async () => {
+            // Arrange
+            const app = createTestApp("user");
+            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+                success: false,
+                error: "Order not found",
+            });
+
+            // Act
+            const response = await app.handle(
+                new Request("http://localhost/orders/999/cancel", { method: "PATCH" }),
+            );
+            const body = await response.json();
+
+            // Assert
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("Order not found");
+
+            spy.mockRestore();
+        });
+
+        test("should return Forbidden when not owner", async () => {
+            // Arrange
+            const app = createTestApp("user");
+            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+                success: false,
+                error: "Forbidden",
+            });
+
+            // Act
+            const response = await app.handle(
+                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+            );
+            const body = await response.json();
+
+            // Assert
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("Forbidden");
+
+            spy.mockRestore();
+        });
+
+        test("should return error when order status is not NEW", async () => {
+            // Arrange
+            const app = createTestApp("user");
+            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+                success: false,
+                error: "Only NEW orders can be cancelled",
+            });
+
+            // Act
+            const response = await app.handle(
+                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+            );
+            const body = await response.json();
+
+            // Assert
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("Only NEW orders can be cancelled");
+
+            spy.mockRestore();
+        });
+
+        test("should pass context with requestId", async () => {
+            // Arrange
+            const app = createTestApp("user");
+            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+                success: true,
+                data: mockCancelledOrder,
+            });
+
+            // Act
+            await app.handle(
+                new Request("http://localhost/orders/42/cancel", { method: "PATCH" }),
+            );
+
+            // Assert
+            expect(spy).toHaveBeenCalledWith(
+                42,
+                expect.objectContaining({ userId: 1, requestId: "test-request-id" }),
+                expect.anything(),
+            );
+
+            spy.mockRestore();
+        });
+    });
 });
 
 describe("Public Orders Service Integration", () => {
@@ -388,6 +525,70 @@ describe("Public Orders Service Integration", () => {
 
         // Assert
         expect(spy).toHaveBeenCalledWith(42, 1, expect.anything());
+
+        spy.mockRestore();
+    });
+});
+
+describe("Public Orders API edge cases", () => {
+    test("GET /orders with no results should return empty list", async () => {
+        const app = createTestApp("user");
+        const spy = spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
+            success: true,
+            data: { count: 0, orders: [] },
+        });
+
+        const response = await app.handle(new Request("http://localhost/orders"));
+        const body = await response.json();
+
+        expect(body.success).toBe(true);
+        expect(body.data.count).toBe(0);
+        expect(body.data.orders).toEqual([]);
+
+        spy.mockRestore();
+    });
+
+    test("GET /orders/:id with id=0 should call service", async () => {
+        const app = createTestApp("user");
+        const spy = spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
+            success: false,
+            error: "Order not found",
+        });
+
+        const response = await app.handle(new Request("http://localhost/orders/0"));
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error).toBe("Order not found");
+
+        spy.mockRestore();
+    });
+
+    test("POST /orders should handle insufficient stock error", async () => {
+        const app = createTestApp("user");
+        const spy = spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
+            success: false,
+            error: {
+                code: "INSUFFICIENT_STOCK",
+                message: "One or more products have insufficient stock",
+                details: [],
+            },
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    paymentType: "CASH",
+                    items: [{ productId: 1, quantity: 100, price: 100 }],
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe("INSUFFICIENT_STOCK");
 
         spy.mockRestore();
     });

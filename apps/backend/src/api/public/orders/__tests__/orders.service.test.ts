@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
-import type { Order, Product, AuditLog, Prisma } from "@generated/prisma/client";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import type { Order, Product, AuditLog, Prisma } from "@backend/generated/prisma/client";
 import type { Token } from "@jahonbozor/schemas";
 import { PublicOrdersService } from "../orders.service";
 
@@ -37,7 +37,7 @@ const mockOrderWithRelations = {
             quantity: 2,
             price: 100,
             data: null,
-            product: { id: 1, name: "Test Product" },
+            product: { id: 1, name: "Test Product", price: 100 },
         },
     ],
 };
@@ -306,6 +306,232 @@ describe("PublicOrders Service", () => {
             const failure = expectFailure(result);
             expect(failure.error).toBe(dbError);
             expect(mockLogger.error).toHaveBeenCalled();
+        });
+    });
+
+    describe("cancelOrder", () => {
+        const mockOrderWithProducts = {
+            ...mockOrder,
+            items: [
+                {
+                    id: 1,
+                    orderId: 1,
+                    productId: 1,
+                    quantity: 2,
+                    price: 100,
+                    data: null,
+                    product: { id: 1, remaining: 8, deletedAt: null },
+                },
+            ],
+        };
+
+        const mockCancelledOrder = {
+            ...mockOrder,
+            status: "CANCELLED",
+            items: [
+                {
+                    id: 1,
+                    orderId: 1,
+                    productId: 1,
+                    quantity: 2,
+                    price: 100,
+                    data: null,
+                    product: { id: 1, name: "Test Product", price: 100 },
+                },
+            ],
+        };
+
+        test("should cancel NEW order and restore inventory", async () => {
+            // Arrange
+            prismaMock.order.findUnique.mockResolvedValueOnce(mockOrderWithProducts as unknown as Order);
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.order.update.mockResolvedValueOnce(mockCancelledOrder as unknown as Order);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            // Act
+            const result = await PublicOrdersService.cancelOrder(1, mockContext, mockLogger);
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data?.status).toBe("CANCELLED");
+            expect(mockLogger.info).toHaveBeenCalledWith("PublicOrders: Order cancelled and stock restored", {
+                orderId: 1,
+                userId: 1,
+                itemsRestored: 1,
+            });
+        });
+
+        test("should return error when order not found", async () => {
+            // Arrange
+            prismaMock.order.findUnique.mockResolvedValueOnce(null);
+
+            // Act
+            const result = await PublicOrdersService.cancelOrder(999, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Order not found");
+        });
+
+        test("should return Forbidden when order belongs to another user", async () => {
+            // Arrange
+            const otherUserOrder = { ...mockOrderWithProducts, userId: 2 };
+            prismaMock.order.findUnique.mockResolvedValueOnce(otherUserOrder as unknown as Order);
+
+            // Act
+            const result = await PublicOrdersService.cancelOrder(1, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Forbidden");
+        });
+
+        test("should return error when order status is not NEW", async () => {
+            // Arrange
+            const acceptedOrder = { ...mockOrderWithProducts, status: "ACCEPTED" };
+            prismaMock.order.findUnique.mockResolvedValueOnce(acceptedOrder as unknown as Order);
+
+            // Act
+            const result = await PublicOrdersService.cancelOrder(1, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Only NEW orders can be cancelled");
+        });
+
+        test("should not restore inventory for deleted products", async () => {
+            // Arrange
+            const orderWithDeletedProduct = {
+                ...mockOrder,
+                items: [
+                    {
+                        id: 1,
+                        orderId: 1,
+                        productId: 1,
+                        quantity: 2,
+                        price: 100,
+                        data: null,
+                        product: { id: 1, remaining: 8, deletedAt: new Date("2024-06-01") },
+                    },
+                ],
+            };
+            prismaMock.order.findUnique.mockResolvedValueOnce(orderWithDeletedProduct as unknown as Order);
+            prismaMock.order.update.mockResolvedValueOnce(mockCancelledOrder as unknown as Order);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            // Act
+            const result = await PublicOrdersService.cancelOrder(1, mockContext, mockLogger);
+
+            // Assert
+            expectSuccess(result);
+            expect(prismaMock.product.update).not.toHaveBeenCalled();
+            expect(prismaMock.productHistory.create).not.toHaveBeenCalled();
+        });
+
+        test("should handle database error", async () => {
+            // Arrange
+            const dbError = new Error("Database error");
+            prismaMock.order.findUnique.mockRejectedValueOnce(dbError);
+
+            // Act
+            const result = await PublicOrdersService.cancelOrder(1, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe(dbError);
+            expect(mockLogger.error).toHaveBeenCalled();
+        });
+
+        test("should return error when cancelling already cancelled order", async () => {
+            // Arrange
+            const cancelledOrder = { ...mockOrderWithProducts, status: "CANCELLED" };
+            prismaMock.order.findUnique.mockResolvedValueOnce(cancelledOrder as unknown as Order);
+
+            // Act
+            const result = await PublicOrdersService.cancelOrder(1, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Only NEW orders can be cancelled");
+        });
+
+        test("should create audit log with ORDER_STATUS_CHANGE action", async () => {
+            // Arrange
+            prismaMock.order.findUnique.mockResolvedValueOnce(mockOrderWithProducts as unknown as Order);
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.order.update.mockResolvedValueOnce(mockCancelledOrder as unknown as Order);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            // Act
+            await PublicOrdersService.cancelOrder(1, mockContext, mockLogger);
+
+            // Assert
+            expect(prismaMock.auditLog.create).toHaveBeenCalled();
+        });
+
+        test("cancelOrder with id=0 should return not found", async () => {
+            // Arrange
+            prismaMock.order.findUnique.mockResolvedValueOnce(null);
+
+            // Act
+            const result = await PublicOrdersService.cancelOrder(0, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Order not found");
+        });
+    });
+
+    describe("edge cases", () => {
+        test("createOrder with deleted product should return not found", async () => {
+            // DB query has deletedAt: null filter, so deleted products are not returned
+            prismaMock.product.findMany.mockResolvedValueOnce([]);
+
+            const result = await PublicOrdersService.createOrder(
+                { paymentType: "CASH", items: [{ productId: 1, quantity: 1, price: 100 }] },
+                mockContext,
+                mockLogger,
+            );
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Products not found: 1");
+        });
+
+        test("createOrder with exact stock should succeed", async () => {
+            const exactStockProduct = { ...mockProduct, remaining: 2 };
+            prismaMock.product.findMany.mockResolvedValueOnce([exactStockProduct]);
+            prismaMock.order.create.mockResolvedValueOnce(mockOrderWithRelations as unknown as Order);
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            const result = await PublicOrdersService.createOrder(
+                { paymentType: "CASH", items: [{ productId: 1, quantity: 2, price: 100 }] },
+                mockContext,
+                mockLogger,
+            );
+
+            expectSuccess(result);
+        });
+
+        test("getUserOrder with id=0 should return not found", async () => {
+            prismaMock.order.findUnique.mockResolvedValueOnce(null);
+
+            const result = await PublicOrdersService.getUserOrder(0, 1, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Order not found");
+        });
+
+        test("getUserOrder with negative id should return not found", async () => {
+            prismaMock.order.findUnique.mockResolvedValueOnce(null);
+
+            const result = await PublicOrdersService.getUserOrder(-1, 1, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Order not found");
         });
     });
 });

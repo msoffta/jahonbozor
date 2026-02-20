@@ -1,11 +1,11 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AdminCategoriesListResponse, AdminCategoryDetailResponse, AdminCategoryTreeResponse } from "@jahonbozor/schemas/src/categories";
 import { Permission } from "@jahonbozor/schemas";
 import {
     CreateCategoryBody,
     UpdateCategoryBody,
     CategoriesPagination,
 } from "@jahonbozor/schemas/src/categories";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { CategoriesService } from "./categories.service";
 
@@ -17,7 +17,7 @@ export const categories = new Elysia({ prefix: "/categories" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<AdminCategoriesListResponse> => {
             try {
                 return await CategoriesService.getAllCategories(query, logger);
             } catch (error) {
@@ -32,7 +32,7 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .get(
         "/tree",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<AdminCategoryTreeResponse> => {
             try {
                 const depth = query.depth ?? 3;
                 return await CategoriesService.getCategoryTree(depth, logger);
@@ -50,7 +50,7 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .get(
         "/:id",
-        async ({ params, query, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, query, set, logger }): Promise<AdminCategoryDetailResponse> => {
             try {
                 const result = await CategoriesService.getCategory(
                     params.id,
@@ -79,7 +79,7 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .post(
         "/",
-        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<AdminCategoryDetailResponse> => {
             try {
                 const result = await CategoriesService.createCategory(
                     body,
@@ -104,7 +104,7 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, body, user, set, logger, requestId }): Promise<AdminCategoryDetailResponse> => {
             try {
                 const result = await CategoriesService.updateCategory(
                     params.id,
@@ -131,7 +131,7 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .delete(
         "/:id",
-        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<AdminCategoryDetailResponse> => {
             try {
                 const result = await CategoriesService.deleteCategory(
                     params.id,

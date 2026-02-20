@@ -1,11 +1,11 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { StaffListResponse, StaffDetailResponse, StaffDeleteResponse } from "@jahonbozor/schemas/src/staff";
 import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
 import {
     CreateStaffBody,
     UpdateStaffBody,
     StaffPagination,
 } from "@jahonbozor/schemas/src/staff";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { StaffService } from "./staff.service";
 import { roles } from "./roles/roles.index";
@@ -18,7 +18,7 @@ export const staff = new Elysia({ prefix: "/staff" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<StaffListResponse> => {
             try {
                 return await StaffService.getAllStaff(query, logger);
             } catch (error) {
@@ -33,7 +33,7 @@ export const staff = new Elysia({ prefix: "/staff" })
     )
     .get(
         "/:id",
-        async ({ params, user, permissions, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, user, permissions, set, logger }): Promise<StaffDetailResponse> => {
             try {
                 const targetStaffId = params.id;
                 const requestingStaffId = user.id;
@@ -72,7 +72,7 @@ export const staff = new Elysia({ prefix: "/staff" })
     )
     .post(
         "/",
-        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<StaffDetailResponse> => {
             try {
                 const result = await StaffService.createStaff(
                     body,
@@ -97,7 +97,7 @@ export const staff = new Elysia({ prefix: "/staff" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, permissions, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, body, user, permissions, set, logger, requestId }): Promise<StaffDetailResponse> => {
             try {
                 const targetStaffId = params.id;
                 const requestingStaffId = user.id;
@@ -150,7 +150,7 @@ export const staff = new Elysia({ prefix: "/staff" })
     )
     .delete(
         "/:id",
-        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<StaffDeleteResponse> => {
             try {
                 const result = await StaffService.deleteStaff(
                     params.id,

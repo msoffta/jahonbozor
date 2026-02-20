@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@test/setup";
+import { createMockLogger } from "@backend/test/setup";
 import { Permission } from "@jahonbozor/schemas";
 import { OrdersService } from "../orders.service";
 
@@ -561,6 +561,109 @@ describe("Orders Service Integration", () => {
             expect.objectContaining({ staffId: 1, requestId: "test-request-id" }),
             expect.anything(),
         );
+
+        spy.mockRestore();
+    });
+});
+
+describe("Orders API edge cases", () => {
+    let app: ReturnType<typeof createTestApp>;
+
+    beforeEach(() => {
+        app = createTestApp();
+    });
+
+    test("GET /orders with no results should return empty list", async () => {
+        const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            success: true,
+            data: { count: 0, orders: [] },
+        });
+
+        const response = await app.handle(new Request("http://localhost/orders"));
+        const body = await response.json();
+
+        expect(body.success).toBe(true);
+        expect(body.data.count).toBe(0);
+        expect(body.data.orders).toEqual([]);
+
+        spy.mockRestore();
+    });
+
+    test("GET /orders/:id with id=0 should call service", async () => {
+        const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+            success: false,
+            error: "Order not found",
+        });
+
+        const response = await app.handle(new Request("http://localhost/orders/0"));
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error).toBe("Order not found");
+
+        spy.mockRestore();
+    });
+
+    test("POST /orders should handle insufficient stock error", async () => {
+        const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+            success: false,
+            error: {
+                code: "INSUFFICIENT_STOCK",
+                message: "One or more products have insufficient stock",
+                details: [{ productId: 1, productName: "Test", requested: 10, available: 1 }],
+            },
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    paymentType: "CASH",
+                    items: [{ productId: 1, quantity: 10, price: 100 }],
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe("INSUFFICIENT_STOCK");
+
+        spy.mockRestore();
+    });
+
+    test("PATCH /orders/:id with empty body should call service", async () => {
+        const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+            success: true,
+            data: mockOrderWithRelations,
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/orders/1", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+            }),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(true);
+
+        spy.mockRestore();
+    });
+
+    test("DELETE /orders/:id should handle service error", async () => {
+        const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+            success: false,
+            error: "Database error",
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/orders/1", { method: "DELETE" }),
+        );
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
 
         spy.mockRestore();
     });

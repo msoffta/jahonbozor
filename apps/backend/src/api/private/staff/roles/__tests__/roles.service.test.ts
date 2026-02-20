@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
-import type { Role, AuditLog } from "@generated/prisma/client";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import type { Role, AuditLog } from "@backend/generated/prisma/client";
 import { type Token, Permission } from "@jahonbozor/schemas";
 import { RolesService } from "../roles.service";
 
@@ -490,6 +490,62 @@ describe("Roles Service", () => {
             const failure = expectFailure(result);
             expect(failure.error).toBe(dbError);
             expect(mockLogger.error).toHaveBeenCalled();
+        });
+    });
+
+    describe("edge cases", () => {
+        test("getRole with id=0 should return not found", async () => {
+            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+
+            const result = await RolesService.getRole(0, false, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Role not found");
+        });
+
+        test("getRole with negative id should return not found", async () => {
+            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+
+            const result = await RolesService.getRole(-1, false, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Role not found");
+        });
+
+        test("createRole with duplicate name should return error", async () => {
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
+
+            const result = await RolesService.createRole(
+                { name: "Admin", permissions: [] },
+                mockContext,
+                mockLogger,
+            );
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Role name already exists");
+        });
+
+        test("deleteRole with id=0 should return not found", async () => {
+            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+
+            const result = await RolesService.deleteRole(0, mockContext, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Role not found");
+        });
+
+        test("createRole with empty permissions should succeed", async () => {
+            prismaMock.role.findFirst.mockResolvedValueOnce(null);
+            prismaMock.role.create.mockResolvedValueOnce(mockRole);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as never);
+
+            const result = await RolesService.createRole(
+                { name: "Empty Role", permissions: [] },
+                mockContext,
+                mockLogger,
+            );
+
+            expectSuccess(result);
         });
     });
 });

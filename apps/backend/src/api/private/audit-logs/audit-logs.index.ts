@@ -1,7 +1,7 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AuditLogsListResponse, AuditLogDetailResponse } from "@jahonbozor/schemas/src/audit-logs";
 import { Permission } from "@jahonbozor/schemas";
 import { AuditLogPagination } from "@jahonbozor/schemas/src/audit-logs";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { AuditLogService } from "./audit-logs.service";
 
@@ -22,7 +22,7 @@ export const auditLogs = new Elysia({ prefix: "/audit-logs" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<AuditLogsListResponse> => {
             try {
                 return await AuditLogService.getAll(query, logger);
             } catch (error) {
@@ -39,7 +39,7 @@ export const auditLogs = new Elysia({ prefix: "/audit-logs" })
     )
     .get(
         "/:id",
-        async ({ params, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, set, logger }): Promise<AuditLogDetailResponse> => {
             try {
                 const result = await AuditLogService.getById(params.id, logger);
 
@@ -63,7 +63,7 @@ export const auditLogs = new Elysia({ prefix: "/audit-logs" })
     )
     .get(
         "/by-request/:requestId",
-        async ({ params, logger }): Promise<ReturnSchema> => {
+        async ({ params, logger }): Promise<AuditLogsListResponse> => {
             try {
                 return await AuditLogService.getByRequestId(
                     params.requestId,
@@ -84,7 +84,7 @@ export const auditLogs = new Elysia({ prefix: "/audit-logs" })
     )
     .get(
         "/by-entity/:entityType/:entityId",
-        async ({ params, logger }): Promise<ReturnSchema> => {
+        async ({ params, logger }): Promise<AuditLogsListResponse> => {
             try {
                 return await AuditLogService.getByEntity(
                     params.entityType,

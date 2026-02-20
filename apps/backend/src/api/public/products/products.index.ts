@@ -1,6 +1,6 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { PublicProductsListResponse, PublicProductDetailResponse } from "@jahonbozor/schemas/src/products";
 import { ProductsPagination } from "@jahonbozor/schemas/src/products";
-import { requestContext } from "@lib/request-context";
+import { requestContext } from "@backend/lib/request-context";
 import { Elysia, t } from "elysia";
 import { PublicProductsService } from "./products.service";
 
@@ -12,7 +12,7 @@ export const publicProducts = new Elysia({ prefix: "/products" })
     .use(requestContext)
     .get(
         "/",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<PublicProductsListResponse> => {
             try {
                 return await PublicProductsService.getAllProducts(query, logger);
             } catch (error) {
@@ -24,7 +24,7 @@ export const publicProducts = new Elysia({ prefix: "/products" })
     )
     .get(
         "/:id",
-        async ({ params, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, set, logger }): Promise<PublicProductDetailResponse> => {
             try {
                 const result = await PublicProductsService.getProduct(params.id, logger);
 

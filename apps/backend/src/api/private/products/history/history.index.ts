@@ -1,7 +1,7 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { HistoryListResponse, HistoryDetailResponse } from "@jahonbozor/schemas/src/products";
 import { Permission } from "@jahonbozor/schemas";
 import { ProductHistoryPagination } from "@jahonbozor/schemas/src/products";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { HistoryService } from "./history.service";
 
@@ -13,7 +13,7 @@ export const history = new Elysia({ prefix: "/history" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<HistoryListResponse> => {
             try {
                 return await HistoryService.getAllHistory(query, logger);
             } catch (error) {
@@ -28,7 +28,7 @@ export const history = new Elysia({ prefix: "/history" })
     )
     .get(
         "/:historyId",
-        async ({ params, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, set, logger }): Promise<HistoryDetailResponse> => {
             try {
                 const result = await HistoryService.getHistoryEntry(params.historyId, logger);
 

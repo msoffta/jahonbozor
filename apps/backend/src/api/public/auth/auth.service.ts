@@ -1,7 +1,7 @@
 import { prettifyError, SignInBody } from "@jahonbozor/schemas";
 import { AuthStaff } from "@jahonbozor/schemas/src/staff/staff.model";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
+import { prisma } from "@backend/lib/prisma";
 
 import { password } from "bun";
 
@@ -62,7 +62,7 @@ export default abstract class Auth {
     }
 
     static async saveRefreshToken(
-        { token, exp, staffId }: { token: string; exp: Date; staffId: number },
+        { token, exp, staffId, userId }: { token: string; exp: Date; staffId?: number; userId?: number },
         logger: Logger,
     ) {
         try {
@@ -70,14 +70,15 @@ export default abstract class Auth {
                 data: {
                     token,
                     expiredAt: exp,
-                    staffId,
+                    ...(staffId ? { staffId } : {}),
+                    ...(userId ? { userId } : {}),
                 },
             });
 
-            logger.info("Auth: Refresh token saved", { staffId });
+            logger.info("Auth: Refresh token saved", { staffId, userId });
             return !!responseToken;
         } catch (error) {
-            logger.error("Auth: Error in saveRefreshToken", { staffId, error });
+            logger.error("Auth: Error in saveRefreshToken", { staffId, userId, error });
             return null;
         }
     }

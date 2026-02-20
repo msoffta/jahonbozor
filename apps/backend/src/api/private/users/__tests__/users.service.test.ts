@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import { Users } from "../users.service";
 import type { Token } from "@jahonbozor/schemas";
 import crypto from "crypto";
@@ -514,7 +514,7 @@ describe("Users Service", () => {
                 id: 2,
                 fullname: "John Doe",
                 username: "johndoe",
-                phone: "",
+                phone: null,
                 telegramId: "123456789",
                 photo: "https://photo.url/avatar.jpg",
                 createdAt: new Date(),
@@ -552,7 +552,7 @@ describe("Users Service", () => {
                 id: 3,
                 fullname: "Jane Smith",
                 username: "johndoe",
-                phone: "",
+                phone: null,
                 telegramId: "123456789",
                 photo: "https://photo.url/avatar.jpg",
                 createdAt: new Date(),
@@ -585,7 +585,7 @@ describe("Users Service", () => {
                 id: 4,
                 fullname: "John Doe",
                 username: "123456789",
-                phone: "",
+                phone: null,
                 telegramId: "123456789",
                 photo: "https://photo.url/avatar.jpg",
                 createdAt: new Date(),
@@ -619,6 +619,54 @@ describe("Users Service", () => {
             const failure = expectFailure(result);
             expect(failure.error).toBe(dbError);
             expect(mockLogger.error).toHaveBeenCalled();
+        });
+    });
+
+    describe("edge cases", () => {
+        test("getUser with id=0 should return not found", async () => {
+            prismaMock.users.findUnique.mockResolvedValue(null);
+
+            const result = await Users.getUser(0, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("User not found");
+        });
+
+        test("getUser with negative id should return not found", async () => {
+            prismaMock.users.findUnique.mockResolvedValue(null);
+
+            const result = await Users.getUser(-1, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("User not found");
+        });
+
+        test("updateUser with empty body should succeed", async () => {
+            prismaMock.users.findUnique.mockResolvedValue(mockUser);
+            prismaMock.users.update.mockResolvedValue(mockUser);
+            prismaMock.auditLog.create.mockResolvedValue({} as never);
+
+            const result = await Users.updateUser(1, {}, mockAuditContext, mockLogger);
+
+            expectSuccess(result);
+        });
+
+        test("deleteUser with id=0 should return not found", async () => {
+            prismaMock.users.findUnique.mockResolvedValue(null);
+
+            const result = await Users.deleteUser(0, mockAuditContext, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("User not found");
+        });
+
+        test("restoreUser with id=0 should return not found", async () => {
+            prismaMock.users.findUnique.mockResolvedValue(null);
+
+            const result = await Users.restoreUser(0, mockAuditContext, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("User not found");
         });
     });
 });

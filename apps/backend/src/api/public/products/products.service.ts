@@ -1,7 +1,7 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { PublicProductsListResponse, PublicProductDetailResponse } from "@jahonbozor/schemas/src/products";
 import { ProductsPagination } from "@jahonbozor/schemas/src/products";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
+import { prisma } from "@backend/lib/prisma";
 
 /**
  * Get all descendant category IDs for hierarchical filtering
@@ -24,9 +24,9 @@ async function getCategoryWithDescendants(categoryId: number): Promise<number[]>
 
 export abstract class PublicProductsService {
     static async getAllProducts(
-        { page, limit, searchQuery, categoryId, minPrice, maxPrice }: ProductsPagination,
+        { page, limit, searchQuery, categoryIds: categoryIdsStr, minPrice, maxPrice }: ProductsPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<PublicProductsListResponse> {
         try {
             const whereClause: Record<string, unknown> = {
                 deletedAt: null,
@@ -37,9 +37,14 @@ export abstract class PublicProductsService {
             }
 
             // Hierarchical category filter - include all descendants
-            if (categoryId) {
-                const categoryIds = await getCategoryWithDescendants(categoryId);
-                whereClause.categoryId = { in: categoryIds };
+            if (categoryIdsStr) {
+                const parsedIds = categoryIdsStr.split(",").map(Number).filter((n) => !isNaN(n));
+                const allIds: number[] = [];
+                for (const id of parsedIds) {
+                    const descendants = await getCategoryWithDescendants(id);
+                    allIds.push(...descendants);
+                }
+                whereClause.categoryId = { in: [...new Set(allIds)] };
             }
 
             if (minPrice) {
@@ -76,14 +81,16 @@ export abstract class PublicProductsService {
                 }),
             ]);
 
-            return { success: true, data: { count, products } };
+            const mapped = products.map(p => ({ ...p, price: Number(p.price) }));
+
+            return { success: true, data: { count, products: mapped } };
         } catch (error) {
             logger.error("Products: Error in getAllProducts", { page, limit, error });
             return { success: false, error };
         }
     }
 
-    static async getProduct(productId: number, logger: Logger): Promise<ReturnSchema> {
+    static async getProduct(productId: number, logger: Logger): Promise<PublicProductDetailResponse> {
         try {
             const product = await prisma.product.findFirst({
                 where: { id: productId, deletedAt: null },
@@ -110,7 +117,7 @@ export abstract class PublicProductsService {
                 return { success: false, error: "Product not found" };
             }
 
-            return { success: true, data: product };
+            return { success: true, data: { ...product, price: Number(product.price) } };
         } catch (error) {
             logger.error("Products: Error in getProduct", { productId, error });
             return { success: false, error };

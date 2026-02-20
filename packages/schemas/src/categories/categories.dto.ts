@@ -23,3 +23,39 @@ export const CategoriesPagination = PaginationQuery.extend({
 export type CreateCategoryBody = z.infer<typeof CreateCategoryBody>;
 export type UpdateCategoryBody = z.infer<typeof UpdateCategoryBody>;
 export type CategoriesPagination = z.infer<typeof CategoriesPagination>;
+
+// --- Response types ---
+
+import type { ReturnSchema } from "../common/base.model";
+
+// Public API responses
+export interface PublicCategoryItem {
+    id: number;
+    name: string;
+    children: { id: number; name: string }[];
+}
+
+export type PublicCategoriesListResponse = ReturnSchema<{ categories: PublicCategoryItem[] }>;
+
+export interface PublicCategoryDetail {
+    id: number;
+    name: string;
+    parentId: number | null;
+    parent: { id: number; name: string } | null;
+    children: { id: number; name: string }[];
+}
+
+export type PublicCategoryDetailResponse = ReturnSchema<PublicCategoryDetail>;
+
+// Admin API responses
+export interface AdminCategoryItem {
+    id: number;
+    name: string;
+    parentId: number | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type AdminCategoriesListResponse = ReturnSchema<{ count: number; categories: AdminCategoryItem[] }>;
+export type AdminCategoryDetailResponse = ReturnSchema<AdminCategoryItem>;
+export type AdminCategoryTreeResponse = ReturnSchema<{ categories: AdminCategoryItem[] }>;

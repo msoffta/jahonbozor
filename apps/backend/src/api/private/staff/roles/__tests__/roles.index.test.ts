@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger } from "@test/setup";
-import type { Role } from "@generated/prisma/client";
+import { prismaMock, createMockLogger } from "@backend/test/setup";
+import type { Role } from "@backend/generated/prisma/client";
 import { Permission } from "@jahonbozor/schemas";
 import { RolesService } from "../roles.service";
 
@@ -240,6 +240,41 @@ describe("Roles Service Integration", () => {
 
         // Assert
         expect(spy).toHaveBeenCalledWith(1, false, expect.anything());
+
+        spy.mockRestore();
+    });
+});
+
+describe("Roles API edge cases", () => {
+    test("GET /roles/:id with id=0 should call service", async () => {
+        const spy = spyOn(RolesService, "getRole").mockResolvedValue({
+            success: false,
+            error: "Role not found",
+        });
+        const app = createTestApp();
+
+        const response = await app.handle(new Request("http://localhost/roles/0"));
+        const body = await response.json();
+
+        expect(body.success).toBe(false);
+        expect(body.error).toBe("Role not found");
+
+        spy.mockRestore();
+    });
+
+    test("GET /roles with no results should return empty list", async () => {
+        const spy = spyOn(RolesService, "getAllRoles").mockResolvedValue({
+            success: true,
+            data: { count: 0, roles: [] },
+        });
+        const app = createTestApp();
+
+        const response = await app.handle(new Request("http://localhost/roles"));
+        const body = await response.json();
+
+        expect(body.success).toBe(true);
+        expect(body.data.count).toBe(0);
+        expect(body.data.roles).toEqual([]);
 
         spy.mockRestore();
     });

@@ -152,6 +152,7 @@ Each domain in `api/` contains:
 | TanStack Form | Form management with Zod validation | v1 |
 | react-i18next | Internationalization (uz/ru) | - |
 | lucide-react | Icons | - |
+| Motion | Animations (via @jahonbozor/ui) | v12 |
 | Elysia Eden | Type-safe API client (treaty) | v1 |
 | vite-tsconfig-paths | Path alias resolution from tsconfig | - |
 
@@ -443,6 +444,44 @@ export function useUpdateDomain(id) { ... }           // useMutation
 export function useDeleteDomain() { ... }             // useMutation
 ```
 
+### Eden Treaty Type Inference Gotchas
+
+Eden Treaty properly infers scalar fields but **loses element types for nested arrays** (e.g. `items: OrderItemResponse[]` becomes `items: any[]`). Fix with explicit queryFn return type annotations:
+
+```typescript
+import type { UserOrderItem } from "@jahonbozor/schemas/src/orders";
+
+// BAD — items will be any[]
+queryFn: async () => {
+    const { data, error } = await api.api.public.orders.get({ query });
+    if (error) throw error;
+    return data.data;
+}
+
+// GOOD — explicit return type preserves nested array types
+queryFn: async (): Promise<{ count: number; orders: UserOrderItem[] }> => {
+    const { data, error } = await api.api.public.orders.get({ query });
+    if (error) throw error;
+    return data.data;
+}
+```
+
+> This is NOT an `as` cast — the return type annotation is type-safe. If the actual data doesn't match, TS will error.
+
+### Date Fields in Components
+
+Schema interfaces define `createdAt`/`updatedAt` as `Date`, but JSON serialization delivers strings at runtime. Component props that receive these values should use `Date | string`:
+
+```typescript
+interface OrderCardProps {
+    createdAt: Date | string;  // Date in TS types, string at JSON runtime
+}
+
+function formatDate(dateStr: Date | string): string {
+    return new Date(dateStr).toLocaleDateString("ru-RU", { ... });
+}
+```
+
 ## Frontend Forms
 
 ### TanStack Form + Zod
@@ -660,6 +699,7 @@ import { cn } from "@jahonbozor/ui";
         "clsx": "...",
         "tailwind-merge": "...",
         "lucide-react": "...",
+        "motion": "...",
         "@radix-ui/react-*": "..."
     },
     "peerDependencies": {
@@ -843,26 +883,76 @@ import type { ProductFormProps } from "./types";
 - **CSS variables** for theming (defined in `packages/ui/globals.css`)
 - **No hardcoded colors** — use semantic tokens (`text-foreground`, `bg-background`, etc.)
 
+### Animation (Motion)
+
+For animations используем **Motion** (ранее framer-motion). Пакет установлен в `@jahonbozor/ui` и реэкспортирован оттуда.
+
+```typescript
+import { motion, AnimatePresence } from "@jahonbozor/ui";
+
+// Gesture animations — whileTap, whileHover
+<motion.button
+    whileTap={{ scale: 0.9 }}
+    whileHover={{ scale: 1.05 }}
+    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+>
+    Click me
+</motion.button>
+
+// Enter/exit animations
+<AnimatePresence>
+    {isVisible && (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+        >
+            Content
+        </motion.div>
+    )}
+</AnimatePresence>
+```
+
+**Правила:**
+- Импорт только из `@jahonbozor/ui` — **не** напрямую из `motion/react`
+- Для tap/hover интерактивности — `whileTap`, `whileHover` (вместо CSS `active:` / `hover:`)
+- Для enter/exit — `AnimatePresence` + `initial`/`animate`/`exit`
+- Spring-анимации по умолчанию (`type: "spring"`) для натуральности
+- Простые CSS transitions (opacity, color) допустимы без Motion
+
 ### Path Aliases
 
-Both frontend apps use `@/` alias pointing to `src/`:
+Both frontend apps use `@/` for own source and `@backend/` for backend type resolution (required by Eden Treaty):
 
 ```typescript
 // tsconfig.app.json
 {
     "compilerOptions": {
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": ["./src/*"],
+            "@backend/lib/*": ["../../backend/src/lib/*"],
+            "@backend/api/*": ["../../backend/src/api/*"],
+            "@backend/generated/*": ["../../backend/src/generated/*"]
         }
     }
 }
 
-// vite.config.ts
+// vite.config.ts — only @/ needed at runtime (backend aliases are type-only)
 resolve: {
     alias: {
         "@": path.resolve(__dirname, "./src"),
     },
 }
+```
+
+> **Why `@backend/` aliases?** Eden Treaty follows the `type App` chain from `@jahonbozor/backend` through the backend's import graph. If TS can't resolve `@backend/lib/prisma`, `@backend/generated/prisma/client` etc., all Eden types degrade to `any`.
+
+### TypeScript Checking with Project References
+
+Frontend root `tsconfig.json` uses `"files": []` with project references. This means `bunx tsc --noEmit` (without `-p`) checks **nothing**. Always use:
+
+```bash
+bunx tsc --noEmit -p tsconfig.app.json
 ```
 
 ## Frontend Testing

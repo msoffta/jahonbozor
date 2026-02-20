@@ -8,8 +8,8 @@ export const AuditLogPagination = PaginationQuery.extend({
     actorId: z.coerce.number().optional(),
     actorType: ActorType.optional(),
     action: AuditAction.optional(),
-    dateFrom: z.coerce.date().optional(),
-    dateTo: z.coerce.date().optional(),
+    dateFrom: z.string().datetime().optional(),
+    dateTo: z.string().datetime().optional(),
     requestId: z.string().optional(),
 });
 
@@ -28,3 +28,23 @@ export const CreateAuditLogData = z.object({
 });
 
 export type CreateAuditLogData = z.infer<typeof CreateAuditLogData>;
+
+// --- Response types ---
+
+import type { ReturnSchema } from "../common/base.model";
+
+export interface AuditLogItem {
+    id: number;
+    entityType: string;
+    entityId: number;
+    actorId: number | null;
+    actorType: string | null;
+    action: string;
+    requestId: string | null;
+    previousData: unknown;
+    newData: unknown;
+    createdAt: string;
+}
+
+export type AuditLogsListResponse = ReturnSchema<{ count: number; auditLogs: AuditLogItem[] }>;
+export type AuditLogDetailResponse = ReturnSchema<AuditLogItem>;

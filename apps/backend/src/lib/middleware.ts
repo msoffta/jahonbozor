@@ -7,7 +7,7 @@ import {
     hasPermission,
 } from "@jahonbozor/schemas";
 import { createChildLogger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
+import { prisma } from "@backend/lib/prisma";
 import { Elysia } from "elysia";
 import baseLogger from "./logger";
 import { requestContext } from "./request-context";

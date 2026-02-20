@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import { ProductsService } from "../products.service";
 import type { Token } from "@jahonbozor/schemas";
-import type { Product, Category, ProductHistory, AuditLog } from "@generated/prisma/client";
+import type { Product, Category, ProductHistory, AuditLog } from "@backend/generated/prisma/client";
 
 const mockUser: Token = {
     id: 1,
@@ -131,7 +131,7 @@ describe("ProductsService", () => {
 
             // Act
             const result = await ProductsService.getAllProducts(
-                { page: 1, limit: 20, searchQuery: "", categoryId: 1, includeDeleted: false },
+                { page: 1, limit: 20, searchQuery: "", categoryIds: "1", includeDeleted: false },
                 mockLogger,
             );
 
@@ -485,6 +485,161 @@ describe("ProductsService", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("Product is not deleted");
+        });
+    });
+
+    describe("edge cases", () => {
+        describe("getAllProducts", () => {
+            test("should return empty list when no products exist", async () => {
+                prismaMock.$transaction.mockResolvedValue([0, []]);
+
+                const result = await ProductsService.getAllProducts(
+                    { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                    mockLogger,
+                );
+
+                const success = expectSuccess(result);
+                expect(success.data).toEqual({ count: 0, products: [] });
+            });
+
+            test("should handle categoryIds with NaN values gracefully", async () => {
+                prismaMock.category.findMany.mockResolvedValue([]);
+                prismaMock.$transaction.mockResolvedValue([0, []]);
+
+                const result = await ProductsService.getAllProducts(
+                    { page: 1, limit: 20, searchQuery: "", categoryIds: "abc,def", includeDeleted: false },
+                    mockLogger,
+                );
+
+                const success = expectSuccess(result);
+                expect(success.data?.count).toBe(0);
+            });
+
+            test("should handle empty categoryIds string", async () => {
+                prismaMock.$transaction.mockResolvedValue([0, []]);
+
+                const result = await ProductsService.getAllProducts(
+                    { page: 1, limit: 20, searchQuery: "", categoryIds: "", includeDeleted: false },
+                    mockLogger,
+                );
+
+                const success = expectSuccess(result);
+                expect(success.data?.count).toBe(0);
+            });
+
+            test("should handle minPrice and maxPrice together (range)", async () => {
+                prismaMock.$transaction.mockResolvedValue([0, []]);
+
+                const result = await ProductsService.getAllProducts(
+                    { page: 1, limit: 20, searchQuery: "", minPrice: 100, maxPrice: 50, includeDeleted: false },
+                    mockLogger,
+                );
+
+                // Inverted range (min > max) returns empty — no error
+                const success = expectSuccess(result);
+                expect(success.data?.count).toBe(0);
+            });
+        });
+
+        describe("getProduct", () => {
+            test("should return not found for id=0", async () => {
+                prismaMock.product.findUnique.mockResolvedValue(null);
+
+                const result = await ProductsService.getProduct(0, mockLogger);
+
+                const failure = expectFailure(result);
+                expect(failure.error).toBe("Product not found");
+            });
+
+            test("should return not found for negative id", async () => {
+                prismaMock.product.findUnique.mockResolvedValue(null);
+
+                const result = await ProductsService.getProduct(-1, mockLogger);
+
+                const failure = expectFailure(result);
+                expect(failure.error).toBe("Product not found");
+            });
+        });
+
+        describe("updateProduct", () => {
+            test("should succeed with empty update body (no-op)", async () => {
+                const existingProduct = createMockProduct({ id: 1 });
+                prismaMock.product.findUnique.mockResolvedValue(existingProduct);
+                prismaMock.product.update.mockResolvedValue(existingProduct);
+                prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory({ operation: "UPDATE" }));
+                prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "UPDATE" }));
+
+                const result = await ProductsService.updateProduct(
+                    1,
+                    {},
+                    mockContext,
+                    mockLogger,
+                );
+
+                const success = expectSuccess(result);
+                expect(success.data?.id).toBe(1);
+            });
+
+            test("should skip category check when categoryId unchanged", async () => {
+                const existingProduct = createMockProduct({ id: 1, categoryId: 1 });
+                prismaMock.product.findUnique.mockResolvedValue(existingProduct);
+                prismaMock.product.update.mockResolvedValue(existingProduct);
+                prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory({ operation: "UPDATE" }));
+                prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "UPDATE" }));
+
+                const result = await ProductsService.updateProduct(
+                    1,
+                    { categoryId: 1 },
+                    mockContext,
+                    mockLogger,
+                );
+
+                const success = expectSuccess(result);
+                expect(prismaMock.category.findUnique).not.toHaveBeenCalled();
+            });
+        });
+
+        describe("createProduct", () => {
+            test("should handle database constraint violation on create", async () => {
+                const mockCategory = createMockCategory({ id: 1 });
+                prismaMock.category.findUnique.mockResolvedValue(mockCategory);
+
+                const constraintError = new Error("Unique constraint failed");
+                prismaMock.$transaction.mockRejectedValue(constraintError);
+
+                const result = await ProductsService.createProduct(
+                    { name: "Duplicate", price: 100, costprice: 50, categoryId: 1, remaining: 0 },
+                    mockContext,
+                    mockLogger,
+                );
+
+                expectFailure(result);
+                expect(mockLogger.error).toHaveBeenCalled();
+            });
+        });
+
+        describe("deleteProduct and restoreProduct", () => {
+            test("should handle database error during delete transaction", async () => {
+                const existingProduct = createMockProduct({ id: 1 });
+                prismaMock.product.findUnique.mockResolvedValue(existingProduct);
+                prismaMock.$transaction.mockRejectedValue(new Error("Transaction failed"));
+
+                const result = await ProductsService.deleteProduct(1, mockContext, mockLogger);
+
+                expectFailure(result);
+                expect(mockLogger.error).toHaveBeenCalled();
+            });
+
+            test("should handle database error during restore transaction", async () => {
+                const deletedProduct = createMockProduct({ id: 1, deletedAt: new Date() });
+                prismaMock.product.findUnique.mockResolvedValue(deletedProduct);
+                prismaMock.$transaction.mockRejectedValue(new Error("Transaction failed"));
+
+                const result = await ProductsService.restoreProduct(1, mockContext, mockLogger);
+
+                expectFailure(result);
+                expect(mockLogger.error).toHaveBeenCalled();
+            });
         });
     });
 });

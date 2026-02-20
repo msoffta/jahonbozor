@@ -1,4 +1,4 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AdminUsersListResponse, AdminUserDetailResponse } from "@jahonbozor/schemas/src/users";
 import {
     CreateUserBody,
     UpdateUserBody,
@@ -7,9 +7,9 @@ import {
 } from "@jahonbozor/schemas/src/users";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import { auditInTransaction, audit } from "@lib/audit";
-import type { UsersModel } from "@generated/prisma/models/Users";
+import { prisma } from "@backend/lib/prisma";
+import { auditInTransaction } from "@backend/lib/audit";
+import type { UsersModel } from "@backend/generated/prisma/models/Users";
 import crypto from "crypto";
 
 interface AuditContext {
@@ -33,7 +33,7 @@ export abstract class Users {
     static async getAllUsers(
         { page, limit, searchQuery, includeOrders, includeDeleted }: UsersPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminUsersListResponse> {
         try {
             const whereClause: Record<string, unknown> = {};
 
@@ -72,7 +72,7 @@ export abstract class Users {
         }
     }
 
-    static async getUser(userId: number, logger: Logger): Promise<ReturnSchema> {
+    static async getUser(userId: number, logger: Logger): Promise<AdminUserDetailResponse> {
         try {
             const user = await prisma.users.findUnique({
                 where: { id: userId },
@@ -95,7 +95,7 @@ export abstract class Users {
         userData: CreateUserBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminUserDetailResponse> {
         try {
             const [newUser] = await prisma.$transaction(async (transaction) => {
                 const user = await transaction.users.create({
@@ -129,7 +129,7 @@ export abstract class Users {
         userData: UpdateUserBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminUserDetailResponse> {
         try {
             const existingUser = await prisma.users.findUnique({
                 where: { id: userId },
@@ -178,7 +178,7 @@ export abstract class Users {
         userId: number,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminUserDetailResponse> {
         try {
             const existingUser = await prisma.users.findUnique({
                 where: { id: userId },
@@ -226,7 +226,7 @@ export abstract class Users {
         userId: number,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminUserDetailResponse> {
         try {
             const existingUser = await prisma.users.findUnique({
                 where: { id: userId },
@@ -294,13 +294,13 @@ export abstract class Users {
         return computedHash === hash;
     }
 
-    // Public method for Telegram authentication — creates or updates user without staff context
+    // Public method for Telegram authentication вЂ” creates or updates user without staff context
     static async createOrUpdateFromTelegram(
         telegramData: TelegramAuthBody,
         logger: Logger,
         phone?: string,
         requestId?: string,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminUserDetailResponse> {
         try {
             const fullname = telegramData.last_name
                 ? `${telegramData.first_name} ${telegramData.last_name}`
@@ -392,7 +392,7 @@ export abstract class Users {
                         telegramId: telegramData.id,
                         fullname,
                         username: telegramData.username || telegramData.id,
-                        phone: phone || "",
+                        phone: phone || null,
                         photo: telegramData.photo_url,
                     },
                 });

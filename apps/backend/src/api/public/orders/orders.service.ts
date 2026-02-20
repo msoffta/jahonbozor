@@ -1,10 +1,10 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { UserOrderCreateResponse, UserOrdersListResponse, UserOrderDetailResponse, UserOrderCancelResponse } from "@jahonbozor/schemas/src/orders";
 import { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import { auditInTransaction } from "@lib/audit";
-import type { Prisma, Order } from "@generated/prisma/client";
+import { prisma } from "@backend/lib/prisma";
+import { auditInTransaction } from "@backend/lib/audit";
+import type { Prisma, Order } from "@backend/generated/prisma/client";
 
 interface ServiceContext {
     userId: number;
@@ -27,7 +27,7 @@ export abstract class PublicOrdersService {
         orderData: CreateOrderBody,
         context: ServiceContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<UserOrderCreateResponse> {
         try {
             const { userId, user, requestId } = context;
             const productIds = orderData.items.map(item => item.productId);
@@ -146,7 +146,12 @@ export abstract class PublicOrdersService {
                 itemCount: order.items.length,
             });
 
-            return { success: true, data: order };
+            const mappedItems = order.items.map(item => ({
+                ...item,
+                price: Number(item.price),
+            }));
+
+            return { success: true, data: { ...order, items: mappedItems } };
         } catch (error) {
             logger.error("PublicOrders: Error in createOrder", { userId: context.userId, error });
             return { success: false, error };
@@ -157,7 +162,7 @@ export abstract class PublicOrdersService {
         userId: number,
         query: OrdersPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<UserOrdersListResponse> {
         try {
             const { page, limit, paymentType, status, dateFrom, dateTo } = query;
 
@@ -186,7 +191,16 @@ export abstract class PublicOrdersService {
                 }),
             ]);
 
-            return { success: true, data: { count, orders } };
+            const mappedOrders = orders.map(order => ({
+                ...order,
+                items: order.items.map(item => ({
+                    ...item,
+                    price: Number(item.price),
+                    product: { ...item.product, price: Number(item.product.price) },
+                })),
+            }));
+
+            return { success: true, data: { count, orders: mappedOrders } };
         } catch (error) {
             logger.error("PublicOrders: Error in getUserOrders", { userId, error });
             return { success: false, error };
@@ -197,7 +211,7 @@ export abstract class PublicOrdersService {
         orderId: number,
         userId: number,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<UserOrderDetailResponse> {
         try {
             const order = await prisma.order.findUnique({
                 where: { id: orderId },
@@ -224,9 +238,128 @@ export abstract class PublicOrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
-            return { success: true, data: order };
+            const mappedItems = order.items.map(item => ({
+                ...item,
+                price: Number(item.price),
+                product: { ...item.product, price: Number(item.product.price) },
+            }));
+
+            return { success: true, data: { ...order, items: mappedItems } };
         } catch (error) {
             logger.error("PublicOrders: Error in getUserOrder", { orderId, userId, error });
+            return { success: false, error };
+        }
+    }
+
+    static async cancelOrder(
+        orderId: number,
+        context: ServiceContext,
+        logger: Logger,
+    ): Promise<UserOrderCancelResponse> {
+        try {
+            const { userId, user, requestId } = context;
+
+            const existingOrder = await prisma.order.findUnique({
+                where: { id: orderId },
+                include: {
+                    items: {
+                        include: {
+                            product: { select: { id: true, remaining: true, deletedAt: true } },
+                        },
+                    },
+                },
+            });
+
+            if (!existingOrder) {
+                logger.warn("PublicOrders: Order not found for cancel", { orderId, userId });
+                return { success: false, error: "Order not found" };
+            }
+
+            if (existingOrder.userId !== userId) {
+                logger.warn("PublicOrders: User not authorized to cancel order", {
+                    orderId,
+                    userId,
+                    orderUserId: existingOrder.userId,
+                });
+                return { success: false, error: "Forbidden" };
+            }
+
+            if (existingOrder.status !== "NEW") {
+                logger.warn("PublicOrders: Order cannot be cancelled", {
+                    orderId,
+                    userId,
+                    currentStatus: existingOrder.status,
+                });
+                return { success: false, error: "Only NEW orders can be cancelled" };
+            }
+
+            const [updatedOrder] = await prisma.$transaction(async (transaction) => {
+                for (const item of existingOrder.items) {
+                    if (!item.product.deletedAt) {
+                        const previousRemaining = item.product.remaining;
+                        const newRemaining = previousRemaining + item.quantity;
+
+                        await transaction.product.update({
+                            where: { id: item.productId },
+                            data: { remaining: { increment: item.quantity } },
+                        });
+
+                        await transaction.productHistory.create({
+                            data: {
+                                productId: item.productId,
+                                staffId: null,
+                                operation: "INVENTORY_ADD",
+                                quantity: item.quantity,
+                                previousData: { remaining: previousRemaining },
+                                newData: { remaining: newRemaining },
+                                changeReason: `Order #${orderId} cancelled by user`,
+                            },
+                        });
+                    }
+                }
+
+                const order = await transaction.order.update({
+                    where: { id: orderId },
+                    data: { status: "CANCELLED" },
+                    include: {
+                        items: {
+                            include: {
+                                product: { select: { id: true, name: true, price: true } },
+                            },
+                        },
+                    },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId, user, logger },
+                    {
+                        entityType: "order",
+                        entityId: orderId,
+                        action: "ORDER_STATUS_CHANGE",
+                        previousData: createOrderSnapshot(existingOrder),
+                        newData: createOrderSnapshot(order),
+                    },
+                );
+
+                return [order];
+            });
+
+            logger.info("PublicOrders: Order cancelled and stock restored", {
+                orderId,
+                userId,
+                itemsRestored: existingOrder.items.length,
+            });
+
+            const mappedItems = updatedOrder.items.map(item => ({
+                ...item,
+                price: Number(item.price),
+                product: { ...item.product, price: Number(item.product.price) },
+            }));
+
+            return { success: true, data: { ...updatedOrder, items: mappedItems } };
+        } catch (error) {
+            logger.error("PublicOrders: Error in cancelOrder", { orderId, userId: context.userId, error });
             return { success: false, error };
         }
     }

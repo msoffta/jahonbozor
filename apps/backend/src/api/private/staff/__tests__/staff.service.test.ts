@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
-import type { Staff, Role, AuditLog } from "@generated/prisma/client";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import type { Staff, Role, AuditLog } from "@backend/generated/prisma/client";
 import { type Token, Permission } from "@jahonbozor/schemas";
 import { StaffService } from "../staff.service";
 
@@ -462,6 +462,48 @@ describe("Staff Service", () => {
             const failure = expectFailure(result);
             expect(failure.error).toBe(dbError);
             expect(mockLogger.error).toHaveBeenCalled();
+        });
+    });
+
+    describe("edge cases", () => {
+        test("getStaff with id=0 should return not found", async () => {
+            prismaMock.staff.findUnique.mockResolvedValueOnce(null);
+
+            const result = await StaffService.getStaff(0, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Staff not found");
+        });
+
+        test("getStaff with negative id should return not found", async () => {
+            prismaMock.staff.findUnique.mockResolvedValueOnce(null);
+
+            const result = await StaffService.getStaff(-1, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Staff not found");
+        });
+
+        test("createStaff with duplicate username should return error", async () => {
+            prismaMock.staff.findFirst.mockResolvedValueOnce(mockStaff);
+
+            const result = await StaffService.createStaff(
+                { fullname: "New", username: "testadmin", password: "password123", telegramId: "999", roleId: 1 },
+                mockContext,
+                mockLogger,
+            );
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Username already exists");
+        });
+
+        test("deleteStaff with id=0 should return not found", async () => {
+            prismaMock.staff.findUnique.mockResolvedValueOnce(null);
+
+            const result = await StaffService.deleteStaff(0, mockContext, mockLogger);
+
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Staff not found");
         });
     });
 });

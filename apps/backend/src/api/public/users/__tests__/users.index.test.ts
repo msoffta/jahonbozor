@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
-import type { Users as UsersType } from "@generated/prisma/client";
-import { Users } from "@api/private/users/users.service";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import type { Users as UsersType } from "@backend/generated/prisma/client";
+import { Users } from "@backend/api/private/users/users.service";
 import crypto from "crypto";
 
 // Mock user data
@@ -256,6 +256,46 @@ describe("Public Users API - Telegram Authentication", () => {
                 fullname: "Jane",
                 username: "987654321",
                 telegramId: "987654321",
+            };
+
+            prismaMock.users.findUnique.mockResolvedValue(null);
+            mockTransaction({
+                users: { create: () => Promise.resolve(newUser) },
+                auditLog: { create: () => Promise.resolve({}) },
+            });
+
+            // Act
+            const response = await app.handle(
+                new Request("http://localhost/users/telegram", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(telegramData),
+                }),
+            );
+
+            // Assert
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.success).toBe(true);
+        });
+
+        test("should accept request when last_name, username, photo_url are undefined", async () => {
+            // Arrange — Telegram omits these fields when user has no last name/username/photo
+            const telegramData: Record<string, unknown> = {
+                id: "987654321",
+                first_name: "Jane",
+                auth_date: Math.floor(Date.now() / 1000),
+                hash: "",
+            };
+            telegramData.hash = computeTelegramHash(telegramData, TEST_BOT_TOKEN);
+
+            const newUser = {
+                ...mockUser,
+                id: 2,
+                fullname: "Jane",
+                username: "987654321",
+                telegramId: "987654321",
+                photo: null,
             };
 
             prismaMock.users.findUnique.mockResolvedValue(null);

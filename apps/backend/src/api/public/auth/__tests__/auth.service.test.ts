@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, mock, spyOn } from "bun:test";
-import { prismaMock, createMockLogger } from "@test/setup";
-import type { Staff, RefreshToken, Users } from "@generated/prisma/client";
+import { prismaMock, createMockLogger } from "@backend/test/setup";
+import type { Staff, RefreshToken, Users } from "@backend/generated/prisma/client";
 import { password } from "bun";
 import Auth from "../auth.service";
 
@@ -162,7 +162,7 @@ describe("Auth Service", () => {
     });
 
     describe("saveRefreshToken", () => {
-        test("should return true when token is saved successfully", async () => {
+        test("should return true when token is saved with staffId", async () => {
             // Arrange
             prismaMock.refreshToken.create.mockResolvedValueOnce(mockRefreshToken);
 
@@ -178,8 +178,46 @@ describe("Auth Service", () => {
 
             // Assert
             expect(result).toBe(true);
+            expect(prismaMock.refreshToken.create).toHaveBeenCalledWith({
+                data: {
+                    token: "new-token",
+                    expiredAt: expect.any(Date),
+                    staffId: 1,
+                },
+            });
             expect(mockLogger.info).toHaveBeenCalledWith("Auth: Refresh token saved", {
                 staffId: 1,
+                userId: undefined,
+            });
+        });
+
+        test("should return true when token is saved with userId", async () => {
+            // Arrange
+            const userRefreshToken = { ...mockRefreshToken, staffId: null, userId: 1 };
+            prismaMock.refreshToken.create.mockResolvedValueOnce(userRefreshToken);
+
+            // Act
+            const result = await Auth.saveRefreshToken(
+                {
+                    token: "user-token",
+                    exp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    userId: 1,
+                },
+                mockLogger,
+            );
+
+            // Assert
+            expect(result).toBe(true);
+            expect(prismaMock.refreshToken.create).toHaveBeenCalledWith({
+                data: {
+                    token: "user-token",
+                    expiredAt: expect.any(Date),
+                    userId: 1,
+                },
+            });
+            expect(mockLogger.info).toHaveBeenCalledWith("Auth: Refresh token saved", {
+                staffId: undefined,
+                userId: 1,
             });
         });
 
@@ -202,6 +240,7 @@ describe("Auth Service", () => {
             expect(result).toBeNull();
             expect(mockLogger.error).toHaveBeenCalledWith("Auth: Error in saveRefreshToken", {
                 staffId: 1,
+                userId: undefined,
                 error: dbError,
             });
         });
@@ -413,6 +452,48 @@ describe("Auth Service", () => {
                 userId: 1,
                 error: dbError,
             });
+        });
+    });
+
+    describe("edge cases", () => {
+        test("checkIfStaffExists with empty username should return null", async () => {
+            prismaMock.staff.findFirst.mockResolvedValueOnce(null);
+
+            const result = await Auth.checkIfStaffExists({ username: "", password: "password123" }, mockLogger);
+
+            expect(result).toBeNull();
+        });
+
+        test("validateRefreshToken with empty string should return null", async () => {
+            prismaMock.refreshToken.findUnique.mockResolvedValueOnce(null);
+
+            const result = await Auth.validateRefreshToken("", mockLogger);
+
+            expect(result).toBeNull();
+        });
+
+        test("getStaffById with id=0 should return null", async () => {
+            prismaMock.staff.findUnique.mockResolvedValueOnce(null);
+
+            const result = await Auth.getStaffById(0, mockLogger);
+
+            expect(result).toBeNull();
+        });
+
+        test("getUserById with id=0 should return null", async () => {
+            prismaMock.users.findUnique.mockResolvedValueOnce(null);
+
+            const result = await Auth.getUserById(0, mockLogger);
+
+            expect(result).toBeNull();
+        });
+
+        test("getStaffById with negative id should return null", async () => {
+            prismaMock.staff.findUnique.mockResolvedValueOnce(null);
+
+            const result = await Auth.getStaffById(-1, mockLogger);
+
+            expect(result).toBeNull();
         });
     });
 });

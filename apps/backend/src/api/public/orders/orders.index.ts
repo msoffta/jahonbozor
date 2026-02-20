@@ -1,6 +1,6 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { UserOrderCreateResponse, UserOrdersListResponse, UserOrderDetailResponse, UserOrderCancelResponse } from "@jahonbozor/schemas/src/orders";
 import { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { PublicOrdersService } from "./orders.service";
 
@@ -12,7 +12,7 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
     .use(authMiddleware)
     .post(
         "/",
-        async ({ body, user, type, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, user, type, set, logger, requestId }): Promise<UserOrderCreateResponse> => {
             try {
                 if (type !== "user") {
                     set.status = 403;
@@ -42,7 +42,7 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
     )
     .get(
         "/",
-        async ({ query, user, type, set, logger }): Promise<ReturnSchema> => {
+        async ({ query, user, type, set, logger }): Promise<UserOrdersListResponse> => {
             try {
                 if (type !== "user") {
                     set.status = 403;
@@ -62,7 +62,7 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
     )
     .get(
         "/:id",
-        async ({ params, user, type, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, user, type, set, logger }): Promise<UserOrderDetailResponse> => {
             try {
                 if (type !== "user") {
                     set.status = 403;
@@ -78,6 +78,41 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
                 return result;
             } catch (error) {
                 logger.error("PublicOrders: Unhandled error in GET /orders/:id", {
+                    id: params.id,
+                    error,
+                });
+                return { success: false, error };
+            }
+        },
+        {
+            auth: true,
+            params: orderIdParams,
+        },
+    )
+    .patch(
+        "/:id/cancel",
+        async ({ params, user, type, set, logger, requestId }): Promise<UserOrderCancelResponse> => {
+            try {
+                if (type !== "user") {
+                    set.status = 403;
+                    return { success: false, error: "Only users can cancel orders via public API" };
+                }
+
+                const result = await PublicOrdersService.cancelOrder(
+                    params.id,
+                    { userId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    if (result.error === "Forbidden") set.status = 403;
+                    else if (result.error === "Order not found") set.status = 404;
+                    else set.status = 400;
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("PublicOrders: Unhandled error in PATCH /orders/:id/cancel", {
                     id: params.id,
                     error,
                 });

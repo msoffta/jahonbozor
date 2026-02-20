@@ -1,9 +1,9 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { RolesListResponse, RoleDetailResponse } from "@jahonbozor/schemas/src/roles";
 import { CreateRoleBody, UpdateRoleBody } from "@jahonbozor/schemas/src/roles";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import { auditInTransaction } from "@lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import { auditInTransaction } from "@backend/lib/audit";
 
 interface AuditContext {
     staffId: number;
@@ -29,7 +29,7 @@ export abstract class RolesService {
     static async getAllRoles(
         params: RolesPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<RolesListResponse> {
         try {
             const { page, limit, searchQuery, includeStaffCount } = params;
             const whereClause = searchQuery
@@ -68,7 +68,7 @@ export abstract class RolesService {
         roleId: number,
         includeStaffCount: boolean | undefined,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<RoleDetailResponse> {
         try {
             const role = await prisma.role.findUnique({
                 where: { id: roleId },
@@ -93,7 +93,7 @@ export abstract class RolesService {
         roleData: CreateRoleBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<RoleDetailResponse> {
         try {
             const existingRole = await prisma.role.findFirst({
                 where: { name: roleData.name },
@@ -143,7 +143,7 @@ export abstract class RolesService {
         roleData: UpdateRoleBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<RoleDetailResponse> {
         try {
             const existingRole = await prisma.role.findUnique({
                 where: { id: roleId },
@@ -210,7 +210,7 @@ export abstract class RolesService {
         roleId: number,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<RoleDetailResponse> {
         try {
             const existingRole = await prisma.role.findUnique({
                 where: { id: roleId },

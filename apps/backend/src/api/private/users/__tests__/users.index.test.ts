@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
-import type { Users as UsersType } from "@generated/prisma/client";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import type { Users as UsersType } from "@backend/generated/prisma/client";
 import { Permission } from "@jahonbozor/schemas";
 import { Users } from "../users.service";
 
@@ -416,6 +416,50 @@ describe("Users API Endpoints", () => {
             expect(response.status).toBe(400);
             const body = await response.json();
             expect(body.error).toBe("User is not deleted");
+        });
+    });
+
+    describe("edge cases", () => {
+        test("GET /users/:id with id=0 should return 404", async () => {
+            prismaMock.users.findUnique.mockResolvedValue(null);
+
+            const response = await app.handle(
+                new Request("http://localhost/users/0"),
+            );
+
+            expect(response.status).toBe(404);
+            const body = await response.json();
+            expect(body.error).toBe("User not found");
+        });
+
+        test("GET /users with no results should return empty", async () => {
+            prismaMock.users.count.mockResolvedValue(0);
+            prismaMock.users.findMany.mockResolvedValue([]);
+
+            const response = await app.handle(
+                new Request("http://localhost/users"),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.data.count).toBe(0);
+            expect(body.data.users).toEqual([]);
+        });
+
+        test("PUT /users/:id with empty body should handle gracefully", async () => {
+            prismaMock.users.findUnique.mockResolvedValue(mockUser);
+            prismaMock.users.update.mockResolvedValue(mockUser);
+            prismaMock.auditLog.create.mockResolvedValue({} as never);
+
+            const response = await app.handle(
+                new Request("http://localhost/users/1", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({}),
+                }),
+            );
+
+            expect(response.status).toBe(200);
         });
     });
 });

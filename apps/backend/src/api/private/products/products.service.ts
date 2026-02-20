@@ -1,4 +1,4 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AdminProductsListResponse, AdminProductDetailResponse } from "@jahonbozor/schemas/src/products";
 import {
     CreateProductBody,
     UpdateProductBody,
@@ -6,9 +6,9 @@ import {
 } from "@jahonbozor/schemas/src/products";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import { auditInTransaction } from "@lib/audit";
-import type { ProductModel } from "@generated/prisma/models/Product";
+import { prisma } from "@backend/lib/prisma";
+import { auditInTransaction } from "@backend/lib/audit";
+import type { ProductModel } from "@backend/generated/prisma/models/Product";
 
 interface AuditContext {
     staffId: number;
@@ -49,9 +49,9 @@ export abstract class ProductsService {
     static async getAllProducts(
         params: ProductsPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminProductsListResponse> {
         try {
-            const { page, limit, searchQuery, categoryId, minPrice, maxPrice, includeDeleted } = params;
+            const { page, limit, searchQuery, categoryIds: categoryIdsStr, minPrice, maxPrice, includeDeleted } = params;
 
             // Build where clause with hierarchical category filter
             const whereClause: Record<string, unknown> = {};
@@ -65,9 +65,14 @@ export abstract class ProductsService {
             }
 
             // Hierarchical category filter - include all descendants
-            if (categoryId) {
-                const categoryIds = await getCategoryWithDescendants(categoryId);
-                whereClause.categoryId = { in: categoryIds };
+            if (categoryIdsStr) {
+                const parsedIds = categoryIdsStr.split(",").map(Number).filter((n) => !isNaN(n));
+                const allIds: number[] = [];
+                for (const id of parsedIds) {
+                    const descendants = await getCategoryWithDescendants(id);
+                    allIds.push(...descendants);
+                }
+                whereClause.categoryId = { in: [...new Set(allIds)] };
             }
 
             if (minPrice) {
@@ -97,14 +102,16 @@ export abstract class ProductsService {
                 }),
             ]);
 
-            return { success: true, data: { count, products } };
+            const mapped = products.map(p => ({ ...p, price: Number(p.price), costprice: Number(p.costprice) }));
+
+            return { success: true, data: { count, products: mapped } };
         } catch (error) {
             logger.error("Products: Error in getAllProducts", { page: params.page, limit: params.limit, error });
             return { success: false, error };
         }
     }
 
-    static async getProduct(productId: number, logger: Logger): Promise<ReturnSchema> {
+    static async getProduct(productId: number, logger: Logger): Promise<AdminProductDetailResponse> {
         try {
             const product = await prisma.product.findUnique({
                 where: { id: productId },
@@ -124,7 +131,9 @@ export abstract class ProductsService {
                 return { success: false, error: "Product not found" };
             }
 
-            return { success: true, data: product };
+            const mapped = { ...product, price: Number(product.price), costprice: Number(product.costprice) };
+
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in getProduct", { productId, error });
             return { success: false, error };
@@ -135,7 +144,7 @@ export abstract class ProductsService {
         productData: CreateProductBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminProductDetailResponse> {
         try {
             const categoryExists = await prisma.category.findUnique({
                 where: { id: productData.categoryId },
@@ -181,7 +190,8 @@ export abstract class ProductsService {
             });
 
             logger.info("Products: Product created", { productId: newProduct.id, name: productData.name, staffId: context.staffId });
-            return { success: true, data: newProduct };
+            const mapped = { ...newProduct, price: Number(newProduct.price), costprice: Number(newProduct.costprice) };
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in createProduct", { name: productData.name, error });
             return { success: false, error };
@@ -193,7 +203,7 @@ export abstract class ProductsService {
         productData: UpdateProductBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminProductDetailResponse> {
         try {
             const existingProduct = await prisma.product.findUnique({
                 where: { id: productId },
@@ -251,7 +261,8 @@ export abstract class ProductsService {
             });
 
             logger.info("Products: Product updated", { productId, staffId: context.staffId });
-            return { success: true, data: updatedProduct };
+            const mapped = { ...updatedProduct, price: Number(updatedProduct.price), costprice: Number(updatedProduct.costprice) };
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in updateProduct", { productId, error });
             return { success: false, error };
@@ -262,7 +273,7 @@ export abstract class ProductsService {
         productId: number,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminProductDetailResponse> {
         try {
             const existingProduct = await prisma.product.findUnique({
                 where: { id: productId },
@@ -308,7 +319,8 @@ export abstract class ProductsService {
             });
 
             logger.info("Products: Product deleted", { productId, name: existingProduct.name, staffId: context.staffId });
-            return { success: true, data: deletedProduct };
+            const mapped = { ...deletedProduct, price: Number(deletedProduct.price), costprice: Number(deletedProduct.costprice) };
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in deleteProduct", { productId, error });
             return { success: false, error };
@@ -319,7 +331,7 @@ export abstract class ProductsService {
         productId: number,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<AdminProductDetailResponse> {
         try {
             const existingProduct = await prisma.product.findUnique({
                 where: { id: productId },
@@ -367,7 +379,8 @@ export abstract class ProductsService {
             });
 
             logger.info("Products: Product restored", { productId, name: existingProduct.name, staffId: context.staffId });
-            return { success: true, data: restoredProduct };
+            const mapped = { ...restoredProduct, price: Number(restoredProduct.price), costprice: Number(restoredProduct.costprice) };
+            return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in restoreProduct", { productId, error });
             return { success: false, error };

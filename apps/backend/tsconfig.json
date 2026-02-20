@@ -29,10 +29,10 @@
         // "rootDir": "./",                                  /* Specify the root folder within your source files. */
         "moduleResolution": "node" /* Specify how TypeScript looks up a file from a given module specifier. */,
         "paths": {
-            "@lib/*": ["./src/lib/*"],
-            "@api/*": ["./src/api/*"],
-            "@generated/*": ["./src/generated/*"],
-            "@test/*": ["./test/*"]
+            "@backend/lib/*": ["./src/lib/*"],
+            "@backend/api/*": ["./src/api/*"],
+            "@backend/generated/*": ["./src/generated/*"],
+            "@backend/test/*": ["./test/*"]
         },
         // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
         // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */

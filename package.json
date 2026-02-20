@@ -9,8 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run dev:backend",
-    "dev:backend": "bun run --cwd apps/backend --env-file .env dev",
+    "dev": "bun run --cwd apps/backend dev",
     "dev:admin": "bun run --cwd apps/frontend/admin dev",
     "dev:user": "bun run --cwd apps/frontend/user dev",
     "build:admin": "bun run --cwd apps/frontend/admin build",
@@ -20,8 +19,8 @@
     "test:coverage": "bun run --cwd apps/backend test:coverage",
     "prisma:generate": "bun run --cwd apps/backend prisma:generate",
     "prisma:seed": "bun run --cwd apps/backend prisma:seed",
-    "prisma:migrate": "bunx --cwd apps/backend prisma migrate dev",
-    "prisma:studio": "bunx --cwd apps/backend prisma studio",
+    "prisma:migrate": "bun run --cwd apps/backend prisma:migrate",
+    "prisma:studio": "bun run --cwd apps/backend prisma:studio",
     "db:up": "docker-compose up -d",
     "db:down": "docker-compose down"
   },

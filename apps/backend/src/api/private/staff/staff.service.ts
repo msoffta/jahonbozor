@@ -1,4 +1,4 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { StaffListResponse, StaffDetailResponse, StaffDeleteResponse } from "@jahonbozor/schemas/src/staff";
 import {
     CreateStaffBody,
     UpdateStaffBody,
@@ -6,8 +6,8 @@ import {
 } from "@jahonbozor/schemas/src/staff";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@lib/prisma";
-import { auditInTransaction } from "@lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import { auditInTransaction } from "@backend/lib/audit";
 import { password } from "bun";
 
 interface AuditContext {
@@ -51,7 +51,7 @@ export abstract class StaffService {
     static async getAllStaff(
         { page, limit, searchQuery, roleId }: StaffPagination,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<StaffListResponse> {
         try {
             const whereClause = {
                 AND: [
@@ -87,7 +87,7 @@ export abstract class StaffService {
         }
     }
 
-    static async getStaff(staffId: number, logger: Logger): Promise<ReturnSchema> {
+    static async getStaff(staffId: number, logger: Logger): Promise<StaffDetailResponse> {
         try {
             const staffRecord = await prisma.staff.findUnique({
                 where: { id: staffId },
@@ -110,7 +110,7 @@ export abstract class StaffService {
         staffData: CreateStaffBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<StaffDetailResponse> {
         try {
             const existingStaff = await prisma.staff.findFirst({
                 where: { username: staffData.username },
@@ -169,7 +169,7 @@ export abstract class StaffService {
         staffData: UpdateStaffBody,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<StaffDetailResponse> {
         try {
             const existingStaff = await prisma.staff.findUnique({
                 where: { id: staffId },
@@ -256,7 +256,7 @@ export abstract class StaffService {
         staffId: number,
         context: AuditContext,
         logger: Logger,
-    ): Promise<ReturnSchema> {
+    ): Promise<StaffDeleteResponse> {
         try {
             const existingStaff = await prisma.staff.findUnique({
                 where: { id: staffId },

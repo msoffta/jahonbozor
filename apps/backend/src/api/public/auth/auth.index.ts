@@ -1,12 +1,12 @@
 import { SignInBody } from "@jahonbozor/schemas";
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { LoginResponse, RefreshResponse, LogoutResponse, ProfileResponse } from "@jahonbozor/schemas/src/auth";
 import { Elysia, t } from "elysia";
 import Auth from "./auth.service";
 import jwt from "@elysiajs/jwt";
 import dayjs from "dayjs";
-import { authMiddleware } from "@lib/middleware";
-import { requestContext } from "@lib/request-context";
-import { audit } from "@lib/audit";
+import { authMiddleware } from "@backend/lib/middleware";
+import { requestContext } from "@backend/lib/request-context";
+import { audit } from "@backend/lib/audit";
 
 const authCookieSchema = t.Cookie({
     auth: t.Optional(t.String()),
@@ -22,7 +22,7 @@ export const auth = new Elysia({ prefix: "/auth" })
     )
     .post(
         "/login",
-        async ({ body, cookie: { auth }, jwt, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, cookie: { auth }, jwt, set, logger, requestId }): Promise<LoginResponse> => {
             try {
                 const username = body.username;
                 const password = body.password;
@@ -111,7 +111,7 @@ export const auth = new Elysia({ prefix: "/auth" })
     )
     .post(
         "/refresh",
-        async ({ cookie: { auth }, jwt, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ cookie: { auth }, jwt, set, logger, requestId }): Promise<RefreshResponse> => {
             try {
                 if (!auth.value) {
                     logger.warn("Auth: Refresh token cookie not found");
@@ -122,16 +122,9 @@ export const auth = new Elysia({ prefix: "/auth" })
                 const refreshTokenValue = auth.value;
 
                 const tokenRecord = await Auth.validateRefreshToken(refreshTokenValue, logger);
-                if (!tokenRecord || !tokenRecord.staffId) {
+                if (!tokenRecord || (!tokenRecord.staffId && !tokenRecord.userId)) {
                     auth.remove();
-                    logger.warn("Auth: Invalid or non-staff refresh token");
-                    set.status = 401;
-                    return { success: false, error: "Unauthorized" };
-                }
-
-                const staffData = await Auth.getStaffById(tokenRecord.staffId, logger);
-                if (!staffData) {
-                    auth.remove();
+                    logger.warn("Auth: Invalid refresh token");
                     set.status = 401;
                     return { success: false, error: "Unauthorized" };
                 }
@@ -140,36 +133,94 @@ export const auth = new Elysia({ prefix: "/auth" })
 
                 const newRefreshTokenExpiration = dayjs().add(30, "day");
 
-                const newRefreshTokenValue = await jwt.sign({
-                    id: staffData.id,
-                    type: "staff",
-                    exp: newRefreshTokenExpiration.unix(),
-                });
+                let newAccessToken: string;
+                let newRefreshTokenValue: string;
+                let auditEntityId: number;
+                let auditType: "staff" | "user";
 
-                const newAccessToken = await jwt.sign({
-                    id: staffData.id,
-                    fullname: staffData.fullname,
-                    username: staffData.username,
-                    roleId: staffData.roleId,
-                    type: "staff",
-                    exp: dayjs().add(15, "minute").unix(),
-                });
+                if (tokenRecord.staffId) {
+                    const staffData = await Auth.getStaffById(tokenRecord.staffId, logger);
+                    if (!staffData) {
+                        auth.remove();
+                        set.status = 401;
+                        return { success: false, error: "Unauthorized" };
+                    }
 
-                const isRefreshTokenSaved = await Auth.saveRefreshToken(
-                    {
-                        token: newRefreshTokenValue,
-                        exp: newRefreshTokenExpiration.toDate(),
-                        staffId: staffData.id,
-                    },
-                    logger,
-                );
-
-                if (!isRefreshTokenSaved) {
-                    logger.error("Auth: Failed to save new refresh token", {
-                        staffId: staffData.id,
+                    newRefreshTokenValue = await jwt.sign({
+                        id: staffData.id,
+                        type: "staff",
+                        exp: newRefreshTokenExpiration.unix(),
                     });
-                    set.status = 500;
-                    return { success: false, error: "Internal Server Error" };
+
+                    newAccessToken = await jwt.sign({
+                        id: staffData.id,
+                        fullname: staffData.fullname,
+                        username: staffData.username,
+                        roleId: staffData.roleId,
+                        type: "staff",
+                        exp: dayjs().add(15, "minute").unix(),
+                    });
+
+                    const isRefreshTokenSaved = await Auth.saveRefreshToken(
+                        {
+                            token: newRefreshTokenValue,
+                            exp: newRefreshTokenExpiration.toDate(),
+                            staffId: staffData.id,
+                        },
+                        logger,
+                    );
+
+                    if (!isRefreshTokenSaved) {
+                        logger.error("Auth: Failed to save new refresh token", { staffId: staffData.id });
+                        set.status = 500;
+                        return { success: false, error: "Internal Server Error" };
+                    }
+
+                    auditEntityId = staffData.id;
+                    auditType = "staff";
+                    logger.info("Auth: Token refreshed", { staffId: staffData.id });
+                } else {
+                    const userData = await Auth.getUserById(tokenRecord.userId!, logger);
+                    if (!userData) {
+                        auth.remove();
+                        set.status = 401;
+                        return { success: false, error: "Unauthorized" };
+                    }
+
+                    newRefreshTokenValue = await jwt.sign({
+                        id: userData.id,
+                        type: "user",
+                        exp: newRefreshTokenExpiration.unix(),
+                    });
+
+                    newAccessToken = await jwt.sign({
+                        id: userData.id,
+                        fullname: userData.fullname,
+                        username: userData.username,
+                        phone: userData.phone,
+                        telegramId: String(userData.telegramId),
+                        type: "user",
+                        exp: dayjs().add(15, "minute").unix(),
+                    });
+
+                    const isRefreshTokenSaved = await Auth.saveRefreshToken(
+                        {
+                            token: newRefreshTokenValue,
+                            exp: newRefreshTokenExpiration.toDate(),
+                            userId: userData.id,
+                        },
+                        logger,
+                    );
+
+                    if (!isRefreshTokenSaved) {
+                        logger.error("Auth: Failed to save new refresh token", { userId: userData.id });
+                        set.status = 500;
+                        return { success: false, error: "Internal Server Error" };
+                    }
+
+                    auditEntityId = userData.id;
+                    auditType = "user";
+                    logger.info("Auth: Token refreshed", { userId: userData.id });
                 }
 
                 auth.set({
@@ -183,15 +234,14 @@ export const auth = new Elysia({ prefix: "/auth" })
                 });
 
                 await audit(
-                    { requestId, user: { id: staffData.id, type: "staff" } as import("@jahonbozor/schemas").Token, logger },
+                    { requestId, user: { id: auditEntityId, type: auditType } as import("@jahonbozor/schemas").Token, logger },
                     {
                         entityType: "refreshToken",
-                        entityId: staffData.id,
+                        entityId: auditEntityId,
                         action: "UPDATE",
                     },
                 );
 
-                logger.info("Auth: Token refreshed", { staffId: staffData.id });
                 return { success: true, data: { token: newAccessToken } };
             } catch (error) {
                 logger.error("Auth: Unhandled error in POST /refresh", {
@@ -205,7 +255,7 @@ export const auth = new Elysia({ prefix: "/auth" })
     )
     .post(
         "/logout",
-        async ({ cookie: { auth }, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ cookie: { auth }, set, logger, requestId }): Promise<LogoutResponse> => {
             try {
                 if (!auth.value) {
                     logger.warn("Auth: Logout attempted without token");
@@ -257,7 +307,7 @@ export const auth = new Elysia({ prefix: "/auth" })
     .use(authMiddleware)
     .get(
         "/me",
-        async ({ user, type, set, logger }): Promise<ReturnSchema> => {
+        async ({ user, type, set, logger }): Promise<ProfileResponse> => {
             try {
                 const profileData =
                     type === "staff"

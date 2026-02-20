@@ -1,4 +1,9 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type {
+    AdminProductsListResponse,
+    AdminProductDetailResponse,
+    HistoryListResponse,
+    InventoryAdjustmentResponse,
+} from "@jahonbozor/schemas/src/products";
 import { Permission } from "@jahonbozor/schemas";
 import {
     CreateProductBody,
@@ -7,7 +12,7 @@ import {
     CreateInventoryAdjustmentBody,
     ProductHistoryPagination,
 } from "@jahonbozor/schemas/src/products";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { ProductsService } from "./products.service";
 import { HistoryService } from "./history/history.service";
@@ -21,7 +26,7 @@ export const products = new Elysia({ prefix: "/products" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, logger }): Promise<ReturnSchema> => {
+        async ({ query, logger }): Promise<AdminProductsListResponse> => {
             try {
                 return await ProductsService.getAllProducts(query, logger);
             } catch (error) {
@@ -37,7 +42,7 @@ export const products = new Elysia({ prefix: "/products" })
     .use(history)
     .get(
         "/:id",
-        async ({ params, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, set, logger }): Promise<AdminProductDetailResponse> => {
             try {
                 const result = await ProductsService.getProduct(params.id, logger);
 
@@ -58,7 +63,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .post(
         "/",
-        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<AdminProductDetailResponse> => {
             try {
                 const result = await ProductsService.createProduct(
                     body,
@@ -83,7 +88,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, body, user, set, logger, requestId }): Promise<AdminProductDetailResponse> => {
             try {
                 const result = await ProductsService.updateProduct(
                     params.id,
@@ -110,7 +115,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .delete(
         "/:id",
-        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<AdminProductDetailResponse> => {
             try {
                 const result = await ProductsService.deleteProduct(
                     params.id,
@@ -135,7 +140,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .post(
         "/:id/restore",
-        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<AdminProductDetailResponse> => {
             try {
                 const result = await ProductsService.restoreProduct(
                     params.id,
@@ -160,7 +165,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .get(
         "/:id/history",
-        async ({ params, query, logger }): Promise<ReturnSchema> => {
+        async ({ params, query, logger }): Promise<HistoryListResponse> => {
             try {
                 return await HistoryService.getProductHistory(params.id, query, logger);
             } catch (error) {
@@ -176,7 +181,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .post(
         "/:id/inventory",
-        async ({ params, body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, body, user, set, logger, requestId }): Promise<InventoryAdjustmentResponse> => {
             try {
                 const result = await HistoryService.createInventoryAdjustment(
                     params.id,

@@ -1,11 +1,11 @@
-import { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
+import type { AdminOrdersListResponse, AdminOrderDetailResponse, AdminOrderDeleteResponse } from "@jahonbozor/schemas/src/orders";
 import { Permission } from "@jahonbozor/schemas";
 import {
     CreateOrderBody,
     UpdateOrderBody,
     OrdersPagination,
 } from "@jahonbozor/schemas/src/orders";
-import { authMiddleware } from "@lib/middleware";
+import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
 import { OrdersService } from "./orders.service";
 
@@ -17,7 +17,7 @@ export const orders = new Elysia({ prefix: "/orders" })
     .use(authMiddleware)
     .get(
         "/",
-        async ({ query, user, permissions, logger }): Promise<ReturnSchema> => {
+        async ({ query, user, permissions, logger }): Promise<AdminOrdersListResponse> => {
             try {
                 return await OrdersService.getAllOrders(query, user.id, permissions, logger);
             } catch (error) {
@@ -32,7 +32,7 @@ export const orders = new Elysia({ prefix: "/orders" })
     )
     .get(
         "/:id",
-        async ({ params, user, permissions, set, logger }): Promise<ReturnSchema> => {
+        async ({ params, user, permissions, set, logger }): Promise<AdminOrderDetailResponse> => {
             try {
                 const result = await OrdersService.getOrder(params.id, user.id, permissions, logger);
 
@@ -56,7 +56,7 @@ export const orders = new Elysia({ prefix: "/orders" })
     )
     .post(
         "/",
-        async ({ body, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ body, user, set, logger, requestId }): Promise<AdminOrderDetailResponse> => {
             try {
                 const result = await OrdersService.createOrder(
                     body,
@@ -81,7 +81,7 @@ export const orders = new Elysia({ prefix: "/orders" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, permissions, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, body, user, permissions, set, logger, requestId }): Promise<AdminOrderDetailResponse> => {
             try {
                 const result = await OrdersService.updateOrder(
                     params.id,
@@ -112,7 +112,7 @@ export const orders = new Elysia({ prefix: "/orders" })
     )
     .delete(
         "/:id",
-        async ({ params, user, set, logger, requestId }): Promise<ReturnSchema> => {
+        async ({ params, user, set, logger, requestId }): Promise<AdminOrderDeleteResponse> => {
             try {
                 const result = await OrdersService.deleteOrder(
                     params.id,
