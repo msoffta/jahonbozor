@@ -1,6 +1,7 @@
 import { queryOptions, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth.store";
+import { useUIStore } from "@/stores/ui.store";
 
 export const authKeys = {
     me: ["auth", "me"] as const,
@@ -28,9 +29,11 @@ export function useTelegramLogin() {
             auth_date: number;
             hash: string;
         }) => {
+            const language = useUIStore.getState().locale;
             const { data, error } = await api.api.public.users.telegram.post({
                 ...body,
                 id: String(body.id),
+                language,
             });
             if (error) throw error;
             return data;
@@ -38,13 +41,27 @@ export function useTelegramLogin() {
         onSuccess: (result) => {
             if (result && result.success && result.data) {
                 const { token, user } = result.data;
+                const language = user.language === "ru" ? "ru" : "uz";
                 useAuthStore.getState().login(token, {
                     id: user.id,
                     name: user.fullname,
                     telegramId: String(user.telegramId),
+                    phone: user.phone ?? null,
+                    language,
                     type: "user",
                 });
+                useUIStore.getState().setLocale(language);
             }
+        },
+    });
+}
+
+export function useUpdateLanguage() {
+    return useMutation({
+        mutationFn: async (language: "uz" | "ru") => {
+            const { data, error } = await api.api.public.users.language.put({ language });
+            if (error) throw error;
+            return data;
         },
     });
 }

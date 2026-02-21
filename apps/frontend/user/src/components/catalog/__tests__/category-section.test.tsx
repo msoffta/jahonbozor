@@ -22,7 +22,7 @@ mock.module("react-i18next", () => ({
 
 mock.module("@tanstack/react-router", () => ({
     Link: ({ children, to, search, ...props }: any) => (
-        <a href={`${to}?categoryId=${search?.categoryId || ""}`} {...props}>
+        <a href={`${to}?categoryIds=${search?.categoryIds || ""}`} {...props}>
             {children}
         </a>
     ),
@@ -118,6 +118,6 @@ describe("CategorySection", () => {
             <CategorySection categoryId={7} categoryName="Food" />,
         );
         const link = getByText("Food").closest("a");
-        expect(link?.getAttribute("href")).toContain("categoryId=7");
+        expect(link?.getAttribute("href")).toContain("categoryIds=7");
     });
 });

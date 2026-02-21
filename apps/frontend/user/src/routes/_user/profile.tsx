@@ -4,17 +4,18 @@ import { useTranslation } from "react-i18next";
 import { Edit3, ClipboardList, ShoppingCart, Globe, LogOut } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
-import { profileOptions, useLogout } from "@/api/auth.api";
-import { Avatar, AvatarFallback, AvatarImage, Button } from "@jahonbozor/ui";
-import i18n from "@/lib/i18n";
+import { profileOptions, useLogout, useUpdateLanguage } from "@/api/auth.api";
+import { Avatar, AvatarFallback, AvatarImage } from "@jahonbozor/ui";
 
 function ProfilePage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const user = useAuthStore((s) => s.user);
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const locale = useUIStore((s) => s.locale);
     const setLocale = useUIStore((s) => s.setLocale);
     const logout = useLogout();
+    const updateLanguage = useUpdateLanguage();
 
     const { data: profileData } = useQuery(profileOptions());
     const profile = profileData?.data as {
@@ -32,7 +33,9 @@ function ProfilePage() {
     const handleChangeLanguage = () => {
         const newLocale = locale === "uz" ? "ru" : "uz";
         setLocale(newLocale);
-        i18n.changeLanguage(newLocale);
+        if (isAuthenticated) {
+            updateLanguage.mutate(newLocale);
+        }
     };
 
     const handleLogout = () => {
@@ -45,65 +48,72 @@ function ProfilePage() {
 
     return (
         <div className="flex flex-col items-center px-4 py-6">
-            <Avatar className="h-20 w-20">
+            <Avatar className="h-32 w-32">
                 {profile?.photo && <AvatarImage src={profile.photo} alt={displayName} />}
-                <AvatarFallback className="text-xl">{initials}</AvatarFallback>
+                <AvatarFallback className="text-3xl">{initials}</AvatarFallback>
             </Avatar>
 
-            <h2 className="mt-3 text-lg font-bold">{displayName}</h2>
-            {username && <p className="text-sm text-muted-foreground">@{username}</p>}
+            <h2 className="mt-3 text-3xl font-bold">{displayName}</h2>
+            {username && <p className="text-base font-medium text-black">@{username}</p>}
+            {user?.telegramId && (
+                <p className="text-xs font-light">ID: {user.telegramId}</p>
+            )}
             {profile?.createdAt && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-base font-normal">
                     {t("registered")}: {new Date(profile.createdAt).toLocaleDateString("ru-RU")}
                 </p>
             )}
 
-            <div className="mt-6 w-full space-y-3">
-                <Button
-                    variant="default"
-                    className="w-full justify-start gap-3"
+            <div className="mt-6 w-full space-y-2.5">
+                {/* TODO: edit profile
+                <button
+                    type="button"
                     disabled
+                    className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3 opacity-50"
                 >
-                    <Edit3 className="h-4 w-4" />
-                    {t("edit_profile")}
-                </Button>
+                    <Edit3 className="h-5 w-5 text-accent-foreground" />
+                    <span className="text-base font-medium text-accent-foreground">{t("edit_profile")}</span>
+                </button>
+                */}
 
-                <Button
-                    variant="default"
-                    className="w-full justify-start gap-3"
+                <button
+                    type="button"
                     onClick={() => navigate({ to: "/orders" })}
+                    className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3"
                 >
-                    <ClipboardList className="h-4 w-4" />
-                    {t("orders")}
-                </Button>
+                    <ClipboardList className="h-5 w-5 text-accent-foreground" />
+                    <span className="text-base font-medium text-accent-foreground">{t("orders")}</span>
+                </button>
 
-                <Button
-                    variant="default"
-                    className="w-full justify-start gap-3"
+                <button
+                    type="button"
                     onClick={() => navigate({ to: "/cart" })}
+                    className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3"
                 >
-                    <ShoppingCart className="h-4 w-4" />
-                    {t("cart")}
-                </Button>
+                    <ShoppingCart className="h-5 w-5 text-accent-foreground" />
+                    <span className="text-base font-medium text-accent-foreground">{t("cart")}</span>
+                </button>
 
-                <Button
-                    variant="default"
-                    className="w-full justify-start gap-3"
+                <button
+                    type="button"
                     onClick={handleChangeLanguage}
+                    className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3"
                 >
-                    <Globe className="h-4 w-4" />
-                    {t("change_language")} ({locale === "uz" ? "RU" : "UZ"})
-                </Button>
-            </div>
+                    <Globe className="h-5 w-5 text-accent-foreground" />
+                    <span className="text-base font-medium text-accent-foreground">
+                        {t("change_language")} ({locale === "uz" ? "RU" : "UZ"})
+                    </span>
+                </button>
 
-            <Button
-                variant="outline"
-                className="mt-6 w-full gap-2"
-                onClick={handleLogout}
-            >
-                <LogOut className="h-4 w-4" />
-                {t("logout")}
-            </Button>
+                <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3"
+                >
+                    <LogOut className="h-5 w-5 text-accent-foreground" />
+                    <span className="text-base font-medium text-accent-foreground">{t("logout")}</span>
+                </button>
+            </div>
         </div>
     );
 }

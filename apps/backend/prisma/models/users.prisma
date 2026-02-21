@@ -5,6 +5,7 @@ model Users {
     phone      String?   @unique
     photo      String?
     telegramId String?   @unique
+    language   String    @default("uz")
     deletedAt  DateTime?
 
     orders       Order[]

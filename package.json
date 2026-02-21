@@ -4,14 +4,18 @@
   "type": "module",
   "workspaces": [
     "apps/backend",
+    "apps/bot",
     "apps/frontend/admin",
     "apps/frontend/user",
     "packages/*"
   ],
   "scripts": {
     "dev": "bun run --cwd apps/backend dev",
+    "dev:bot": "bun run --cwd apps/bot dev",
     "dev:admin": "bun run --cwd apps/frontend/admin dev",
     "dev:user": "bun run --cwd apps/frontend/user dev",
+    "dev:all": "concurrently -n backend,bot,user,admin -c blue,magenta,green,yellow \"bun run dev\" \"bun run dev:bot\" \"bun run dev:user\" \"bun run dev:admin\"",
+    "test:bot": "bun run --cwd apps/bot test",
     "build:admin": "bun run --cwd apps/frontend/admin build",
     "build:user": "bun run --cwd apps/frontend/user build",
     "test": "bun run --cwd apps/backend test",
@@ -21,11 +25,16 @@
     "prisma:seed": "bun run --cwd apps/backend prisma:seed",
     "prisma:migrate": "bun run --cwd apps/backend prisma:migrate",
     "prisma:studio": "bun run --cwd apps/backend prisma:studio",
-    "db:up": "docker-compose up -d",
-    "db:down": "docker-compose down"
+    "db:up": "docker-compose up -d postgres",
+    "db:down": "docker-compose down",
+    "nginx:up": "docker-compose up -d nginx",
+    "nginx:down": "docker-compose stop nginx",
+    "nginx:restart": "docker-compose restart nginx",
+    "nginx:logs": "docker-compose logs -f nginx"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "concurrently": "^9.2.1",
     "eslint-plugin-react-dom": "^2.12.2",
     "eslint-plugin-react-x": "^2.12.2"
   },

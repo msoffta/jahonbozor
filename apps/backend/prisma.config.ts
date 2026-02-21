@@ -1,4 +1,8 @@
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
+import { resolve } from "path";
+import dotenv from "dotenv";
+
+dotenv.config({ path: resolve(import.meta.dirname, "../../.env") });
 
 export default defineConfig({
     schema: "prisma",
@@ -7,6 +11,6 @@ export default defineConfig({
         seed: "bun prisma/seed.ts"
     },
     datasource: {
-        url: env("DATABASE_URL"),
+        url: process.env.DATABASE_URL!,
     },
 });

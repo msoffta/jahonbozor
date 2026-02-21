@@ -1,0 +1,22 @@
+{
+  "name": "@jahonbozor/bot",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --env-file=../../.env run --watch src/index.ts",
+    "start": "bun --env-file=../../.env run src/index.ts",
+    "test": "bun --env-file=../../.env test",
+    "test:watch": "bun --env-file=../../.env test --watch"
+  },
+  "dependencies": {
+    "grammy": "^1.35.0",
+    "@jahonbozor/logger": "workspace:*",
+    "@prisma/adapter-pg": "^7.3.0",
+    "@prisma/client": "^7.3.0",
+    "pg": "^8.18.0"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "@types/node": "^22.0.0"
+  }
+}

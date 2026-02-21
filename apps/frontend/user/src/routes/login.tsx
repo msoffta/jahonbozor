@@ -1,7 +1,9 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef } from "react";
+import { cn, motion } from "@jahonbozor/ui";
 import { useTelegramLogin } from "@/api/auth.api";
+import { useUIStore } from "@/stores/ui.store";
 
 const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? "";
 
@@ -20,11 +22,12 @@ function LoginPage() {
     const telegramRef = useRef<HTMLDivElement>(null);
     const telegramLogin = useTelegramLogin();
     const navigate = useNavigate();
+    const locale = useUIStore((s) => s.locale);
+    const setLocale = useUIStore((s) => s.setLocale);
 
     useEffect(() => {
         if (!TELEGRAM_BOT_USERNAME || !telegramRef.current) return;
 
-        // Define global callback for Telegram widget
         (window as unknown as Record<string, unknown>).onTelegramAuth = (user: TelegramLoginData) => {
             telegramLogin.mutate(
                 {
@@ -44,7 +47,6 @@ function LoginPage() {
             );
         };
 
-        // Load Telegram Login Widget script
         const script = document.createElement("script");
         script.src = "https://telegram.org/js/telegram-widget.js?22";
         script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
@@ -62,29 +64,61 @@ function LoginPage() {
     }, [telegramLogin, navigate]);
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-            <div className="w-full max-w-sm space-y-8 p-6 text-center">
-                <div>
-                    <h1 className="text-3xl font-bold text-primary">
-                        {t("app_name")}
-                    </h1>
-                    <p className="mt-2 text-muted-foreground">
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+            <div className="w-full max-w-sm space-y-6 rounded-2xl bg-surface p-8 shadow-sm">
+                {/* Logo */}
+                <div className="text-center">
+                    <img src="/logo.svg" alt="Jahon Bozor" className="mx-auto h-10" />
+                    <p className="mt-3 text-sm text-muted-foreground">
                         {t("login_telegram")}
                     </p>
                 </div>
 
+                {/* Language selector */}
+                <div className="flex gap-3">
+                    <motion.button
+                        type="button"
+                        onClick={() => setLocale("uz")}
+                        className={cn(
+                            "flex-1 rounded-2xl py-3 text-sm font-semibold transition-colors",
+                            locale === "uz"
+                                ? "bg-accent text-accent-foreground"
+                                : "bg-muted text-foreground",
+                        )}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    >
+                        O'zbekcha
+                    </motion.button>
+                    <motion.button
+                        type="button"
+                        onClick={() => setLocale("ru")}
+                        className={cn(
+                            "flex-1 rounded-2xl py-3 text-sm font-semibold transition-colors",
+                            locale === "ru"
+                                ? "bg-accent text-accent-foreground"
+                                : "bg-muted text-foreground",
+                        )}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    >
+                        Русский
+                    </motion.button>
+                </div>
+
+                {/* Telegram widget */}
                 <div ref={telegramRef} className="flex justify-center" />
 
                 {telegramLogin.isPending && (
-                    <p className="text-sm text-muted-foreground">{t("loading")}</p>
+                    <p className="text-center text-sm text-muted-foreground">{t("loading")}</p>
                 )}
 
                 {telegramLogin.isError && (
-                    <p className="text-sm text-destructive">{t("error")}</p>
+                    <p className="text-center text-sm text-destructive">{t("error")}</p>
                 )}
 
                 {!TELEGRAM_BOT_USERNAME && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-center text-xs text-muted-foreground">
                         VITE_TELEGRAM_BOT_USERNAME not configured
                     </p>
                 )}

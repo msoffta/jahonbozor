@@ -3,13 +3,11 @@ import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const monorepoRoot = resolve(process.cwd(), "../../..");
-
 export default defineConfig({
-    envDir: monorepoRoot,
+    base: "/admin/",
+    envDir: resolve(process.cwd(), "../../.."),
     plugins: [
         tanstackRouter({
             target: "react",
@@ -22,10 +20,7 @@ export default defineConfig({
     server: {
         port: 5173,
         host: "0.0.0.0",
-        https: {
-            key: readFileSync(resolve(monorepoRoot, "192.168.1.108-key.pem")),
-            cert: readFileSync(resolve(monorepoRoot, "192.168.1.108.pem")),
-        },
+        allowedHosts: ['msoffta-pc.tail420b9b.ts.net'],
         proxy: {
             "/api": {
                 target: "https://localhost:3000",

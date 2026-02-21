@@ -4,8 +4,9 @@ import {
     Outlet,
     useRouterState,
 } from "@tanstack/react-router";
-import { motion } from "@jahonbozor/ui";
+
 import { Header } from "@/components/layout/header";
+import { PhoneBanner } from "@/components/layout/phone-banner";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { tryRefreshToken } from "@/lib/api-client";
 
@@ -28,15 +29,9 @@ function RootLayout() {
     return (
         <div className="flex min-h-screen flex-col">
             <Header />
+            <PhoneBanner />
             <main className="flex-1 pb-24 bg-background">
-                <motion.div
-                    key={pathname}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.15 }}
-                >
-                    <Outlet />
-                </motion.div>
+                <Outlet />
             </main>
             <BottomNav />
         </div>

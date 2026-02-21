@@ -1,6 +1,7 @@
 import { treaty } from "@elysiajs/eden";
 import type { App } from "@jahonbozor/backend";
 import { useAuthStore } from "@/stores/auth.store";
+import { useUIStore } from "@/stores/ui.store";
 
 let isRefreshing = false;
 
@@ -63,12 +64,16 @@ export async function tryRefreshToken(): Promise<boolean> {
         const profileData = await profileResponse.json();
         if (profileData.success && profileData.data) {
             const profile = profileData.data;
+            const language = profile.language === "ru" ? "ru" : "uz";
             useAuthStore.getState().login(token, {
                 id: profile.id,
                 name: profile.fullname,
                 telegramId: String(profile.telegramId),
+                phone: profile.phone ?? null,
+                language,
                 type: "user",
             });
+            useUIStore.getState().setLocale(language);
             return true;
         }
 

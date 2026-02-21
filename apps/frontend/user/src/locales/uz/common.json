@@ -52,5 +52,9 @@
     "all": "Barchasi",
     "more": "Yana",
     "apply": "Qo'llash",
-    "reset": "Tozalash"
+    "reset": "Tozalash",
+    "phone_request_banner": "Iltimos, Telegram botimizda telefon raqamingizni ulashing.",
+    "phone_request_banner_link": "Botga o'tish",
+    "uzbek": "O'zbekcha",
+    "russian": "Ruscha"
 }

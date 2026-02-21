@@ -26,6 +26,7 @@ function createUserSnapshot(user: UsersModel) {
         phone: user.phone,
         photo: user.photo,
         telegramId: user.telegramId,
+        language: user.language,
     };
 }
 
@@ -300,6 +301,7 @@ export abstract class Users {
         logger: Logger,
         phone?: string,
         requestId?: string,
+        language?: string,
     ): Promise<AdminUserDetailResponse> {
         try {
             const fullname = telegramData.last_name
@@ -320,6 +322,7 @@ export abstract class Users {
                             fullname,
                             username: telegramData.username || existingUserByTelegram.username,
                             photo: telegramData.photo_url,
+                            ...(language ? { language } : {}),
                             deletedAt: null, // Restore if was deleted
                         },
                     });
@@ -359,6 +362,7 @@ export abstract class Users {
                                 fullname,
                                 username: telegramData.username || existingUserByPhone.username,
                                 photo: telegramData.photo_url,
+                                ...(language ? { language } : {}),
                                 deletedAt: null, // Restore if was deleted
                             },
                         });
@@ -394,6 +398,7 @@ export abstract class Users {
                         username: telegramData.username || telegramData.id,
                         phone: phone || null,
                         photo: telegramData.photo_url,
+                        language: language || "uz",
                     },
                 });
 

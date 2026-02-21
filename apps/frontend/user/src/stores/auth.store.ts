@@ -4,6 +4,8 @@ interface UserAccount {
     id: number;
     name: string;
     telegramId: string;
+    phone: string | null;
+    language: "uz" | "ru";
     type: "user";
 }
 

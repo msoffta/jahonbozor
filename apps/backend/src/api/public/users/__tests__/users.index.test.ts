@@ -13,6 +13,7 @@ const mockUser: UsersType = {
     phone: "+998901234567",
     photo: "https://photo.url/avatar.jpg",
     telegramId: "123456789",
+    language: "uz",
     deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),

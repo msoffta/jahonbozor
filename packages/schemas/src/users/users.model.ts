@@ -6,12 +6,16 @@ export const telegramIdSchema = z
     .union([z.string(), z.number()])
     .transform((telegramId) => telegramId.toString());
 
+export const LanguageSchema = z.enum(["uz", "ru"]);
+export type Language = z.infer<typeof LanguageSchema>;
+
 export const User = BaseModel.extend({
     fullname: z.string(),
     username: z.string(),
     phone: z.string().nullable(),
     photo: z.string().nullable(),
     telegramId: telegramIdSchema.nullable(),
+    language: LanguageSchema.default("uz"),
     deletedAt: z.string().datetime().nullable(),
 });
 

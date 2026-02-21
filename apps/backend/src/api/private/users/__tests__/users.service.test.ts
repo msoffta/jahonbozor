@@ -24,6 +24,7 @@ const mockUser = {
     phone: "+998901234567",
     photo: null,
     telegramId: "123456789",
+    language: "uz",
     deletedAt: null,
 };
 
@@ -605,6 +606,95 @@ describe("Users Service", () => {
             // Assert
             const success = expectSuccess(result);
             expect(success.data?.username).toBe("123456789");
+        });
+
+        test("should save language when creating new user", async () => {
+            // Arrange
+            const newUser = {
+                id: 5,
+                fullname: "John Doe",
+                username: "johndoe",
+                phone: null,
+                telegramId: "123456789",
+                photo: "https://photo.url/avatar.jpg",
+                language: "ru",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+            };
+
+            const createMock = mock(() => Promise.resolve(newUser));
+            prismaMock.users.findUnique.mockResolvedValue(null);
+            mockTransaction({
+                users: { create: createMock },
+                auditLog: { create: mock(() => Promise.resolve({})) },
+            });
+
+            // Act
+            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger, undefined, "req-1", "ru");
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data?.language).toBe("ru");
+            expect(createMock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({ language: "ru" }),
+                }),
+            );
+        });
+
+        test("should update language for existing user on login", async () => {
+            // Arrange
+            const existingUser = { ...mockUser, telegramId: "123456789", language: "uz" };
+            const updatedUser = { ...existingUser, language: "ru" };
+
+            const updateMock = mock(() => Promise.resolve(updatedUser));
+            prismaMock.users.findUnique.mockResolvedValue(existingUser);
+            mockTransaction({
+                users: { update: updateMock },
+                auditLog: { create: mock(() => Promise.resolve({})) },
+            });
+
+            // Act
+            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger, undefined, "req-1", "ru");
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data?.language).toBe("ru");
+            expect(updateMock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({ language: "ru" }),
+                }),
+            );
+        });
+
+        test("should default to uz language when not specified", async () => {
+            // Arrange
+            const newUser = {
+                id: 6,
+                fullname: "John Doe",
+                username: "johndoe",
+                phone: null,
+                telegramId: "123456789",
+                photo: "https://photo.url/avatar.jpg",
+                language: "uz",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+            };
+
+            prismaMock.users.findUnique.mockResolvedValue(null);
+            mockTransaction({
+                users: { create: mock(() => Promise.resolve(newUser)) },
+                auditLog: { create: mock(() => Promise.resolve({})) },
+            });
+
+            // Act — no language parameter
+            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger);
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data?.language).toBe("uz");
         });
 
         test("should handle database error", async () => {

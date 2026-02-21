@@ -175,6 +175,7 @@ export default abstract class Auth {
                     phone: true,
                     telegramId: true,
                     photo: true,
+                    language: true,
                     createdAt: true,
                     updatedAt: true,
                 },

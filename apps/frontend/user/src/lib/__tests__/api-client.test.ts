@@ -38,6 +38,8 @@ describe("api-client", () => {
                 id: 1,
                 name: "Test",
                 telegramId: "123",
+                phone: null,
+                language: "uz" as const,
                 type: "user",
             });
 
@@ -56,6 +58,8 @@ describe("api-client", () => {
                 id: 1,
                 name: "Test",
                 telegramId: "123",
+                phone: null,
+                language: "uz" as const,
                 type: "user",
             });
 
@@ -76,6 +80,8 @@ describe("api-client", () => {
                 id: 1,
                 name: "Test",
                 telegramId: "123",
+                phone: null,
+                language: "uz" as const,
                 type: "user",
             });
 

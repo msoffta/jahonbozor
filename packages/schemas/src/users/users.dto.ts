@@ -1,6 +1,6 @@
 import z from "zod";
 import { PaginationQuery } from "../common/pagination.model";
-import { User, telegramIdSchema } from "./users.model";
+import { User, telegramIdSchema, LanguageSchema } from "./users.model";
 
 export const CreateUserBody = User.omit({
     id: true,
@@ -21,6 +21,10 @@ export const TelegramAuthBody = z.object({
     hash: z.string(),
 });
 
+export const TelegramLoginBody = TelegramAuthBody.extend({
+    language: LanguageSchema.optional(),
+});
+
 export const UsersPagination = PaginationQuery.extend({
     searchQuery: z.string().optional(),
     includeOrders: z.coerce.boolean().optional(),
@@ -30,6 +34,7 @@ export const UsersPagination = PaginationQuery.extend({
 export type CreateUserBody = z.infer<typeof CreateUserBody>;
 export type UpdateUserBody = z.infer<typeof UpdateUserBody>;
 export type TelegramAuthBody = z.infer<typeof TelegramAuthBody>;
+export type TelegramLoginBody = z.infer<typeof TelegramLoginBody>;
 export type UsersPagination = z.infer<typeof UsersPagination>;
 
 // --- Response types ---
@@ -43,6 +48,7 @@ export interface AdminUserItem {
     phone: string | null;
     telegramId: unknown;
     photo: string | null;
+    language: string;
     deletedAt: string | null;
     createdAt: string;
     updatedAt: string;

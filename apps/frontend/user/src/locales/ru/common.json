@@ -52,5 +52,9 @@
     "all": "Все",
     "more": "Ещё",
     "apply": "Применить",
-    "reset": "Сбросить"
+    "reset": "Сбросить",
+    "phone_request_banner": "Пожалуйста, поделитесь номером телефона в нашем Telegram боте.",
+    "phone_request_banner_link": "Перейти в бот",
+    "uzbek": "Узбекский",
+    "russian": "Русский"
 }
