@@ -2,8 +2,8 @@ import z from "zod";
 
 export const BaseModel = z.object({
     id: z.number(),
-    createdAt: z.string().datetime(),
-    updatedAt: z.string().datetime(),
+    createdAt: z.union([z.coerce.date(), z.iso.datetime()]),
+    updatedAt: z.union([z.coerce.date(), z.iso.datetime()]),
 });
 
 export type BaseModel = z.infer<typeof BaseModel>;

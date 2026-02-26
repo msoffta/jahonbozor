@@ -20,8 +20,8 @@ export interface RoleItem {
     id: number;
     name: string;
     permissions: string[];
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
 }
 
 export type RolesListResponse = ReturnSchema<{ count: number; roles: RoleItem[] }>;

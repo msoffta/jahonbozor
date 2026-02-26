@@ -35,8 +35,8 @@ export interface HistoryEntryItem {
     previousData: unknown;
     newData: unknown;
     changeReason: string | null;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
     product?: { id: number; name: string; price?: number };
     staff?: { id: number; fullname: string } | null;
 }

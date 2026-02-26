@@ -52,8 +52,8 @@ export interface AdminCategoryItem {
     id: number;
     name: string;
     parentId: number | null;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
 }
 
 export type AdminCategoriesListResponse = ReturnSchema<{ count: number; categories: AdminCategoryItem[] }>;

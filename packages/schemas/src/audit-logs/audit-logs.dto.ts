@@ -43,7 +43,7 @@ export interface AuditLogItem {
     requestId: string | null;
     previousData: unknown;
     newData: unknown;
-    createdAt: string;
+    createdAt: Date | string;
 }
 
 export type AuditLogsListResponse = ReturnSchema<{ count: number; auditLogs: AuditLogItem[] }>;

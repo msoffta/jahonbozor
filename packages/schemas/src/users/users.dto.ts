@@ -50,8 +50,8 @@ export interface AdminUserItem {
     photo: string | null;
     language: string;
     deletedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
 }
 
 export type AdminUsersListResponse = ReturnSchema<{ count: number; users: AdminUserItem[] }>;

@@ -41,8 +41,8 @@ export interface PublicProductItem {
     price: number;
     categoryId: number;
     remaining: number;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
     category?: ProductCategoryRelation;
 }
 

@@ -1,5 +1,6 @@
 import { treaty } from "@elysiajs/eden";
 import type { App } from "@jahonbozor/backend";
+import * as Sentry from "@sentry/react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 
@@ -39,12 +40,14 @@ export async function tryRefreshToken(): Promise<boolean> {
 
         if (!response.ok) {
             useAuthStore.getState().logout();
+            Sentry.setUser(null);
             return false;
         }
 
         const data = await response.json();
         if (!data.success || !data.data?.token) {
             useAuthStore.getState().logout();
+            Sentry.setUser(null);
             return false;
         }
 
@@ -58,6 +61,7 @@ export async function tryRefreshToken(): Promise<boolean> {
 
         if (!profileResponse.ok) {
             useAuthStore.getState().logout();
+            Sentry.setUser(null);
             return false;
         }
 
@@ -74,13 +78,16 @@ export async function tryRefreshToken(): Promise<boolean> {
                 type: "user",
             });
             useUIStore.getState().setLocale(language);
+            Sentry.setUser({ id: String(profile.id), username: profile.fullname });
             return true;
         }
 
         useAuthStore.getState().logout();
+        Sentry.setUser(null);
         return false;
     } catch {
         useAuthStore.getState().logout();
+        Sentry.setUser(null);
         return false;
     } finally {
         isRefreshing = false;

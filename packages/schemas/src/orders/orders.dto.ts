@@ -63,8 +63,8 @@ export interface UserOrderItem {
     id: number;
     paymentType: string;
     status: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
     items: OrderItemResponse[];
 }
 
@@ -78,7 +78,7 @@ export interface AdminOrderItem extends UserOrderItem {
     userId: number | null;
     staffId: number | null;
     data: unknown;
-    user: { id: number; fullname: string; phone?: string } | null;
+    user: { id: number; fullname: string; phone: string | null } | null;
     staff?: { id: number; fullname: string } | null;
 }
 

@@ -4,10 +4,14 @@ import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { devtools } from "@tanstack/devtools-vite";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { resolve } from "node:path";
 
 export default defineConfig({
     envDir: resolve(process.cwd(), "../../.."),
+    build: {
+        sourcemap: "hidden",
+    },
     plugins: [
         devtools(),
         tanstackRouter({
@@ -17,6 +21,14 @@ export default defineConfig({
         react(),
         tailwindcss(),
         tsconfigPaths(),
+        sentryVitePlugin({
+            org: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT_FRONTEND,
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            sourcemaps: {
+                filesToDeleteAfterUpload: ["./dist/**/*.map"],
+            },
+        }),
     ],
     server: {
         allowedHosts: ['msoffta-pc.tail420b9b.ts.net'],

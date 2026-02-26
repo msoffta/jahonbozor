@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-// import { sentry } from "elysiajs-sentry";
+import { sentry } from "elysiajs-sentry";
 import cors from "@elysiajs/cors";
 import openapi from "@elysiajs/openapi";
 import staticPlugin from "@elysiajs/static";
@@ -12,9 +12,17 @@ import { prisma } from "./lib/prisma";
 
 const certDir = resolve(import.meta.dir, "../../../certs");
 
-const app = new Elysia()
-    // .use(sentry())
-    .use(cors())
+const app = new Elysia();
+
+if (Bun.env.SENTRY_DSN) {
+    app.use(sentry({
+        dsn: Bun.env.SENTRY_DSN,
+        environment: Bun.env.SENTRY_ENVIRONMENT || Bun.env.NODE_ENV || "development",
+        tracesSampleRate: Bun.env.NODE_ENV === "production" ? 0.2 : 1.0,
+    }));
+}
+
+app.use(cors())
     .use(requestContext)
     .use(openapi())
     .use(staticPlugin())

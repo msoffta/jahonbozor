@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import * as Sentry from "@sentry/bun";
 import { createChildLogger } from "@jahonbozor/logger";
 import baseLogger from "./logger";
 
@@ -14,6 +15,8 @@ export const requestContext = new Elysia({ name: "requestContext" })
         const logger = createChildLogger(baseLogger, { requestId });
 
         set.headers["x-request-id"] = requestId;
+
+        Sentry.getCurrentScope().setTag("requestId", requestId);
 
         return {
             requestId,

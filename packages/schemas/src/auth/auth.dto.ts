@@ -27,8 +27,8 @@ export interface StaffProfileData {
     telegramId: unknown;
     roleId: number;
     role: { id: number; name: string; permissions: string[] };
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
     type: string;
 }
 
@@ -40,8 +40,8 @@ export interface UserProfileData {
     telegramId: unknown;
     photo: string | null;
     language: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
     type: string;
 }
 

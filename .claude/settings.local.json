@@ -5,7 +5,9 @@
       "mcp__brave-search__brave_web_search",
       "mcp__figma__get_design_context",
       "Bash(bunx tsc:*)",
-      "Bash(bun test:*)"
+      "Bash(bun test:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs"
     ],
     "deny": [],
     "ask": []

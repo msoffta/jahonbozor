@@ -34,8 +34,8 @@ export interface StaffItem {
     telegramId: unknown;
     roleId: number;
     role: { id: number; name: string; permissions: string[] };
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
 }
 
 export type StaffListResponse = ReturnSchema<{ count: number; staff: StaffItem[] }>;

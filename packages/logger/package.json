@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@sentry/bun": "^10.36.0",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "winston-transport": "^4.9.0"
   }
 }

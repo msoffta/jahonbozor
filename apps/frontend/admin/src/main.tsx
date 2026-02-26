@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
@@ -15,6 +16,23 @@ const router = createRouter({
         queryClient,
         auth: undefined!,
     },
+});
+
+Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE,
+    integrations: [
+        Sentry.tanstackRouterBrowserTracingIntegration(router),
+        Sentry.replayIntegration({
+            maskAllText: false,
+            maskAllInputs: false,
+            blockAllMedia: false,
+        }),
+    ],
+    tracesSampleRate: import.meta.env.PROD ? 0.2 : 1.0,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+    enabled: !!import.meta.env.VITE_SENTRY_DSN,
 });
 
 declare module "@tanstack/react-router" {
