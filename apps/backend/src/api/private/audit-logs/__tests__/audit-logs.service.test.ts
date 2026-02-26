@@ -136,7 +136,7 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", dateFrom: new Date("2024-01-02T00:00:00Z") },
+                { page: 1, limit: 20, searchQuery: "", dateFrom: "2024-01-02T00:00:00Z" },
                 mockLogger,
             );
 
@@ -151,7 +151,7 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", dateTo: new Date("2024-01-01T23:59:59Z") },
+                { page: 1, limit: 20, searchQuery: "", dateTo: "2024-01-01T23:59:59Z" },
                 mockLogger,
             );
 

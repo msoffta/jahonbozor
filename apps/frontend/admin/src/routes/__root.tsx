@@ -5,7 +5,6 @@ import {
     Outlet,
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import * as Sentry from "@sentry/react";
 import { AlertTriangle } from "lucide-react";
 import { Button, motion } from "@jahonbozor/ui";
@@ -56,10 +55,7 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 const RootLayout = () => (
-    <>
-        <Outlet />
-        <TanStackRouterDevtools />
-    </>
+    <Outlet />
 );
 
 export const Route = createRootRouteWithContext<RouterContext>()({

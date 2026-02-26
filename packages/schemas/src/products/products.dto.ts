@@ -46,14 +46,20 @@ export interface PublicProductItem {
     category?: ProductCategoryRelation;
 }
 
-export type PublicProductsListResponse = ReturnSchema<{ count: number; products: PublicProductItem[] }>;
+export type PublicProductsListResponse = ReturnSchema<{
+    count: number;
+    products: PublicProductItem[];
+}>;
 export type PublicProductDetailResponse = ReturnSchema<PublicProductItem>;
 
 // Admin API (include — all fields)
 export interface AdminProductItem extends PublicProductItem {
     costprice: number;
-    deletedAt: string | null;
+    deletedAt: Date | string | null;
 }
 
-export type AdminProductsListResponse = ReturnSchema<{ count: number; products: AdminProductItem[] }>;
+export type AdminProductsListResponse = ReturnSchema<{
+    count: number;
+    products: AdminProductItem[];
+}>;
 export type AdminProductDetailResponse = ReturnSchema<AdminProductItem>;

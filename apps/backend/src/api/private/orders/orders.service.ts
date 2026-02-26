@@ -215,7 +215,7 @@ export abstract class OrdersService {
                                 product: { select: { id: true, name: true } },
                             },
                         },
-                        user: { select: { id: true, fullname: true } },
+                        user: { select: { id: true, fullname: true, phone: true } },
                     },
                 });
 
@@ -323,7 +323,7 @@ export abstract class OrdersService {
                                 product: { select: { id: true, name: true } },
                             },
                         },
-                        user: { select: { id: true, fullname: true } },
+                        user: { select: { id: true, fullname: true, phone: true } },
                         staff: { select: { id: true, fullname: true } },
                     },
                 });

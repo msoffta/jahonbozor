@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Edit3, ClipboardList, ShoppingCart, Globe, LogOut } from "lucide-react";
+import { ClipboardList, ShoppingCart, Globe, LogOut } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 import { profileOptions, useLogout, useUpdateLanguage } from "@/api/auth.api";

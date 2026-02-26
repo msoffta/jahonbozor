@@ -48,13 +48,11 @@ const TanStackDevtools = import.meta.env.PROD
               import("@tanstack/react-devtools"),
               import("@tanstack/react-query-devtools"),
               import("@tanstack/react-router-devtools"),
-              import("@tanstack/react-form-devtools"),
           ]).then(
               ([
                   { TanStackDevtools },
                   { ReactQueryDevtoolsPanel },
                   { TanStackRouterDevtoolsPanel },
-                  { formDevtoolsPlugin },
               ]) => ({
                   default: () => (
                       <TanStackDevtools
@@ -76,7 +74,6 @@ const TanStackDevtools = import.meta.env.PROD
                                   ),
                                   defaultOpen: false,
                               },
-                              formDevtoolsPlugin(),
                           ]}
                       />
                   ),

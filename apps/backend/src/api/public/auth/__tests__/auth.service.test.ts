@@ -58,6 +58,7 @@ const mockUserDb: Users = {
     phone: "+998901234567",
     telegramId: "987654321",
     photo: null,
+    language: "uz",
     deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
@@ -70,7 +71,7 @@ const mockUserResult = {
     phone: "+998901234567",
     telegramId: "987654321",
     photo: null,
-    deletedAt: null,
+    language: "uz",
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };

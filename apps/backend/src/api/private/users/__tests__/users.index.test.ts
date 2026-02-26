@@ -13,6 +13,7 @@ const mockUser: UsersType = {
     phone: "+998901234567",
     photo: null,
     telegramId: "123456789",
+    language: "uz",
     deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
@@ -80,7 +81,7 @@ const createTestApp = () => {
         })
         .post("/users", async ({ body, logger, requestId }) => {
             return await Users.createUser(
-                body as { fullname: string; username: string; phone: string; photo: string | null; telegramId: string | null },
+                body as { fullname: string; username: string; phone: string; photo: string | null; telegramId: string | null; language: "uz" | "ru" },
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
                 logger,
             );

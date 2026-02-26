@@ -42,7 +42,6 @@ const mockStaffToken: Token = {
     id: 10,
     fullname: "Admin User",
     username: "admin",
-    telegramId: "staff123456",
     roleId: 1,
     type: "staff",
 };
@@ -205,6 +204,7 @@ describe("Users Service", () => {
                 phone: "+998901234568",
                 photo: null,
                 telegramId: null,
+                language: "uz" as const,
             };
             const createdUser = { id: 2, ...userData, createdAt: new Date(), updatedAt: new Date(), deletedAt: null };
 
@@ -233,6 +233,7 @@ describe("Users Service", () => {
                 phone: "+998901234568",
                 photo: null,
                 telegramId: null,
+                language: "uz" as const,
             };
             const dbError = new Error("Unique constraint violation");
             prismaMock.$transaction.mockRejectedValue(dbError);

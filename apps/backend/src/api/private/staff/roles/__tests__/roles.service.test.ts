@@ -22,7 +22,6 @@ const mockTokenStaff: Token = {
     type: "staff" as const,
     fullname: "Test Admin",
     username: "testadmin",
-    telegramId: "123456789",
     roleId: 1,
 };
 

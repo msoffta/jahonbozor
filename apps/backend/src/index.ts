@@ -12,7 +12,13 @@ import { prisma } from "./lib/prisma";
 
 const certDir = resolve(import.meta.dir, "../../../certs");
 
-const app = new Elysia();
+const app = new Elysia()
+    .use(cors())
+    .use(requestContext)
+    .use(openapi())
+    .use(staticPlugin())
+    .use(publicRoutes)
+    .use(privateRoutes);
 
 if (Bun.env.SENTRY_DSN) {
     app.use(sentry({
@@ -22,20 +28,14 @@ if (Bun.env.SENTRY_DSN) {
     }));
 }
 
-app.use(cors())
-    .use(requestContext)
-    .use(openapi())
-    .use(staticPlugin())
-    .use(publicRoutes)
-    .use(privateRoutes)
-    .listen({
-        port: 3000,
-        hostname: "0.0.0.0",
-        tls: {
-            key: Bun.file(resolve(certDir, "192.168.1.108-key.pem")),
-            cert: Bun.file(resolve(certDir, "192.168.1.108.pem")),
-        },
-    });
+app.listen({
+    port: 3000,
+    hostname: "0.0.0.0",
+    tls: {
+        key: Bun.file(resolve(certDir, "192.168.1.108-key.pem")),
+        cert: Bun.file(resolve(certDir, "192.168.1.108.pem")),
+    },
+});
 
 console.log(`🚀 Backend running at https://${app.server!.hostname}:${app.server!.port}`);
 

@@ -36,7 +36,7 @@ export interface UserProfileData {
     id: number;
     fullname: string;
     username: string;
-    phone: string;
+    phone: string | null;
     telegramId: unknown;
     photo: string | null;
     language: string;

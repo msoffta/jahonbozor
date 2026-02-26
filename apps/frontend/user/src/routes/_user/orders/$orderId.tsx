@@ -10,7 +10,7 @@ function formatPrice(price: number): string {
     return price.toLocaleString("ru-RU").replace(/,/g, " ");
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: Date | string): string {
     return new Date(dateStr).toLocaleDateString("ru-RU", {
         day: "2-digit",
         month: "2-digit",

@@ -49,11 +49,17 @@ export interface AdminUserItem {
     telegramId: unknown;
     photo: string | null;
     language: string;
-    deletedAt: string | null;
+    deletedAt: Date | string | null;
     createdAt: Date | string;
     updatedAt: Date | string;
 }
 
-export type AdminUsersListResponse = ReturnSchema<{ count: number; users: AdminUserItem[] }>;
+export type AdminUsersListResponse = ReturnSchema<{
+    count: number;
+    users: AdminUserItem[];
+}>;
 export type AdminUserDetailResponse = ReturnSchema<AdminUserItem>;
-export type TelegramAuthResponse = ReturnSchema<{ user: AdminUserItem; token: string }>;
+export type TelegramAuthResponse = ReturnSchema<{
+    user: AdminUserItem;
+    token: string;
+}>;

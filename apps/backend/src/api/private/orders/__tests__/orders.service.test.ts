@@ -55,7 +55,6 @@ const mockTokenStaff: Token = {
     type: "staff" as const,
     fullname: "Test Admin",
     username: "testadmin",
-    telegramId: "123456789",
     roleId: 1,
 };
 
@@ -165,8 +164,8 @@ describe("Orders Service", () => {
                     page: 1,
                     limit: 20,
                     searchQuery: "",
-                    dateFrom: new Date("2024-01-01"),
-                    dateTo: new Date("2024-12-31"),
+                    dateFrom: "2024-01-01T00:00:00.000Z",
+                    dateTo: "2024-12-31T00:00:00.000Z",
                 },
                 1,
                 [Permission.ORDERS_LIST_ALL],

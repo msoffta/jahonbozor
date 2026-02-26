@@ -13,7 +13,7 @@ interface OrderCardProps {
     id: number;
     status: string;
     paymentType: string;
-    createdAt: string;
+    createdAt: Date | string;
     items: OrderItem[];
 }
 
@@ -21,7 +21,7 @@ function formatPrice(price: number): string {
     return price.toLocaleString("ru-RU").replace(/,/g, " ");
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: Date | string): string {
     const date = new Date(dateStr);
     return date.toLocaleDateString("ru-RU", {
         day: "2-digit",

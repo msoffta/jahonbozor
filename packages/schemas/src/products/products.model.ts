@@ -7,7 +7,7 @@ export const Product = BaseModel.extend({
     costprice: z.number().nonnegative(),
     categoryId: z.number(),
     remaining: z.number().nonnegative().default(0),
-    deletedAt: z.string().datetime().nullable(),
+    deletedAt: z.union([z.coerce.date(), z.iso.datetime()]).nullable(),
 });
 
 export type Product = z.infer<typeof Product>;

@@ -70,8 +70,8 @@ const createTestApp = () => {
                     actorType: query.actorType as "STAFF" | "USER" | "SYSTEM" | undefined,
                     action: query.action as "CREATE" | "UPDATE" | "DELETE" | "RESTORE" | "LOGIN" | "LOGOUT" | "PASSWORD_CHANGE" | "PERMISSION_CHANGE" | "ORDER_STATUS_CHANGE" | "INVENTORY_ADJUST" | undefined,
                     requestId: query.requestId as string | undefined,
-                    dateFrom: query.dateFrom ? new Date(query.dateFrom as string) : undefined,
-                    dateTo: query.dateTo ? new Date(query.dateTo as string) : undefined,
+                    dateFrom: query.dateFrom as string | undefined,
+                    dateTo: query.dateTo as string | undefined,
                 },
                 logger,
             );

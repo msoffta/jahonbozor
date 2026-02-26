@@ -16,7 +16,7 @@ export const User = BaseModel.extend({
     photo: z.string().nullable(),
     telegramId: telegramIdSchema.nullable(),
     language: LanguageSchema.default("uz"),
-    deletedAt: z.string().datetime().nullable(),
+    deletedAt: z.union([z.coerce.date(), z.iso.datetime()]).nullable(),
 });
 
 export const TokenUser = User.pick({

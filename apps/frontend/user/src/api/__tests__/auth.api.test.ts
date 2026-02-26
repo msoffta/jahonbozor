@@ -55,6 +55,8 @@ describe("auth.api", () => {
                 id: 1,
                 name: "Test",
                 telegramId: "123",
+                phone: null,
+                language: "uz",
                 type: "user",
             });
 
