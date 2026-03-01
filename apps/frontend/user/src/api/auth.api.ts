@@ -7,13 +7,25 @@ export const authKeys = {
     me: ["auth", "me"] as const,
 };
 
+interface UserProfile {
+    id: number;
+    fullname: string;
+    username?: string;
+    telegramId: string | number;
+    phone?: string | null;
+    photo?: string | null;
+    language: string;
+    createdAt: Date | string;
+}
+
 export const profileOptions = () =>
     queryOptions({
         queryKey: authKeys.me,
-        queryFn: async () => {
+        queryFn: async (): Promise<UserProfile> => {
             const { data, error } = await api.api.public.auth.me.get();
             if (error) throw error;
-            return data;
+            if (!data.success) throw new Error("Request failed");
+            return data.data as UserProfile;
         },
         enabled: useAuthStore.getState().isAuthenticated,
     });

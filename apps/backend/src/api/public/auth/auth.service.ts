@@ -157,7 +157,10 @@ export default abstract class Auth {
                 return null;
             }
 
-            return staffRecord;
+            return {
+                ...staffRecord,
+                telegramId: staffRecord.telegramId != null ? String(staffRecord.telegramId) : null,
+            };
         } catch (error) {
             logger.error("Auth: Error in getStaffById", { staffId, error });
             return null;
@@ -186,7 +189,10 @@ export default abstract class Auth {
                 return null;
             }
 
-            return userRecord;
+            return {
+                ...userRecord,
+                telegramId: userRecord.telegramId != null ? String(userRecord.telegramId) : null,
+            };
         } catch (error) {
             logger.error("Auth: Error in getUserById", { userId, error });
             return null;

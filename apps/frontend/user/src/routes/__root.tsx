@@ -6,14 +6,13 @@ import {
     useRouterState,
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import * as Sentry from "@sentry/react";
 import { AlertTriangle } from "lucide-react";
 import { Button, motion } from "@jahonbozor/ui";
 
 import { Header } from "@/components/layout/header";
-import { PhoneBanner } from "@/components/layout/phone-banner";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { tryRefreshToken } from "@/lib/api-client";
 
 interface RouterContext {
     queryClient: QueryClient;
@@ -24,6 +23,8 @@ interface RouterContext {
 }
 
 function RootErrorComponent({ error, reset }: ErrorComponentProps) {
+    const { t } = useTranslation();
+
     useEffect(() => {
         Sentry.captureException(error);
     }, [error]);
@@ -40,19 +41,19 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
                     <AlertTriangle className="h-10 w-10 text-destructive" />
                 </div>
                 <h1 className="mt-6 text-2xl font-bold text-foreground">
-                    Что-то пошло не так
+                    {t("error_something_wrong")}
                 </h1>
                 <p className="mt-2 text-sm text-muted-foreground">
                     {error instanceof Error
                         ? error.message
-                        : "Произошла непредвиденная ошибка"}
+                        : t("error_unexpected")}
                 </p>
                 <div className="mt-8 flex gap-3">
                     <Button variant="outline" onClick={() => window.location.href = "/"}>
-                        На главную
+                        {t("go_home")}
                     </Button>
                     <Button onClick={reset}>
-                        Попробовать снова
+                        {t("try_again")}
                     </Button>
                 </div>
             </motion.div>
@@ -71,7 +72,6 @@ function RootLayout() {
     return (
         <div className="flex min-h-screen flex-col">
             <Header />
-            <PhoneBanner />
             <main className="flex-1 pb-24 bg-background">
                 <Outlet />
             </main>
@@ -80,17 +80,7 @@ function RootLayout() {
     );
 }
 
-let authChecked = false;
-
 export const Route = createRootRouteWithContext<RouterContext>()({
-    beforeLoad: async ({ context }) => {
-        if (!authChecked) {
-            authChecked = true;
-            if (!context.auth.isAuthenticated) {
-                await tryRefreshToken();
-            }
-        }
-    },
     component: RootLayout,
     errorComponent: RootErrorComponent,
 });

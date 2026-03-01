@@ -6,18 +6,19 @@ import {
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import * as Sentry from "@sentry/react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
 import { Button, motion } from "@jahonbozor/ui";
+import { useAuthStore } from "@/stores/auth.store";
+import { tryRefreshToken } from "@/api/client";
 
 interface RouterContext {
     queryClient: QueryClient;
-    auth: {
-        isAuthenticated: boolean;
-        user: { id: number; type: string; permissions?: string[] } | null;
-    };
 }
 
 function RootErrorComponent({ error, reset }: ErrorComponentProps) {
+    const { t } = useTranslation();
+
     useEffect(() => {
         Sentry.captureException(error);
     }, [error]);
@@ -34,19 +35,19 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
                     <AlertTriangle className="h-10 w-10 text-destructive" />
                 </div>
                 <h1 className="mt-6 text-2xl font-bold text-foreground">
-                    Что-то пошло не так
+                    {t("error_title")}
                 </h1>
                 <p className="mt-2 text-sm text-muted-foreground">
                     {error instanceof Error
                         ? error.message
-                        : "Произошла непредвиденная ошибка"}
+                        : t("error_generic")}
                 </p>
                 <div className="mt-8 flex gap-3">
                     <Button variant="outline" onClick={() => window.location.href = "/"}>
-                        На главную
+                        {t("go_home")}
                     </Button>
                     <Button onClick={reset}>
-                        Попробовать снова
+                        {t("try_again")}
                     </Button>
                 </div>
             </motion.div>
@@ -59,6 +60,16 @@ const RootLayout = () => (
 );
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+    beforeLoad: async () => {
+        const { isAuthenticated } = useAuthStore.getState();
+        if (!isAuthenticated) {
+            try {
+                await tryRefreshToken();
+            } catch {
+                // Silent failure on boot is fine
+            }
+        }
+    },
     component: RootLayout,
     errorComponent: RootErrorComponent,
 });

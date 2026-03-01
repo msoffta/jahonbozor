@@ -72,6 +72,7 @@ const mockUserResult = {
     telegramId: "987654321",
     photo: null,
     language: "uz",
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };

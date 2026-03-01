@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@jahonbozor/ui";
+import { useUIStore } from "@/stores/ui.store";
 
 interface OrderItem {
     id: number;
@@ -17,13 +18,13 @@ interface OrderCardProps {
     items: OrderItem[];
 }
 
-function formatPrice(price: number): string {
-    return price.toLocaleString("ru-RU").replace(/,/g, " ");
+function formatPrice(price: number, locale: string): string {
+    return price.toLocaleString(locale).replace(/,/g, " ");
 }
 
-function formatDate(dateStr: Date | string): string {
+function formatDate(dateStr: Date | string, locale: string): string {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("ru-RU", {
+    return date.toLocaleDateString(locale, {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -34,6 +35,8 @@ function formatDate(dateStr: Date | string): string {
 
 export function OrderCard({ id, status, paymentType, createdAt, items }: OrderCardProps) {
     const { t } = useTranslation();
+    const locale = useUIStore((s) => s.locale);
+    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
@@ -48,7 +51,7 @@ export function OrderCard({ id, status, paymentType, createdAt, items }: OrderCa
                         {t("order_number", { id })}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                        {formatDate(createdAt)}
+                        {formatDate(createdAt, loc)}
                     </p>
                 </div>
                 <Badge
@@ -63,7 +66,7 @@ export function OrderCard({ id, status, paymentType, createdAt, items }: OrderCa
                     {t("payment_method")}: {paymentType === "CREDIT_CARD" ? t("payment_card") : t("payment_cash")}
                 </span>
                 <span className="text-sm font-bold text-foreground">
-                    {formatPrice(total)} {t("sum")}
+                    {formatPrice(total, loc)} {t("sum")}
                 </span>
             </div>
         </Link>

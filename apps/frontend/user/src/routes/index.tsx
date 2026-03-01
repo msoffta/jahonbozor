@@ -53,7 +53,7 @@ function HomePage() {
                     {searchData?.products?.map((product) => (
                         <ProductCard
                             key={product.id}
-                            id={product.id}
+                            productId={product.id}
                             name={product.name}
                             price={product.price}
                             remaining={product.remaining}

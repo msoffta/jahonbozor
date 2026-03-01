@@ -291,3 +291,56 @@ export const createMockLogger = (): Logger =>
         debug: mock(() => {}),
     }) as unknown as Logger;
 ```
+
+## Testing Elysia Error Responses
+
+### Validation Errors (Zod Schema Failures)
+
+Elysia returns HTTP 422 when request body/params/query fail schema validation:
+
+```typescript
+test("should return 422 for invalid body", async () => {
+    const response = await app.handle(
+        new Request("http://localhost/api/private/products", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${validToken}`,
+            },
+            body: JSON.stringify({ name: "" }),  // fails min length
+        })
+    );
+    expect(response.status).toBe(422);
+});
+```
+
+### Testing status() from Auth Middleware
+
+When `authMiddleware` returns `status(401)` or `status(403)`, test the response directly:
+
+```typescript
+test("should return 401 without bearer token", async () => {
+    const response = await app.handle(
+        new Request("http://localhost/api/private/products")
+    );
+    expect(response.status).toBe(401);
+});
+
+test("should return 403 with insufficient permissions", async () => {
+    const response = await app.handle(
+        new Request("http://localhost/api/private/products", {
+            headers: {
+                Authorization: `Bearer ${tokenWithoutPermissions}`,
+            },
+        })
+    );
+    expect(response.status).toBe(403);
+});
+```
+
+### Testing onError Hook Behavior
+
+The global `onError` hook in `index.ts` handles uncaught exceptions. In endpoint tests, verify that:
+- `VALIDATION` errors (422) are returned to the client properly
+- `NOT_FOUND` (404) is silently ignored in logs
+- Unhandled errors are caught and logged as `error` level

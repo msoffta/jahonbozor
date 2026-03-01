@@ -5,11 +5,12 @@ import { useState } from "react";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { productDetailOptions } from "@/api/products.api";
 import { useCartStore } from "@/stores/cart.store";
+import { useUIStore } from "@/stores/ui.store";
 import { Button, Skeleton } from "@jahonbozor/ui";
 import { PageHeader } from "@/components/layout/page-header";
 
-function formatPrice(price: number): string {
-    return price.toLocaleString("ru-RU").replace(/,/g, " ");
+function formatPrice(price: number, locale: string): string {
+    return price.toLocaleString(locale).replace(/,/g, " ");
 }
 
 function ProductDetailPage() {
@@ -18,6 +19,8 @@ function ProductDetailPage() {
     const [quantity, setQuantity] = useState(1);
     const addItem = useCartStore((s) => s.addItem);
 
+    const locale = useUIStore((s) => s.locale);
+    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
     const { data: product, isLoading } = useQuery(productDetailOptions(Number(productId)));
 
     const handleAddToCart = () => {
@@ -64,7 +67,7 @@ function ProductDetailPage() {
             <h1 className="text-xl font-bold">{product.name}</h1>
 
             <p className="mt-2 text-2xl font-bold text-primary">
-                {formatPrice(product.price)} {t("sum")}
+                {formatPrice(product.price, loc)} {t("sum")}
             </p>
 
             <p className="mt-1 text-sm text-muted-foreground">

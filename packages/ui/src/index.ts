@@ -10,5 +10,6 @@ export { Avatar, AvatarImage, AvatarFallback } from "./components/ui/avatar.tsx"
 export { Separator } from "./components/ui/separator.tsx";
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./components/ui/card.tsx";
 export { Drawer, DrawerHeader, DrawerTitle } from "./components/ui/drawer.tsx";
+export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "./components/ui/dropdown-menu.tsx";
 
 export { motion, AnimatePresence } from "motion/react";

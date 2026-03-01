@@ -91,6 +91,24 @@ z.record(z.string(), z.any())         // Never use z.any()
 .nullable().optional()                 // Use .nullish() instead
 ```
 
+### Zod 4 Specifics
+
+```typescript
+// ISO datetime validation (Zod 4)
+z.iso.datetime()
+
+// Union for Date fields (Date at runtime, string in JSON)
+z.union([z.coerce.date(), z.iso.datetime()])
+
+// Unified error parameter (Zod 4 replaces message/invalid_type_error/required_error)
+z.string().min(1, { error: "Обязательное поле" })  // NOT { message: "..." }
+z.number({ error: (issue) => issue.input === undefined ? "Обязательное поле" : "Должно быть числом" })
+
+// Human-readable error formatting
+import { prettifyError } from "@jahonbozor/schemas";
+prettifyError(zodError)  // for logging
+```
+
 ## Naming
 
 | Pattern | Example |
@@ -909,14 +927,48 @@ describe("Auth Store", () => {
 });
 ```
 
+### mock.module Ordering (CRITICAL)
+
+`mock.module()` calls **MUST** precede imports of modules that use the mocked dependency:
+
+```typescript
+// ✅ CORRECT
+mock.module("@tanstack/react-router", () => ({ Link: ... }));
+import { Header } from "../header";  // Header uses @tanstack/react-router
+
+// ❌ WRONG — mock won't take effect
+import { Header } from "../header";
+mock.module("@tanstack/react-router", () => ({ Link: ... }));
+```
+
+### Store Reset Pattern
+
+```typescript
+beforeEach(() => {
+    useAuthStore.setState({ token: null, user: null, permissions: [], isAuthenticated: false });
+});
+```
+
+### Query Priority
+
+`getByRole` > `getByLabelText` > `getByText` > `getByDisplayValue` > `container.querySelector`
+
 ### DO
 - Test behavior, not implementation
 - AAA pattern (Arrange-Act-Assert)
 - Reset store state in `beforeEach`
 - Descriptive test names: `"should redirect when unauthenticated"`
+- Place `mock.module()` BEFORE imports
+- Use `afterEach(() => { mock.restore() })` with `spyOn`
+- Prefer semantic queries (`getByRole`, `getByText`)
 
 ### DON'T
 - Don't test internal component state
 - Don't test third-party libraries
 - Don't leave `.only` in commits
+- Don't mock Zustand's `create` — test the real store
+- Don't import modules BEFORE their `mock.module()` calls
+- Don't use `container.querySelector` when a semantic query is available
+
+> Full guide: [docs/frontend-testing.md](frontend-testing.md)
 - Don't mock what you don't own (prefer integration over unit for routes)

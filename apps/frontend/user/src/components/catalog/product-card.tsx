@@ -2,15 +2,16 @@ import { ShoppingCart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, Checkbox } from "@jahonbozor/ui";
 import { useCartStore } from "@/stores/cart.store";
+import { useUIStore } from "@/stores/ui.store";
 import { QuantityControl } from "@/components/catalog/quantity-control";
 
-function formatPrice(price: number): string {
-    return price.toLocaleString("ru-RU").replace(/,/g, " ");
+function formatPrice(price: number, locale: string): string {
+    return price.toLocaleString(locale).replace(/,/g, " ");
 }
 
 interface CatalogProps {
     variant?: "catalog";
-    id: number;
+    productId: number;
     name: string;
     price: number;
     remaining: number;
@@ -43,14 +44,14 @@ export function ProductCard(props: ProductCardProps) {
     return <CatalogVariant {...(props as CatalogProps)} />;
 }
 
-function CatalogVariant({ id, name, price, remaining }: CatalogProps) {
+function CatalogVariant({ productId, name, price, remaining }: CatalogProps) {
     const { t } = useTranslation();
     const addItem = useCartStore((s) => s.addItem);
     const updateQuantity = useCartStore((s) => s.updateQuantity);
-    const cartItem = useCartStore((s) => s.items.find((i) => i.productId === id));
+    const cartItem = useCartStore((s) => s.items.find((i) => i.productId === productId));
 
     const handleAddToCart = () => {
-        addItem({ productId: id, name, price });
+        addItem({ productId, name, price });
     };
 
     return (
@@ -82,8 +83,8 @@ function CatalogVariant({ id, name, price, remaining }: CatalogProps) {
                             >
                                 <QuantityControl
                                     quantity={cartItem.quantity}
-                                    onIncrement={() => updateQuantity(id, cartItem.quantity + 1)}
-                                    onDecrement={() => updateQuantity(id, cartItem.quantity - 1)}
+                                    onIncrement={() => updateQuantity(productId, cartItem.quantity + 1)}
+                                    onDecrement={() => updateQuantity(productId, cartItem.quantity - 1)}
                                 />
                             </motion.div>
                         ) : (
@@ -159,12 +160,14 @@ function OrderVariant({ name, price, quantity }: OrderProps) {
 
 function PriceField({ price }: { price: number }) {
     const { t } = useTranslation();
+    const locale = useUIStore((s) => s.locale);
+    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
     return (
         <div className="flex flex-col gap-1">
             <span className="text-sm font-medium text-muted-foreground">
                 {t("price")}:
             </span>
-            <ValueWithUnit value={formatPrice(price)} unit={t("sum")} />
+            <ValueWithUnit value={formatPrice(price, loc)} unit={t("sum")} />
         </div>
     );
 }

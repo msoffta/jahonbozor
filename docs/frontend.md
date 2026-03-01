@@ -957,88 +957,42 @@ bunx tsc --noEmit -p tsconfig.app.json
 
 ## Frontend Testing
 
-### Testing Stack
+> Full guide: [docs/frontend-testing.md](frontend-testing.md)
+
+### Quick Overview
 
 | Tool | Purpose |
 |------|---------|
 | `bun:test` | Test runner (matches backend) |
 | `@testing-library/react` | Component rendering + queries |
-| `@testing-library/user-event` | Simulating user interactions |
-| `happy-dom` | Lightweight DOM implementation |
-
-### Test File Location
-
-```
-src/
-├── stores/__tests__/
-│   ├── auth.store.test.ts
-│   └── ui.store.test.ts
-├── api/__tests__/
-│   └── products.api.test.ts
-├── hooks/__tests__/
-│   ├── use-auth.test.ts
-│   └── use-permissions.test.ts
-└── components/{domain}/__tests__/
-    ├── {domain}-form.test.tsx
-    └── {domain}-table.test.tsx
-```
-
-### Configuration
-
-```toml
-# apps/frontend/admin/bunfig.toml
-[test]
-preload = ["./test/setup.ts"]
-
-[test.coverage]
-include = ["src/**/*.{ts,tsx}"]
-exclude = ["src/routeTree.gen.ts", "src/i18n/**"]
-```
-
-```typescript
-// test/setup.ts
-import { afterEach } from "bun:test";
-import { cleanup } from "@testing-library/react";
-
-afterEach(() => {
-    cleanup();
-});
-```
+| `@testing-library/user-event` | User interactions |
+| `happy-dom` | DOM implementation |
 
 ### Test Priority
 
-1. **Must test:** Zustand stores, permission hooks, auth flow, form validation
-2. **Should test:** Table components, API layer, route guards
-3. **Nice to have:** Layout components, i18n switching
+1. **Must:** Zustand stores, permission hooks, auth flow, API layer, i18n config
+2. **Should:** Layout components, form validation, route guards
+3. **Nice:** Domain components, table components
 
-### Test Pattern
+### Key Rules
 
-```typescript
-import { describe, test, expect, beforeEach } from "bun:test";
-import { useAuthStore } from "../auth.store";
+- Run tests from `apps/frontend/admin/` or `apps/frontend/user/` (where `bunfig.toml` is)
+- `mock.module()` **MUST** come BEFORE imports of the mocked module
+- Reset Zustand stores in `beforeEach` via `setState()`
+- Use `afterEach(() => { mock.restore() })` with `spyOn`
+- Prefer semantic queries: `getByRole` > `getByLabelText` > `getByText` > `container.querySelector`
 
-describe("Auth Store", () => {
-    beforeEach(() => {
-        useAuthStore.setState({
-            token: null, user: null, permissions: [], isAuthenticated: false,
-        });
-    });
+## Sentry Integration
 
-    test("should set auth data", () => {
-        const mockUser = { id: 1, fullname: "Test", type: "staff" as const };
-        useAuthStore.getState().setAuth("token123", mockUser, ["products:list"]);
+### Backend
 
-        const state = useAuthStore.getState();
-        expect(state.token).toBe("token123");
-        expect(state.isAuthenticated).toBe(true);
-    });
+- `elysiajs-sentry` plugin — added conditionally when `SENTRY_DSN` env is set
+- `requestId` tagged on every request via `Sentry.getCurrentScope().setTag("requestId", requestId)` in `request-context.ts`
+- Error tracking with configurable `tracesSampleRate` (0.2 production, 1.0 development)
 
-    test("should clear auth data on logout", () => {
-        useAuthStore.getState().setAuth("token", mockUser, []);
-        useAuthStore.getState().clearAuth();
+### Frontend
 
-        expect(useAuthStore.getState().isAuthenticated).toBe(false);
-        expect(useAuthStore.getState().token).toBeNull();
-    });
-});
-```
+- `@sentry/react` integrated in both admin and user apps
+- On login: `Sentry.setUser({ id: String(user.id), username: user.fullname })`
+- On logout: `Sentry.setUser(null)`
+- Integration points: `api/client.ts` (tryRefreshToken error tracking), `hooks/use-auth.ts` (login/logout user context)

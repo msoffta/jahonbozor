@@ -4,14 +4,15 @@ import { useTranslation } from "react-i18next";
 import { orderDetailOptions, useCancelOrder } from "@/api/orders.api";
 import { ProductCard } from "@/components/catalog/product-card";
 import { Badge, Button, Separator, Skeleton } from "@jahonbozor/ui";
+import { useUIStore } from "@/stores/ui.store";
 import { PageHeader } from "@/components/layout/page-header";
 
-function formatPrice(price: number): string {
-    return price.toLocaleString("ru-RU").replace(/,/g, " ");
+function formatPrice(price: number, locale: string): string {
+    return price.toLocaleString(locale).replace(/,/g, " ");
 }
 
-function formatDate(dateStr: Date | string): string {
-    return new Date(dateStr).toLocaleDateString("ru-RU", {
+function formatDate(dateStr: Date | string, locale: string): string {
+    return new Date(dateStr).toLocaleDateString(locale, {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -24,6 +25,8 @@ function OrderDetailPage() {
     const { orderId } = Route.useParams();
     const { t } = useTranslation();
 
+    const locale = useUIStore((s) => s.locale);
+    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
     const { data: order, isLoading } = useQuery(orderDetailOptions(Number(orderId)));
     const cancelOrder = useCancelOrder();
 
@@ -58,11 +61,11 @@ function OrderDetailPage() {
             <div className="mt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("creation_date")}:</span>
-                    <span>{formatDate(order.createdAt)}</span>
+                    <span>{formatDate(order.createdAt, loc)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("update_date")}:</span>
-                    <span>{formatDate(order.updatedAt)}</span>
+                    <span>{formatDate(order.updatedAt, loc)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("status")}:</span>
@@ -79,7 +82,7 @@ function OrderDetailPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("total")}:</span>
-                    <span className="font-bold">{formatPrice(total)} {t("sum")}</span>
+                    <span className="font-bold">{formatPrice(total, loc)} {t("sum")}</span>
                 </div>
             </div>
 

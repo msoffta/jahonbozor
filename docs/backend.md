@@ -51,6 +51,106 @@ const auth = new Elysia({ prefix: "/auth" })
 - Public: `/api/public/{domain}/{endpoint}`
 - Private: `/api/private/{domain}/{endpoint}`
 
+## Elysia Error Handling
+
+### status() in Macro Resolve (Auth Middleware)
+
+The `status()` function provides type-safe inline error responses within `resolve`. Returning `status()` short-circuits the handler chain — the request handler never executes:
+
+```typescript
+// lib/middleware.ts
+export const authMiddleware = new Elysia({ name: "authMiddleware" })
+    .macro({
+        auth: {
+            resolve: async ({ jwt, bearer, status }) => {
+                if (!bearer) return status(401, "Unauthorized");
+
+                const rawPayload = await jwt.verify(bearer);
+                if (!rawPayload) return status(401, "Unauthorized");
+
+                const payload = Token.safeParse(rawPayload);
+                if (!payload.success) return status(401, "Unauthorized");
+
+                return { user: payload.data, type: payload.data.type };
+            },
+        },
+        permissions: (requiredPermissions: Permission[]) => ({
+            resolve: async ({ jwt, bearer, status }) => {
+                // ... auth checks → status(401)
+                if (!hasAllRequired) return status(403, "Forbidden");
+                return { user, type, permissions };
+            },
+        }),
+    })
+    .as("scoped");
+```
+
+### onError Lifecycle Hook
+
+Global error handler in `index.ts` — catches all unhandled errors across all lifecycles:
+
+```typescript
+// index.ts
+app.onError(({ code, error, request }) => {
+    const message = "message" in error ? error.message : String(error);
+    const path = new URL(request.url).pathname;
+    const method = request.method;
+
+    if (code === "NOT_FOUND") return;  // Skip 404s for unmatched routes
+
+    const level = code === "VALIDATION" || code === "PARSE" ? "warn" : "error";
+    baseLogger[level]("Unhandled error", { code, message, path, method });
+});
+```
+
+**Error codes:**
+
+| Code | Meaning | Log Level |
+|------|---------|-----------|
+| `NOT_FOUND` | No matching route | Skip (normal for static 404s) |
+| `VALIDATION` | Zod/Elysia schema failure | `warn` |
+| `PARSE` | Request body parse failure | `warn` |
+| `INTERNAL_SERVER_ERROR` | Uncaught exception | `error` |
+| `UNKNOWN` | Unclassified error | `error` |
+
+### Guard Scoping with .as("scoped")
+
+Both `requestContext` and `authMiddleware` use `.as("scoped")` to control hook propagation:
+
+```typescript
+// request-context.ts
+export const requestContext = new Elysia({ name: "requestContext" })
+    .derive(({ request, set }) => {
+        const requestId = request.headers.get("x-request-id") || generateRequestId();
+        return { requestId, logger: createChildLogger(baseLogger, { requestId }) };
+    })
+    .as("scoped");
+```
+
+**What `.as("scoped")` does:**
+- The plugin's derive/hooks apply to the instance that `.use()`s it and its direct children
+- Without `"scoped"`, hooks propagate globally — this would cause `authMiddleware`'s resolve to run on public routes too
+- `requestContext` is scoped so that each route group gets its own requestId without leaking to sibling plugins
+
+### Route-Level Error Pattern
+
+Handlers use try/catch + ReturnSchema for consistent error responses:
+
+```typescript
+.get("/:id", async ({ params, set, logger }): Promise<AdminProductDetailResponse> => {
+    try {
+        const result = await ProductsService.getProduct(params.id, logger);
+        if (!result.success) set.status = 404;
+        return result;
+    } catch (error) {
+        logger.error("Products: Unhandled error in GET /products/:id", { id: params.id, error });
+        return { success: false, error };
+    }
+}, { permissions: [...], params: ... })
+```
+
+**Flow:** Service returns `ReturnSchema` (`success: true/false`) → handler sets HTTP status → `onError` is the last safety net for truly uncaught errors.
+
 ## Permissions System
 
 ### Format

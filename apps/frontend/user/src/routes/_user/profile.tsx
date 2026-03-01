@@ -17,14 +17,7 @@ function ProfilePage() {
     const logout = useLogout();
     const updateLanguage = useUpdateLanguage();
 
-    const { data: profileData } = useQuery(profileOptions());
-    const profile = profileData?.data as {
-        fullname?: string;
-        username?: string;
-        phone?: string;
-        photo?: string | null;
-        createdAt?: string;
-    } | undefined;
+    const { data: profile } = useQuery(profileOptions());
 
     const displayName = profile?.fullname ?? user?.name ?? "User";
     const username = profile?.username ?? "";
@@ -54,28 +47,17 @@ function ProfilePage() {
             </Avatar>
 
             <h2 className="mt-3 text-3xl font-bold">{displayName}</h2>
-            {username && <p className="text-base font-medium text-black">@{username}</p>}
+            {username && <p className="text-base font-medium text-foreground">@{username}</p>}
             {user?.telegramId && (
                 <p className="text-xs font-light">ID: {user.telegramId}</p>
             )}
             {profile?.createdAt && (
                 <p className="text-base font-normal">
-                    {t("registered")}: {new Date(profile.createdAt).toLocaleDateString("ru-RU")}
+                    {t("registered")}: {new Date(profile.createdAt).toLocaleDateString(locale === "uz" ? "uz-UZ" : "ru-RU")}
                 </p>
             )}
 
             <div className="mt-6 w-full space-y-2.5">
-                {/* TODO: edit profile
-                <button
-                    type="button"
-                    disabled
-                    className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3 opacity-50"
-                >
-                    <Edit3 className="h-5 w-5 text-accent-foreground" />
-                    <span className="text-base font-medium text-accent-foreground">{t("edit_profile")}</span>
-                </button>
-                */}
-
                 <button
                     type="button"
                     onClick={() => navigate({ to: "/orders" })}

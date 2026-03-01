@@ -9,6 +9,7 @@ import { requestContext } from "./lib/request-context";
 import { publicRoutes } from "./api/public";
 import { privateRoutes } from "./api/private";
 import { prisma } from "./lib/prisma";
+import baseLogger from "./lib/logger";
 
 const certDir = resolve(import.meta.dir, "../../../certs");
 
@@ -17,6 +18,16 @@ const app = new Elysia()
     .use(requestContext)
     .use(openapi())
     .use(staticPlugin())
+    .onError(({ code, error, request }) => {
+        const message = "message" in error ? error.message : String(error);
+        const path = new URL(request.url).pathname;
+        const method = request.method;
+
+        if (code === "NOT_FOUND") return;
+
+        const level = code === "VALIDATION" || code === "PARSE" ? "warn" : "error";
+        baseLogger[level]("Unhandled error", { code, message, path, method });
+    })
     .use(publicRoutes)
     .use(privateRoutes);
 

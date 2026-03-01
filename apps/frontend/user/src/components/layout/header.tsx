@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
-import { cn, motion } from "@jahonbozor/ui";
-import { useUIStore } from "@/stores/ui.store";
-import { useAuthStore } from "@/stores/auth.store";
-import { useUpdateLanguage } from "@/api/auth.api";
+import { Link } from "@tanstack/react-router";
+import { User } from "lucide-react";
+import { cn } from "@jahonbozor/ui";
 
 export function Header() {
     const [scrolled, setScrolled] = useState(false);
-    const locale = useUIStore((s) => s.locale);
-    const setLocale = useUIStore((s) => s.setLocale);
-    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-    const updateLanguage = useUpdateLanguage();
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 8);
@@ -17,34 +12,24 @@ export function Header() {
         return () => window.removeEventListener("scroll", onScroll);
     }, []);
 
-    const toggleLocale = () => {
-        const newLocale = locale === "uz" ? "ru" : "uz";
-        setLocale(newLocale);
-        if (isAuthenticated) {
-            updateLanguage.mutate(newLocale);
-        }
-    };
-
     return (
         <header
             className={cn(
-                "sticky top-0 z-50 flex h-14 items-center justify-between px-4 transition-all duration-200",
+                "sticky top-0 z-50 flex h-14 items-center justify-center px-4 transition-all duration-200",
                 scrolled
                     ? "bg-surface shadow-sm"
-                    : "bg-transparent",
+                    : "bg-surface/80",
             )}
         >
-            <img src="/logo.svg" alt="Jahon Bozor" />
+            <Link to="/">
+                <img src="/logo.svg" alt="Jahon Bozor" className="h-8" />
+            </Link>
 
-            <motion.button
-                type="button"
-                onClick={toggleLocale}
-                className="h-9 rounded-full bg-surface px-3 text-xs font-bold uppercase text-foreground"
-                whileTap={{ scale: 0.9, opacity: 0.8 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            >
-                {locale === "uz" ? "Ру" : "Uz"}
-            </motion.button>
+            <div className="absolute right-4 flex items-center gap-3">
+                <Link to="/profile">
+                    <User className="h-5 w-5 text-foreground" />
+                </Link>
+            </div>
         </header>
     );
 }

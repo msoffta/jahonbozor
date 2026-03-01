@@ -3,17 +3,20 @@ import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
+import { useUIStore } from "@/stores/ui.store";
 import { useCreateOrder } from "@/api/orders.api";
 import { ProductCard } from "@/components/catalog/product-card";
-import { Button, Checkbox } from "@jahonbozor/ui";
+import { Button, Checkbox, cn } from "@jahonbozor/ui";
 
-function formatPrice(price: number): string {
-    return price.toLocaleString("ru-RU").replace(/,/g, " ");
+function formatPrice(price: number, locale: string): string {
+    return price.toLocaleString(locale).replace(/,/g, " ");
 }
 
 function CartPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const locale = useUIStore((s) => s.locale);
+    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
     const items = useCartStore((s) => s.items);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(
         () => new Set(items.map((i) => i.productId)),
@@ -100,21 +103,23 @@ function CartPage() {
                 <div className="mb-2 flex gap-2">
                     <button
                         onClick={() => setPaymentType("CREDIT_CARD")}
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        className={cn(
+                            "rounded-full px-3 py-1 text-xs font-medium",
                             paymentType === "CREDIT_CARD"
                                 ? "bg-primary text-primary-foreground"
-                                : "bg-secondary text-secondary-foreground"
-                        }`}
+                                : "bg-secondary text-secondary-foreground",
+                        )}
                     >
                         {t("payment_card")}
                     </button>
                     <button
                         onClick={() => setPaymentType("CASH")}
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        className={cn(
+                            "rounded-full px-3 py-1 text-xs font-medium",
                             paymentType === "CASH"
                                 ? "bg-primary text-primary-foreground"
-                                : "bg-secondary text-secondary-foreground"
-                        }`}
+                                : "bg-secondary text-secondary-foreground",
+                        )}
                     >
                         {t("payment_cash")}
                     </button>
@@ -125,7 +130,7 @@ function CartPage() {
                             {t("total")}: {t("items_count", { count: selectedItems.reduce((s, i) => s + i.quantity, 0) })}
                         </p>
                         <p className="text-lg font-bold">
-                            {formatPrice(totalPrice)} {t("sum")}
+                            {formatPrice(totalPrice, loc)} {t("sum")}
                         </p>
                     </div>
                     <Button

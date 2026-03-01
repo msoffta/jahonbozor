@@ -53,8 +53,11 @@
     "more": "Ещё",
     "apply": "Применить",
     "reset": "Сбросить",
-    "phone_request_banner": "Пожалуйста, поделитесь номером телефона в нашем Telegram боте.",
-    "phone_request_banner_link": "Перейти в бот",
     "uzbek": "Узбекский",
-    "russian": "Русский"
+    "russian": "Русский",
+    "error_something_wrong": "Что-то пошло не так",
+    "error_unexpected": "Произошла непредвиденная ошибка",
+    "go_home": "На главную",
+    "try_again": "Попробовать снова",
+    "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME не настроен"
 }

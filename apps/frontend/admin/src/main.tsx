@@ -6,15 +6,13 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import { routeTree } from "./routeTree.gen";
 import { queryClient } from "@/lib/query-client";
-import { useAuthStore } from "@/stores/auth.store";
-import "@/lib/i18n";
+import "@/i18n/config";
 import "@/index.css";
 
 const router = createRouter({
     routeTree,
     context: {
         queryClient,
-        auth: undefined!,
     },
 });
 
@@ -25,7 +23,7 @@ Sentry.init({
         Sentry.tanstackRouterBrowserTracingIntegration(router),
         Sentry.replayIntegration({
             maskAllText: false,
-            maskAllInputs: false,
+            maskAllInputs: true,
             blockAllMedia: false,
         }),
     ],
@@ -82,11 +80,9 @@ const TanStackDevtools = import.meta.env.PROD
       );
 
 function App() {
-    const auth = useAuthStore();
-
     return (
         <QueryClientProvider client={queryClient}>
-            <RouterProvider router={router} context={{ auth }} />
+            <RouterProvider router={router} />
             <Suspense>
                 <TanStackDevtools />
             </Suspense>

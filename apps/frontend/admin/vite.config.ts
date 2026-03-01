@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -8,7 +8,6 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { resolve } from "node:path";
 
 export default defineConfig({
-    base: "/admin/",
     envDir: resolve(process.cwd(), "../../.."),
     build: {
         sourcemap: "hidden",
@@ -29,12 +28,13 @@ export default defineConfig({
             sourcemaps: {
                 filesToDeleteAfterUpload: ["./dist/**/*.map"],
             },
-        }),
+            telemetry: false,
+        }) as PluginOption,
     ],
     server: {
         port: 5173,
         host: "0.0.0.0",
-        allowedHosts: ['msoffta-pc.tail420b9b.ts.net'],
+        allowedHosts: ["msoffta-pc.tail420b9b.ts.net"],
         proxy: {
             "/api": {
                 target: "https://localhost:3000",

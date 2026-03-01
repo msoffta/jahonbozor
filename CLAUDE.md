@@ -60,6 +60,12 @@ bun run prisma:studio      # Open Prisma Studio GUI
 bun run db:up / db:down    # Start/stop PostgreSQL via Docker
 ```
 
+### Bot
+```bash
+bun run dev:bot            # Run bot (port 3001)
+bun run test:bot           # Run bot tests
+```
+
 ### Frontend
 ```bash
 bun run dev:admin          # Run admin panel (port 5173)
@@ -74,6 +80,7 @@ bun run build:user         # Build user app for production
 ```
 apps/
 ├── backend/               # Elysia + Prisma + Bun
+├── bot/                   # Telegram bot (grammy + Prisma + Bun)
 └── frontend/
     ├── admin/             # Admin panel (Vite + React 19)
     └── user/              # User-facing app (Vite + React 19)
@@ -84,8 +91,8 @@ packages/
 └── utils/                 # Shared utilities
 ```
 
-> **Workspace config:** root `package.json` workspaces must list frontend apps explicitly:
-> `["apps/backend", "apps/frontend/admin", "apps/frontend/user", "packages/*"]`
+> **Workspace config:** root `package.json` workspaces must list all apps explicitly:
+> `["apps/backend", "apps/bot", "apps/frontend/admin", "apps/frontend/user", "packages/*"]`
 
 ### Path Aliases
 
@@ -93,6 +100,7 @@ Backend uses `@backend/` prefix to avoid collisions with frontend's `@/` alias:
 
 ```
 Backend tsconfig:  @backend/lib/*, @backend/api/*, @backend/generated/*, @backend/test/*
+Bot tsconfig:      @bot/* (own src) + @backend/generated/*
 Frontend tsconfig: @/* (own src) + @backend/lib/*, @backend/api/*, @backend/generated/*
 ```
 
@@ -102,7 +110,16 @@ Frontend tsconfig: @/* (own src) + @backend/lib/*, @backend/api/*, @backend/gene
 
 | Document | Contents |
 |----------|----------|
-| [docs/backend.md](docs/backend.md) | Backend organization, route prefixes, permissions, categories, response pattern, request context, logging, audit logging, enums, TypeScript rules, HTTP status codes, soft delete, transactions, environment variables, database |
-| [docs/testing.md](docs/testing.md) | Unit testing: commands, test structure, Bun mocking, Prisma mocks, mock isolation, Elysia endpoint tests, AAA pattern, coverage requirements, best practices |
-| [docs/frontend.md](docs/frontend.md) | Frontend architecture (admin + user apps), tech stack, routing, state management, API layer (Eden), forms, i18n, shared UI package, auth flow, conventions, frontend testing |
-| [docs/rules.md](docs/rules.md) | Condensed code conventions quick reference (backend + frontend) |
+| [docs/backend.md](docs/backend.md) | Backend organization, route prefixes, Elysia error handling (status(), onError, guard scoping), permissions, categories, response pattern, request context, logging, audit logging, enums, TypeScript rules, HTTP status codes, soft delete, transactions, environment variables, database |
+| [docs/testing.md](docs/testing.md) | Backend unit testing: commands, test structure, Bun mocking, Prisma mocks, mock isolation, Elysia endpoint tests, error response testing, AAA pattern, coverage requirements, best practices |
+| [docs/frontend.md](docs/frontend.md) | Frontend architecture (admin + user apps), tech stack, routing, state management, API layer (Eden), forms, i18n, shared UI package, auth flow, Sentry integration, conventions |
+| [docs/frontend-testing.md](docs/frontend-testing.md) | Frontend testing: Zustand stores, hooks (renderHook), component testing, mocking patterns (Router/Query/Eden/Motion/i18n/Sentry/fetch), mock.module ordering, Testing Library query priority, coverage requirements |
+| [docs/bot.md](docs/bot.md) | Telegram bot: architecture, auth flow, phone verification, handlers, services, testing, environment variables |
+| [docs/rules.md](docs/rules.md) | Condensed code conventions quick reference (backend + frontend), Zod 4 patterns |
+
+## Monitoring
+
+**Sentry** — error tracking and performance monitoring.
+- Backend: `elysiajs-sentry` plugin (conditional on `SENTRY_DSN` env)
+- Frontend: `@sentry/react` with user context on auth events (login → setUser, logout → clear)
+- Request tracing: `requestId` tagged on every backend request via `Sentry.getCurrentScope().setTag()`

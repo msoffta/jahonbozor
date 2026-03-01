@@ -1,33 +1,37 @@
 import { describe, test, expect, mock } from "bun:test";
 import { render } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+mock.module("@tanstack/react-router", () => ({
+    Link: ({ children, to, ...props }: any) => (
+        <a href={to} {...props}>
+            {children}
+        </a>
+    ),
+}));
 
 mock.module("@jahonbozor/ui", () => ({
     cn: (...args: any[]) => args.filter(Boolean).join(" "),
-    motion: {
-        button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-    },
 }));
 
 import { Header } from "../header";
 
-const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-});
-
-function Wrapper({ children }: { children: React.ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-}
-
 describe("Header", () => {
     test("should render logo", () => {
-        const { getByAltText } = render(<Header />, { wrapper: Wrapper });
+        const { getByAltText } = render(<Header />);
         expect(getByAltText("Jahon Bozor")).toBeDefined();
     });
 
-    test("should render notification button", () => {
-        const { getAllByRole } = render(<Header />, { wrapper: Wrapper });
-        const buttons = getAllByRole("button");
-        expect(buttons.length).toBeGreaterThanOrEqual(1);
+    test("should render logo link to home", () => {
+        const { getByAltText } = render(<Header />);
+        const logo = getByAltText("Jahon Bozor");
+        const link = logo.closest("a");
+        expect(link?.getAttribute("href")).toBe("/");
+    });
+
+    test("should render profile link", () => {
+        const { container } = render(<Header />);
+        const links = container.querySelectorAll("a");
+        const profileLink = Array.from(links).find((a) => a.getAttribute("href") === "/profile");
+        expect(profileLink).toBeDefined();
     });
 });

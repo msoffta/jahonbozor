@@ -88,7 +88,7 @@ function LoginPage() {
                         whileTap={{ scale: 0.95 }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
-                        O'zbekcha
+                        {t("uzbek")}
                     </motion.button>
                     <motion.button
                         type="button"
@@ -102,7 +102,7 @@ function LoginPage() {
                         whileTap={{ scale: 0.95 }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
-                        Русский
+                        {t("russian")}
                     </motion.button>
                 </div>
 
@@ -119,7 +119,7 @@ function LoginPage() {
 
                 {!TELEGRAM_BOT_USERNAME && (
                     <p className="text-center text-xs text-muted-foreground">
-                        VITE_TELEGRAM_BOT_USERNAME not configured
+                        {t("bot_username_not_configured")}
                     </p>
                 )}
             </div>
