@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { createElement } from "react";
 import { render } from "@testing-library/react";
 import { useAuthStore } from "@/stores/auth.store";
 
@@ -26,6 +27,14 @@ mock.module("@jahonbozor/ui", () => ({
     DropdownMenuLabel: ({ children }: any) => <span>{children}</span>,
     DropdownMenuSeparator: () => <hr />,
     DropdownMenuTrigger: ({ children }: any) => <>{children}</>,
+    motion: new Proxy(
+        {},
+        {
+            get: (_target: any, prop: string) =>
+                ({ children, className, ...rest }: any) =>
+                    createElement(prop, { className, ...rest }, children),
+        },
+    ),
 }));
 
 const mockLogout = mock(() => {});

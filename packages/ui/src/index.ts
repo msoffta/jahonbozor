@@ -12,4 +12,8 @@ export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
 export { Drawer, DrawerHeader, DrawerTitle } from "./components/ui/drawer.tsx";
 export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "./components/ui/dropdown-menu.tsx";
 
-export { motion, AnimatePresence } from "motion/react";
+export { motion, AnimatePresence, LayoutGroup } from "motion/react";
+
+export { PageTransition } from "./components/motion/page-transition.tsx";
+export { AnimatedList, AnimatedListItem } from "./components/motion/animated-list.tsx";
+export { FadeIn } from "./components/motion/fade-in.tsx";

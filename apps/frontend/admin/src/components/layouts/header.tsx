@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Bell, LogOut, Settings, User } from "lucide-react";
 import {
     cn,
+    motion,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -40,12 +41,26 @@ export function Header() {
             <div className="flex items-center gap-3">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <button type="button" className="relative">
+                        <motion.button
+                            type="button"
+                            className="relative"
+                            whileTap={{ scale: 0.9 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                        >
                             <Bell className="h-5 w-5 text-foreground" />
-                            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                            <motion.span
+                                className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                                animate={{ scale: [1, 1.15, 1] }}
+                                transition={{
+                                    duration: 0.6,
+                                    repeat: Infinity,
+                                    repeatDelay: 4,
+                                    ease: "easeInOut",
+                                }}
+                            >
                                 1
-                            </span>
-                        </button>
+                            </motion.span>
+                        </motion.button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64">
                         <DropdownMenuLabel>
@@ -60,9 +75,13 @@ export function Header() {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <button type="button">
+                        <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.9 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                        >
                             <User className="h-5 w-5 text-foreground" />
-                        </button>
+                        </motion.button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {user && (

@@ -885,21 +885,70 @@ import type { ProductFormProps } from "./types";
 
 ### Animation (Motion)
 
-For animations используем **Motion** (ранее framer-motion). Пакет установлен в `@jahonbozor/ui` и реэкспортирован оттуда.
+Все фронтенд-приложения должны быть **интерактивными и приятными** в использовании. Для анимаций используем **Motion** (ранее framer-motion). Пакет установлен в `@jahonbozor/ui` и реэкспортирован оттуда.
 
 ```typescript
-import { motion, AnimatePresence } from "@jahonbozor/ui";
+import { motion, AnimatePresence, LayoutGroup, PageTransition, AnimatedList, AnimatedListItem, FadeIn } from "@jahonbozor/ui";
+```
 
-// Gesture animations — whileTap, whileHover
+#### Reusable Motion Components
+
+| Component | Import | Purpose |
+|-----------|--------|---------|
+| `PageTransition` | `@jahonbozor/ui` | Обёртка для контента страницы (fade-in + slide-up spring). Обязательно на каждой странице |
+| `AnimatedList` + `AnimatedListItem` | `@jahonbozor/ui` | Контейнер со stagger-анимацией детей (40ms между элементами) |
+| `FadeIn` | `@jahonbozor/ui` | Простой fade-in (opacity, optional `delay` prop) |
+
+```typescript
+// Каждая страница оборачивается в PageTransition
+function ProductsPage() {
+    return (
+        <PageTransition className="p-6">
+            <h1>{t("products")}</h1>
+            {/* page content */}
+        </PageTransition>
+    );
+}
+
+// Списки используют AnimatedList для stagger-эффекта
+<AnimatedList className="space-y-2">
+    {items.map((item) => (
+        <AnimatedListItem key={item.id}>
+            <Card>{item.name}</Card>
+        </AnimatedListItem>
+    ))}
+</AnimatedList>
+
+// FadeIn для элементов без позиционного сдвига
+<FadeIn delay={0.1}>
+    <Badge>New</Badge>
+</FadeIn>
+```
+
+#### Spring Config Reference
+
+| Name | Config | Use |
+|------|--------|-----|
+| Snappy | `{ type: "spring", stiffness: 400, damping: 17 }` | `whileTap` на кнопках, быстрый press feedback |
+| Smooth | `{ type: "spring", stiffness: 300, damping: 25 }` | Page transitions, form stagger, entrance animations |
+| Balanced | `{ type: "spring", stiffness: 400, damping: 30 }` | Layout animations (nav pill slide, drawer) |
+
+#### Gesture Animations
+
+```typescript
+// whileTap — обязательно на всех интерактивных элементах
 <motion.button
     whileTap={{ scale: 0.9 }}
-    whileHover={{ scale: 1.05 }}
     transition={{ type: "spring", stiffness: 400, damping: 17 }}
 >
     Click me
 </motion.button>
+```
 
-// Enter/exit animations
+#### Enter/Exit Animations
+
+```typescript
+// AnimatePresence для conditional renders
 <AnimatePresence>
     {isVisible && (
         <motion.div
@@ -913,12 +962,45 @@ import { motion, AnimatePresence } from "@jahonbozor/ui";
 </AnimatePresence>
 ```
 
+#### Layout Animations
+
+```typescript
+// layoutId для sliding indicators (nav pills, tabs)
+<LayoutGroup>
+    {items.map((item) => (
+        <Link key={item.to} to={item.to}>
+            {isActive && (
+                <motion.div
+                    layoutId="activeIndicator"
+                    className="absolute inset-0 bg-primary"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+            )}
+            <span className="relative z-10">{item.label}</span>
+        </Link>
+    ))}
+</LayoutGroup>
+```
+
 **Правила:**
 - Импорт только из `@jahonbozor/ui` — **не** напрямую из `motion/react`
-- Для tap/hover интерактивности — `whileTap`, `whileHover` (вместо CSS `active:` / `hover:`)
-- Для enter/exit — `AnimatePresence` + `initial`/`animate`/`exit`
+- **PageTransition** обязательна на каждой странице
+- **whileTap** обязателен на всех кнопках и интерактивных элементах
+- **AnimatePresence** обязателен для conditional renders (errors, toasts, modals)
 - Spring-анимации по умолчанию (`type: "spring"`) для натуральности
 - Простые CSS transitions (opacity, color) допустимы без Motion
+
+#### Cursor Types
+
+Глобальные правила курсора определены в `packages/ui/globals.css` и применяются автоматически:
+
+| Cursor | Elements |
+|--------|----------|
+| `pointer` | `a`, `button`, `[role="button"]`, `[role="link"]`, `[role="tab"]`, `[role="menuitem"]`, `select`, `summary`, `label[for]`, `[role="checkbox"]`, `[role="radio"]`, `[role="switch"]`, `[role="option"]` |
+| `text` | `input[type="text"]`, `input[type="password"]`, `textarea`, `input:not([type])` |
+| `not-allowed` | `[disabled]`, `[aria-disabled="true"]` |
+
+Не нужно добавлять `cursor-pointer` вручную — CSS применяет правильный курсор автоматически ко всем интерактивным элементам.
 
 ### Path Aliases
 

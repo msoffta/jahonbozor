@@ -82,4 +82,38 @@
         @apply bg-background text-foreground;
         font-feature-settings: "rlig" 1, "calt" 1;
     }
+
+    /* Interactive cursor types */
+    a,
+    button,
+    [role="button"],
+    [role="link"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    label[for],
+    select,
+    summary {
+        cursor: pointer;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="url"],
+    input[type="tel"],
+    input[type="number"],
+    input:not([type]),
+    textarea {
+        cursor: text;
+    }
+
+    [disabled],
+    [aria-disabled="true"] {
+        cursor: not-allowed;
+    }
 }

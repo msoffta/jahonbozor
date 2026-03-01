@@ -877,6 +877,31 @@ import type { ProductFormProps } from "./types";
 - No custom CSS files per component
 - No `!important`
 
+## Frontend Animation
+
+Все фронтенд-приложения должны быть **интерактивными и приятными** в использовании.
+
+### Обязательно
+- **`PageTransition`** — обёртка контента каждой страницы (fade-in + slide-up)
+- **`whileTap`** — на всех кнопках и интерактивных элементах (scale: 0.9-0.95)
+- **`AnimatePresence`** — для conditional renders (errors, toasts, modals)
+- **`AnimatedList`** — для списков с stagger-эффектом
+- **Cursor types** — `pointer` на кликабельных, `text` на инпутах, `not-allowed` на disabled (глобально через `globals.css`)
+
+### Spring Configs
+| Name | Config | Use |
+|------|--------|-----|
+| Snappy | `stiffness: 400, damping: 17` | whileTap, press feedback |
+| Smooth | `stiffness: 300, damping: 25` | Page transitions, entrance |
+| Balanced | `stiffness: 400, damping: 30` | Layout animations, nav pill |
+
+### Импорт
+```typescript
+import { motion, AnimatePresence, LayoutGroup, PageTransition, AnimatedList, AnimatedListItem, FadeIn } from "@jahonbozor/ui";
+```
+
+> Подробнее: [docs/frontend.md](frontend.md#animation-motion)
+
 ## Frontend Testing
 
 ### Stack

@@ -1,6 +1,6 @@
 import { Home } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { cn } from "@jahonbozor/ui";
+import { cn, motion, LayoutGroup } from "@jahonbozor/ui";
 import { useTranslation } from "react-i18next";
 
 const navKeys = [
@@ -18,51 +18,71 @@ export function BottomNav() {
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-t border-border bg-surface px-2">
             <div className="flex flex-1 items-center gap-1.5">
-                <button
+                <motion.button
                     type="button"
                     className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold uppercase text-foreground"
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                     {t("list")}
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                     type="button"
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-lg font-semibold text-foreground"
+                    whileTap={{ scale: 0.9, rotate: 90 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                     +
-                </button>
+                </motion.button>
             </div>
 
-            <Link
-                to="/"
-                className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                    pathname === "/"
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground",
-                )}
-            >
-                <Home className="h-5 w-5" />
+            <Link to="/" className="shrink-0">
+                <motion.div
+                    className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-xl",
+                        pathname === "/"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground",
+                    )}
+                    whileTap={{ scale: 0.9 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                    <Home className="h-5 w-5" />
+                </motion.div>
             </Link>
 
-            <div className="flex flex-1 items-center justify-end gap-1.5">
-                {navKeys.map((item) => {
-                    const isActive = pathname.startsWith(item.to);
-                    return (
-                        <Link
-                            key={item.to}
-                            to={item.to}
-                            className={cn(
-                                "rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase",
-                                isActive
-                                    ? "border-primary bg-primary text-primary-foreground"
-                                    : "border-border text-foreground",
-                            )}
-                        >
-                            {t(item.key)}
-                        </Link>
-                    );
-                })}
-            </div>
+            <LayoutGroup>
+                <div className="flex flex-1 items-center justify-end gap-1.5">
+                    {navKeys.map((item) => {
+                        const isActive = pathname.startsWith(item.to);
+                        return (
+                            <Link key={item.to} to={item.to} className="relative">
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="activeNavPill"
+                                        className="absolute inset-0 rounded-lg bg-primary"
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 30,
+                                        }}
+                                    />
+                                )}
+                                <span
+                                    className={cn(
+                                        "relative z-10 block px-3 py-1.5 text-xs font-semibold uppercase",
+                                        isActive
+                                            ? "text-primary-foreground"
+                                            : "rounded-lg border border-border text-foreground",
+                                    )}
+                                >
+                                    {t(item.key)}
+                                </span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </LayoutGroup>
         </nav>
     );
 }

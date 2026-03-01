@@ -1,4 +1,5 @@
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, test, expect, mock } from "bun:test";
+import { createElement } from "react";
 import { render } from "@testing-library/react";
 
 mock.module("react-i18next", () => ({
@@ -16,6 +17,16 @@ mock.module("@tanstack/react-router", () => ({
 
 mock.module("@jahonbozor/ui", () => ({
     cn: (...args: any[]) => args.filter(Boolean).join(" "),
+    motion: new Proxy(
+        {},
+        {
+            get: (_target: any, prop: string) =>
+                ({ children, className, ...rest }: any) =>
+                    createElement(prop, { className, ...rest }, children),
+        },
+    ),
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+    LayoutGroup: ({ children }: any) => <>{children}</>,
 }));
 
 import { BottomNav } from "../bottom-nav";
@@ -72,7 +83,7 @@ describe("BottomNav", () => {
         const links = getAllByRole("link");
         const homeLink = links.find((l) => l.getAttribute("href") === "/");
 
-        expect(homeLink?.className).toContain("bg-primary");
+        expect(homeLink?.innerHTML).toContain("bg-primary");
     });
 
     test("should not apply active styles to other nav items when on /", () => {

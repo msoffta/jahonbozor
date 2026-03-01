@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PageTransition } from "@jahonbozor/ui";
 
 function OrderDetailPage() {
     const { orderId } = Route.useParams();
 
     return (
-        <div className="p-6">
+        <PageTransition className="p-6">
             <h1 className="text-2xl font-bold">Order #{orderId}</h1>
-        </div>
+        </PageTransition>
     );
 }
 
