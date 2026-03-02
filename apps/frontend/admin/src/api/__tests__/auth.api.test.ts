@@ -1,11 +1,20 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
+import type { QueryFunctionContext } from "@tanstack/react-query";
+
+interface MockEdenResponse {
+    data: Record<string, unknown> | null;
+    error: Record<string, unknown> | null;
+}
+
+type MeQueryFnContext = QueryFunctionContext<readonly ["auth", "me"]>;
 
 // Mock api client before importing auth.api
-const mockGet = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: { id: 1, fullname: "Test" } },
-        error: null,
-    }),
+const mockGet = mock(
+    (): Promise<MockEdenResponse> =>
+        Promise.resolve({
+            data: { success: true, data: { id: 1, fullname: "Test" } },
+            error: null,
+        }),
 );
 
 mock.module("@/api/client", () => ({
@@ -60,7 +69,7 @@ describe("auth.api", () => {
 
         test("queryFn should call api.api.public.auth.me.get", async () => {
             const options = meQueryOptions();
-            await options.queryFn!({} as any);
+            await options.queryFn!({} as MeQueryFnContext);
             expect(mockGet).toHaveBeenCalled();
         });
 
@@ -74,8 +83,8 @@ describe("auth.api", () => {
             });
 
             const options = meQueryOptions();
-            const result = await options.queryFn!({} as any);
-            expect(result).toEqual({ id: 42, fullname: "Admin User" });
+            const result = await options.queryFn!({} as MeQueryFnContext);
+            expect(result).toMatchObject({ id: 42, fullname: "Admin User" });
         });
 
         test("queryFn should throw on error", async () => {
@@ -85,7 +94,9 @@ describe("auth.api", () => {
             });
 
             const options = meQueryOptions();
-            await expect(options.queryFn!({} as any)).rejects.toBeDefined();
+            await expect(
+                options.queryFn!({} as MeQueryFnContext),
+            ).rejects.toBeDefined();
         });
 
         test("queryFn should throw when data.success is false", async () => {
@@ -95,9 +106,9 @@ describe("auth.api", () => {
             });
 
             const options = meQueryOptions();
-            await expect(options.queryFn!({} as any)).rejects.toThrow(
-                "Request failed",
-            );
+            await expect(
+                options.queryFn!({} as MeQueryFnContext),
+            ).rejects.toThrow("Request failed");
         });
     });
 });

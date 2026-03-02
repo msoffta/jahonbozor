@@ -30,7 +30,7 @@ export function Header() {
     return (
         <header
             className={cn(
-                "sticky top-0 z-50 flex h-14 items-center justify-between px-4 transition-all duration-200",
+                "sticky top-0 z-50 flex h-14 items-center justify-between px-6 transition-all duration-200",
                 scrolled ? "bg-surface shadow-sm" : "bg-surface/80",
             )}
         >
@@ -43,7 +43,7 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                         <motion.button
                             type="button"
-                            className="relative"
+                            className="relative flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/60"
                             whileTap={{ scale: 0.9 }}
                             transition={{ type: "spring", stiffness: 400, damping: 17 }}
                         >
@@ -77,6 +77,7 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                         <motion.button
                             type="button"
+                            className="flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/60"
                             whileTap={{ scale: 0.9 }}
                             transition={{ type: "spring", stiffness: 400, damping: 17 }}
                         >

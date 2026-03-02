@@ -16,7 +16,7 @@ export function BottomNav() {
     const { t } = useTranslation();
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-t border-border bg-surface px-2">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-t border-border bg-surface px-6">
             <div className="flex flex-1 items-center gap-1.5">
                 <motion.button
                     type="button"

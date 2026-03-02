@@ -2,8 +2,17 @@ import { describe, test, expect, beforeEach, mock, spyOn } from "bun:test";
 import { renderHook, act } from "@testing-library/react";
 import { useAuthStore } from "@/stores/auth.store";
 
-const mockLoginPost = mock(() => Promise.resolve({ data: null, error: null }));
-const mockLogoutPost = mock(() => Promise.resolve({ data: null, error: null }));
+interface MockEdenResponse {
+    data: Record<string, unknown> | null;
+    error: Record<string, unknown> | null;
+}
+
+const mockLoginPost = mock(
+    (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
+);
+const mockLogoutPost = mock(
+    (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
+);
 const mockNavigate = mock(() => {});
 const mockQueryClientClear = mock(() => {});
 const mockSentrySetUser = mock(() => {});
@@ -94,7 +103,7 @@ describe("use-auth hooks", () => {
                 data: {
                     id: 1,
                     fullname: "Admin User",
-                    role: { permissions: ["PRODUCTS_LIST", "PRODUCTS_CREATE"] },
+                    role: { permissions: ["products:list", "products:create"] },
                 },
             });
 
@@ -107,7 +116,7 @@ describe("use-auth hooks", () => {
             expect(state.token).toBe("jwt-token-123");
             expect(state.user?.fullname).toBe("Admin User");
             expect(state.isAuthenticated).toBe(true);
-            expect(state.permissions).toEqual(["PRODUCTS_LIST", "PRODUCTS_CREATE"]);
+            expect(state.permissions).toEqual(["products:list", "products:create"]);
         });
 
         test("should pass token in Authorization header to /me", async () => {

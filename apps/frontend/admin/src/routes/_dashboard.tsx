@@ -7,7 +7,7 @@ function DashboardLayout() {
     return (
         <div className="flex min-h-screen flex-col">
             <Header />
-            <main className="flex-1 pb-16">
+            <main className="flex flex-1 flex-col pb-14">
                 <Outlet />
             </main>
             <BottomNav />

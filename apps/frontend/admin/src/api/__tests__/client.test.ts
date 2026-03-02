@@ -45,7 +45,7 @@ describe("api client", () => {
                             fullname: "Admin",
                             username: "admin",
                             roleId: 1,
-                            role: { permissions: ["PRODUCTS_LIST"] },
+                            role: { permissions: ["products:list"] },
                         },
                     }),
             } as Response);
@@ -57,7 +57,7 @@ describe("api client", () => {
             expect(useAuthStore.getState().token).toBe("new-token");
             expect(useAuthStore.getState().user?.fullname).toBe("Admin");
             expect(useAuthStore.getState().isAuthenticated).toBe(true);
-            expect(useAuthStore.getState().permissions).toEqual(["PRODUCTS_LIST"]);
+            expect(useAuthStore.getState().permissions).toEqual(["products:list"]);
         });
 
         test("should clear auth on non-ok refresh response", async () => {
