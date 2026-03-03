@@ -5,9 +5,9 @@ import { useAuthStore } from "@/stores/auth.store";
 
 function DashboardLayout() {
     return (
-        <div className="flex min-h-screen flex-col">
+        <div className="flex h-screen flex-col">
             <Header />
-            <main className="flex flex-1 flex-col pb-14">
+            <main className="flex flex-1 flex-col pb-8 min-h-0">
                 <Outlet />
             </main>
             <BottomNav />

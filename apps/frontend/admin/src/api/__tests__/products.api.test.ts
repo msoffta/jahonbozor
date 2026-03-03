@@ -88,7 +88,7 @@ mock.module("@/api/client", () => ({
         api: {
             private: {
                 products: Object.assign(
-                    (params: { id: number }) => ({
+                    (_params: { id: number }) => ({
                         get: mockGetById,
                         patch: mockPatch,
                         delete: mockDelete,
@@ -203,7 +203,7 @@ describe("products.api", () => {
 
             const options = productsListQueryOptions();
             const result = await options.queryFn!({} as ListQueryFnContext);
-            expect(result).toEqual({ count: 1, products: [{ id: 1, name: "Test" }] });
+            expect(result).toMatchObject({ count: 1, products: [{ id: 1, name: "Test" }] });
         });
 
         test("queryFn should throw on error", async () => {

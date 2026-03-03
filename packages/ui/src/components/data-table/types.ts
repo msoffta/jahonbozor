@@ -23,7 +23,7 @@ export interface DataTableColumnMeta {
 
     // Inline editing
     editable?: boolean;
-    inputType?: "text" | "number" | "select" | "date";
+    inputType?: "text" | "number" | "select" | "combobox" | "date";
     selectOptions?: { label: string; value: string }[];
     validationSchema?: SafeParseable;
     placeholder?: string;
@@ -52,6 +52,10 @@ export interface DataTableTranslations {
     next?: string;
     first?: string;
     last?: string;
+    filterAll?: string;
+    filterMin?: string;
+    filterMax?: string;
+    filter?: string;
 }
 
 // ── Props ──────────────────────────────────────────────────────

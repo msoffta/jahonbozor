@@ -147,11 +147,7 @@ export function DataTableBody<TData>({
                         key={row.id}
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 25,
-                        }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
                         data-state={
                             row.getIsSelected() ? "selected" : undefined
                         }
@@ -195,7 +191,7 @@ export function DataTableBody<TData>({
                     key={row.id}
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
                     data-state={row.getIsSelected() ? "selected" : undefined}
                     className={cn(
                         "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",

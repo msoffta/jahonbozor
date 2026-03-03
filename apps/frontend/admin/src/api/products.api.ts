@@ -44,7 +44,7 @@ export const productDetailQueryOptions = (id: number) =>
 // --- Mutation functions (exported for testing) ---
 
 export const createProductFn = async (body: { name: string; price: number; costprice: number; categoryId: number; remaining?: number }) => {
-    const { data, error } = await api.api.private.products.post(body);
+    const { data, error } = await api.api.private.products.post({ ...body, remaining: body.remaining ?? 0 });
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
     return data.data as AdminProductItem;

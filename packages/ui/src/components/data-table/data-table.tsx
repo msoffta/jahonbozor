@@ -11,8 +11,11 @@ import {
     useReactTable,
     type VisibilityState,
 } from "@tanstack/react-table";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Table, TableHeader, TableRow } from "../ui/table";
 import { DataTableBody } from "./data-table-body";
@@ -192,11 +195,36 @@ export function DataTable<TData>({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enableColumnResizing, allColumns]);
 
+    // Scroll-to-top/bottom button state
+    const [isNearBottom, setIsNearBottom] = React.useState(false);
+    const [showScrollBtn, setShowScrollBtn] = React.useState(false);
+
+    const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const el = e.currentTarget;
+        const scrollable = el.scrollHeight - el.clientHeight;
+        if (scrollable < 50) {
+            setShowScrollBtn(false);
+            return;
+        }
+        setShowScrollBtn(true);
+        setIsNearBottom(el.scrollTop > scrollable / 2);
+    }, []);
+
+    const scrollToEdge = React.useCallback(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        if (isNearBottom) {
+            el.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+            el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+        }
+    }, [isNearBottom]);
+
     const rows = table.getRowModel().rows;
     const isVirtualActive = isShowAll && rows.length > VIRTUALIZATION_THRESHOLD;
 
     return (
-        <div className={cn("w-full", className)}>
+        <div className={cn("w-full flex flex-col min-h-0", className)}>
             <DataTableToolbar
                 table={table}
                 globalFilter={globalFilter}
@@ -207,22 +235,22 @@ export function DataTable<TData>({
                 translations={translations}
             />
 
-            <div
+            <div className="relative flex-1 min-h-0">
+              <div
                 ref={(el) => {
                     containerRef.current = el;
                     if (isVirtualActive) scrollContainerRef.current = el;
                 }}
-                className="rounded-md border"
+                onScroll={handleScroll}
+                className="rounded-md border h-full overflow-auto"
                 style={
                     isVirtualActive
                         ? {
-                              maxHeight: "70vh",
-                              overflow: "auto",
                               position: "relative",
                           }
                         : undefined
                 }
-            >
+              >
                 <Table
                     style={{
                         ...(enableColumnResizing
@@ -289,6 +317,32 @@ export function DataTable<TData>({
                         translations={translations}
                     />
                 </Table>
+              </div>
+
+              <AnimatePresence>
+                {showScrollBtn && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        className="absolute bottom-3 right-3 z-10"
+                    >
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 rounded-full shadow-md bg-background/90 backdrop-blur-sm"
+                            onClick={scrollToEdge}
+                        >
+                            {isNearBottom ? (
+                                <ChevronUp className="h-4 w-4" />
+                            ) : (
+                                <ChevronDown className="h-4 w-4" />
+                            )}
+                        </Button>
+                    </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {pagination && (

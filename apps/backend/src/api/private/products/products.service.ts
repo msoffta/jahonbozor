@@ -98,7 +98,7 @@ export abstract class ProductsService {
                             },
                         },
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { createdAt: "asc" },
                 }),
             ]);
 

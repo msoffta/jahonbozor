@@ -14,5 +14,8 @@
     "table_columns": "Ustunlar",
     "table_show_all": "Hammasi",
     "table_previous": "Oldingi",
-    "table_next": "Keyingi"
+    "table_next": "Keyingi",
+    "product_actions": "Amallar",
+    "action_delete": "O'chirish",
+    "action_restore": "Tiklash"
 }

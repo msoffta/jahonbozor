@@ -76,6 +76,7 @@
 @layer base {
     * {
         @apply border-border;
+        --tw-ring-offset-width: 0px;
     }
 
     body {
@@ -116,4 +117,40 @@
     [aria-disabled="true"] {
         cursor: not-allowed;
     }
+
+    /* Animated focus ring */
+    *:focus-visible {
+        transition: box-shadow 0.15s ease-out;
+    }
+}
+
+/* Combobox dropdown animation */
+@keyframes combobox-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes combobox-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.97);
+    }
+}
+
+.combobox-dropdown {
+    animation: combobox-in 0.15s ease-out;
+}
+
+.combobox-dropdown[data-closing] {
+    animation: combobox-out 0.1s ease-in forwards;
 }

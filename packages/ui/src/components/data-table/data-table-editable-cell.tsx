@@ -1,10 +1,11 @@
 import * as React from "react";
 import type { CellContext } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { DataTableCombobox } from "./data-table-combobox";
 
 interface DataTableEditableCellProps<TData> {
     cell: CellContext<TData, unknown>;
@@ -78,88 +79,110 @@ export function DataTableEditableCell<TData>({
         );
     }
 
-    return (
-        <AnimatePresence mode="wait">
-            {isEditing ? (
-                <motion.div
-                    key="edit"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="relative"
-                >
-                    {meta?.inputType === "select" && meta.selectOptions ? (
-                        <Select
-                            value={String(value ?? "")}
-                            onValueChange={(newValue) => {
-                                setValue(newValue);
-                                setError(null);
+    if (isEditing) {
+        return (
+            <div className="relative">
+                {meta?.inputType === "select" && meta.selectOptions ? (
+                    <Select
+                        value={String(value ?? "")}
+                        onValueChange={(newValue) => {
+                            setValue(newValue);
+                            setError(null);
+                            setIsEditing(false);
+                            if (newValue !== String(initialValue)) {
+                                cell.table.options.meta?.updateData(cell.row.index, cell.column.id, newValue);
+                                onCellEdit?.(cell.row.index, cell.column.id, newValue);
+                            }
+                        }}
+                    >
+                        <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {meta.selectOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : meta?.inputType === "combobox" && meta.selectOptions ? (
+                    <DataTableCombobox
+                        value={String(value ?? "")}
+                        options={meta.selectOptions}
+                        onChange={(newValue) => {
+                            setValue(newValue);
+                            setError(null);
+                        }}
+                        autoFocus
+                        onBlur={() => {
+                            setIsEditing(false);
+                            const v = value;
+                            if (v !== initialValue) {
+                                cell.table.options.meta?.updateData(cell.row.index, cell.column.id, v);
+                                onCellEdit?.(cell.row.index, cell.column.id, v);
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
                                 setIsEditing(false);
-                                if (newValue !== String(initialValue)) {
-                                    cell.table.options.meta?.updateData(cell.row.index, cell.column.id, newValue);
-                                    onCellEdit?.(cell.row.index, cell.column.id, newValue);
+                                const v = value;
+                                if (v !== initialValue) {
+                                    cell.table.options.meta?.updateData(cell.row.index, cell.column.id, v);
+                                    onCellEdit?.(cell.row.index, cell.column.id, v);
                                 }
-                            }}
-                        >
-                            <SelectTrigger className="h-8 text-sm">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {meta.selectOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    ) : (
-                        <Input
-                            ref={inputRef}
-                            type={meta?.inputType === "number" ? "number" : meta?.inputType === "date" ? "date" : "text"}
-                            value={String(value ?? "")}
-                            onChange={(e) => {
-                                const newValue = meta?.inputType === "number" ? Number(e.target.value) : e.target.value;
-                                setValue(newValue);
-                                setError(null);
-                            }}
-                            onBlur={handleSave}
-                            onKeyDown={handleKeyDown}
-                            className={cn("h-8 text-sm", error && "border-destructive")}
-                            placeholder={meta?.placeholder}
-                        />
-                    )}
-                    {error && (
-                        <motion.p
-                            initial={{ opacity: 0, x: 0 }}
-                            animate={{ opacity: 1, x: [0, -4, 4, -4, 0] }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                            className="absolute -bottom-5 left-0 text-xs text-destructive"
-                        >
-                            {error}
-                        </motion.p>
-                    )}
-                </motion.div>
-            ) : (
-                <motion.div
-                    key="read"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    onDoubleClick={() => setIsEditing(true)}
-                    className={cn(
-                        "truncate cursor-text",
-                        meta?.align === "center" && "text-center",
-                        meta?.align === "right" && "text-right",
-                        meta?.className,
-                    )}
-                >
-                    {cell.column.columnDef.cell
-                        ? flexRender(cell.column.columnDef.cell, cell)
-                        : String(initialValue ?? "")}
-                </motion.div>
+                            } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                handleCancel();
+                            }
+                        }}
+                        placeholder={meta.placeholder}
+                        error={!!error}
+                    />
+                ) : (
+                    <Input
+                        ref={inputRef}
+                        type={meta?.inputType === "number" ? "number" : meta?.inputType === "date" ? "date" : "text"}
+                        value={String(value ?? "")}
+                        onChange={(e) => {
+                            const newValue = meta?.inputType === "number" ? Number(e.target.value) : e.target.value;
+                            setValue(newValue);
+                            setError(null);
+                        }}
+                        onBlur={handleSave}
+                        onKeyDown={handleKeyDown}
+                        className={cn("h-8 text-sm", error && "border-destructive")}
+                        placeholder={meta?.placeholder}
+                    />
+                )}
+                {error && (
+                    <motion.p
+                        initial={{ opacity: 0, x: 0 }}
+                        animate={{ opacity: 1, x: [0, -4, 4, -4, 0] }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                        className="absolute -bottom-5 left-0 text-xs text-destructive"
+                    >
+                        {error}
+                    </motion.p>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div
+            onDoubleClick={() => setIsEditing(true)}
+            className={cn(
+                "truncate cursor-text",
+                meta?.align === "center" && "text-center",
+                meta?.align === "right" && "text-right",
+                meta?.className,
             )}
-        </AnimatePresence>
+        >
+            {cell.column.columnDef.cell
+                ? flexRender(cell.column.columnDef.cell, cell)
+                : String(initialValue ?? "")}
+        </div>
     );
 }

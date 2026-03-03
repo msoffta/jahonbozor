@@ -14,5 +14,8 @@
     "table_columns": "Столбцы",
     "table_show_all": "Все",
     "table_previous": "Назад",
-    "table_next": "Вперёд"
+    "table_next": "Вперёд",
+    "product_actions": "Действия",
+    "action_delete": "Удалить",
+    "action_restore": "Восстановить"
 }

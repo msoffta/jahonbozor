@@ -4,8 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { PageTransition, DataTable, Checkbox } from "@jahonbozor/ui";
 import type { DataTableTranslations } from "@jahonbozor/ui";
-import { productsListQueryOptions, useCreateProduct, useUpdateProduct } from "@/api/products.api";
-import { categoriesListQueryOptions } from "@/api/categories.api";
+import { productsListQueryOptions, useCreateProduct, useUpdateProduct, useDeleteProduct, useRestoreProduct } from "@/api/products.api";
+import { categoriesListQueryOptions, useCreateCategory } from "@/api/categories.api";
 import { getProductColumns } from "@/components/products/products-columns";
 
 function ProductsPage() {
@@ -22,6 +22,17 @@ function ProductsPage() {
 
     const createProduct = useCreateProduct();
     const updateProduct = useUpdateProduct();
+    const deleteProduct = useDeleteProduct();
+    const restoreProduct = useRestoreProduct();
+    const createCategory = useCreateCategory();
+
+    const resolveCategoryId = useCallback(async (value: unknown): Promise<number> => {
+        const num = Number(value);
+        if (!isNaN(num) && num > 0) return num;
+        // Free-form text — create a new category
+        const newCategory = await createCategory.mutateAsync({ name: String(value) });
+        return newCategory.id;
+    }, [createCategory]);
 
     const categories = useMemo(() => {
         if (!categoriesData?.categories) return [];
@@ -31,41 +42,47 @@ function ProductsPage() {
         }));
     }, [categoriesData]);
 
+    const actions = useMemo(() => ({
+        onDelete: (id: number) => deleteProduct.mutate(id),
+        onRestore: (id: number) => restoreProduct.mutate(id),
+    }), [deleteProduct, restoreProduct]);
+
     const columns = useMemo(
-        () => getProductColumns(t, categories),
-        [t, categories],
+        () => getProductColumns(t, categories, actions),
+        [t, categories, actions],
     );
 
     const products = productsData?.products ?? [];
 
     const handleCellEdit = useCallback(
-        (rowIndex: number, columnId: string, value: unknown) => {
+        async (rowIndex: number, columnId: string, value: unknown) => {
             const product = products[rowIndex];
             if (!product) return;
 
             const body: Record<string, unknown> = {};
             if (columnId === "category") {
-                body.categoryId = Number(value);
+                body.categoryId = await resolveCategoryId(value);
             } else {
                 body[columnId] = value;
             }
 
             updateProduct.mutate({ id: product.id, ...body });
         },
-        [products, updateProduct],
+        [products, updateProduct, resolveCategoryId],
     );
 
     const handleNewRowSave = useCallback(
-        (data: Record<string, unknown>) => {
+        async (data: Record<string, unknown>) => {
+            const categoryId = await resolveCategoryId(data.category);
             createProduct.mutate({
                 name: String(data.name),
                 price: Number(data.price),
                 costprice: Number(data.costprice),
-                categoryId: Number(data.category),
+                categoryId,
                 remaining: Number(data.remaining) || 0,
             });
         },
-        [createProduct],
+        [createProduct, resolveCategoryId],
     );
 
     const translations: DataTableTranslations = {
@@ -76,10 +93,14 @@ function ProductsPage() {
         showAll: t("table_show_all"),
         previous: t("table_previous"),
         next: t("table_next"),
+        filterAll: t("common:filter_all"),
+        filterMin: t("common:filter_min"),
+        filterMax: t("common:filter_max"),
+        filter: t("common:filter"),
     };
 
     return (
-        <PageTransition className="p-6">
+        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">{t("common:products")}</h1>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -95,6 +116,7 @@ function ProductsPage() {
                 <div className="text-muted-foreground">{t("common:loading")}</div>
             ) : (
                 <DataTable
+                    className="flex-1"
                     columns={columns}
                     data={products}
                     pagination

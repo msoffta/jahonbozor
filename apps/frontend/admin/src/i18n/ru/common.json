@@ -58,5 +58,9 @@
     "summary": "Итог",
     "list": "Список",
     "uzbek": "O'zbekcha",
-    "russian": "Русский"
+    "russian": "Русский",
+    "filter_all": "Все",
+    "filter_min": "мин",
+    "filter_max": "макс",
+    "filter": "Фильтр"
 }

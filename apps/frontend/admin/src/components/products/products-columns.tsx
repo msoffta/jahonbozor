@@ -1,16 +1,23 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
-import { Badge } from "@jahonbozor/ui";
+import { Badge, Button, motion } from "@jahonbozor/ui";
+import { Trash2, RotateCcw } from "lucide-react";
 
 interface CategoryItem {
     id: number;
     name: string;
 }
 
+export interface ProductActions {
+    onDelete: (id: number) => void;
+    onRestore: (id: number) => void;
+}
+
 export function getProductColumns(
     t: TFunction,
     categories: CategoryItem[],
+    actions: ProductActions,
 ): ColumnDef<AdminProductItem, any>[] {
     const filterOptions = categories.map((c) => ({ label: c.name, value: c.name }));
     const selectOptions = categories.map((c) => ({ label: c.name, value: String(c.id) }));
@@ -57,7 +64,7 @@ export function getProductColumns(
                 filterVariant: "select" as const,
                 filterOptions,
                 editable: true,
-                inputType: "select" as const,
+                inputType: "combobox" as const,
                 selectOptions,
             },
         },
@@ -93,6 +100,40 @@ export function getProductColumns(
             header: t("product_created"),
             size: 140,
             cell: ({ getValue }) => new Date(getValue<Date | string>()).toLocaleDateString(),
+        },
+        {
+            id: "actions",
+            header: t("product_actions"),
+            size: 100,
+            meta: { align: "center" as const },
+            cell: ({ row }) => {
+                const isDeleted = row.original.deletedAt !== null;
+                return (
+                    <motion.div whileTap={{ scale: 0.9 }} className="inline-flex justify-center w-full">
+                        {isDeleted ? (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                onClick={() => actions.onRestore(row.original.id)}
+                                title={t("action_restore")}
+                            >
+                                <RotateCcw className="h-4 w-4" />
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => actions.onDelete(row.original.id)}
+                                title={t("action_delete")}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </motion.div>
+                );
+            },
         },
     ];
 }

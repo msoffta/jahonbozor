@@ -5,6 +5,7 @@ import { cn } from "../../lib/utils";
 import { TableCell } from "../ui/table";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { DataTableCombobox } from "./data-table-combobox";
 
 interface DataTableNewRowProps<TData> {
     columns: ColumnDef<TData, any>[];
@@ -98,7 +99,7 @@ export function DataTableNewRow<TData>({
         <motion.tr
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
             className="border-b border-dashed bg-muted/30"
         >
             {enableRowSelection && <TableCell />}
@@ -139,6 +140,25 @@ export function DataTableNewRow<TData>({
                                     ))}
                                 </SelectContent>
                             </Select>
+                        ) : meta.inputType === "combobox" && meta.selectOptions ? (
+                            <DataTableCombobox
+                                value={String(values[key] ?? "")}
+                                options={meta.selectOptions}
+                                onChange={(newValue) => {
+                                    setValues((prev) => ({ ...prev, [key]: newValue }));
+                                    setErrors((prev) => {
+                                        const next = { ...prev };
+                                        delete next[key];
+                                        return next;
+                                    });
+                                }}
+                                onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
+                                inputRef={(el) => {
+                                    if (el) inputRefs.current.set(key, el);
+                                }}
+                                placeholder={meta.placeholder}
+                                error={!!error}
+                            />
                         ) : (
                             <Input
                                 ref={(el) => {
