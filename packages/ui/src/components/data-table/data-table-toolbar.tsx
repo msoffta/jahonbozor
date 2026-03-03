@@ -138,17 +138,21 @@ export function DataTableToolbar<TData>({
                         {table
                             .getAllColumns()
                             .filter((column) => column.getCanHide())
-                            .map((column) => (
-                                <DropdownMenuItem
-                                    key={column.id}
-                                    onClick={() => column.toggleVisibility(!column.getIsVisible())}
-                                >
-                                    <span className={cn("mr-2", column.getIsVisible() ? "opacity-100" : "opacity-30")}>
-                                        ✓
-                                    </span>
-                                    {column.id}
-                                </DropdownMenuItem>
-                            ))}
+                            .map((column) => {
+                                const header = column.columnDef.header;
+                                const label = typeof header === "string" ? header : column.id;
+                                return (
+                                    <DropdownMenuItem
+                                        key={column.id}
+                                        onClick={() => column.toggleVisibility(!column.getIsVisible())}
+                                    >
+                                        <span className={cn("mr-2", column.getIsVisible() ? "opacity-100" : "opacity-30")}>
+                                            ✓
+                                        </span>
+                                        {label}
+                                    </DropdownMenuItem>
+                                );
+                            })}
                     </DropdownMenuContent>
                 </DropdownMenu>
             )}

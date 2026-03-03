@@ -4,10 +4,12 @@ import { useUIStore } from "@/stores/ui.store";
 
 import uzCommon from "@/i18n/uz/common.json";
 import ruCommon from "@/i18n/ru/common.json";
+import uzProducts from "@/i18n/uz/products.json";
+import ruProducts from "@/i18n/ru/products.json";
 
 const resources = {
-    uz: { common: uzCommon },
-    ru: { common: ruCommon },
+    uz: { common: uzCommon, products: uzProducts },
+    ru: { common: ruCommon, products: ruProducts },
 };
 
 // Read persisted locale from UI store

@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { CellContext } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
@@ -154,7 +155,9 @@ export function DataTableEditableCell<TData>({
                         meta?.className,
                     )}
                 >
-                    {String(initialValue ?? "")}
+                    {cell.column.columnDef.cell
+                        ? flexRender(cell.column.columnDef.cell, cell)
+                        : String(initialValue ?? "")}
                 </motion.div>
             )}
         </AnimatePresence>

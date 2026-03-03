@@ -12,6 +12,11 @@ export interface DataTableColumnMeta {
     className?: string;
     headerClassName?: string;
 
+    // Sizing — flex-like auto-fill (similar to MUI DataGrid flex)
+    // Columns with flex distribute remaining container space proportionally.
+    // Column `size` acts as the minimum width. Columns without flex stay fixed.
+    flex?: number;
+
     // Filtering
     filterVariant?: "text" | "select" | "range";
     filterOptions?: { label: string; value: string }[];

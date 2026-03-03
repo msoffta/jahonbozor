@@ -1,0 +1,18 @@
+{
+    "title": "Товары",
+    "product_id": "ID",
+    "product_name": "Название",
+    "product_price": "Цена",
+    "product_costprice": "Себестоимость",
+    "product_category": "Категория",
+    "product_remaining": "Остаток",
+    "product_status": "Статус",
+    "product_created": "Дата создания",
+    "status_active": "Активный",
+    "status_deleted": "Удалён",
+    "products_empty": "Товары не найдены",
+    "table_columns": "Столбцы",
+    "table_show_all": "Все",
+    "table_previous": "Назад",
+    "table_next": "Вперёд"
+}

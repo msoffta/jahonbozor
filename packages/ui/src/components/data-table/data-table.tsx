@@ -1,24 +1,27 @@
-import * as React from "react";
 import {
     type ColumnDef,
-    type SortingState,
     type ColumnFiltersState,
-    type VisibilityState,
-    type RowSelectionState,
-    useReactTable,
+    type ColumnSizingState,
     getCoreRowModel,
+    getFilteredRowModel,
     getPaginationRowModel,
     getSortedRowModel,
-    getFilteredRowModel,
+    type RowSelectionState,
+    type SortingState,
+    useReactTable,
+    type VisibilityState,
 } from "@tanstack/react-table";
+import * as React from "react";
 import { cn } from "../../lib/utils";
-import { Table, TableHeader, TableRow } from "../ui/table";
 import { Checkbox } from "../ui/checkbox";
-import { DataTableColumnHeader } from "./data-table-header";
+import { Table, TableHeader, TableRow } from "../ui/table";
 import { DataTableBody } from "./data-table-body";
-import { DataTableToolbar } from "./data-table-toolbar";
+import { DataTableColumnHeader } from "./data-table-header";
 import { DataTablePagination } from "./data-table-pagination";
+import { DataTableToolbar } from "./data-table-toolbar";
 import type { DataTableProps } from "./types";
+
+const VIRTUALIZATION_THRESHOLD = 200;
 
 export function DataTable<TData>({
     columns,
@@ -45,15 +48,24 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
     const [data, setData] = React.useState(externalData);
     const [sorting, setSorting] = React.useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+    const [columnFilters, setColumnFilters] =
+        React.useState<ColumnFiltersState>([]);
+    const [columnVisibility, setColumnVisibility] =
+        React.useState<VisibilityState>({});
+    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
+        {},
+    );
     const [globalFilter, setGlobalFilter] = React.useState("");
     const [paginationState, setPaginationState] = React.useState({
         pageIndex: 0,
         pageSize: defaultPageSize,
     });
     const [isShowAll, setIsShowAll] = React.useState(false);
+    const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(
+        {},
+    );
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    const containerRef = React.useRef<HTMLDivElement>(null);
 
     // Sync external data
     React.useEffect(() => {
@@ -74,7 +86,9 @@ export function DataTable<TData>({
             header: ({ table }) => (
                 <Checkbox
                     checked={table.getIsAllPageRowsSelected()}
-                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    onCheckedChange={(value) =>
+                        table.toggleAllPageRowsSelected(!!value)
+                    }
                     aria-label="Select all"
                 />
             ),
@@ -102,10 +116,14 @@ export function DataTable<TData>({
             columnVisibility,
             rowSelection,
             globalFilter,
-            ...(pagination && !isShowAll ? { pagination: paginationState } : {}),
+            columnSizing,
+            ...(pagination && !isShowAll
+                ? { pagination: paginationState }
+                : {}),
         },
         enableColumnResizing,
         columnResizeMode: "onChange",
+        onColumnSizingChange: setColumnSizing,
         onPaginationChange: setPaginationState,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
@@ -113,11 +131,19 @@ export function DataTable<TData>({
         onRowSelectionChange: setRowSelection,
         onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
-        ...(pagination ? { getPaginationRowModel: getPaginationRowModel() } : {}),
+        ...(pagination
+            ? { getPaginationRowModel: getPaginationRowModel() }
+            : {}),
         ...(enableSorting ? { getSortedRowModel: getSortedRowModel() } : {}),
-        ...(enableFiltering || enableGlobalSearch ? { getFilteredRowModel: getFilteredRowModel() } : {}),
+        ...(enableFiltering || enableGlobalSearch
+            ? { getFilteredRowModel: getFilteredRowModel() }
+            : {}),
         meta: {
-            updateData: (rowIndex: number, columnId: string, value: unknown) => {
+            updateData: (
+                rowIndex: number,
+                columnId: string,
+                value: unknown,
+            ) => {
                 setData((old) =>
                     old.map((row, index) => {
                         if (index === rowIndex) {
@@ -129,6 +155,45 @@ export function DataTable<TData>({
             },
         },
     });
+
+    // Flex-like column sizing: distribute remaining container space
+    // among columns with meta.flex proportionally (like MUI DataGrid flex)
+    React.useLayoutEffect(() => {
+        if (!enableColumnResizing || !containerRef.current) return;
+
+        const containerWidth = containerRef.current.clientWidth;
+        const cols = table.getAllLeafColumns();
+
+        let fixedTotal = 0;
+        let flexTotal = 0;
+
+        for (const col of cols) {
+            const flex = col.columnDef.meta?.flex;
+            if (flex) {
+                fixedTotal += col.columnDef.size ?? 150;
+                flexTotal += flex;
+            } else {
+                fixedTotal += col.columnDef.size ?? 150;
+            }
+        }
+
+        const extraSpace = containerWidth - fixedTotal;
+        if (flexTotal <= 0 || extraSpace <= 0) return;
+
+        const newSizing: ColumnSizingState = {};
+        for (const col of cols) {
+            const flex = col.columnDef.meta?.flex;
+            if (flex) {
+                const baseSize = col.columnDef.size ?? 150;
+                newSizing[col.id] = baseSize + (flex / flexTotal) * extraSpace;
+            }
+        }
+        setColumnSizing(newSizing);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [enableColumnResizing, allColumns]);
+
+    const rows = table.getRowModel().rows;
+    const isVirtualActive = isShowAll && rows.length > VIRTUALIZATION_THRESHOLD;
 
     return (
         <div className={cn("w-full", className)}>
@@ -142,17 +207,66 @@ export function DataTable<TData>({
                 translations={translations}
             />
 
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
+            <div
+                ref={(el) => {
+                    containerRef.current = el;
+                    if (isVirtualActive) scrollContainerRef.current = el;
+                }}
+                className="rounded-md border"
+                style={
+                    isVirtualActive
+                        ? {
+                              maxHeight: "70vh",
+                              overflow: "auto",
+                              position: "relative",
+                          }
+                        : undefined
+                }
+            >
+                <Table
+                    style={{
+                        ...(enableColumnResizing
+                            ? {
+                                  width: table.getTotalSize(),
+                                  tableLayout: "fixed" as const,
+                              }
+                            : {}),
+                        ...(isVirtualActive ? { display: "grid" } : {}),
+                    }}
+                >
+                    <TableHeader
+                        className={
+                            isVirtualActive ? "bg-background" : undefined
+                        }
+                        style={
+                            isVirtualActive
+                                ? {
+                                      display: "grid",
+                                      position: "sticky",
+                                      top: 0,
+                                      zIndex: 1,
+                                  }
+                                : undefined
+                        }
+                    >
                         {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
+                            <TableRow
+                                key={headerGroup.id}
+                                style={
+                                    isVirtualActive
+                                        ? { display: "flex", width: "100%" }
+                                        : undefined
+                                }
+                            >
                                 {headerGroup.headers.map((header) => (
                                     <DataTableColumnHeader
                                         key={header.id}
                                         header={header}
                                         enableSorting={enableSorting}
-                                        enableColumnResizing={enableColumnResizing}
+                                        enableColumnResizing={
+                                            enableColumnResizing
+                                        }
+                                        isVirtualActive={isVirtualActive}
                                     />
                                 ))}
                             </TableRow>
@@ -163,6 +277,8 @@ export function DataTable<TData>({
                         table={table}
                         columns={allColumns}
                         isShowAll={isShowAll}
+                        isVirtualActive={isVirtualActive}
+                        scrollContainerRef={scrollContainerRef}
                         enableEditing={enableEditing}
                         onCellEdit={onCellEdit}
                         enableNewRow={enableNewRow}
