@@ -11,6 +11,7 @@ model Staff {
     orders           Order[]
     refreshTokens    RefreshToken[]
     productHistories ProductHistory[]
+    expenses         Expense[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

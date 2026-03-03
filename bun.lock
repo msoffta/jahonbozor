@@ -212,6 +212,8 @@
         "@types/react-dom": "^19.2.3",
       },
       "peerDependencies": {
+        "@tanstack/react-table": "^8",
+        "@tanstack/react-virtual": "^3",
         "react": "^19",
         "react-dom": "^19",
         "tailwindcss": "^4",

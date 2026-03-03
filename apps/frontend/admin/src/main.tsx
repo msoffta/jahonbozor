@@ -84,7 +84,7 @@ function App() {
         <QueryClientProvider client={queryClient}>
             <RouterProvider router={router} />
             <Suspense>
-                {/* <TanStackDevtools /> */}
+                <TanStackDevtools />
             </Suspense>
         </QueryClientProvider>
     );

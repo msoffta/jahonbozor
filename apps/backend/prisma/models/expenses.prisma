@@ -1,0 +1,19 @@
+model Expense {
+    id          Int       @id @default(autoincrement())
+    name        String
+    amount      Decimal   @db.Decimal(10, 2)
+    description String?
+    expenseDate DateTime
+    staffId     Int
+
+    staff Staff @relation(fields: [staffId], references: [id])
+
+    deletedAt DateTime?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([deletedAt])
+    @@index([staffId])
+    @@index([expenseDate])
+}

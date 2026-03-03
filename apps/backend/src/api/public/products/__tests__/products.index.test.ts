@@ -35,7 +35,18 @@ const createTestApp = () => {
             requestId: "test-request-id",
         }))
         .get("/products", async ({ query, logger }) => {
-            return await PublicProductsService.getAllProducts(query as Parameters<typeof PublicProductsService.getAllProducts>[0], logger);
+            return await PublicProductsService.getAllProducts(
+                {
+                    page: Number(query.page) || 1,
+                    limit: Number(query.limit) || 20,
+                    searchQuery: query.searchQuery || "",
+                    categoryIds: query.categoryIds || undefined,
+                    minPrice: query.minPrice ? Number(query.minPrice) : undefined,
+                    maxPrice: query.maxPrice ? Number(query.maxPrice) : undefined,
+                    includeDeleted: query.includeDeleted === "true",
+                },
+                logger,
+            );
         })
         .get("/products/:id", async ({ params, set, logger }) => {
             const id = Number(params.id);
@@ -90,7 +101,7 @@ describe("PublicProducts Endpoints", () => {
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
-                expect.objectContaining({ page: "2", limit: "10", searchQuery: "test" }),
+                expect.objectContaining({ page: 2, limit: 10, searchQuery: "test" }),
                 expect.anything(),
             );
 

@@ -49,6 +49,13 @@ export const Permission = {
     ORDERS_LIST_OWN: "orders:list:own",
     ORDERS_LIST_ALL: "orders:list:all",
 
+    // === EXPENSES ===
+    EXPENSES_CREATE: "expenses:create",
+    EXPENSES_READ: "expenses:read",
+    EXPENSES_UPDATE: "expenses:update",
+    EXPENSES_DELETE: "expenses:delete",
+    EXPENSES_LIST: "expenses:list",
+
     // === PRODUCT HISTORY (read-only by design) ===
     PRODUCT_HISTORY_CREATE: "product-history:create",
     PRODUCT_HISTORY_READ: "product-history:read",
@@ -110,6 +117,13 @@ export const PermissionGroups = {
         Permission.ORDERS_UPDATE_ALL,
         Permission.ORDERS_DELETE,
         Permission.ORDERS_LIST_ALL,
+    ],
+    EXPENSES_ALL: [
+        Permission.EXPENSES_CREATE,
+        Permission.EXPENSES_READ,
+        Permission.EXPENSES_UPDATE,
+        Permission.EXPENSES_DELETE,
+        Permission.EXPENSES_LIST,
     ],
     PRODUCT_HISTORY_ALL: [
         Permission.PRODUCT_HISTORY_CREATE,

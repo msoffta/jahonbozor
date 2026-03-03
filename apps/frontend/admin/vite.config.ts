@@ -11,6 +11,21 @@ export default defineConfig({
     envDir: resolve(process.cwd(), "../../.."),
     build: {
         sourcemap: "hidden",
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (!id.includes("node_modules")) return;
+                    if (id.includes("react-dom")) return "vendor-react-dom";
+                    if (id.includes("/react/")) return "vendor-react";
+                    if (id.includes("@tanstack/react-router") || id.includes("@tanstack/router")) return "vendor-tanstack-router";
+                    if (id.includes("@tanstack")) return "vendor-tanstack";
+                    if (id.includes("@radix-ui")) return "vendor-radix";
+                    if (id.includes("motion")) return "vendor-motion";
+                    if (id.includes("@sentry")) return "vendor-sentry";
+                    if (id.includes("i18next")) return "vendor-i18n";
+                },
+            },
+        },
     },
     plugins: [
         devtools(),

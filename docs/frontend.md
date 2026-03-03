@@ -669,8 +669,17 @@ packages/ui/
 │   │   │   ├── breadcrumb.tsx
 │   │   │   ├── sidebar.tsx
 │   │   │   └── form.tsx              # TanStack Form helpers
+│   │   ├── data-table/               # Generic DataTable (TanStack Table v8)
+│   │   │   ├── index.ts              # Barrel export
+│   │   │   ├── types.ts              # Props, ColumnMeta, Translations, module augmentation
+│   │   │   ├── data-table.tsx         # Main orchestrator
+│   │   │   ├── data-table-header.tsx  # Sort indicators + resize handles
+│   │   │   ├── data-table-body.tsx    # Paginated + virtualized (TanStack Virtual)
+│   │   │   ├── data-table-toolbar.tsx # Search, column filters, visibility toggle
+│   │   │   ├── data-table-pagination.tsx # Page controls, size selector, "Show All"
+│   │   │   ├── data-table-editable-cell.tsx # Inline edit (dblClick, Enter/Escape)
+│   │   │   └── data-table-new-row.tsx # Empty row for creating records
 │   │   └── shared/                   # Higher-level reusable components
-│   │       ├── data-table.tsx        # Generic TanStack Table wrapper
 │   │       ├── confirm-dialog.tsx    # "Are you sure?" dialog
 │   │       ├── loading-spinner.tsx
 │   │       ├── empty-state.tsx
@@ -703,11 +712,67 @@ import { cn } from "@jahonbozor/ui";
         "@radix-ui/react-*": "..."
     },
     "peerDependencies": {
+        "@tanstack/react-table": "^8",
+        "@tanstack/react-virtual": "^3",
         "react": "^19",
         "react-dom": "^19"
     }
 }
 ```
+
+### DataTable Component
+
+Feature-rich, generic data table built on TanStack Table v8 with full i18n support.
+
+```typescript
+import { DataTable } from "@jahonbozor/ui";
+import type { DataTableProps, DataTableColumnMeta } from "@jahonbozor/ui";
+import type { ColumnDef } from "@tanstack/react-table";
+
+const columns: ColumnDef<Product, any>[] = [
+    { accessorKey: "name", header: t("name"), meta: { editable: true, inputType: "text" } },
+    { accessorKey: "price", header: t("price"), meta: { editable: true, inputType: "number", align: "right" } },
+    {
+        accessorKey: "status", header: t("status"),
+        meta: {
+            filterVariant: "select",
+            filterOptions: [{ label: "Active", value: "active" }, { label: "Draft", value: "draft" }],
+        },
+    },
+];
+
+<DataTable
+    columns={columns}
+    data={products}
+    pagination
+    defaultPageSize={20}
+    enableShowAll
+    enableSorting
+    enableGlobalSearch
+    enableFiltering
+    enableColumnVisibility
+    enableColumnResizing
+    enableEditing
+    onCellEdit={(rowIndex, columnId, value) => updateProduct(rowIndex, columnId, value)}
+    enableNewRow
+    newRowPosition="end"
+    onNewRowSave={(data) => createProduct(data)}
+    newRowDefaultValues={{ name: "", price: 0, status: "draft" }}
+    enableRowSelection
+    onRowSelectionChange={(selection) => setSelected(selection)}
+    translations={{
+        search: t("search"),
+        noResults: t("noResults"),
+        columns: t("columns"),
+        rowsPerPage: t("rowsPerPage"),
+        showAll: t("showAll"),
+    }}
+/>
+```
+
+**Key features:** sorting, global search, per-column filters (text/select/range), column resizing, inline cell editing (double-click, Enter/Escape/blur), new row creation, row selection, "Show All" with TanStack Virtual, Zod validation, spring animations.
+
+**Column meta** (`DataTableColumnMeta`): `align`, `className`, `editable`, `inputType`, `selectOptions`, `filterVariant`, `filterOptions`, `validationSchema` (any object with `.safeParse()`), `placeholder`.
 
 ### Tailwind Configuration
 

@@ -11,9 +11,14 @@ export { Separator } from "./components/ui/separator.tsx";
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./components/ui/card.tsx";
 export { Drawer, DrawerHeader, DrawerTitle } from "./components/ui/drawer.tsx";
 export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "./components/ui/dropdown-menu.tsx";
+export { Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell, TableCaption } from "./components/ui/table.tsx";
+export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from "./components/ui/select.tsx";
 
 export { motion, AnimatePresence, LayoutGroup } from "motion/react";
 
 export { PageTransition } from "./components/motion/page-transition.tsx";
 export { AnimatedList, AnimatedListItem } from "./components/motion/animated-list.tsx";
 export { FadeIn } from "./components/motion/fade-in.tsx";
+
+export { DataTable } from "./components/data-table/index.ts";
+export type { DataTableProps, DataTableColumnMeta, DataTableTranslations } from "./components/data-table/types.ts";

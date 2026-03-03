@@ -17,6 +17,7 @@ export * from "./roles";
 export * from "./products";
 export * from "./categories";
 export * from "./orders";
+export * from "./expenses";
 export * from "./audit-logs";
 
 // === UTILS ===

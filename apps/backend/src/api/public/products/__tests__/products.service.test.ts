@@ -36,6 +36,7 @@ const defaultParams = {
     page: 1,
     limit: 20,
     searchQuery: "",
+    includeDeleted: false,
 };
 
 describe("PublicProducts Service", () => {

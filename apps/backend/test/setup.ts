@@ -12,6 +12,7 @@ import type {
     OrderItem,
     ProductHistory,
     AuditLog,
+    Expense,
 } from "@backend/generated/prisma/client";
 
 // Generic mock type for Prisma model methods
@@ -73,6 +74,7 @@ export const prismaMock = {
     orderItem: createModelMock<OrderItem>(),
     productHistory: createModelMock<ProductHistory>(),
     auditLog: createModelMock<AuditLog>(),
+    expense: createModelMock<Expense>(),
     $transaction: mock<(callback: TransactionCallback | Promise<unknown>[]) => Promise<unknown>>(
         originalTransaction,
     ),
