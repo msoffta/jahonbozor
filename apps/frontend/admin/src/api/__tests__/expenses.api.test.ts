@@ -6,8 +6,8 @@ interface MockEdenResponse {
     error: Record<string, unknown> | null;
 }
 
-type ListQueryFnContext = QueryFunctionContext<readonly ["products", "list", Record<string, unknown> | undefined]>;
-type DetailQueryFnContext = QueryFunctionContext<readonly ["products", "detail", number]>;
+type ListQueryFnContext = QueryFunctionContext<readonly ["expenses", "list", Record<string, unknown> | undefined]>;
+type DetailQueryFnContext = QueryFunctionContext<readonly ["expenses", "detail", number]>;
 
 // --- Mock setup (BEFORE imports) ---
 
@@ -18,9 +18,9 @@ const mockGet = mock(
                 success: true,
                 data: {
                     count: 2,
-                    products: [
-                        { id: 1, name: "Product A", price: 1000, costprice: 500, categoryId: 1, remaining: 10 },
-                        { id: 2, name: "Product B", price: 2000, costprice: 800, categoryId: 2, remaining: 5 },
+                    expenses: [
+                        { id: 1, name: "Office supplies", amount: 50000, description: null, expenseDate: "2026-01-15", staffId: 1 },
+                        { id: 2, name: "Transport", amount: 25000, description: "Taxi", expenseDate: "2026-01-16", staffId: 1 },
                     ],
                 },
             },
@@ -33,7 +33,7 @@ const mockGetById = mock(
         Promise.resolve({
             data: {
                 success: true,
-                data: { id: 1, name: "Product A", price: 1000, costprice: 500, categoryId: 1, remaining: 10 },
+                data: { id: 1, name: "Office supplies", amount: 50000, description: null, expenseDate: "2026-01-15", staffId: 1 },
             },
             error: null,
         }),
@@ -44,7 +44,7 @@ const mockPost = mock(
         Promise.resolve({
             data: {
                 success: true,
-                data: { id: 3, name: "New Product", price: 1500, costprice: 700, categoryId: 1, remaining: 0 },
+                data: { id: 3, name: "New expense", amount: 10000, description: "Test", expenseDate: "2026-01-20", staffId: 1 },
             },
             error: null,
         }),
@@ -55,7 +55,7 @@ const mockPatch = mock(
         Promise.resolve({
             data: {
                 success: true,
-                data: { id: 1, name: "Updated Product", price: 1200 },
+                data: { id: 1, name: "Updated expense", amount: 60000 },
             },
             error: null,
         }),
@@ -66,7 +66,7 @@ const mockDelete = mock(
         Promise.resolve({
             data: {
                 success: true,
-                data: { id: 1, name: "Product A", deletedAt: "2026-01-01" },
+                data: { id: 1, name: "Office supplies", deletedAt: "2026-01-20" },
             },
             error: null,
         }),
@@ -77,7 +77,7 @@ const mockRestorePost = mock(
         Promise.resolve({
             data: {
                 success: true,
-                data: { id: 1, name: "Product A", deletedAt: null },
+                data: { id: 1, name: "Office supplies", deletedAt: null },
             },
             error: null,
         }),
@@ -87,7 +87,7 @@ mock.module("@/api/client", () => ({
     api: {
         api: {
             private: {
-                products: Object.assign(
+                expenses: Object.assign(
                     (_params: { id: number }) => ({
                         get: mockGetById,
                         patch: mockPatch,
@@ -103,89 +103,89 @@ mock.module("@/api/client", () => ({
 
 // --- Imports AFTER mocks ---
 import {
-    productKeys,
-    productsListQueryOptions,
-    productDetailQueryOptions,
-    createProductFn,
-    updateProductFn,
-    deleteProductFn,
-    restoreProductFn,
-} from "../products.api";
+    expenseKeys,
+    expensesListQueryOptions,
+    expenseDetailQueryOptions,
+    createExpenseFn,
+    updateExpenseFn,
+    deleteExpenseFn,
+    restoreExpenseFn,
+} from "../expenses.api";
 
-describe("products.api", () => {
+describe("expenses.api", () => {
     beforeEach(() => {
         mock.restore();
     });
 
     // --- Query Keys ---
 
-    describe("productKeys", () => {
+    describe("expenseKeys", () => {
         test("should have correct all key", () => {
-            expect(productKeys.all).toEqual(["products"]);
+            expect(expenseKeys.all).toEqual(["expenses"]);
         });
 
         test("should have correct list key with params", () => {
             const params = { page: 1, limit: 20 };
-            expect(productKeys.list(params)).toEqual(["products", "list", params]);
+            expect(expenseKeys.list(params)).toEqual(["expenses", "list", params]);
         });
 
         test("should have correct list key without params", () => {
-            expect(productKeys.list()).toEqual(["products", "list", undefined]);
+            expect(expenseKeys.list()).toEqual(["expenses", "list", undefined]);
         });
 
         test("should have correct detail key", () => {
-            expect(productKeys.detail(42)).toEqual(["products", "detail", 42]);
+            expect(expenseKeys.detail(42)).toEqual(["expenses", "detail", 42]);
         });
 
         test("list key should extend all key", () => {
-            const listKey = productKeys.list();
-            expect(listKey[0]).toBe(productKeys.all[0]);
+            const listKey = expenseKeys.list();
+            expect(listKey[0]).toBe(expenseKeys.all[0]);
         });
 
         test("detail key should extend all key", () => {
-            const detailKey = productKeys.detail(1);
-            expect(detailKey[0]).toBe(productKeys.all[0]);
+            const detailKey = expenseKeys.detail(1);
+            expect(detailKey[0]).toBe(expenseKeys.all[0]);
         });
     });
 
     // --- List Query Options ---
 
-    describe("productsListQueryOptions", () => {
+    describe("expensesListQueryOptions", () => {
         test("should have correct queryKey", () => {
-            const options = productsListQueryOptions();
-            expect([...options.queryKey]).toEqual(["products", "list", undefined]);
+            const options = expensesListQueryOptions();
+            expect([...options.queryKey]).toEqual(["expenses", "list", undefined]);
         });
 
         test("should have correct queryKey with params", () => {
             const params = { page: 2, limit: 50 };
-            const options = productsListQueryOptions(params);
-            expect([...options.queryKey]).toEqual(["products", "list", params]);
+            const options = expensesListQueryOptions(params);
+            expect([...options.queryKey]).toEqual(["expenses", "list", params]);
         });
 
         test("should have a queryFn defined", () => {
-            const options = productsListQueryOptions();
+            const options = expensesListQueryOptions();
             expect(typeof options.queryFn).toBe("function");
         });
 
-        test("queryFn should call api.api.private.products.get", async () => {
-            const options = productsListQueryOptions();
+        test("queryFn should call api.api.private.expenses.get", async () => {
+            const options = expensesListQueryOptions();
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalled();
         });
 
         test("queryFn should pass default params when none provided", async () => {
-            const options = productsListQueryOptions();
+            const options = expensesListQueryOptions();
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 1, limit: 100, searchQuery: "", includeDeleted: false },
+                query: { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
             });
         });
 
         test("queryFn should merge custom params over defaults", async () => {
-            const options = productsListQueryOptions({ page: 3, limit: 50, categoryIds: "1,2" });
+            const options = expensesListQueryOptions({ page: 3, limit: 50, staffId: 1 });
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 3, limit: 50, searchQuery: "", includeDeleted: false, categoryIds: "1,2" },
+                query: { page: 3, limit: 50, searchQuery: "", includeDeleted: false, staffId: 1 },
             });
         });
 
@@ -195,15 +195,15 @@ describe("products.api", () => {
                     success: true,
                     data: {
                         count: 1,
-                        products: [{ id: 1, name: "Test" }],
+                        expenses: [{ id: 1, name: "Test" }],
                     },
                 },
                 error: null,
             });
 
-            const options = productsListQueryOptions();
+            const options = expensesListQueryOptions();
             const result = await options.queryFn!({} as ListQueryFnContext);
-            expect(result).toMatchObject({ count: 1, products: [{ id: 1, name: "Test" }] });
+            expect(result).toMatchObject({ count: 1, expenses: [{ id: 1, name: "Test" }] });
         });
 
         test("queryFn should throw on error", async () => {
@@ -212,7 +212,7 @@ describe("products.api", () => {
                 error: { status: 500, message: "Internal error" },
             });
 
-            const options = productsListQueryOptions();
+            const options = expensesListQueryOptions();
             await expect(options.queryFn!({} as ListQueryFnContext)).rejects.toBeDefined();
         });
 
@@ -222,46 +222,46 @@ describe("products.api", () => {
                 error: null,
             });
 
-            const options = productsListQueryOptions();
+            const options = expensesListQueryOptions();
             await expect(options.queryFn!({} as ListQueryFnContext)).rejects.toThrow("Request failed");
         });
     });
 
     // --- Detail Query Options ---
 
-    describe("productDetailQueryOptions", () => {
+    describe("expenseDetailQueryOptions", () => {
         test("should have correct queryKey with id", () => {
-            const options = productDetailQueryOptions(5);
-            expect([...options.queryKey]).toEqual(["products", "detail", 5]);
+            const options = expenseDetailQueryOptions(5);
+            expect([...options.queryKey]).toEqual(["expenses", "detail", 5]);
         });
 
         test("should be enabled when id > 0", () => {
-            const options = productDetailQueryOptions(1);
+            const options = expenseDetailQueryOptions(1);
             expect(options.enabled).toBe(true);
         });
 
         test("should be disabled when id is 0", () => {
-            const options = productDetailQueryOptions(0);
+            const options = expenseDetailQueryOptions(0);
             expect(options.enabled).toBe(false);
         });
 
         test("should be disabled when id is negative", () => {
-            const options = productDetailQueryOptions(-1);
+            const options = expenseDetailQueryOptions(-1);
             expect(options.enabled).toBe(false);
         });
 
-        test("queryFn should return single product on success", async () => {
+        test("queryFn should return single expense on success", async () => {
             mockGetById.mockResolvedValueOnce({
                 data: {
                     success: true,
-                    data: { id: 7, name: "Single Product", price: 500 },
+                    data: { id: 7, name: "Single Expense", amount: 15000 },
                 },
                 error: null,
             });
 
-            const options = productDetailQueryOptions(7);
+            const options = expenseDetailQueryOptions(7);
             const result = await options.queryFn!({} as DetailQueryFnContext);
-            expect(result).toMatchObject({ id: 7, name: "Single Product" });
+            expect(result).toMatchObject({ id: 7, name: "Single Expense" });
         });
 
         test("queryFn should throw on error", async () => {
@@ -270,7 +270,7 @@ describe("products.api", () => {
                 error: { status: 404, message: "Not found" },
             });
 
-            const options = productDetailQueryOptions(999);
+            const options = expenseDetailQueryOptions(999);
             await expect(options.queryFn!({} as DetailQueryFnContext)).rejects.toBeDefined();
         });
 
@@ -280,18 +280,18 @@ describe("products.api", () => {
                 error: null,
             });
 
-            const options = productDetailQueryOptions(999);
+            const options = expenseDetailQueryOptions(999);
             await expect(options.queryFn!({} as DetailQueryFnContext)).rejects.toThrow("Request failed");
         });
     });
 
     // --- Mutations ---
 
-    describe("createProductFn", () => {
-        test("should call api.api.private.products.post with body", async () => {
-            const body = { name: "New", price: 100, costprice: 50, categoryId: 1 };
-            await createProductFn(body);
-            expect(mockPost).toHaveBeenCalledWith({ ...body, remaining: 0 });
+    describe("createExpenseFn", () => {
+        test("should call api.api.private.expenses.post with body", async () => {
+            const body = { name: "New", amount: 10000, description: null, expenseDate: "2026-01-20" };
+            await createExpenseFn(body);
+            expect(mockPost).toHaveBeenCalledWith(body);
         });
 
         test("should return data.data on success", async () => {
@@ -300,7 +300,7 @@ describe("products.api", () => {
                 error: null,
             });
 
-            const result = await createProductFn({ name: "Created", price: 100, costprice: 50, categoryId: 1 });
+            const result = await createExpenseFn({ name: "Created", amount: 5000, description: null, expenseDate: "2026-01-20" });
             expect(result).toMatchObject({ id: 10, name: "Created" });
         });
 
@@ -311,7 +311,7 @@ describe("products.api", () => {
             });
 
             await expect(
-                createProductFn({ name: "", price: 0, costprice: 0, categoryId: 0 }),
+                createExpenseFn({ name: "", amount: 0, description: null, expenseDate: "" }),
             ).rejects.toBeDefined();
         });
 
@@ -322,15 +322,15 @@ describe("products.api", () => {
             });
 
             await expect(
-                createProductFn({ name: "Dup", price: 100, costprice: 50, categoryId: 1 }),
+                createExpenseFn({ name: "Dup", amount: 100, description: null, expenseDate: "2026-01-20" }),
             ).rejects.toThrow("Request failed");
         });
     });
 
-    describe("updateProductFn", () => {
-        test("should call api.api.private.products({ id }).patch with body", async () => {
-            await updateProductFn({ id: 1, name: "Updated", price: 200 });
-            expect(mockPatch).toHaveBeenCalledWith({ name: "Updated", price: 200 });
+    describe("updateExpenseFn", () => {
+        test("should call api.api.private.expenses({ id }).patch with body", async () => {
+            await updateExpenseFn({ id: 1, name: "Updated", amount: 60000 });
+            expect(mockPatch).toHaveBeenCalledWith({ name: "Updated", amount: 60000 });
         });
 
         test("should return data.data on success", async () => {
@@ -339,7 +339,7 @@ describe("products.api", () => {
                 error: null,
             });
 
-            const result = await updateProductFn({ id: 1, name: "Updated" });
+            const result = await updateExpenseFn({ id: 1, name: "Updated" });
             expect(result).toMatchObject({ id: 1, name: "Updated" });
         });
 
@@ -349,23 +349,23 @@ describe("products.api", () => {
                 error: { status: 404, message: "Not found" },
             });
 
-            await expect(updateProductFn({ id: 999, name: "X" })).rejects.toBeDefined();
+            await expect(updateExpenseFn({ id: 999, name: "X" })).rejects.toBeDefined();
         });
     });
 
-    describe("deleteProductFn", () => {
-        test("should call api.api.private.products({ id }).delete", async () => {
-            await deleteProductFn(5);
+    describe("deleteExpenseFn", () => {
+        test("should call api.api.private.expenses({ id }).delete", async () => {
+            await deleteExpenseFn(5);
             expect(mockDelete).toHaveBeenCalled();
         });
 
         test("should return data.data on success", async () => {
             mockDelete.mockResolvedValueOnce({
-                data: { success: true, data: { id: 5, deletedAt: "2026-01-01" } },
+                data: { success: true, data: { id: 5, deletedAt: "2026-01-20" } },
                 error: null,
             });
 
-            const result = await deleteProductFn(5);
+            const result = await deleteExpenseFn(5);
             expect(result).toMatchObject({ id: 5 });
         });
 
@@ -375,13 +375,13 @@ describe("products.api", () => {
                 error: { status: 404, message: "Not found" },
             });
 
-            await expect(deleteProductFn(999)).rejects.toBeDefined();
+            await expect(deleteExpenseFn(999)).rejects.toBeDefined();
         });
     });
 
-    describe("restoreProductFn", () => {
-        test("should call api.api.private.products({ id }).restore.post", async () => {
-            await restoreProductFn(3);
+    describe("restoreExpenseFn", () => {
+        test("should call api.api.private.expenses({ id }).restore.post", async () => {
+            await restoreExpenseFn(3);
             expect(mockRestorePost).toHaveBeenCalled();
         });
 
@@ -391,7 +391,7 @@ describe("products.api", () => {
                 error: null,
             });
 
-            const result = await restoreProductFn(3);
+            const result = await restoreExpenseFn(3);
             expect(result).toMatchObject({ id: 3, deletedAt: null });
         });
 
@@ -401,7 +401,7 @@ describe("products.api", () => {
                 error: { status: 404, message: "Not found" },
             });
 
-            await expect(restoreProductFn(999)).rejects.toBeDefined();
+            await expect(restoreExpenseFn(999)).rejects.toBeDefined();
         });
     });
 });

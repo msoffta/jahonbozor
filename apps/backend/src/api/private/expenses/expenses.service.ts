@@ -73,7 +73,7 @@ export abstract class ExpensesService {
                             },
                         },
                     },
-                    orderBy: { expenseDate: "desc" },
+                    orderBy: { id: "asc" },
                 }),
             ]);
 

@@ -38,11 +38,24 @@ export function DataTableCombobox({
         width: number;
     } | null>(null);
 
+    // When value matches an option's value (e.g. selected ID), show the label instead
+    const isSelectedOption = React.useMemo(
+        () => options.some((o) => o.value === value),
+        [value, options],
+    );
+
+    const displayValue = React.useMemo(() => {
+        if (isSelectedOption) {
+            return options.find((o) => o.value === value)?.label ?? value;
+        }
+        return value;
+    }, [value, options, isSelectedOption]);
+
     const filtered = React.useMemo(() => {
-        if (!value) return options;
+        if (!value || isSelectedOption) return options;
         const lower = value.toLowerCase();
         return options.filter((o) => o.label.toLowerCase().includes(lower));
-    }, [value, options]);
+    }, [value, options, isSelectedOption]);
 
     const measurePos = React.useCallback(() => {
         const el = innerRef.current;
@@ -113,7 +126,7 @@ export function DataTableCombobox({
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
             const match = options.find(
-                (o) => o.label.toLowerCase() === value.toLowerCase(),
+                (o) => o.label.toLowerCase() === displayValue.toLowerCase(),
             );
             if (match) onChange(match.value);
             setShowList(false);
@@ -127,7 +140,7 @@ export function DataTableCombobox({
         <>
             <Input
                 ref={setRef}
-                value={value}
+                value={displayValue}
                 onChange={(e) => {
                     onChange(e.target.value);
                     if (!showList) {

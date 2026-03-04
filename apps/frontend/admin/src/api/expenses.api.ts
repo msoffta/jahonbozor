@@ -41,16 +41,43 @@ export const expenseDetailQueryOptions = (id: number) =>
         enabled: id > 0,
     });
 
+// --- Mutation functions (exported for testing) ---
+
+export const createExpenseFn = async (body: { name: string; amount: number; description: string | null; expenseDate: string }) => {
+    const { data, error } = await api.api.private.expenses.post(body);
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data as ExpenseItem;
+};
+
+export const updateExpenseFn = async ({ id, ...body }: { id: number; name?: string; amount?: number; description?: string | null; expenseDate?: string }) => {
+    const { data, error } = await api.api.private.expenses({ id }).patch(body);
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data as ExpenseItem;
+};
+
+export const deleteExpenseFn = async (id: number) => {
+    const { data, error } = await api.api.private.expenses({ id }).delete();
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data as ExpenseItem;
+};
+
+export const restoreExpenseFn = async (id: number) => {
+    const { data, error } = await api.api.private.expenses({ id }).restore.post();
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data as ExpenseItem;
+};
+
+// --- Hooks ---
+
 export const useCreateExpense = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (body: { name: string; amount: number; description: string | null; expenseDate: string }) => {
-            const { data, error } = await api.api.private.expenses.post(body);
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data as ExpenseItem;
-        },
+        mutationFn: createExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
@@ -61,12 +88,7 @@ export const useUpdateExpense = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, ...body }: { id: number; name?: string; amount?: number; description?: string | null; expenseDate?: string }) => {
-            const { data, error } = await api.api.private.expenses({ id }).patch(body);
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data as ExpenseItem;
-        },
+        mutationFn: updateExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
@@ -77,12 +99,7 @@ export const useDeleteExpense = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (id: number) => {
-            const { data, error } = await api.api.private.expenses({ id }).delete();
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data as ExpenseItem;
-        },
+        mutationFn: deleteExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
@@ -93,12 +110,7 @@ export const useRestoreExpense = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (id: number) => {
-            const { data, error } = await api.api.private.expenses({ id }).restore.post();
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data as ExpenseItem;
-        },
+        mutationFn: restoreExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },

@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { PageTransition, DataTable, Checkbox } from "@jahonbozor/ui";
+import { PageTransition, DataTable, DataTableSkeleton, Checkbox } from "@jahonbozor/ui";
 import type { DataTableTranslations } from "@jahonbozor/ui";
 import { productsListQueryOptions, useCreateProduct, useUpdateProduct, useDeleteProduct, useRestoreProduct } from "@/api/products.api";
 import { categoriesListQueryOptions, useCreateCategory } from "@/api/categories.api";
@@ -113,7 +113,7 @@ function ProductsPage() {
             </div>
 
             {isLoading ? (
-                <div className="text-muted-foreground">{t("common:loading")}</div>
+                <DataTableSkeleton columns={9} rows={10} className="flex-1" />
             ) : (
                 <DataTable
                     className="flex-1"

@@ -23,10 +23,13 @@ export interface DataTableColumnMeta {
 
     // Inline editing
     editable?: boolean;
-    inputType?: "text" | "number" | "select" | "combobox" | "date";
+    inputType?: "text" | "number" | "select" | "combobox" | "date" | "datepicker" | "currency";
     selectOptions?: { label: string; value: string }[];
     validationSchema?: SafeParseable;
     placeholder?: string;
+
+    // DatePicker — show time input (HH:mm) alongside calendar
+    showTime?: boolean;
 }
 
 // ── TanStack module augmentation ───────────────────────────────

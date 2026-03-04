@@ -8,7 +8,7 @@
     "dev": "bun run --watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "bun x prisma generate",
-    "prisma:seed": "bun x prisma seed",
+    "prisma:seed": "bun x prisma db seed",
     "prisma:migrate": "bun x prisma migrate dev",
     "prisma:studio": "bun x prisma studio"
   },

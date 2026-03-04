@@ -1,83 +1,67 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
+import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
+import dayjs from "dayjs";
 import { Badge, Button, motion } from "@jahonbozor/ui";
 import { Trash2, RotateCcw } from "lucide-react";
 
-interface CategoryItem {
-    id: number;
-    name: string;
-}
-
-export interface ProductActions {
+export interface ExpenseActions {
     onDelete: (id: number) => void;
     onRestore: (id: number) => void;
 }
 
-export function getProductColumns(
+export function getExpenseColumns(
     t: TFunction,
-    categories: CategoryItem[],
-    actions: ProductActions,
-): ColumnDef<AdminProductItem, any>[] {
-    const filterOptions = categories.map((c) => ({ label: c.name, value: c.name }));
-    const selectOptions = categories.map((c) => ({ label: c.name, value: String(c.id) }));
-
+    actions: ExpenseActions,
+): ColumnDef<ExpenseItem, any>[] {
     return [
         {
             accessorKey: "id",
-            header: t("product_id"),
+            header: t("expense_id"),
             size: 60,
             meta: { align: "center" as const },
         },
         {
             accessorKey: "name",
-            header: t("product_name"),
+            header: t("expense_name"),
             size: 200,
             meta: { flex: 2, editable: true, inputType: "text" as const },
         },
         {
-            accessorKey: "price",
-            header: t("product_price"),
+            accessorKey: "amount",
+            header: t("expense_amount"),
             size: 120,
             cell: ({ getValue }) => getValue<number>().toLocaleString(),
             meta: { flex: 1, align: "right" as const, editable: true, inputType: "currency" as const },
         },
         {
-            accessorKey: "costprice",
-            header: t("product_costprice"),
-            size: 120,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
-            meta: { flex: 1, align: "right" as const, editable: true, inputType: "currency" as const },
+            accessorKey: "description",
+            header: t("expense_description"),
+            size: 200,
+            cell: ({ getValue }) => getValue<string | null>() ?? "—",
+            meta: { flex: 2, editable: true, inputType: "text" as const },
         },
         {
-            id: "category",
-            accessorFn: (row) => row.category?.name ?? "",
-            header: t("product_category"),
-            size: 160,
-            cell: ({ row }) => {
-                const cat = row.original.category;
-                if (!cat) return "—";
-                return cat.parent ? `${cat.parent.name} / ${cat.name}` : cat.name;
+            accessorKey: "expenseDate",
+            header: t("expense_date"),
+            size: 140,
+            cell: ({ getValue }) => {
+                const val = getValue<Date | string>();
+                return val ? dayjs(val).format("DD.MM.YYYY HH:mm") : "—";
             },
-            meta: {
-                flex: 1,
-                filterVariant: "select" as const,
-                filterOptions,
-                editable: true,
-                inputType: "combobox" as const,
-                selectOptions,
-            },
+            meta: { flex: 1, editable: true, inputType: "datepicker" as const, showTime: true },
         },
         {
-            accessorKey: "remaining",
-            header: t("product_remaining"),
-            size: 100,
-            meta: { flex: 1, align: "right" as const, editable: true, inputType: "number" as const },
+            id: "staff",
+            accessorFn: (row) => row.staff?.fullname ?? "—",
+            header: t("expense_staff"),
+            size: 140,
+            meta: { flex: 1 },
         },
         {
             id: "status",
             accessorFn: (row) => (row.deletedAt ? "deleted" : "active"),
-            header: t("product_status"),
+            header: t("expense_status"),
             size: 100,
             cell: ({ row }) => {
                 const isDeleted = row.original.deletedAt !== null;
@@ -97,13 +81,13 @@ export function getProductColumns(
         },
         {
             accessorKey: "createdAt",
-            header: t("product_created"),
+            header: t("expense_created"),
             size: 140,
             cell: ({ getValue }) => new Date(getValue<Date | string>()).toLocaleDateString(),
         },
         {
             id: "actions",
-            header: t("product_actions"),
+            header: t("expense_actions"),
             size: 100,
             meta: { align: "center" as const },
             cell: ({ row }) => {

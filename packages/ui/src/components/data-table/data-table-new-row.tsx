@@ -1,10 +1,12 @@
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { motion } from "motion/react";
+import { NumericFormat } from "react-number-format";
 import { cn } from "../../lib/utils";
 import { TableCell } from "../ui/table";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { DatePicker } from "../ui/date-picker";
 import { DataTableCombobox } from "./data-table-combobox";
 
 interface DataTableNewRowProps<TData> {
@@ -76,15 +78,17 @@ export function DataTableNewRow<TData>({
     const handleKeyDown = (e: React.KeyboardEvent, colIndex: number) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            // If last editable column, save
             if (colIndex === editableColumns.length - 1) {
                 handleSave();
             } else {
-                // Focus next input
+                // Try to focus next editable input; if no ref registered, save
                 const nextCol = editableColumns[colIndex + 1];
                 const nextKey = nextCol && ("accessorKey" in nextCol ? String(nextCol.accessorKey) : nextCol.id);
-                if (nextKey) {
-                    inputRefs.current.get(nextKey)?.focus();
+                const nextInput = nextKey ? inputRefs.current.get(nextKey) : null;
+                if (nextInput) {
+                    nextInput.focus();
+                } else {
+                    handleSave();
                 }
             }
         } else if (e.key === "Tab" && !e.shiftKey && colIndex === editableColumns.length - 1) {
@@ -158,6 +162,50 @@ export function DataTableNewRow<TData>({
                                 }}
                                 placeholder={meta.placeholder}
                                 error={!!error}
+                            />
+                        ) : meta.inputType === "datepicker" ? (
+                            <DatePicker
+                                value={values[key] as Date | string | undefined}
+                                showTime={meta.showTime}
+                                onChange={(date) => {
+                                    const val = date
+                                        ? meta.showTime ? date.toISOString() : date.toISOString().split("T")[0]
+                                        : "";
+                                    setValues((prev) => ({ ...prev, [key]: val }));
+                                    setErrors((prev) => {
+                                        const next = { ...prev };
+                                        delete next[key];
+                                        return next;
+                                    });
+                                }}
+                                onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
+                                inputRef={(el) => {
+                                    if (el) inputRefs.current.set(key, el);
+                                }}
+                                placeholder={meta.placeholder}
+                                className={cn("h-8 text-sm w-full", error && "border-destructive")}
+                            />
+                        ) : meta.inputType === "currency" ? (
+                            <NumericFormat
+                                getInputRef={(el: HTMLInputElement) => {
+                                    if (el) inputRefs.current.set(key, el);
+                                }}
+                                customInput={Input}
+                                value={values[key] != null ? Number(values[key]) : ""}
+                                thousandSeparator=" "
+                                decimalScale={0}
+                                allowNegative={false}
+                                onValueChange={(vals) => {
+                                    setValues((prev) => ({ ...prev, [key]: vals.floatValue ?? 0 }));
+                                    setErrors((prev) => {
+                                        const next = { ...prev };
+                                        delete next[key];
+                                        return next;
+                                    });
+                                }}
+                                onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
+                                placeholder={meta.placeholder}
+                                className={cn("h-8 text-sm", error && "border-destructive")}
                             />
                         ) : (
                             <Input

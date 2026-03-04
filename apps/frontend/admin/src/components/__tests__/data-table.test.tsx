@@ -245,7 +245,7 @@ describe("DataTable", () => {
 
     test("should toggle column visibility", async () => {
         const user = userEvent.setup();
-        const { getByText, getAllByText, container } = render(
+        const { getAllByText, container } = render(
             <DataTable
                 columns={baseColumns}
                 data={testData}
@@ -254,21 +254,21 @@ describe("DataTable", () => {
             />,
         );
 
-        // Column should be visible initially
-        expect(getByText("Age")).toBeDefined();
+        const getHeaderTexts = () =>
+            Array.from(container.querySelectorAll("th")).map((th) => th.textContent);
 
-        // Open column visibility dropdown — "Columns" appears in button + label, use first (button)
-        const columnsButtons = getAllByText("Columns");
-        await user.click(columnsButtons[0]);
+        // Column header should be visible initially
+        expect(getHeaderTexts()).toContain("Age");
 
-        // Click the "age" toggle to hide it
-        const ageToggle = getByText("age");
+        // The mocked DropdownMenuContent renders children immediately (always visible),
+        // so "Age" exists in both the <th> header and the dropdown <button>.
+        // Find the dropdown toggle button for "Age" column.
+        const ageElements = getAllByText("Age");
+        const ageToggle = ageElements.find((el) => el.tagName.toLowerCase() === "button")!;
         await user.click(ageToggle);
 
         // The "Age" header should be gone
-        const headerCells = container.querySelectorAll("th");
-        const headerTexts = Array.from(headerCells).map((th) => th.textContent);
-        expect(headerTexts).not.toContain("Age");
+        expect(getHeaderTexts()).not.toContain("Age");
     });
 
     test("should select a row via checkbox", () => {

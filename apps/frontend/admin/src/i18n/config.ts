@@ -6,10 +6,12 @@ import uzCommon from "@/i18n/uz/common.json";
 import ruCommon from "@/i18n/ru/common.json";
 import uzProducts from "@/i18n/uz/products.json";
 import ruProducts from "@/i18n/ru/products.json";
+import uzExpenses from "@/i18n/uz/expenses.json";
+import ruExpenses from "@/i18n/ru/expenses.json";
 
 const resources = {
-    uz: { common: uzCommon, products: uzProducts },
-    ru: { common: ruCommon, products: ruProducts },
+    uz: { common: uzCommon, products: uzProducts, expenses: uzExpenses },
+    ru: { common: ruCommon, products: ruProducts, expenses: ruExpenses },
 };
 
 // Read persisted locale from UI store

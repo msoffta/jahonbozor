@@ -1,0 +1,21 @@
+{
+    "title": "Расходы",
+    "expense_id": "ID",
+    "expense_name": "Название",
+    "expense_amount": "Сумма",
+    "expense_description": "Описание",
+    "expense_date": "Дата расхода",
+    "expense_staff": "Сотрудник",
+    "expense_status": "Статус",
+    "expense_created": "Дата создания",
+    "expense_actions": "Действия",
+    "status_active": "Активный",
+    "status_deleted": "Удалён",
+    "expenses_empty": "Расходы не найдены",
+    "table_columns": "Столбцы",
+    "table_show_all": "Все",
+    "table_previous": "Назад",
+    "table_next": "Вперёд",
+    "action_delete": "Удалить",
+    "action_restore": "Восстановить"
+}

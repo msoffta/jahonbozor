@@ -2,9 +2,11 @@ import * as React from "react";
 import type { CellContext } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import { motion } from "motion/react";
+import { NumericFormat } from "react-number-format";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { DatePicker } from "../ui/date-picker";
 import { DataTableCombobox } from "./data-table-combobox";
 
 interface DataTableEditableCellProps<TData> {
@@ -139,6 +141,44 @@ export function DataTableEditableCell<TData>({
                         }}
                         placeholder={meta.placeholder}
                         error={!!error}
+                    />
+                ) : meta?.inputType === "datepicker" ? (
+                    <DatePicker
+                        value={value as Date | string | undefined}
+                        showTime={meta?.showTime}
+                        onChange={(date) => {
+                            const val = date
+                                ? meta?.showTime ? date.toISOString() : date.toISOString().split("T")[0]
+                                : "";
+                            setValue(val);
+                            setError(null);
+                        }}
+                        onClose={() => {
+                            handleSave();
+                        }}
+                        onKeyDown={handleKeyDown}
+                        inputRef={(el) => {
+                            (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                        }}
+                        placeholder={meta?.placeholder}
+                        className="h-8 text-sm w-full"
+                    />
+                ) : meta?.inputType === "currency" ? (
+                    <NumericFormat
+                        getInputRef={inputRef}
+                        customInput={Input}
+                        value={value != null ? Number(value) : ""}
+                        thousandSeparator=" "
+                        decimalScale={0}
+                        allowNegative={false}
+                        onValueChange={(values) => {
+                            setValue(values.floatValue ?? 0);
+                            setError(null);
+                        }}
+                        onBlur={handleSave}
+                        onKeyDown={handleKeyDown}
+                        className={cn("h-8 text-sm", error && "border-destructive")}
+                        placeholder={meta?.placeholder}
                     />
                 ) : (
                     <Input
