@@ -1,17 +1,29 @@
+import { useUIStore } from "@/stores/ui.store";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import { useUIStore } from "@/stores/ui.store";
 
-import uzCommon from "@/i18n/uz/common.json";
+import ruClients from "@/i18n/ru/clients.json";
 import ruCommon from "@/i18n/ru/common.json";
-import uzProducts from "@/i18n/uz/products.json";
-import ruProducts from "@/i18n/ru/products.json";
-import uzExpenses from "@/i18n/uz/expenses.json";
 import ruExpenses from "@/i18n/ru/expenses.json";
+import ruProducts from "@/i18n/ru/products.json";
+import uzClients from "@/i18n/uz/clients.json";
+import uzCommon from "@/i18n/uz/common.json";
+import uzExpenses from "@/i18n/uz/expenses.json";
+import uzProducts from "@/i18n/uz/products.json";
 
 const resources = {
-    uz: { common: uzCommon, products: uzProducts, expenses: uzExpenses },
-    ru: { common: ruCommon, products: ruProducts, expenses: ruExpenses },
+    uz: {
+        common: uzCommon,
+        products: uzProducts,
+        expenses: uzExpenses,
+        clients: uzClients,
+    },
+    ru: {
+        common: ruCommon,
+        products: ruProducts,
+        expenses: ruExpenses,
+        clients: ruClients,
+    },
 };
 
 // Read persisted locale from UI store

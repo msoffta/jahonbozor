@@ -1,13 +1,127 @@
+import {
+    clientsListQueryOptions,
+    useCreateClient,
+    useDeleteClient,
+    useRestoreClient,
+    useUpdateClient,
+} from "@/api/clients.api";
+import { getClientColumns } from "@/components/clients/clients-columns";
+import type { DataTableTranslations } from "@jahonbozor/ui";
+import {
+    Checkbox,
+    DataTable,
+    DataTableSkeleton,
+    PageTransition,
+} from "@jahonbozor/ui";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PageTransition } from "@jahonbozor/ui";
 
 function UsersPage() {
-    const { t } = useTranslation();
+    const { t } = useTranslation("clients");
+    const [includeDeleted, setIncludeDeleted] = useState(false);
+
+    const { data: clientsData, isLoading } = useQuery(
+        clientsListQueryOptions({ limit: 100, includeDeleted }),
+    );
+
+    const createClient = useCreateClient();
+    const updateClient = useUpdateClient();
+    const deleteClient = useDeleteClient();
+    const restoreClient = useRestoreClient();
+
+    const actions = useMemo(
+        () => ({
+            onDelete: (id: number) => deleteClient.mutate(id),
+            onRestore: (id: number) => restoreClient.mutate(id),
+        }),
+        [deleteClient, restoreClient],
+    );
+
+    const columns = useMemo(() => getClientColumns(t, actions), [t, actions]);
+
+    const clients = clientsData?.users ?? [];
+
+    const handleCellEdit = useCallback(
+        async (rowIndex: number, columnId: string, value: unknown) => {
+            const client = clients[rowIndex];
+            if (!client) return;
+
+            const body: Record<string, unknown> = {};
+            body[columnId] = value;
+
+            updateClient.mutate({ id: client.id, ...body });
+        },
+        [clients, updateClient],
+    );
+
+    const handleNewRowSave = useCallback(
+        async (data: Record<string, unknown>) => {
+            createClient.mutate({
+                fullname: String(data.fullname),
+                username: String(data.username),
+                phone: data.phone ? String(data.phone) : null,
+                telegramId: null,
+                photo: null,
+                language: (data.language === "ru" ? "ru" : "uz") as "uz" | "ru",
+            });
+        },
+        [createClient],
+    );
+
+    const translations: DataTableTranslations = {
+        search: t("common:search"),
+        noResults: t("clients_empty"),
+        columns: t("table_columns"),
+        rowsPerPage: t("common:per_page"),
+        showAll: t("table_show_all"),
+        previous: t("table_previous"),
+        next: t("table_next"),
+        filterAll: t("common:filter_all"),
+        filterMin: t("common:filter_min"),
+        filterMax: t("common:filter_max"),
+        filter: t("common:filter"),
+    };
 
     return (
-        <PageTransition className="p-6">
-            <h1 className="text-2xl font-bold">{t("clients")}</h1>
+        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold">{t("title")}</h1>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                        checked={includeDeleted}
+                        onCheckedChange={(checked) =>
+                            setIncludeDeleted(checked === true)
+                        }
+                    />
+                    {t("common:show_deleted")}
+                </label>
+            </div>
+
+            {isLoading ? (
+                <DataTableSkeleton columns={8} rows={10} className="flex-1" />
+            ) : (
+                <DataTable
+                    className="flex-1"
+                    columns={columns}
+                    data={clients}
+                    pagination
+                    defaultPageSize={20}
+                    pageSizeOptions={[10, 20, 50]}
+                    enableShowAll
+                    enableSorting
+                    enableGlobalSearch
+                    enableFiltering
+                    enableColumnVisibility
+                    enableColumnResizing
+                    enableEditing
+                    enableNewRow
+                    onCellEdit={handleCellEdit}
+                    onNewRowSave={handleNewRowSave}
+                    translations={translations}
+                />
+            )}
         </PageTransition>
     );
 }
