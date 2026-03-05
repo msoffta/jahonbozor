@@ -5,10 +5,12 @@ import { initReactI18next } from "react-i18next";
 import ruClients from "@/i18n/ru/clients.json";
 import ruCommon from "@/i18n/ru/common.json";
 import ruExpenses from "@/i18n/ru/expenses.json";
+import ruIncome from "@/i18n/ru/income.json";
 import ruProducts from "@/i18n/ru/products.json";
 import uzClients from "@/i18n/uz/clients.json";
 import uzCommon from "@/i18n/uz/common.json";
 import uzExpenses from "@/i18n/uz/expenses.json";
+import uzIncome from "@/i18n/uz/income.json";
 import uzProducts from "@/i18n/uz/products.json";
 
 const resources = {
@@ -17,12 +19,14 @@ const resources = {
         products: uzProducts,
         expenses: uzExpenses,
         clients: uzClients,
+        income: uzIncome,
     },
     ru: {
         common: ruCommon,
         products: ruProducts,
         expenses: ruExpenses,
         clients: ruClients,
+        income: ruIncome,
     },
 };
 

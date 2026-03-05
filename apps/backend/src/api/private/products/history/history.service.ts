@@ -1,12 +1,16 @@
-import type { HistoryListResponse, HistoryDetailResponse, InventoryAdjustmentResponse } from "@jahonbozor/schemas/src/products";
+import { auditInTransaction } from "@backend/lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import type { Logger } from "@jahonbozor/logger";
+import type { Token } from "@jahonbozor/schemas";
+import type {
+    HistoryDetailResponse,
+    HistoryListResponse,
+    InventoryAdjustmentResponse,
+} from "@jahonbozor/schemas/src/products";
 import {
     CreateInventoryAdjustmentBody,
     ProductHistoryPagination,
 } from "@jahonbozor/schemas/src/products";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@backend/lib/prisma";
-import { auditInTransaction } from "@backend/lib/audit";
 
 interface AuditContext {
     staffId: number;
@@ -20,14 +24,25 @@ export abstract class HistoryService {
         logger: Logger,
     ): Promise<HistoryListResponse> {
         try {
-            const { page, limit, searchQuery, productId, operation, staffId, dateFrom, dateTo } = params;
+            const {
+                page,
+                limit,
+                searchQuery,
+                productId,
+                operation,
+                staffId,
+                dateFrom,
+                dateTo,
+            } = params;
             const whereClause = {
                 ...(productId && { productId }),
                 ...(operation && { operation }),
                 ...(staffId && { staffId }),
                 ...(dateFrom && { createdAt: { gte: dateFrom } }),
                 ...(dateTo && { createdAt: { lte: dateTo } }),
-                ...(searchQuery && { product: { name: { contains: searchQuery } } }),
+                ...(searchQuery && {
+                    product: { name: { contains: searchQuery } },
+                }),
             };
 
             const [count, history] = await prisma.$transaction([
@@ -37,31 +52,54 @@ export abstract class HistoryService {
                     take: limit,
                     where: whereClause,
                     include: {
-                        product: { select: { id: true, name: true, price: true } },
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                price: true,
+                                deletedAt: true,
+                            },
+                        },
                         staff: { select: { id: true, fullname: true } },
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { id: "asc" },
                 }),
             ]);
 
-            const mapped = history.map(h => ({
+            const mapped = history.map((h) => ({
                 ...h,
-                product: h.product ? { ...h.product, price: Number(h.product.price) } : undefined,
+                product: h.product
+                    ? { ...h.product, price: Number(h.product.price) }
+                    : undefined,
             }));
 
             return { success: true, data: { count, history: mapped } };
         } catch (error) {
-            logger.error("History: Error in getAllHistory", { page: params.page, limit: params.limit, error });
+            logger.error("History: Error in getAllHistory", {
+                page: params.page,
+                limit: params.limit,
+                error,
+            });
             return { success: false, error };
         }
     }
 
-    static async getHistoryEntry(historyId: number, logger: Logger): Promise<HistoryDetailResponse> {
+    static async getHistoryEntry(
+        historyId: number,
+        logger: Logger,
+    ): Promise<HistoryDetailResponse> {
         try {
             const historyEntry = await prisma.productHistory.findUnique({
                 where: { id: historyId },
                 include: {
-                    product: { select: { id: true, name: true, price: true } },
+                    product: {
+                        select: {
+                            id: true,
+                            name: true,
+                            price: true,
+                            deletedAt: true,
+                        },
+                    },
                     staff: { select: { id: true, fullname: true } },
                 },
             });
@@ -73,12 +111,20 @@ export abstract class HistoryService {
 
             const mapped = {
                 ...historyEntry,
-                product: historyEntry.product ? { ...historyEntry.product, price: Number(historyEntry.product.price) } : undefined,
+                product: historyEntry.product
+                    ? {
+                          ...historyEntry.product,
+                          price: Number(historyEntry.product.price),
+                      }
+                    : undefined,
             };
 
             return { success: true, data: mapped };
         } catch (error) {
-            logger.error("History: Error in getHistoryEntry", { historyId, error });
+            logger.error("History: Error in getHistoryEntry", {
+                historyId,
+                error,
+            });
             return { success: false, error };
         }
     }
@@ -89,7 +135,8 @@ export abstract class HistoryService {
         logger: Logger,
     ): Promise<HistoryListResponse> {
         try {
-            const { page, limit, operation, staffId, dateFrom, dateTo } = params;
+            const { page, limit, operation, staffId, dateFrom, dateTo } =
+                params;
             const whereClause = {
                 productId,
                 ...(operation && { operation }),
@@ -113,7 +160,10 @@ export abstract class HistoryService {
 
             return { success: true, data: { count, history } };
         } catch (error) {
-            logger.error("History: Error in getProductHistory", { productId, error });
+            logger.error("History: Error in getProductHistory", {
+                productId,
+                error,
+            });
             return { success: false, error };
         }
     }
@@ -130,13 +180,22 @@ export abstract class HistoryService {
             });
 
             if (!product) {
-                logger.warn("History: Product not found for inventory adjustment", { productId });
+                logger.warn(
+                    "History: Product not found for inventory adjustment",
+                    { productId },
+                );
                 return { success: false, error: "Product not found" };
             }
 
             if (product.deletedAt) {
-                logger.warn("History: Cannot adjust inventory for deleted product", { productId });
-                return { success: false, error: "Cannot adjust inventory for deleted product" };
+                logger.warn(
+                    "History: Cannot adjust inventory for deleted product",
+                    { productId },
+                );
+                return {
+                    success: false,
+                    error: "Cannot adjust inventory for deleted product",
+                };
             }
 
             const previousRemaining = product.remaining;
@@ -156,38 +215,47 @@ export abstract class HistoryService {
                 newRemaining = previousRemaining - adjustmentData.quantity;
             }
 
-            const [updatedProduct, historyEntry] = await prisma.$transaction(async (transaction) => {
-                const updated = await transaction.product.update({
-                    where: { id: productId },
-                    data: { remaining: newRemaining },
-                });
+            const [updatedProduct, historyEntry] = await prisma.$transaction(
+                async (transaction) => {
+                    const updated = await transaction.product.update({
+                        where: { id: productId },
+                        data: { remaining: newRemaining },
+                    });
 
-                const history = await transaction.productHistory.create({
-                    data: {
-                        productId,
-                        staffId: context.staffId,
-                        operation: adjustmentData.operation,
-                        quantity: adjustmentData.quantity,
-                        previousData: { remaining: previousRemaining },
-                        newData: { remaining: newRemaining },
-                        changeReason: adjustmentData.changeReason ?? null,
-                    },
-                });
+                    const history = await transaction.productHistory.create({
+                        data: {
+                            productId,
+                            staffId: context.staffId,
+                            operation: adjustmentData.operation,
+                            quantity: adjustmentData.quantity,
+                            previousData: { remaining: previousRemaining },
+                            newData: { remaining: newRemaining },
+                            changeReason: adjustmentData.changeReason ?? null,
+                            ...(adjustmentData.createdAt && {
+                                createdAt: new Date(adjustmentData.createdAt),
+                            }),
+                        },
+                    });
 
-                await auditInTransaction(
-                    transaction,
-                    { requestId: context.requestId, user: context.user, logger },
-                    {
-                        entityType: "product",
-                        entityId: productId,
-                        action: "INVENTORY_ADJUST",
-                        previousData: { remaining: previousRemaining },
-                        newData: { remaining: newRemaining },
-                    },
-                );
+                    await auditInTransaction(
+                        transaction,
+                        {
+                            requestId: context.requestId,
+                            user: context.user,
+                            logger,
+                        },
+                        {
+                            entityType: "product",
+                            entityId: productId,
+                            action: "INVENTORY_ADJUST",
+                            previousData: { remaining: previousRemaining },
+                            newData: { remaining: newRemaining },
+                        },
+                    );
 
-                return [updated, history];
-            });
+                    return [updated, history];
+                },
+            );
 
             logger.info("History: Inventory adjusted", {
                 productId,
@@ -198,11 +266,21 @@ export abstract class HistoryService {
                 staffId: context.staffId,
             });
 
-            const mappedProduct = { ...updatedProduct, price: Number(updatedProduct.price), costprice: Number(updatedProduct.costprice) };
+            const mappedProduct = {
+                ...updatedProduct,
+                price: Number(updatedProduct.price),
+                costprice: Number(updatedProduct.costprice),
+            };
 
-            return { success: true, data: { product: mappedProduct, historyEntry } };
+            return {
+                success: true,
+                data: { product: mappedProduct, historyEntry },
+            };
         } catch (error) {
-            logger.error("History: Error in createInventoryAdjustment", { productId, error });
+            logger.error("History: Error in createInventoryAdjustment", {
+                productId,
+                error,
+            });
             return { success: false, error };
         }
     }

@@ -1,7 +1,10 @@
-import type { HistoryListResponse, HistoryDetailResponse } from "@jahonbozor/schemas/src/products";
-import { Permission } from "@jahonbozor/schemas";
-import { ProductHistoryPagination } from "@jahonbozor/schemas/src/products";
 import { authMiddleware } from "@backend/lib/middleware";
+import { Permission } from "@jahonbozor/schemas";
+import type {
+    HistoryDetailResponse,
+    HistoryListResponse,
+} from "@jahonbozor/schemas/src/products";
+import { ProductHistoryPagination } from "@jahonbozor/schemas/src/products";
 import { Elysia, t } from "elysia";
 import { HistoryService } from "./history.service";
 
@@ -9,15 +12,17 @@ const historyIdParams = t.Object({
     historyId: t.Numeric(),
 });
 
-export const history = new Elysia({ prefix: "/history" })
+export const history = new Elysia()
     .use(authMiddleware)
     .get(
-        "/",
+        "/history",
         async ({ query, logger }): Promise<HistoryListResponse> => {
             try {
                 return await HistoryService.getAllHistory(query, logger);
             } catch (error) {
-                logger.error("History: Unhandled error in GET /history", { error });
+                logger.error("History: Unhandled error in GET /history", {
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -27,10 +32,13 @@ export const history = new Elysia({ prefix: "/history" })
         },
     )
     .get(
-        "/:historyId",
+        "/history/:historyId",
         async ({ params, set, logger }): Promise<HistoryDetailResponse> => {
             try {
-                const result = await HistoryService.getHistoryEntry(params.historyId, logger);
+                const result = await HistoryService.getHistoryEntry(
+                    params.historyId,
+                    logger,
+                );
 
                 if (!result.success) {
                     set.status = 404;
@@ -38,7 +46,10 @@ export const history = new Elysia({ prefix: "/history" })
 
                 return result;
             } catch (error) {
-                logger.error("History: Unhandled error in GET /history/:historyId", { historyId: params.historyId, error });
+                logger.error(
+                    "History: Unhandled error in GET /history/:historyId",
+                    { historyId: params.historyId, error },
+                );
                 return { success: false, error };
             }
         },

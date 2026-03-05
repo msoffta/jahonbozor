@@ -1,6 +1,6 @@
 import z from "zod";
-import { PaginationQuery } from "../common/pagination.model";
 import { Operation } from "../common/enums";
+import { PaginationQuery } from "../common/pagination.model";
 import { ProductHistory } from "./product-history.model";
 
 export const CreateInventoryAdjustmentBody = ProductHistory.pick({
@@ -8,6 +8,7 @@ export const CreateInventoryAdjustmentBody = ProductHistory.pick({
 }).extend({
     operation: z.enum(["INVENTORY_ADD", "INVENTORY_REMOVE"]),
     quantity: z.number().positive(),
+    createdAt: z.union([z.coerce.date(), z.string().datetime()]).optional(),
 });
 
 export const ProductHistoryPagination = PaginationQuery.extend({
@@ -18,7 +19,9 @@ export const ProductHistoryPagination = PaginationQuery.extend({
     dateTo: z.string().datetime().optional(),
 });
 
-export type CreateInventoryAdjustmentBody = z.infer<typeof CreateInventoryAdjustmentBody>;
+export type CreateInventoryAdjustmentBody = z.infer<
+    typeof CreateInventoryAdjustmentBody
+>;
 export type ProductHistoryPagination = z.infer<typeof ProductHistoryPagination>;
 
 // --- Response types ---
@@ -37,10 +40,21 @@ export interface HistoryEntryItem {
     changeReason: string | null;
     createdAt: Date | string;
     updatedAt: Date | string;
-    product?: { id: number; name: string; price?: number };
+    product?: {
+        id: number;
+        name: string;
+        price?: number;
+        deletedAt?: Date | string | null;
+    };
     staff?: { id: number; fullname: string } | null;
 }
 
-export type HistoryListResponse = ReturnSchema<{ count: number; history: HistoryEntryItem[] }>;
+export type HistoryListResponse = ReturnSchema<{
+    count: number;
+    history: HistoryEntryItem[];
+}>;
 export type HistoryDetailResponse = ReturnSchema<HistoryEntryItem>;
-export type InventoryAdjustmentResponse = ReturnSchema<{ product: AdminProductItem; historyEntry: HistoryEntryItem }>;
+export type InventoryAdjustmentResponse = ReturnSchema<{
+    product: AdminProductItem;
+    historyEntry: HistoryEntryItem;
+}>;
