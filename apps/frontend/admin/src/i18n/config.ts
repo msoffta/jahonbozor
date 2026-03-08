@@ -7,11 +7,13 @@ import ruCommon from "@/i18n/ru/common.json";
 import ruExpenses from "@/i18n/ru/expenses.json";
 import ruIncome from "@/i18n/ru/income.json";
 import ruProducts from "@/i18n/ru/products.json";
+import ruOrders from "@/i18n/ru/orders.json";
 import uzClients from "@/i18n/uz/clients.json";
 import uzCommon from "@/i18n/uz/common.json";
 import uzExpenses from "@/i18n/uz/expenses.json";
 import uzIncome from "@/i18n/uz/income.json";
 import uzProducts from "@/i18n/uz/products.json";
+import uzOrders from "@/i18n/uz/orders.json";
 
 const resources = {
     uz: {
@@ -20,6 +22,7 @@ const resources = {
         expenses: uzExpenses,
         clients: uzClients,
         income: uzIncome,
+        orders: uzOrders,
     },
     ru: {
         common: ruCommon,
@@ -27,6 +30,7 @@ const resources = {
         expenses: ruExpenses,
         clients: ruClients,
         income: ruIncome,
+        orders: ruOrders,
     },
 };
 

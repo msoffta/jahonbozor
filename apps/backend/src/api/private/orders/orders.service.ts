@@ -1,14 +1,18 @@
-import type { AdminOrdersListResponse, AdminOrderDetailResponse, AdminOrderDeleteResponse } from "@jahonbozor/schemas/src/orders";
+import type { Order, Prisma } from "@backend/generated/prisma/client";
+import { auditInTransaction } from "@backend/lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import type { Logger } from "@jahonbozor/logger";
 import { Permission, hasAnyPermission, type Token } from "@jahonbozor/schemas";
+import type {
+    AdminOrderDeleteResponse,
+    AdminOrderDetailResponse,
+    AdminOrdersListResponse,
+} from "@jahonbozor/schemas/src/orders";
 import {
     CreateOrderBody,
-    UpdateOrderBody,
     OrdersPagination,
+    UpdateOrderBody,
 } from "@jahonbozor/schemas/src/orders";
-import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@backend/lib/prisma";
-import { auditInTransaction } from "@backend/lib/audit";
-import type { Prisma, Order } from "@backend/generated/prisma/client";
 
 interface ServiceContext {
     staffId: number;
@@ -16,7 +20,12 @@ interface ServiceContext {
     requestId?: string;
 }
 
-function createOrderSnapshot(order: Pick<Order, "userId" | "staffId" | "paymentType" | "status" | "data">) {
+function createOrderSnapshot(
+    order: Pick<
+        Order,
+        "userId" | "staffId" | "paymentType" | "status" | "data"
+    >,
+) {
     return {
         userId: order.userId,
         staffId: order.staffId,
@@ -34,9 +43,22 @@ export abstract class OrdersService {
         logger: Logger,
     ): Promise<AdminOrdersListResponse> {
         try {
-            const { page, limit, searchQuery: _searchQuery, userId, staffId: filterStaffId, paymentType, status, dateFrom, dateTo } = query;
+            const {
+                page,
+                limit,
+                searchQuery: _searchQuery,
+                userId,
+                staffId: filterStaffId,
+                paymentType,
+                status,
+                dateFrom,
+                dateTo,
+                itemsCount,
+            } = query;
 
-            const canListAll = hasAnyPermission(permissions, [Permission.ORDERS_LIST_ALL]);
+            const canListAll = hasAnyPermission(permissions, [
+                Permission.ORDERS_LIST_ALL,
+            ]);
 
             const whereClause: Prisma.OrderWhereInput = {
                 ...(paymentType && { paymentType }),
@@ -44,6 +66,42 @@ export abstract class OrdersService {
                 ...(dateFrom && { createdAt: { gte: dateFrom } }),
                 ...(dateTo && { createdAt: { lte: dateTo } }),
             };
+
+            if (itemsCount !== undefined) {
+                const orderGroups = await prisma.orderItem.groupBy({
+                    by: ["orderId"],
+                    _count: {
+                        id: true,
+                    },
+                    having: {
+                        id: {
+                            _count: {
+                                equals: itemsCount,
+                            },
+                        },
+                    },
+                });
+                const orderIds = orderGroups.map((g) => g.orderId);
+                whereClause.id = { in: orderIds };
+            }
+
+            if (itemsCount !== undefined) {
+                const orderGroups = await prisma.orderItem.groupBy({
+                    by: ["orderId"],
+                    _count: {
+                        id: true,
+                    },
+                    having: {
+                        id: {
+                            _count: {
+                                equals: itemsCount,
+                            },
+                        },
+                    },
+                });
+                const orderIds = orderGroups.map((g) => g.orderId);
+                whereClause.id = { in: orderIds };
+            }
 
             if (canListAll) {
                 if (userId) whereClause.userId = userId;
@@ -61,22 +119,33 @@ export abstract class OrdersService {
                     include: {
                         items: {
                             include: {
-                                product: { select: { id: true, name: true, price: true } },
+                                product: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        price: true,
+                                    },
+                                },
                             },
                         },
-                        user: { select: { id: true, fullname: true, phone: true } },
+                        user: {
+                            select: { id: true, fullname: true, phone: true },
+                        },
                         staff: { select: { id: true, fullname: true } },
                     },
                     orderBy: { createdAt: "desc" },
                 }),
             ]);
 
-            const mapped = orders.map(order => ({
+            const mapped = orders.map((order) => ({
                 ...order,
-                items: order.items.map(item => ({
+                items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
-                    product: { ...item.product, price: Number(item.product.price) },
+                    product: {
+                        ...item.product,
+                        price: Number(item.product.price),
+                    },
                 })),
             }));
 
@@ -99,7 +168,9 @@ export abstract class OrdersService {
                 include: {
                     items: {
                         include: {
-                            product: { select: { id: true, name: true, price: true } },
+                            product: {
+                                select: { id: true, name: true, price: true },
+                            },
                         },
                     },
                     user: { select: { id: true, fullname: true, phone: true } },
@@ -112,7 +183,9 @@ export abstract class OrdersService {
                 return { success: false, error: "Order not found" };
             }
 
-            const canReadAll = hasAnyPermission(permissions, [Permission.ORDERS_READ_ALL]);
+            const canReadAll = hasAnyPermission(permissions, [
+                Permission.ORDERS_READ_ALL,
+            ]);
             if (!canReadAll && order.staffId !== staffId) {
                 logger.warn("Orders: Insufficient permissions to read order", {
                     orderId,
@@ -124,10 +197,13 @@ export abstract class OrdersService {
 
             const mapped = {
                 ...order,
-                items: order.items.map(item => ({
+                items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
-                    product: { ...item.product, price: Number(item.product.price) },
+                    product: {
+                        ...item.product,
+                        price: Number(item.product.price),
+                    },
                 })),
             };
 
@@ -145,7 +221,7 @@ export abstract class OrdersService {
     ): Promise<AdminOrderDetailResponse> {
         try {
             const { staffId, user, requestId } = context;
-            const productIds = orderData.items.map(item => item.productId);
+            const productIds = orderData.items.map((item) => item.productId);
 
             const products = await prisma.product.findMany({
                 where: {
@@ -156,15 +232,29 @@ export abstract class OrdersService {
             });
 
             if (products.length !== productIds.length) {
-                const foundIds = products.map(product => product.id);
-                const missingIds = productIds.filter(id => !foundIds.includes(id));
-                logger.warn("Orders: Products not found or deleted", { missingIds });
-                return { success: false, error: `Products not found: ${missingIds.join(", ")}` };
+                const foundIds = products.map((product) => product.id);
+                const missingIds = productIds.filter(
+                    (id) => !foundIds.includes(id),
+                );
+                logger.warn("Orders: Products not found or deleted", {
+                    missingIds,
+                });
+                return {
+                    success: false,
+                    error: `Products not found: ${missingIds.join(", ")}`,
+                };
             }
 
-            const productMap = new Map(products.map(product => [product.id, product]));
+            const productMap = new Map(
+                products.map((product) => [product.id, product]),
+            );
 
-            const insufficientStock: Array<{ productId: number; productName: string; requested: number; available: number }> = [];
+            const insufficientStock: Array<{
+                productId: number;
+                productName: string;
+                requested: number;
+                available: number;
+            }> = [];
             for (const item of orderData.items) {
                 const product = productMap.get(item.productId)!;
                 if (product.remaining < item.quantity) {
@@ -178,7 +268,9 @@ export abstract class OrdersService {
             }
 
             if (insufficientStock.length > 0) {
-                logger.warn("Orders: Insufficient stock", { insufficientStock });
+                logger.warn("Orders: Insufficient stock", {
+                    insufficientStock,
+                });
                 return {
                     success: false,
                     error: {
@@ -198,13 +290,15 @@ export abstract class OrdersService {
                         status: "NEW",
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
-                            create: orderData.items.map(item => {
+                            create: orderData.items.map((item) => {
                                 const product = productMap.get(item.productId)!;
                                 return {
                                     productId: item.productId,
                                     quantity: item.quantity,
                                     price: product.price,
-                                    data: (item.data as Prisma.JsonObject) ?? null,
+                                    data:
+                                        (item.data as Prisma.JsonObject) ??
+                                        null,
                                 };
                             }),
                         },
@@ -215,7 +309,9 @@ export abstract class OrdersService {
                                 product: { select: { id: true, name: true } },
                             },
                         },
-                        user: { select: { id: true, fullname: true, phone: true } },
+                        user: {
+                            select: { id: true, fullname: true, phone: true },
+                        },
                     },
                 });
 
@@ -264,7 +360,7 @@ export abstract class OrdersService {
 
             const mapped = {
                 ...order,
-                items: order.items.map(item => ({
+                items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
                 })),
@@ -296,57 +392,81 @@ export abstract class OrdersService {
                 return { success: false, error: "Order not found" };
             }
 
-            const canUpdateAll = hasAnyPermission(permissions, [Permission.ORDERS_UPDATE_ALL]);
+            const canUpdateAll = hasAnyPermission(permissions, [
+                Permission.ORDERS_UPDATE_ALL,
+            ]);
             if (!canUpdateAll && existingOrder.staffId !== staffId) {
-                logger.warn("Orders: Insufficient permissions to update order", {
-                    orderId,
-                    staffId,
-                    orderStaffId: existingOrder.staffId,
-                });
+                logger.warn(
+                    "Orders: Insufficient permissions to update order",
+                    {
+                        orderId,
+                        staffId,
+                        orderStaffId: existingOrder.staffId,
+                    },
+                );
                 return { success: false, error: "Forbidden" };
             }
 
-            const isStatusChange = orderData.status && orderData.status !== existingOrder.status;
-            const auditAction = isStatusChange ? "ORDER_STATUS_CHANGE" : "UPDATE";
+            const isStatusChange =
+                orderData.status && orderData.status !== existingOrder.status;
+            const auditAction = isStatusChange
+                ? "ORDER_STATUS_CHANGE"
+                : "UPDATE";
 
-            const [updatedOrder] = await prisma.$transaction(async (transaction) => {
-                const order = await transaction.order.update({
-                    where: { id: orderId },
-                    data: {
-                        ...(orderData.paymentType && { paymentType: orderData.paymentType }),
-                        ...(orderData.status && { status: orderData.status }),
-                        ...(orderData.data && { data: orderData.data as Prisma.JsonObject }),
-                    },
-                    include: {
-                        items: {
-                            include: {
-                                product: { select: { id: true, name: true } },
-                            },
+            const [updatedOrder] = await prisma.$transaction(
+                async (transaction) => {
+                    const order = await transaction.order.update({
+                        where: { id: orderId },
+                        data: {
+                            ...(orderData.paymentType && {
+                                paymentType: orderData.paymentType,
+                            }),
+                            ...(orderData.status && {
+                                status: orderData.status,
+                            }),
+                            ...(orderData.data && {
+                                data: orderData.data as Prisma.JsonObject,
+                            }),
                         },
-                        user: { select: { id: true, fullname: true, phone: true } },
-                        staff: { select: { id: true, fullname: true } },
-                    },
-                });
+                        include: {
+                            items: {
+                                include: {
+                                    product: {
+                                        select: { id: true, name: true },
+                                    },
+                                },
+                            },
+                            user: {
+                                select: {
+                                    id: true,
+                                    fullname: true,
+                                    phone: true,
+                                },
+                            },
+                            staff: { select: { id: true, fullname: true } },
+                        },
+                    });
 
-                await auditInTransaction(
-                    transaction,
-                    { requestId, user, logger },
-                    {
-                        entityType: "order",
-                        entityId: orderId,
-                        action: auditAction,
-                        previousData: createOrderSnapshot(existingOrder),
-                        newData: createOrderSnapshot(order),
-                    },
-                );
+                    await auditInTransaction(
+                        transaction,
+                        { requestId, user, logger },
+                        {
+                            entityType: "order",
+                            entityId: orderId,
+                            action: auditAction,
+                            previousData: createOrderSnapshot(existingOrder),
+                            newData: createOrderSnapshot(order),
+                        },
+                    );
 
-                return [order];
-            });
+                    return [order];
+                },
+            );
 
             logger.info("Orders: Order updated", { orderId, staffId });
             const mapped = {
                 ...updatedOrder,
-                items: updatedOrder.items.map(item => ({
+                items: updatedOrder.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
                 })),
@@ -371,7 +491,13 @@ export abstract class OrdersService {
                 include: {
                     items: {
                         include: {
-                            product: { select: { id: true, remaining: true, deletedAt: true } },
+                            product: {
+                                select: {
+                                    id: true,
+                                    remaining: true,
+                                    deletedAt: true,
+                                },
+                            },
                         },
                     },
                 },

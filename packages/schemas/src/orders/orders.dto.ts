@@ -38,6 +38,7 @@ export const OrdersPagination = PaginationQuery.extend({
     status: OrderStatus.optional(),
     dateFrom: z.string().datetime().optional(),
     dateTo: z.string().datetime().optional(),
+    itemsCount: z.coerce.number().optional(),
 });
 
 export type CreateOrderItemBody = z.infer<typeof CreateOrderItemBody>;

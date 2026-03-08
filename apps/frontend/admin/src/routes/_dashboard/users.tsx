@@ -15,12 +15,18 @@ import {
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import z from "zod";
+
+const usersSearchSchema = z.object({
+    new: z.boolean().optional(),
+});
 
 function UsersPage() {
     const { t } = useTranslation("clients");
     const [includeDeleted, setIncludeDeleted] = useState(false);
+    const { new: isNew } = Route.useSearch();
 
     const { data: clientsData, isLoading } = useQuery(
         clientsListQueryOptions({ limit: 100, includeDeleted }),
@@ -30,6 +36,21 @@ function UsersPage() {
     const updateClient = useUpdateClient();
     const deleteClient = useDeleteClient();
     const restoreClient = useRestoreClient();
+
+    useEffect(() => {
+        if (isNew && !isLoading) {
+            // Wait for DOM to render
+            setTimeout(() => {
+                const newRow = document.getElementById("new-row");
+                if (newRow) {
+                    newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+                    // Optional: find first input and focus it
+                    const firstInput = newRow.querySelector("input");
+                    if (firstInput) (firstInput as HTMLInputElement).focus();
+                }
+            }, 100);
+        }
+    }, [isNew, isLoading]);
 
     const actions = useMemo(
         () => ({
@@ -127,5 +148,6 @@ function UsersPage() {
 }
 
 export const Route = createFileRoute("/_dashboard/users")({
+    validateSearch: (search) => usersSearchSchema.parse(search),
     component: UsersPage,
 });

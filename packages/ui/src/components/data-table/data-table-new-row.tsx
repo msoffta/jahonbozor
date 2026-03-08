@@ -38,7 +38,7 @@ export function DataTableNewRow<TData>({
 
     const editableColumns = columns.filter((col) => col.meta?.editable);
 
-    const handleSave = () => {
+    const handleSave = (currentValues: Record<string, unknown> = values) => {
         const newErrors: Record<string, string> = {};
         let hasError = false;
 
@@ -48,7 +48,7 @@ export function DataTableNewRow<TData>({
 
             const meta = col.meta;
             if (meta?.validationSchema) {
-                const result = meta.validationSchema.safeParse(values[key]);
+                const result = meta.validationSchema.safeParse(currentValues[key]);
                 if (!result.success) {
                     newErrors[key] = result.error.issues[0]?.message ?? "Invalid";
                     hasError = true;
@@ -62,7 +62,7 @@ export function DataTableNewRow<TData>({
         }
 
         setErrors({});
-        onSave(values);
+        onSave(currentValues);
 
         // Reset values
         const reset: Record<string, unknown> = {};
@@ -101,6 +101,7 @@ export function DataTableNewRow<TData>({
 
     return (
         <motion.tr
+            id="new-row"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
@@ -155,6 +156,13 @@ export function DataTableNewRow<TData>({
                                         delete next[key];
                                         return next;
                                     });
+                                }}
+                                onSelect={(newValue) => {
+                                    const newValues = { ...values, [key]: newValue };
+                                    setValues(newValues);
+                                    if (key === "user" && newValue === "CREATE_NEW") {
+                                        handleSave(newValues);
+                                    }
                                 }}
                                 onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 inputRef={(el) => {

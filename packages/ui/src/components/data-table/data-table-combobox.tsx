@@ -6,6 +6,7 @@ import { Input } from "../ui/input";
 interface DataTableComboboxProps {
     value: string;
     onChange: (value: string) => void;
+    onSelect?: (value: string) => void;
     options: { label: string; value: string }[];
     placeholder?: string;
     error?: boolean;
@@ -18,6 +19,7 @@ interface DataTableComboboxProps {
 export function DataTableCombobox({
     value,
     onChange,
+    onSelect,
     options,
     placeholder,
     error,
@@ -79,11 +81,11 @@ export function DataTableCombobox({
 
     // Animate open/close: keep portal mounted during exit animation
     React.useEffect(() => {
-        if (showList && pos !== null && filtered.length > 0) {
+        if (showList && pos !== null) {
             clearTimeout(closingTimerRef.current);
             setClosing(false);
             setVisible(true);
-        } else if (visible) {
+        } else if (visible && !showList) {
             setClosing(true);
             closingTimerRef.current = setTimeout(() => {
                 setVisible(false);
@@ -91,11 +93,11 @@ export function DataTableCombobox({
             }, 100); // matches combobox-out duration
         }
         return () => clearTimeout(closingTimerRef.current);
-    }, [showList, pos, filtered.length]);
+    }, [showList, pos, visible]);
 
     const setRef = React.useCallback(
         (el: HTMLInputElement | null) => {
-            (innerRef as React.RefObject<HTMLInputElement | null>).current = el;
+            (innerRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
             externalRef?.(el);
         },
         [externalRef],
@@ -104,6 +106,7 @@ export function DataTableCombobox({
     const handleSelect = (optionValue: string) => {
         selectingRef.current = true;
         onChange(optionValue);
+        onSelect?.(optionValue);
         setShowList(false);
         setTimeout(() => {
             selectingRef.current = false;
@@ -125,11 +128,12 @@ export function DataTableCombobox({
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
-            const match = options.find(
-                (o) => o.label.toLowerCase() === displayValue.toLowerCase(),
-            );
-            if (match) onChange(match.value);
-            setShowList(false);
+            const match = filtered.length > 0 ? filtered[0] : null;
+            if (match) {
+                handleSelect(match.value);
+            } else {
+                setShowList(false);
+            }
         } else if (e.key === "Escape") {
             setShowList(false);
         }
@@ -169,19 +173,25 @@ export function DataTableCombobox({
                         }}
                         className="combobox-dropdown max-h-48 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
                     >
-                        {filtered.map((option) => (
-                            <div
-                                key={option.value}
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleSelect(option.value);
-                                }}
-                                className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                            >
-                                {option.label}
+                        {filtered.length > 0 ? (
+                            filtered.map((option) => (
+                                <div
+                                    key={option.value}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleSelect(option.value);
+                                    }}
+                                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                                >
+                                    {option.label}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground italic">
+                                {placeholder || "No results"}
                             </div>
-                        ))}
+                        )}
                     </div>,
                     document.body,
                 )}

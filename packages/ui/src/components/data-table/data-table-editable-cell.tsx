@@ -116,6 +116,13 @@ export function DataTableEditableCell<TData>({
                             setValue(newValue);
                             setError(null);
                         }}
+                        onSelect={(newValue) => {
+                            setIsEditing(false);
+                            if (newValue !== String(initialValue)) {
+                                cell.table.options.meta?.updateData(cell.row.index, cell.column.id, newValue);
+                                onCellEdit?.(cell.row.index, cell.column.id, newValue);
+                            }
+                        }}
                         autoFocus
                         onBlur={() => {
                             setIsEditing(false);
