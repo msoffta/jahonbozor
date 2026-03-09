@@ -19,8 +19,10 @@ interface DataTableBodyProps<TData> {
     enableNewRow?: boolean;
     newRowPosition?: "start" | "end";
     onNewRowSave?: (data: Record<string, unknown>) => void;
+    onNewRowChange?: (data: Record<string, unknown>) => void;
     newRowDefaultValues?: Partial<TData>;
     enableRowSelection?: boolean;
+    onRowClick?: (row: TData) => void;
     translations?: { noResults?: string };
 }
 
@@ -35,8 +37,10 @@ export function DataTableBody<TData>({
     enableNewRow,
     newRowPosition = "end",
     onNewRowSave,
+    onNewRowChange,
     newRowDefaultValues,
     enableRowSelection,
+    onRowClick,
     translations,
 }: DataTableBodyProps<TData>) {
     const rows = table.getRowModel().rows;
@@ -55,6 +59,7 @@ export function DataTableBody<TData>({
             <DataTableNewRow
                 columns={columns}
                 onSave={onNewRowSave}
+                onChange={onNewRowChange}
                 defaultValues={newRowDefaultValues}
                 enableRowSelection={enableRowSelection}
             />
@@ -105,6 +110,7 @@ export function DataTableBody<TData>({
                                 transform: `translateY(${virtualRow.start}px)`,
                                 width: "100%",
                             }}
+                            className={cn(onRowClick ? "cursor-pointer" : "")}
                         >
                             {row.getVisibleCells().map((cell) => (
                                 <TableCell
@@ -147,13 +153,19 @@ export function DataTableBody<TData>({
                         key={row.id}
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 30,
+                        }}
                         data-state={
                             row.getIsSelected() ? "selected" : undefined
                         }
                         className={cn(
                             "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+                            onRowClick ? "cursor-pointer" : "",
                         )}
+                        onClick={() => onRowClick?.(row.original)}
                     >
                         {row.getVisibleCells().map((cell) => (
                             <TableCell
@@ -195,7 +207,9 @@ export function DataTableBody<TData>({
                     data-state={row.getIsSelected() ? "selected" : undefined}
                     className={cn(
                         "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+                        onRowClick ? "cursor-pointer" : "",
                     )}
+                    onClick={() => onRowClick?.(row.original)}
                 >
                     {row.getVisibleCells().map((cell) => (
                         <TableCell

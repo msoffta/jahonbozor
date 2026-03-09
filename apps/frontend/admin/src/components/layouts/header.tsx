@@ -1,19 +1,19 @@
-import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Bell, LogOut, Settings, User } from "lucide-react";
+import { useLogout } from "@/hooks/use-auth";
+import { useAuthStore } from "@/stores/auth.store";
 import {
     cn,
-    motion,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    motion,
 } from "@jahonbozor/ui";
+import { Link } from "@tanstack/react-router";
+import { Bell, LogOut, Settings, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuthStore } from "@/stores/auth.store";
-import { useLogout } from "@/hooks/use-auth";
 
 export function Header() {
     const [scrolled, setScrolled] = useState(false);
@@ -45,21 +45,13 @@ export function Header() {
                             type="button"
                             className="relative flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/60"
                             whileTap={{ scale: 0.9 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 400,
+                                damping: 17,
+                            }}
                         >
                             <Bell className="h-5 w-5 text-foreground" />
-                            <motion.span
-                                className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
-                                animate={{ scale: [1, 1.15, 1] }}
-                                transition={{
-                                    duration: 0.6,
-                                    repeat: Infinity,
-                                    repeatDelay: 4,
-                                    ease: "easeInOut",
-                                }}
-                            >
-                                1
-                            </motion.span>
                         </motion.button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64">
@@ -79,7 +71,11 @@ export function Header() {
                             type="button"
                             className="flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/60"
                             whileTap={{ scale: 0.9 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 400,
+                                damping: 17,
+                            }}
                         >
                             <User className="h-5 w-5 text-foreground" />
                         </motion.button>

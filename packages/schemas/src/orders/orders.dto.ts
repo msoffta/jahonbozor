@@ -1,6 +1,6 @@
 import z from "zod";
+import { OrderStatus, PaymentType } from "../common/enums";
 import { PaginationQuery } from "../common/pagination.model";
-import { PaymentType, OrderStatus } from "../common/enums";
 import { Order, OrderItem } from "./orders.model";
 
 export const CreateOrderItemBody = OrderItem.omit({
@@ -39,6 +39,7 @@ export const OrdersPagination = PaginationQuery.extend({
     dateFrom: z.string().datetime().optional(),
     dateTo: z.string().datetime().optional(),
     itemsCount: z.coerce.number().optional(),
+    minItemsCount: z.coerce.number().optional(),
 });
 
 export type CreateOrderItemBody = z.infer<typeof CreateOrderItemBody>;
@@ -69,7 +70,10 @@ export interface UserOrderItem {
     items: OrderItemResponse[];
 }
 
-export type UserOrdersListResponse = ReturnSchema<{ count: number; orders: UserOrderItem[] }>;
+export type UserOrdersListResponse = ReturnSchema<{
+    count: number;
+    orders: UserOrderItem[];
+}>;
 export type UserOrderDetailResponse = ReturnSchema<UserOrderItem>;
 export type UserOrderCreateResponse = ReturnSchema<UserOrderItem>;
 export type UserOrderCancelResponse = ReturnSchema<UserOrderItem>;
@@ -83,6 +87,12 @@ export interface AdminOrderItem extends UserOrderItem {
     staff?: { id: number; fullname: string } | null;
 }
 
-export type AdminOrdersListResponse = ReturnSchema<{ count: number; orders: AdminOrderItem[] }>;
+export type AdminOrdersListResponse = ReturnSchema<{
+    count: number;
+    orders: AdminOrderItem[];
+}>;
 export type AdminOrderDetailResponse = ReturnSchema<AdminOrderItem>;
-export type AdminOrderDeleteResponse = ReturnSchema<{ orderId: number; deleted: true }>;
+export type AdminOrderDeleteResponse = ReturnSchema<{
+    orderId: number;
+    deleted: true;
+}>;

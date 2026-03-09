@@ -1,15 +1,16 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import type { TFunction } from "i18next";
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
-import dayjs from "dayjs";
 import { Badge, Button, motion } from "@jahonbozor/ui";
+import type { ColumnDef } from "@tanstack/react-table";
+import dayjs from "dayjs";
+import type { TFunction } from "i18next";
 import { Trash2 } from "lucide-react";
 
 export interface OrderActions {
     onDelete: (id: number) => void;
     onStatusChange: (id: number, status: string) => void;
+    onNavigate?: (id: number) => void;
 }
 
 interface OrderColumnsData {
@@ -46,6 +47,21 @@ export function getOrderColumns(
             header: t("order_id"),
             size: 60,
             meta: { align: "center" as const },
+            cell: ({ getValue }) => {
+                const id = getValue<number>();
+                if (actions.onNavigate) {
+                    return (
+                        <button
+                            type="button"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                            onClick={() => actions.onNavigate!(id)}
+                        >
+                            {id}
+                        </button>
+                    );
+                }
+                return id;
+            },
         },
         {
             id: "user",
@@ -139,7 +155,11 @@ export function getOrderColumns(
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => actions.onDelete(row.original.id)}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            actions.onDelete(row.original.id);
+                        }}
                         title={t("action_delete")}
                     >
                         <Trash2 className="h-4 w-4" />

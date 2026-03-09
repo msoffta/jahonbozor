@@ -33,7 +33,8 @@ export function DataTableCombobox({
     const [closing, setClosing] = React.useState(false);
     const innerRef = React.useRef<HTMLInputElement>(null);
     const selectingRef = React.useRef(false);
-    const closingTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+    const closingTimerRef =
+        React.useRef<ReturnType<typeof setTimeout>>(undefined);
     const [pos, setPos] = React.useState<{
         top: number;
         left: number;
@@ -97,7 +98,9 @@ export function DataTableCombobox({
 
     const setRef = React.useCallback(
         (el: HTMLInputElement | null) => {
-            (innerRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+            (
+                innerRef as React.MutableRefObject<HTMLInputElement | null>
+            ).current = el;
             externalRef?.(el);
         },
         [externalRef],
@@ -140,13 +143,30 @@ export function DataTableCombobox({
         onKeyDown?.(e);
     };
 
+    const [searchQuery, setSearchQuery] = React.useState("");
+
+    // Maintain query in sync with value/external reset
+    React.useEffect(() => {
+        if (!value) {
+            setSearchQuery("");
+        } else if (value && isSelectedOption) {
+            const label =
+                options.find((o) => o.value === value)?.label ?? value;
+            setSearchQuery(label);
+        } else {
+            setSearchQuery(value);
+        }
+    }, [value, isSelectedOption, options]);
+
     return (
         <>
             <Input
                 ref={setRef}
-                value={displayValue}
+                value={searchQuery}
                 onChange={(e) => {
-                    onChange(e.target.value);
+                    const q = e.target.value;
+                    setSearchQuery(q);
+                    onChange(q);
                     if (!showList) {
                         measurePos();
                         setShowList(true);

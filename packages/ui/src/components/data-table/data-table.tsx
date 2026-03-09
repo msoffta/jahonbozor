@@ -44,8 +44,10 @@ export function DataTable<TData>({
     enableNewRow = false,
     newRowPosition = "end",
     onNewRowSave,
+    onNewRowChange,
     newRowDefaultValues,
     onRowSelectionChange,
+    onRowClick,
     className,
     translations,
 }: DataTableProps<TData>) {
@@ -199,16 +201,19 @@ export function DataTable<TData>({
     const [isNearBottom, setIsNearBottom] = React.useState(false);
     const [showScrollBtn, setShowScrollBtn] = React.useState(false);
 
-    const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        const el = e.currentTarget;
-        const scrollable = el.scrollHeight - el.clientHeight;
-        if (scrollable < 50) {
-            setShowScrollBtn(false);
-            return;
-        }
-        setShowScrollBtn(true);
-        setIsNearBottom(el.scrollTop > scrollable / 2);
-    }, []);
+    const handleScroll = React.useCallback(
+        (e: React.UIEvent<HTMLDivElement>) => {
+            const el = e.currentTarget;
+            const scrollable = el.scrollHeight - el.clientHeight;
+            if (scrollable < 50) {
+                setShowScrollBtn(false);
+                return;
+            }
+            setShowScrollBtn(true);
+            setIsNearBottom(el.scrollTop > scrollable / 2);
+        },
+        [],
+    );
 
     const scrollToEdge = React.useCallback(() => {
         const el = containerRef.current;
@@ -236,113 +241,119 @@ export function DataTable<TData>({
             />
 
             <div className="relative flex-1 min-h-0">
-              <div
-                ref={(el) => {
-                    containerRef.current = el;
-                    if (isVirtualActive) scrollContainerRef.current = el;
-                }}
-                onScroll={handleScroll}
-                className="rounded-md border h-full overflow-auto"
-                style={
-                    isVirtualActive
-                        ? {
-                              position: "relative",
-                          }
-                        : undefined
-                }
-              >
-                <Table
-                    style={{
-                        ...(enableColumnResizing
-                            ? {
-                                  width: table.getTotalSize(),
-                                  tableLayout: "fixed" as const,
-                              }
-                            : {}),
-                        ...(isVirtualActive ? { display: "grid" } : {}),
+                <div
+                    ref={(el) => {
+                        containerRef.current = el;
+                        if (isVirtualActive) scrollContainerRef.current = el;
                     }}
+                    onScroll={handleScroll}
+                    className="rounded-md border h-full overflow-auto"
+                    style={
+                        isVirtualActive
+                            ? {
+                                  position: "relative",
+                              }
+                            : undefined
+                    }
                 >
-                    <TableHeader
-                        className={
-                            isVirtualActive ? "bg-background" : undefined
-                        }
-                        style={
-                            isVirtualActive
+                    <Table
+                        style={{
+                            ...(enableColumnResizing
                                 ? {
-                                      display: "grid",
-                                      position: "sticky",
-                                      top: 0,
-                                      zIndex: 1,
+                                      width: table.getTotalSize(),
+                                      tableLayout: "fixed" as const,
                                   }
-                                : undefined
-                        }
+                                : {}),
+                            ...(isVirtualActive ? { display: "grid" } : {}),
+                        }}
                     >
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow
-                                key={headerGroup.id}
-                                style={
-                                    isVirtualActive
-                                        ? { display: "flex", width: "100%" }
-                                        : undefined
-                                }
-                            >
-                                {headerGroup.headers.map((header) => (
-                                    <DataTableColumnHeader
-                                        key={header.id}
-                                        header={header}
-                                        enableSorting={enableSorting}
-                                        enableColumnResizing={
-                                            enableColumnResizing
-                                        }
-                                        isVirtualActive={isVirtualActive}
-                                    />
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-
-                    <DataTableBody
-                        table={table}
-                        columns={allColumns}
-                        isShowAll={isShowAll}
-                        isVirtualActive={isVirtualActive}
-                        scrollContainerRef={scrollContainerRef}
-                        enableEditing={enableEditing}
-                        onCellEdit={onCellEdit}
-                        enableNewRow={enableNewRow}
-                        newRowPosition={newRowPosition}
-                        onNewRowSave={onNewRowSave}
-                        newRowDefaultValues={newRowDefaultValues}
-                        enableRowSelection={enableRowSelection}
-                        translations={translations}
-                    />
-                </Table>
-              </div>
-
-              <AnimatePresence>
-                {showScrollBtn && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        className="absolute bottom-3 right-3 z-10"
-                    >
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-full shadow-md bg-background/90 backdrop-blur-sm"
-                            onClick={scrollToEdge}
+                        <TableHeader
+                            className={
+                                isVirtualActive ? "bg-background" : undefined
+                            }
+                            style={
+                                isVirtualActive
+                                    ? {
+                                          display: "grid",
+                                          position: "sticky",
+                                          top: 0,
+                                          zIndex: 1,
+                                      }
+                                    : undefined
+                            }
                         >
-                            {isNearBottom ? (
-                                <ChevronUp className="h-4 w-4" />
-                            ) : (
-                                <ChevronDown className="h-4 w-4" />
-                            )}
-                        </Button>
-                    </motion.div>
-                )}
-              </AnimatePresence>
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <TableRow
+                                    key={headerGroup.id}
+                                    style={
+                                        isVirtualActive
+                                            ? { display: "flex", width: "100%" }
+                                            : undefined
+                                    }
+                                >
+                                    {headerGroup.headers.map((header) => (
+                                        <DataTableColumnHeader
+                                            key={header.id}
+                                            header={header}
+                                            enableSorting={enableSorting}
+                                            enableColumnResizing={
+                                                enableColumnResizing
+                                            }
+                                            isVirtualActive={isVirtualActive}
+                                        />
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+
+                        <DataTableBody
+                            table={table}
+                            columns={allColumns}
+                            isShowAll={isShowAll}
+                            isVirtualActive={isVirtualActive}
+                            scrollContainerRef={scrollContainerRef}
+                            enableEditing={enableEditing}
+                            onCellEdit={onCellEdit}
+                            enableNewRow={enableNewRow}
+                            newRowPosition={newRowPosition}
+                            onNewRowSave={onNewRowSave}
+                            onNewRowChange={onNewRowChange}
+                            newRowDefaultValues={newRowDefaultValues}
+                            enableRowSelection={enableRowSelection}
+                            onRowClick={onRowClick}
+                            translations={translations}
+                        />
+                    </Table>
+                </div>
+
+                <AnimatePresence>
+                    {showScrollBtn && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 500,
+                                damping: 30,
+                            }}
+                            className="absolute bottom-3 right-3 z-10"
+                        >
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-full shadow-md bg-background/90 backdrop-blur-sm"
+                                onClick={scrollToEdge}
+                            >
+                                {isNearBottom ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                )}
+                            </Button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {pagination && (

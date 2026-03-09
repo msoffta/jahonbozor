@@ -1,0 +1,113 @@
+import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
+import { Button, motion } from "@jahonbozor/ui";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import { Trash2 } from "lucide-react";
+
+export interface OrderItemRow {
+    id: number;
+    productId: number;
+    quantity: number;
+    price: number;
+    product: { id: number; name: string; price?: number };
+}
+
+export interface OrderItemActions {
+    onDelete?: (index: number) => void;
+}
+
+export function getOrderItemColumns(
+    t: TFunction,
+    products: AdminProductItem[],
+    actions?: OrderItemActions,
+): ColumnDef<OrderItemRow, unknown>[] {
+    const selectOptions = products.map((product) => ({
+        label: product.name,
+        value: String(product.id),
+    }));
+
+    const columns: ColumnDef<OrderItemRow, unknown>[] = [
+        {
+            id: "index",
+            header: "#",
+            size: 50,
+            cell: ({ row }) => row.index + 1,
+            meta: { align: "center" as const },
+        },
+        {
+            id: "product",
+            accessorFn: (row) => row.product?.name ?? "—",
+            header: t("order_product"),
+            size: 250,
+            meta: {
+                flex: 3,
+                editable: true,
+                inputType: "combobox" as const,
+                selectOptions,
+            },
+        },
+        {
+            accessorKey: "quantity",
+            header: t("order_quantity"),
+            size: 100,
+            cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? "—",
+            meta: {
+                flex: 1,
+                align: "right" as const,
+                editable: true,
+                inputType: "number" as const,
+            },
+        },
+        {
+            accessorKey: "price",
+            header: t("order_price"),
+            size: 120,
+            cell: ({ getValue }) => {
+                const price = getValue<number>();
+                return price ? price.toLocaleString() : "—";
+            },
+            meta: {
+                flex: 1,
+                align: "right" as const,
+            },
+        },
+        {
+            id: "total",
+            header: t("order_total"),
+            size: 120,
+            accessorFn: (row) => row.price * row.quantity,
+            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            meta: {
+                flex: 1,
+                align: "right" as const,
+            },
+        },
+    ];
+
+    if (actions?.onDelete) {
+        columns.push({
+            id: "actions",
+            header: t("order_actions"),
+            size: 70,
+            meta: { align: "center" as const },
+            cell: ({ row }) => (
+                <motion.div
+                    whileTap={{ scale: 0.9 }}
+                    className="inline-flex justify-center w-full"
+                >
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => actions.onDelete!(row.index)}
+                        title={t("action_delete")}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </motion.div>
+            ),
+        });
+    }
+
+    return columns;
+}

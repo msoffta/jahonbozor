@@ -2,7 +2,11 @@ import type { ColumnDef, RowData } from "@tanstack/react-table";
 
 /** Structural type matching Zod's safeParse API (avoids coupling to zod version) */
 export interface SafeParseable {
-    safeParse(data: unknown): { success: true; data: unknown } | { success: false; error: { issues: { message: string }[] } };
+    safeParse(
+        data: unknown,
+    ):
+        | { success: true; data: unknown }
+        | { success: false; error: { issues: { message: string }[] } };
 }
 
 // ── Column Meta ────────────────────────────────────────────────
@@ -23,7 +27,14 @@ export interface DataTableColumnMeta {
 
     // Inline editing
     editable?: boolean;
-    inputType?: "text" | "number" | "select" | "combobox" | "date" | "datepicker" | "currency";
+    inputType?:
+        | "text"
+        | "number"
+        | "select"
+        | "combobox"
+        | "date"
+        | "datepicker"
+        | "currency";
     selectOptions?: { label: string; value: string }[];
     validationSchema?: SafeParseable;
     placeholder?: string;
@@ -34,10 +45,17 @@ export interface DataTableColumnMeta {
 
 // ── TanStack module augmentation ───────────────────────────────
 declare module "@tanstack/react-table" {
-    interface ColumnMeta<TData extends RowData, TValue> extends DataTableColumnMeta {}
+    interface ColumnMeta<
+        TData extends RowData,
+        TValue,
+    > extends DataTableColumnMeta {}
 
     interface TableMeta<TData extends RowData> {
-        updateData: (rowIndex: number, columnId: string, value: unknown) => void;
+        updateData: (
+            rowIndex: number,
+            columnId: string,
+            value: unknown,
+        ) => void;
     }
 }
 
@@ -87,10 +105,12 @@ export interface DataTableProps<TData> {
     enableNewRow?: boolean;
     newRowPosition?: "start" | "end";
     onNewRowSave?: (data: Record<string, unknown>) => void;
+    onNewRowChange?: (data: Record<string, unknown>) => void;
     newRowDefaultValues?: Partial<TData>;
 
     // Callbacks
     onRowSelectionChange?: (selection: Record<string, boolean>) => void;
+    onRowClick?: (row: TData) => void;
 
     // Styling
     className?: string;

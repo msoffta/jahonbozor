@@ -54,6 +54,7 @@ export abstract class OrdersService {
                 dateFrom,
                 dateTo,
                 itemsCount,
+                minItemsCount,
             } = query;
 
             const canListAll = hasAnyPermission(permissions, [
@@ -67,6 +68,7 @@ export abstract class OrdersService {
                 ...(dateTo && { createdAt: { lte: dateTo } }),
             };
 
+            // Filter by exact items count
             if (itemsCount !== undefined) {
                 const orderGroups = await prisma.orderItem.groupBy({
                     by: ["orderId"],
@@ -85,7 +87,8 @@ export abstract class OrdersService {
                 whereClause.id = { in: orderIds };
             }
 
-            if (itemsCount !== undefined) {
+            // Filter by minimum items count (for "lists" = orders with >1 item)
+            if (minItemsCount !== undefined) {
                 const orderGroups = await prisma.orderItem.groupBy({
                     by: ["orderId"],
                     _count: {
@@ -94,13 +97,21 @@ export abstract class OrdersService {
                     having: {
                         id: {
                             _count: {
-                                equals: itemsCount,
+                                gte: minItemsCount,
                             },
                         },
                     },
                 });
                 const orderIds = orderGroups.map((g) => g.orderId);
-                whereClause.id = { in: orderIds };
+                // Merge with existing id filter if present
+                if (whereClause.id && "in" in whereClause.id) {
+                    const existingIds = whereClause.id.in as number[];
+                    whereClause.id = {
+                        in: existingIds.filter((id) => orderIds.includes(id)),
+                    };
+                } else {
+                    whereClause.id = { in: orderIds };
+                }
             }
 
             if (canListAll) {
