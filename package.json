@@ -36,7 +36,7 @@
     "prod:up": "docker-compose -f docker-compose.prod.yml up -d",
     "prod:down": "docker-compose -f docker-compose.prod.yml down",
     "prod:logs": "docker-compose -f docker-compose.prod.yml logs -f",
-    "prod:deploy": "bun run build:all && bun run prod:build && bun run prod:up"
+    "prod:deploy": "bun run prod:build && bun run prod:up"
   },
   "devDependencies": {
     "@types/bun": "latest",
