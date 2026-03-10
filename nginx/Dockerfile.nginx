@@ -3,18 +3,23 @@ FROM oven/bun:latest AS builder
 
 WORKDIR /app
 
-# Copy lockfile
-COPY bun.lock ./
+# Copy root package.json and lockfile
+COPY package.json bun.lock ./
 
-# Create minimal package.json with only frontend workspaces
-RUN echo '{"name":"jahonbozor-frontend","private":true,"workspaces":["apps/frontend/admin","apps/frontend/user","packages/*"]}' > package.json
-
-# Copy workspace packages
+# Copy shared packages
 COPY packages ./packages
-COPY apps/frontend ./apps/frontend
+
+# Copy all workspace package.json files to satisfy Bun workspace resolution
+COPY apps/backend/package.json ./apps/backend/
+COPY apps/bot/package.json ./apps/bot/
+COPY apps/frontend/admin/package.json ./apps/frontend/admin/
+COPY apps/frontend/user/package.json ./apps/frontend/user/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
+
+# Now copy the actual frontend source code
+COPY apps/frontend ./apps/frontend
 
 # Build both frontends
 RUN bun run --cwd apps/frontend/admin build

@@ -3,17 +3,23 @@ FROM oven/bun:latest AS builder
 
 WORKDIR /app
 
-# Copy root package.json and workspace configs
+# Copy root package.json and lockfile
 COPY package.json bun.lock ./
 
-# Copy all workspace packages
+# Copy shared packages
 COPY packages ./packages
 
-# Copy backend app
-COPY apps/backend ./apps/backend
+# Copy all workspace package.json files to satisfy Bun workspace resolution
+COPY apps/backend/package.json ./apps/backend/
+COPY apps/bot/package.json ./apps/bot/
+COPY apps/frontend/admin/package.json ./apps/frontend/admin/
+COPY apps/frontend/user/package.json ./apps/frontend/user/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
+
+# Now copy the actual backend source code
+COPY apps/backend ./apps/backend
 
 # Generate Prisma client
 WORKDIR /app/apps/backend
