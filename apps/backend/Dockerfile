@@ -25,9 +25,6 @@ COPY apps/backend ./apps/backend
 WORKDIR /app/apps/backend
 RUN bun run prisma:generate
 
-# Run migrations
-RUN bun run prisma migrate deploy
-
 # Stage 2: Production
 FROM oven/bun:slim
 
@@ -45,4 +42,5 @@ WORKDIR /app/apps/backend
 
 EXPOSE 3000
 
-CMD ["bun", "run", "src/index.ts"]
+# Run migrations on startup, then start the server
+CMD ["sh", "-c", "bun run prisma migrate deploy && bun run src/index.ts"]
