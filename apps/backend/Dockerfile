@@ -25,6 +25,9 @@ COPY apps/backend ./apps/backend
 WORKDIR /app/apps/backend
 RUN bun run prisma:generate
 
+# Run migrations
+RUN bun run prisma migrate deploy
+
 # Stage 2: Production
 FROM oven/bun:slim
 
