@@ -4,7 +4,7 @@ FROM oven/bun:latest AS builder
 WORKDIR /app
 
 # Copy root package.json and lockfile
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 
 # Copy workspace packages
 COPY packages ./packages
