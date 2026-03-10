@@ -3,8 +3,11 @@ FROM oven/bun:latest AS builder
 
 WORKDIR /app
 
-# Copy root package.json and lockfile
-COPY package.json bun.lock ./
+# Copy lockfile
+COPY bun.lock ./
+
+# Create minimal package.json with only frontend workspaces
+RUN echo '{"name":"jahonbozor-frontend","private":true,"workspaces":["apps/frontend/admin","apps/frontend/user","packages/*"]}' > package.json
 
 # Copy workspace packages
 COPY packages ./packages
