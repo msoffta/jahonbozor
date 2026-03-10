@@ -9,7 +9,7 @@ import { Trash2 } from "lucide-react";
 
 export interface OrderActions {
     onDelete: (id: number) => void;
-    onStatusChange: (id: number, status: string) => void;
+    onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => void;
     onNavigate?: (id: number) => void;
 }
 
@@ -64,6 +64,80 @@ export function getOrderColumns(
             },
         },
         {
+            id: "product",
+            accessorFn: (row) => row.items[0]?.product?.name ?? "—",
+            header: t("order_product"),
+            size: 250,
+            meta: {
+                flex: 3,
+                editable: true,
+                inputType: "combobox" as const,
+                selectOptions: productOptions,
+            },
+        },
+        {
+            id: "quantity",
+            accessorFn: (row) => row.items[0]?.quantity ?? 0,
+            header: t("order_quantity"),
+            size: 110,
+            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            meta: {
+                flex: 1,
+                align: "left" as const,
+                editable: true,
+                inputType: "number" as const,
+            },
+        },
+        {
+            id: "price",
+            accessorFn: (row) => row.items[0]?.price ?? 0,
+            header: t("order_costprice"),
+            size: 130,
+            cell: ({ getValue }) => {
+                const price = getValue<number>();
+                return (
+                    <span className="costprice-value">
+                        {price ? price.toLocaleString() : "—"}
+                    </span>
+                );
+            },
+            meta: {
+                flex: 1.5,
+                align: "left" as const,
+                cellClassName: "costprice-hover-target",
+                headerClassName: "costprice-hover-target",
+                className: "costprice-hover-target",
+            },
+        },
+        {
+            id: "total",
+            accessorFn: (row) => {
+                const item = row.items[0];
+                if (!item) return 0;
+                return (item.price ?? 0) * (item.quantity ?? 1);
+            },
+            header: t("order_total"),
+            size: 130,
+            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            meta: {
+                flex: 1.5,
+                align: "left" as const,
+            },
+        },
+        {
+            accessorKey: "paymentType",
+            header: t("order_payment"),
+            size: 120,
+            cell: ({ getValue }) =>
+                t(`payment_${getValue<string>().toLowerCase()}`),
+            meta: {
+                flex: 1,
+                editable: true,
+                inputType: "select" as const,
+                selectOptions: paymentOptions,
+            },
+        },
+        {
             id: "user",
             accessorFn: (row) => row.user?.fullname ?? "—",
             header: t("order_client"),
@@ -74,26 +148,6 @@ export function getOrderColumns(
                 inputType: "combobox" as const,
                 selectOptions: userOptions,
             },
-        },
-        {
-            id: "product",
-            accessorFn: (row) => row.items[0]?.product?.name ?? "—",
-            header: t("order_product"),
-            size: 200,
-            meta: {
-                flex: 2,
-                editable: true,
-                inputType: "combobox" as const,
-                selectOptions: productOptions,
-            },
-        },
-        {
-            id: "price",
-            accessorFn: (row) => row.items[0]?.price ?? 0,
-            header: t("order_price"),
-            size: 100,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
-            meta: { align: "right" as const },
         },
         {
             accessorKey: "status",
@@ -114,6 +168,7 @@ export function getOrderColumns(
                 );
             },
             meta: {
+                flex: 1,
                 filterVariant: "select" as const,
                 filterOptions: [
                     { label: t("status_new"), value: "NEW" },
@@ -123,23 +178,12 @@ export function getOrderColumns(
             },
         },
         {
-            accessorKey: "paymentType",
-            header: t("order_payment"),
-            size: 120,
-            cell: ({ getValue }) =>
-                t(`payment_${getValue<string>().toLowerCase()}`),
-            meta: {
-                editable: true,
-                inputType: "select" as const,
-                selectOptions: paymentOptions,
-            },
-        },
-        {
             accessorKey: "createdAt",
             header: t("order_date"),
             size: 140,
             cell: ({ getValue }) =>
                 dayjs(getValue<Date | string>()).format("DD.MM.YYYY HH:mm"),
+            meta: { flex: 1.5 },
         },
         {
             id: "actions",

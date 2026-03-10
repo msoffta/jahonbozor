@@ -183,6 +183,7 @@ export function DataTableNewRow<TData>({
                                 meta?.align === "center" && "text-center",
                                 displayVal === "—" &&
                                     "text-muted-foreground italic",
+                                meta?.cellClassName,
                             )}
                         >
                             {displayVal}
@@ -194,7 +195,10 @@ export function DataTableNewRow<TData>({
                 const error = errors[key];
 
                 return (
-                    <TableCell key={key} className="relative p-2">
+                    <TableCell
+                        key={key}
+                        className={cn("relative p-2", meta?.cellClassName)}
+                    >
                         {meta.inputType === "select" && meta.selectOptions ? (
                             <Select
                                 value={String(values[key] ?? "")}

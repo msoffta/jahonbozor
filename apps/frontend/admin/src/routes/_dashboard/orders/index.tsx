@@ -140,7 +140,7 @@ function ListsPage() {
                 <DataTableSkeleton columns={8} rows={10} className="flex-1" />
             ) : (
                 <DataTable
-                    className="flex-1"
+                    className="flex-1 costprice-table"
                     columns={columns}
                     data={orders}
                     pagination

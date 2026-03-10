@@ -11,8 +11,12 @@ import { getOrderColumns } from "@/components/orders/orders-columns";
 
 function OrdersPage() {
     const { t } = useTranslation("orders");
-    const [page, setPage] = useState(1);
+    const [page] = useState(1);
     const navigate = useNavigate();
+    const [newRowDefaultValues, setNewRowDefaultValues] = useState<Record<string, unknown>>({
+        paymentType: "CASH",
+        quantity: 1,
+    });
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
         ordersListQueryOptions({ 
@@ -43,7 +47,7 @@ function OrdersPage() {
                 deleteOrder.mutate(id);
             }
         },
-        onStatusChange: (id: number, status: string) => {
+        onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => {
             updateOrder.mutate({ id, status });
         },
     }), [t, deleteOrder, updateOrder]);
@@ -91,18 +95,68 @@ function OrdersPage() {
                 return;
             }
 
+            const productId = Number(data.product);
+            const product = products.find((p) => p.id === productId);
+            const price = product?.price ?? 0;
+
             createOrder.mutate({
                 userId: data.user ? Number(data.user) : null,
-                paymentType: String(data.paymentType || "CASH"),
+                paymentType: (data.paymentType as "CASH" | "CREDIT_CARD") || "CASH",
                 items: [
                     {
-                        productId: Number(data.product),
-                        quantity: 1,
+                        productId,
+                        quantity: Number(data.quantity) || 1,
+                        price,
                     }
                 ],
             });
         },
-        [createOrder, t, navigate],
+        [createOrder, t, navigate, products],
+    );
+
+    const handleNewRowChange = useCallback(
+        (values: Record<string, unknown>) => {
+            const currentQuantity = Number(values.quantity) || 1;
+
+            if (values.product) {
+                const productId = Number(values.product);
+                const product = products.find((p) => p.id === productId);
+                const price = product?.price ?? 0;
+                const newTotal = price * currentQuantity;
+
+                setNewRowDefaultValues((prev) => {
+                    if (
+                        prev.product !== values.product ||
+                        prev.price !== price ||
+                        prev.total !== newTotal ||
+                        prev.quantity !== currentQuantity
+                    ) {
+                        return {
+                            ...prev,
+                            product: values.product,
+                            price,
+                            quantity: currentQuantity,
+                            total: newTotal,
+                        };
+                    }
+                    return prev;
+                });
+            } else {
+                setNewRowDefaultValues((prev) => {
+                    if (prev.product !== undefined || prev.price !== undefined) {
+                        return {
+                            paymentType: "CASH",
+                            quantity: 1,
+                            product: "",
+                            price: "",
+                            total: "",
+                        };
+                    }
+                    return prev;
+                });
+            }
+        },
+        [products],
     );
 
     const translations: DataTableTranslations = {
@@ -131,7 +185,7 @@ function OrdersPage() {
                 <DataTableSkeleton columns={8} rows={10} className="flex-1" />
             ) : (
                 <DataTable
-                    className="flex-1"
+                    className="flex-1 costprice-table"
                     columns={columns}
                     data={orders}
                     pagination
@@ -147,7 +201,8 @@ function OrdersPage() {
                     enableNewRow
                     onCellEdit={handleCellEdit}
                     onNewRowSave={handleNewRowSave}
-                    newRowDefaultValues={{ paymentType: "CASH" }}
+                    onNewRowChange={handleNewRowChange}
+                    newRowDefaultValues={newRowDefaultValues}
                     translations={translations}
                 />
             )}

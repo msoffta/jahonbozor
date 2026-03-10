@@ -119,6 +119,10 @@ export function DataTableBody<TData>({
                                         display: "flex",
                                         width: cell.column.getSize(),
                                     }}
+                                    className={
+                                        cell.column.columnDef.meta
+                                            ?.cellClassName
+                                    }
                                 >
                                     {enableEditing &&
                                     cell.column.columnDef.meta?.editable ? (
@@ -171,6 +175,9 @@ export function DataTableBody<TData>({
                             <TableCell
                                 key={cell.id}
                                 style={{ width: cell.column.getSize() }}
+                                className={
+                                    cell.column.columnDef.meta?.cellClassName
+                                }
                             >
                                 {enableEditing &&
                                 cell.column.columnDef.meta?.editable ? (
@@ -215,6 +222,9 @@ export function DataTableBody<TData>({
                         <TableCell
                             key={cell.id}
                             style={{ width: cell.column.getSize() }}
+                            className={
+                                cell.column.columnDef.meta?.cellClassName
+                            }
                         >
                             {enableEditing &&
                             cell.column.columnDef.meta?.editable ? (

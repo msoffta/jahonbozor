@@ -5,6 +5,8 @@
     "order_client": "Клиент",
     "order_product": "Товар",
     "order_price": "Цена",
+    "order_costprice": "Себестоимость",
+    "order_total": "Сумма",
     "order_status": "Статус",
     "order_payment": "Оплата",
     "order_date": "Дата",
@@ -39,6 +41,5 @@
     "save_list": "Сохранить список",
     "min_items_required": "Добавьте минимум 2 позиции",
     "error_product_required": "Пожалуйста, выберите товар",
-    "back_to_lists": "Назад к спискам",
-    "order_total": "Сумма"
+    "back_to_lists": "Назад к спискам"
 }

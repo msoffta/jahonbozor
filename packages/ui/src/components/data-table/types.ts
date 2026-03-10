@@ -13,8 +13,9 @@ export interface SafeParseable {
 export interface DataTableColumnMeta {
     // Display
     align?: "left" | "center" | "right";
-    className?: string;
-    headerClassName?: string;
+    className?: string; // applied to the inner cell content
+    cellClassName?: string; // applied directly to the TableCell (td)
+    headerClassName?: string; // applied directly to the TableHead (th)
 
     // Sizing — flex-like auto-fill (similar to MUI DataGrid flex)
     // Columns with flex distribute remaining container space proportionally.

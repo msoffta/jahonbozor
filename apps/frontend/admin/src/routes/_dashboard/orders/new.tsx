@@ -77,11 +77,14 @@ function NewOrderPage() {
                     if (
                         prev.product !== values.product ||
                         prev.price !== price ||
-                        prev.total !== newTotal
+                        prev.total !== newTotal ||
+                        prev.quantity !== currentQuantity
                     ) {
                         return {
+                            ...prev,
                             product: values.product,
                             price,
+                            quantity: currentQuantity,
                             total: newTotal,
                         };
                     }
@@ -263,7 +266,7 @@ function NewOrderPage() {
                 <DataTableSkeleton columns={6} rows={5} className="flex-1" />
             ) : (
                 <DataTable
-                    className="flex-1"
+                    className="flex-1 costprice-table"
                     columns={columns}
                     data={items}
                     enableNewRow

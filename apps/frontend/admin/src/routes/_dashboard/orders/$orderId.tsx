@@ -160,7 +160,7 @@ function OrderDetailPage() {
 
             {/* Items table (readonly) */}
             <DataTable
-                className="flex-1"
+                className="flex-1 costprice-table"
                 columns={columns}
                 data={orderItems}
                 enableSorting={false}

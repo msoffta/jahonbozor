@@ -1,12 +1,26 @@
-import { useState, useMemo, useCallback } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { PageTransition, DataTable, DataTableSkeleton, Checkbox } from "@jahonbozor/ui";
-import type { DataTableTranslations } from "@jahonbozor/ui";
-import { productsListQueryOptions, useCreateProduct, useUpdateProduct, useDeleteProduct, useRestoreProduct } from "@/api/products.api";
-import { categoriesListQueryOptions, useCreateCategory } from "@/api/categories.api";
+import {
+    categoriesListQueryOptions,
+    useCreateCategory,
+} from "@/api/categories.api";
+import {
+    productsListQueryOptions,
+    useCreateProduct,
+    useDeleteProduct,
+    useRestoreProduct,
+    useUpdateProduct,
+} from "@/api/products.api";
 import { getProductColumns } from "@/components/products/products-columns";
+import type { DataTableTranslations } from "@jahonbozor/ui";
+import {
+    Checkbox,
+    DataTable,
+    DataTableSkeleton,
+    PageTransition,
+} from "@jahonbozor/ui";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function ProductsPage() {
     const { t } = useTranslation("products");
@@ -26,13 +40,18 @@ function ProductsPage() {
     const restoreProduct = useRestoreProduct();
     const createCategory = useCreateCategory();
 
-    const resolveCategoryId = useCallback(async (value: unknown): Promise<number> => {
-        const num = Number(value);
-        if (!isNaN(num) && num > 0) return num;
-        // Free-form text — create a new category
-        const newCategory = await createCategory.mutateAsync({ name: String(value) });
-        return newCategory.id;
-    }, [createCategory]);
+    const resolveCategoryId = useCallback(
+        async (value: unknown): Promise<number> => {
+            const num = Number(value);
+            if (!isNaN(num) && num > 0) return num;
+            // Free-form text — create a new category
+            const newCategory = await createCategory.mutateAsync({
+                name: String(value),
+            });
+            return newCategory.id;
+        },
+        [createCategory],
+    );
 
     const categories = useMemo(() => {
         if (!categoriesData?.categories) return [];
@@ -42,10 +61,13 @@ function ProductsPage() {
         }));
     }, [categoriesData]);
 
-    const actions = useMemo(() => ({
-        onDelete: (id: number) => deleteProduct.mutate(id),
-        onRestore: (id: number) => restoreProduct.mutate(id),
-    }), [deleteProduct, restoreProduct]);
+    const actions = useMemo(
+        () => ({
+            onDelete: (id: number) => deleteProduct.mutate(id),
+            onRestore: (id: number) => restoreProduct.mutate(id),
+        }),
+        [deleteProduct, restoreProduct],
+    );
 
     const columns = useMemo(
         () => getProductColumns(t, categories, actions),
@@ -106,7 +128,9 @@ function ProductsPage() {
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox
                         checked={includeDeleted}
-                        onCheckedChange={(checked) => setIncludeDeleted(checked === true)}
+                        onCheckedChange={(checked) =>
+                            setIncludeDeleted(checked === true)
+                        }
                     />
                     {t("common:show_deleted")}
                 </label>
@@ -116,7 +140,7 @@ function ProductsPage() {
                 <DataTableSkeleton columns={9} rows={10} className="flex-1" />
             ) : (
                 <DataTable
-                    className="flex-1"
+                    className="flex-1 costprice-table"
                     columns={columns}
                     data={products}
                     pagination

@@ -1,2 +1,20 @@
 @import "@jahonbozor/ui/globals.css";
 @source "../node_modules/@jahonbozor/ui/src";
+
+/* Cost price reveal on hover */
+.costprice-table:has(.costprice-hover-target:hover) td.costprice-hover-target {
+    color: inherit;
+    background-color: transparent;
+}
+
+td.costprice-hover-target {
+    color: transparent;
+    background-color: #1c1c1e;
+    border-radius: var(--radius, 6px);
+    transition: all 0.4s ease-in-out;
+}
+
+/* Ensure the inner span doesn't interfere */
+.costprice-value {
+    color: inherit;
+}

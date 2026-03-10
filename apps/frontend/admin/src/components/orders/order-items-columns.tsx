@@ -53,22 +53,29 @@ export function getOrderItemColumns(
             cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? "—",
             meta: {
                 flex: 1,
-                align: "right" as const,
+                align: "left" as const,
                 editable: true,
                 inputType: "number" as const,
             },
         },
         {
             accessorKey: "price",
-            header: t("order_price"),
+            header: t("order_costprice"),
             size: 120,
             cell: ({ getValue }) => {
                 const price = getValue<number>();
-                return price ? price.toLocaleString() : "—";
+                return (
+                    <span className="costprice-value">
+                        {price ? price.toLocaleString() : "—"}
+                    </span>
+                );
             },
             meta: {
                 flex: 1,
-                align: "right" as const,
+                align: "left" as const,
+                cellClassName: "costprice-hover-target",
+                headerClassName: "costprice-hover-target",
+                className: "costprice-hover-target",
             },
         },
         {
@@ -79,7 +86,7 @@ export function getOrderItemColumns(
             cell: ({ getValue }) => getValue<number>().toLocaleString(),
             meta: {
                 flex: 1,
-                align: "right" as const,
+                align: "left" as const,
             },
         },
     ];

@@ -8,6 +8,7 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { resolve } from "node:path";
 
 export default defineConfig({
+    base: "/admin/",
     envDir: resolve(process.cwd(), "../../.."),
     build: {
         sourcemap: "hidden",
@@ -17,7 +18,11 @@ export default defineConfig({
                     if (!id.includes("node_modules")) return;
                     if (id.includes("react-dom")) return "vendor-react-dom";
                     if (id.includes("/react/")) return "vendor-react";
-                    if (id.includes("@tanstack/react-router") || id.includes("@tanstack/router")) return "vendor-tanstack-router";
+                    if (
+                        id.includes("@tanstack/react-router") ||
+                        id.includes("@tanstack/router")
+                    )
+                        return "vendor-tanstack-router";
                     if (id.includes("@tanstack")) return "vendor-tanstack";
                     if (id.includes("@radix-ui")) return "vendor-radix";
                     if (id.includes("motion")) return "vendor-motion";

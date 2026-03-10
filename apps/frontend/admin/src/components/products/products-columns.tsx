@@ -1,8 +1,8 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import type { TFunction } from "i18next";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import { Badge, Button, motion } from "@jahonbozor/ui";
-import { Trash2, RotateCcw } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import { RotateCcw, Trash2 } from "lucide-react";
 
 interface CategoryItem {
     id: number;
@@ -19,8 +19,14 @@ export function getProductColumns(
     categories: CategoryItem[],
     actions: ProductActions,
 ): ColumnDef<AdminProductItem, any>[] {
-    const filterOptions = categories.map((c) => ({ label: c.name, value: c.name }));
-    const selectOptions = categories.map((c) => ({ label: c.name, value: String(c.id) }));
+    const filterOptions = categories.map((c) => ({
+        label: c.name,
+        value: c.name,
+    }));
+    const selectOptions = categories.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+    }));
 
     return [
         {
@@ -40,14 +46,31 @@ export function getProductColumns(
             header: t("product_price"),
             size: 120,
             cell: ({ getValue }) => getValue<number>().toLocaleString(),
-            meta: { flex: 1, align: "right" as const, editable: true, inputType: "currency" as const },
+            meta: {
+                flex: 1,
+                align: "left" as const,
+                editable: true,
+                inputType: "currency" as const,
+            },
         },
         {
             accessorKey: "costprice",
             header: t("product_costprice"),
             size: 120,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
-            meta: { flex: 1, align: "right" as const, editable: true, inputType: "currency" as const },
+            cell: ({ getValue }) => (
+                <span className="costprice-value">
+                    {getValue<number>().toLocaleString()}
+                </span>
+            ),
+            meta: {
+                flex: 1,
+                align: "left" as const,
+                editable: true,
+                inputType: "currency" as const,
+                headerClassName: "costprice-hover-target",
+                cellClassName: "costprice-hover-target",
+                className: "costprice-hover-target",
+            },
         },
         {
             id: "category",
@@ -57,10 +80,13 @@ export function getProductColumns(
             cell: ({ row }) => {
                 const cat = row.original.category;
                 if (!cat) return "—";
-                return cat.parent ? `${cat.parent.name} / ${cat.name}` : cat.name;
+                return cat.parent
+                    ? `${cat.parent.name} / ${cat.name}`
+                    : cat.name;
             },
             meta: {
                 flex: 1,
+                align: "left" as const,
                 filterVariant: "select" as const,
                 filterOptions,
                 editable: true,
@@ -72,7 +98,12 @@ export function getProductColumns(
             accessorKey: "remaining",
             header: t("product_remaining"),
             size: 100,
-            meta: { flex: 1, align: "right" as const, editable: true, inputType: "number" as const },
+            meta: {
+                flex: 1,
+                align: "left" as const,
+                editable: true,
+                inputType: "number" as const,
+            },
         },
         {
             id: "status",
@@ -99,7 +130,8 @@ export function getProductColumns(
             accessorKey: "createdAt",
             header: t("product_created"),
             size: 140,
-            cell: ({ getValue }) => new Date(getValue<Date | string>()).toLocaleDateString(),
+            cell: ({ getValue }) =>
+                new Date(getValue<Date | string>()).toLocaleDateString(),
         },
         {
             id: "actions",
@@ -109,13 +141,18 @@ export function getProductColumns(
             cell: ({ row }) => {
                 const isDeleted = row.original.deletedAt !== null;
                 return (
-                    <motion.div whileTap={{ scale: 0.9 }} className="inline-flex justify-center w-full">
+                    <motion.div
+                        whileTap={{ scale: 0.9 }}
+                        className="inline-flex justify-center w-full"
+                    >
                         {isDeleted ? (
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                onClick={() => actions.onRestore(row.original.id)}
+                                onClick={() =>
+                                    actions.onRestore(row.original.id)
+                                }
                                 title={t("action_restore")}
                             >
                                 <RotateCcw className="h-4 w-4" />
@@ -125,7 +162,9 @@ export function getProductColumns(
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => actions.onDelete(row.original.id)}
+                                onClick={() =>
+                                    actions.onDelete(row.original.id)
+                                }
                                 title={t("action_delete")}
                             >
                                 <Trash2 className="h-4 w-4" />

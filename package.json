@@ -18,6 +18,7 @@
     "test:bot": "bun run --cwd apps/bot test",
     "build:admin": "bun run --cwd apps/frontend/admin build",
     "build:user": "bun run --cwd apps/frontend/user build",
+    "build:all": "bun run build:admin && bun run build:user",
     "test": "bun run --cwd apps/backend test",
     "test:watch": "bun run --cwd apps/backend test:watch",
     "test:coverage": "bun run --cwd apps/backend test:coverage",
@@ -30,7 +31,14 @@
     "nginx:up": "docker-compose up -d nginx",
     "nginx:down": "docker-compose stop nginx",
     "nginx:restart": "docker-compose restart nginx",
-    "nginx:logs": "docker-compose logs -f nginx"
+    "nginx:logs": "docker-compose logs -f nginx",
+    "prod:build": "docker-compose -f docker-compose.prod.yml build",
+    "prod:up": "docker-compose -f docker-compose.prod.yml up -d",
+    "prod:down": "docker-compose -f docker-compose.prod.yml down",
+    "prod:logs": "docker-compose -f docker-compose.prod.yml logs -f",
+    "prod:deploy": "bun run build:all && bun run prod:build && bun run prod:up",
+    "ssl:init": "bash scripts/init-ssl.sh",
+    "ssl:renew": "bash scripts/renew-ssl.sh"
   },
   "devDependencies": {
     "@types/bun": "latest",
