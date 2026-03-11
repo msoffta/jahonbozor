@@ -36,19 +36,6 @@ async function main() {
     });
 
     console.log(`✅ Staff "${rootStaff.username}" (id=${rootStaff.id}) — role: ${rootRole.name}`);
-
-    // 3. User: superuser
-    const superuser = await prisma.users.upsert({
-        where: { phone: "+998900000000" },
-        update: {},
-        create: {
-            fullname: "Superuser",
-            username: "superuser",
-            phone: "+998900000000",
-        },
-    });
-
-    console.log(`✅ User "${superuser.username}" (id=${superuser.id})`);
 }
 
 main()

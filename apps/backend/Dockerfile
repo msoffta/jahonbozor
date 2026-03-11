@@ -41,4 +41,4 @@ RUN mkdir -p public
 EXPOSE 3000
 
 # Run migrations on startup, then start the server
-CMD ["sh", "-c", "bun run prisma migrate deploy && bun run src/index.ts"]
+CMD ["sh", "-c", "bun run prisma migrate deploy && bun prisma/seed.ts && bun run src/index.ts"]
