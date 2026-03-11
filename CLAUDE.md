@@ -52,13 +52,22 @@ Workspace-скрипты сами резолвят env:
 
 ## Quick Reference
 
+### Testing
+```bash
+bun run test               # Run backend tests only
+bun run test:backend       # Run backend tests (explicit)
+bun run test:bot           # Run bot tests
+bun run test:user          # Run user frontend tests
+bun run test:admin         # Run admin frontend tests
+bun run test:all           # Run all tests (backend + bot + user + admin)
+bun run test:watch         # Watch mode (backend only)
+bun run test:coverage      # With coverage (backend only)
+```
+
 ### Backend
 ```bash
 bun install                # Install dependencies
 bun run dev                # Run backend (port 3000)
-bun run test               # Run unit tests
-bun run test:watch         # Watch mode
-bun run test:coverage      # With coverage
 bun run prisma:generate    # Generate Prisma client
 bun run prisma:migrate     # Create and apply migrations
 bun run prisma:studio      # Open Prisma Studio GUI
@@ -68,7 +77,6 @@ bun run db:up / db:down    # Start/stop PostgreSQL via Docker
 ### Bot
 ```bash
 bun run dev:bot            # Run bot (port 3001)
-bun run test:bot           # Run bot tests
 ```
 
 ### Frontend
@@ -77,6 +85,7 @@ bun run dev:admin          # Run admin panel (port 5173)
 bun run dev:user           # Run user app (port 5174)
 bun run build:admin        # Build admin for production
 bun run build:user         # Build user app for production
+bun run build:all          # Build both frontend apps
 ```
 
 ## Architecture

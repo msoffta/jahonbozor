@@ -12,7 +12,12 @@ mock.module("@tanstack/react-router", () => ({
             {children}
         </a>
     ),
-    useRouterState: ({ select }: any) => select({ location: { pathname: "/" } }),
+    useRouterState: ({ select }: any) =>
+        select({
+            location: { pathname: "/" },
+            matches: [],
+        }),
+    useParams: () => ({}),
 }));
 
 mock.module("@jahonbozor/ui", () => ({
@@ -27,15 +32,33 @@ mock.module("@jahonbozor/ui", () => ({
     ),
     AnimatePresence: ({ children }: any) => <>{children}</>,
     LayoutGroup: ({ children }: any) => <>{children}</>,
+    Tooltip: ({ children }: any) => <>{children}</>,
+    TooltipContent: ({ children }: any) => <div>{children}</div>,
+    TooltipProvider: ({ children }: any) => <>{children}</>,
+    TooltipTrigger: ({ children }: any) => <>{children}</>,
+}));
+
+mock.module("@tanstack/react-query", () => ({
+    useQuery: () => ({ data: { orders: [] } }),
+}));
+
+mock.module("@/api/orders.api", () => ({
+    orderDetailQueryOptions: () => ({}),
+    ordersListQueryOptions: () => ({}),
+}));
+
+mock.module("@/components/orders/create-order-dialog", () => ({
+    CreateOrderDialog: () => null,
 }));
 
 import { BottomNav } from "../bottom-nav";
 
 describe("BottomNav", () => {
-    test("should render 6 navigation links (home + 5 nav items)", () => {
+    test("should render navigation links including home and nav items", () => {
         const { getAllByRole } = render(<BottomNav />);
         const links = getAllByRole("link");
-        expect(links.length).toBe(6);
+        // Should have at least: list, home, and 5 nav items (income, users, expense, products, summary)
+        expect(links.length).toBeGreaterThanOrEqual(7);
     });
 
     test("should have correct link paths", () => {

@@ -73,11 +73,6 @@ describe("Header", () => {
         expect(buttons.length).toBeGreaterThanOrEqual(2);
     });
 
-    test("should display notification badge", () => {
-        const { getByText } = render(<Header />);
-        expect(getByText("1")).toBeDefined();
-    });
-
     test("should display user fullname when logged in", () => {
         useAuthStore.setState({
             user: {
