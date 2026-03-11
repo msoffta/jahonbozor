@@ -1,7 +1,7 @@
 model Staff {
     id           Int    @id @default(autoincrement())
     fullname     String
-    username     String
+    username     String @unique
     passwordHash String
     telegramId   BigInt
 

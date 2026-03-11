@@ -23,10 +23,10 @@ async function main() {
     const rootPassword = process.env.ROOT_PASSWORD ?? "root1234";
     const rootHash = await password.hash(rootPassword, { algorithm: "argon2id" });
 
-    // Delete old "root" staff duplicates, then create/update one
-    await prisma.staff.deleteMany({ where: { username: "root" } });
-    const rootStaff = await prisma.staff.create({
-        data: {
+    const rootStaff = await prisma.staff.upsert({
+        where: { username: "root" },
+        update: { roleId: rootRole.id },
+        create: {
             fullname: "Root Admin",
             username: "root",
             passwordHash: rootHash,
