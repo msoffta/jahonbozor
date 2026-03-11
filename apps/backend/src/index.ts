@@ -4,6 +4,7 @@ import cors from "@elysiajs/cors";
 import openapi from "@elysiajs/openapi";
 import staticPlugin from "@elysiajs/static";
 import { resolve } from "node:path";
+import { existsSync } from "node:fs";
 
 import { requestContext } from "./lib/request-context";
 import { publicRoutes } from "./api/public";
@@ -11,7 +12,22 @@ import { privateRoutes } from "./api/private";
 import { prisma } from "./lib/prisma";
 import baseLogger from "./lib/logger";
 
-const certDir = resolve(import.meta.dir, "../../../certs");
+// TLS configuration (optional — enable for local dev, skip in production behind nginx)
+const enableTls = Bun.env.ENABLE_TLS === "true";
+let tlsConfig: { key: ReturnType<typeof Bun.file>; cert: ReturnType<typeof Bun.file> } | undefined;
+
+if (enableTls) {
+    const certDir = resolve(import.meta.dir, "../../../certs");
+    const keyPath = Bun.env.TLS_KEY_PATH || resolve(certDir, "192.168.1.108-key.pem");
+    const certPath = Bun.env.TLS_CERT_PATH || resolve(certDir, "192.168.1.108.pem");
+
+    if (!existsSync(keyPath) || !existsSync(certPath)) {
+        console.error(`❌ ENABLE_TLS=true but cert files not found:\n  key: ${keyPath}\n  cert: ${certPath}`);
+        process.exit(1);
+    }
+
+    tlsConfig = { key: Bun.file(keyPath), cert: Bun.file(certPath) };
+}
 
 const app = new Elysia()
     .use(cors())
@@ -43,13 +59,11 @@ if (Bun.env.SENTRY_DSN) {
 app.listen({
     port: 3000,
     hostname: "0.0.0.0",
-    tls: {
-        key: Bun.file(resolve(certDir, "192.168.1.108-key.pem")),
-        cert: Bun.file(resolve(certDir, "192.168.1.108.pem")),
-    },
+    ...(tlsConfig ? { tls: tlsConfig } : {}),
 });
 
-console.log(`🚀 Backend running at https://${app.server!.hostname}:${app.server!.port}`);
+const protocol = tlsConfig ? "https" : "http";
+console.log(`🚀 Backend running at ${protocol}://${app.server!.hostname}:${app.server!.port}`);
 
 prisma.$connect()
     .then(() => console.log("✅ Prisma connected to database"))
