@@ -34,7 +34,7 @@ WORKDIR /app
 # Copy node_modules from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/backend/node_modules/.prisma ./apps/backend/node_modules/.prisma
+COPY --from=builder /app/apps/backend/src/generated ./apps/backend/src/generated
 COPY --from=builder /app/apps/bot ./apps/bot
 
 WORKDIR /app/apps/bot

@@ -26,32 +26,22 @@ docker compose -f docker-compose.prod.yml down
 echo "▶️  Starting new containers..."
 docker compose -f docker-compose.prod.yml up -d
 
-# Wait for services to start
-echo "⏳ Waiting for services to start..."
-sleep 15
-
-# Check if containers are running
-echo "🔍 Checking container status..."
-if ! docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
-    echo "❌ Containers failed to start"
-    ./rollback.sh
-    exit 1
-fi
-
-# Check backend health
-echo "🏥 Checking backend health..."
-if ! curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
-    echo "❌ Backend health check failed"
-    ./rollback.sh
-    exit 1
-fi
-
-# Check bot health (if health endpoint exists)
-echo "🤖 Checking bot health..."
-if ! curl -f -s http://localhost:3001/health > /dev/null 2>&1; then
-    echo "⚠️  Bot health check failed (endpoint may not exist)"
-    # Don't fail deployment if bot health endpoint doesn't exist
-fi
+# Health check via nginx container (ports are not published to host)
+echo "🏥 Checking backend health via nginx..."
+NGINX_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' jahonbozor-nginx)
+for i in $(seq 1 5); do
+    if curl -f -s "http://$NGINX_IP/api/health" > /dev/null 2>&1; then
+        echo "✅ Backend health check passed"
+        break
+    fi
+    if [ "$i" -eq 5 ]; then
+        echo "❌ Backend health check failed after 5 attempts"
+        ./rollback.sh
+        exit 1
+    fi
+    echo "⏳ Attempt $i/5 failed, retrying in 5s..."
+    sleep 5
+done
 
 # Save successful deployment
 if [ -f .last-successful-deploy-attempt ]; then
