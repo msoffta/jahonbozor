@@ -17,6 +17,7 @@ const dateFnsLocales = { ru, uz } as const;
 
 const router = createRouter({
     routeTree,
+    basepath: "/admin",
     context: {
         queryClient,
     },
