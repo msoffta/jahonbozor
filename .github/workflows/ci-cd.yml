@@ -122,7 +122,7 @@ jobs:
         run: bun run --cwd apps/backend prisma:generate
 
       - name: Run migrations
-        run: bun x --cwd apps/backend prisma migrate deploy
+        run: cd apps/backend && bun x prisma migrate deploy
 
       - name: Run backend tests
         run: bun run --cwd apps/backend test
@@ -167,7 +167,7 @@ jobs:
         run: bun run --cwd apps/backend prisma:generate
 
       - name: Run migrations
-        run: bun x --cwd apps/backend prisma migrate deploy
+        run: cd apps/backend && bun x prisma migrate deploy
 
       - name: Run bot tests
         run: bun run --cwd apps/bot test
