@@ -21,7 +21,7 @@ jobs:
             - name: Setup Bun
               uses: oven-sh/setup-bun@v1
               with:
-                  bun-version: latest
+                  bun-version: "1.3.10"
 
             - name: Cache Bun dependencies
               uses: actions/cache@v4
@@ -56,7 +56,7 @@ jobs:
             - name: Setup Bun
               uses: oven-sh/setup-bun@v1
               with:
-                  bun-version: latest
+                  bun-version: "1.3.10"
 
             - name: Cache Bun dependencies
               uses: actions/cache@v4
@@ -117,7 +117,7 @@ jobs:
             - name: Setup Bun
               uses: oven-sh/setup-bun@v1
               with:
-                  bun-version: latest
+                  bun-version: "1.3.10"
 
             - name: Download node_modules
               uses: actions/download-artifact@v4
@@ -162,7 +162,7 @@ jobs:
             - name: Setup Bun
               uses: oven-sh/setup-bun@v1
               with:
-                  bun-version: latest
+                  bun-version: "1.3.10"
 
             - name: Download node_modules
               uses: actions/download-artifact@v4
@@ -189,7 +189,7 @@ jobs:
             - name: Setup Bun
               uses: oven-sh/setup-bun@v1
               with:
-                  bun-version: latest
+                  bun-version: "1.3.10"
 
             - name: Download node_modules
               uses: actions/download-artifact@v4
@@ -211,7 +211,7 @@ jobs:
             - name: Setup Bun
               uses: oven-sh/setup-bun@v1
               with:
-                  bun-version: latest
+                  bun-version: "1.3.10"
 
             - name: Download node_modules
               uses: actions/download-artifact@v4
@@ -356,15 +356,13 @@ jobs:
                   scp -i ~/.ssh/deploy_key nginx/nginx.prod.conf ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/nginx/
 
             - name: Deploy to VPS
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << EOF
                     cd ${{ secrets.VPS_DEPLOY_PATH }}
                     export GITHUB_SHA=${{ github.sha }}
                     export GITHUB_ACTOR=${{ github.actor }}
                     export GITHUB_REPOSITORY=${{ github.repository }}
-                    export GITHUB_TOKEN=\$GITHUB_TOKEN
+                    export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
                     chmod +x deploy.sh rollback.sh
                     ./deploy.sh
                   EOF
