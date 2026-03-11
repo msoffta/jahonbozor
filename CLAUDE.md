@@ -122,6 +122,58 @@ Frontend tsconfig: @/* (own src) + @backend/lib/*, @backend/api/*, @backend/gene
 | [docs/bot.md](docs/bot.md) | Telegram bot: architecture, auth flow, phone verification, handlers, services, testing, environment variables |
 | [docs/rules.md](docs/rules.md) | Condensed code conventions quick reference (backend + frontend), Zod 4 patterns |
 
+## CI/CD
+
+**GitHub Actions** — automated testing, building, and deployment.
+
+### Pipeline Overview
+- **Trigger:** Push to main branch or pull request
+- **Jobs:** Install → [Lint/TypeCheck, Test Backend, Test Bot, Test Frontend Admin, Test Frontend User] → Build Images → Deploy
+- **Duration:** ~14 minutes from push to production
+
+### Workflow
+1. **Install:** Setup Bun, install dependencies, cache for parallel jobs
+2. **Lint & Type Check:** TypeScript compilation check for all workspaces
+3. **Tests:** Parallel execution of backend, bot, and frontend tests
+4. **Build Images:** Build and push Docker images to GitHub Container Registry (ghcr.io)
+5. **Deploy:** SSH to VPS, pull images, restart containers, verify health
+
+### GitHub Secrets Required
+**VPS Access:**
+- `VPS_HOST` — Server IP or domain
+- `VPS_USER` — SSH user (e.g., `deploy`)
+- `VPS_SSH_KEY` — Private SSH key
+- `VPS_DEPLOY_PATH` — Deployment directory (e.g., `/opt/jahonbozor`)
+
+**Application Environment:**
+- `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`
+- `JWT_SECRET`
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_URL`
+- `SENTRY_DSN`, `SENTRY_ENVIRONMENT` (optional)
+- `VITE_TELEGRAM_BOT_USERNAME`
+
+**Notifications (optional):**
+- `TELEGRAM_CHAT_ID`, `TELEGRAM_NOTIFICATION_TOKEN`
+
+### Deployment
+- **Strategy:** Pull pre-built images from ghcr.io, restart containers
+- **Health Checks:** Verify backend and bot endpoints after deployment
+- **Rollback:** Automatic rollback on health check failure
+- **Tracking:** Last successful deployment SHA saved for rollback
+
+### Manual Operations
+```bash
+# Deploy manually (on VPS)
+cd /opt/jahonbozor
+./deploy.sh
+
+# Rollback to previous version
+./rollback.sh
+
+# View logs
+docker compose -f docker-compose.prod.yml logs -f
+```
+
 ## Monitoring
 
 **Sentry** — error tracking and performance monitoring.

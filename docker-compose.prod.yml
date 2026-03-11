@@ -38,9 +38,7 @@ services:
             - app-network
 
     backend:
-        build:
-            context: .
-            dockerfile: apps/backend/Dockerfile
+        image: ghcr.io/${GITHUB_REPOSITORY:-msoffta/jahonbozor}/backend:${GITHUB_SHA:-latest}
         container_name: backend
         restart: unless-stopped
         environment:
@@ -57,9 +55,7 @@ services:
             - app-network
 
     bot:
-        build:
-            context: .
-            dockerfile: apps/bot/Dockerfile
+        image: ghcr.io/${GITHUB_REPOSITORY:-msoffta/jahonbozor}/bot:${GITHUB_SHA:-latest}
         container_name: bot
         restart: unless-stopped
         environment:
@@ -74,9 +70,7 @@ services:
             - app-network
 
     nginx:
-        build:
-            context: .
-            dockerfile: nginx/Dockerfile.nginx
+        image: ghcr.io/${GITHUB_REPOSITORY:-msoffta/jahonbozor}/nginx:${GITHUB_SHA:-latest}
         container_name: jahonbozor-nginx
         restart: unless-stopped
         volumes:
