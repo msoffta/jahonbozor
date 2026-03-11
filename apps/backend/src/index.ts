@@ -18,6 +18,7 @@ const app = new Elysia()
     .use(requestContext)
     .use(openapi())
     .use(staticPlugin())
+    .get("/api/health", () => ({ status: "ok" }))
     .onError(({ code, error, request }) => {
         const message = "message" in error ? error.message : String(error);
         const path = new URL(request.url).pathname;
