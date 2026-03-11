@@ -11,7 +11,7 @@ services:
             PGTZ: Asia/Tashkent
         volumes:
             - postgres_data:/var/lib/postgresql
-            - ./logs:/var/log/postgresql
+            - postgres_logs:/var/log/postgresql
         command: >
             postgres -c logging_collector=on
                      -c log_directory=/var/log/postgresql
@@ -90,3 +90,4 @@ networks:
 
 volumes:
     postgres_data:
+    postgres_logs:
