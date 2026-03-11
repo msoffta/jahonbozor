@@ -1,5 +1,6 @@
 @import "@jahonbozor/ui/globals.css";
 @source "../node_modules/@jahonbozor/ui/src";
+@source "../../../../packages/ui/src";
 
 /* Cost price reveal on hover */
 .costprice-table:has(.costprice-hover-target:hover) td.costprice-hover-target {

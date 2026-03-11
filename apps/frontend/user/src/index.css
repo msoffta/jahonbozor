@@ -1,6 +1,7 @@
 @import "@jahonbozor/ui/globals.css";
 
 @source "../node_modules/@jahonbozor/ui/src";
+@source "../../../../packages/ui/src";
 
 @theme {
     --font-montserrat: "Montserrat", sans-serif;
