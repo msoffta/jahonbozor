@@ -48,6 +48,12 @@ services:
             SENTRY_DSN: ${SENTRY_DSN}
             SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
             TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+        healthcheck:
+            test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+            interval: 10s
+            timeout: 5s
+            retries: 15
+            start_period: 30s
         depends_on:
             postgres:
                 condition: service_healthy
@@ -76,8 +82,10 @@ services:
         volumes:
             - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
         depends_on:
-            - backend
-            - bot
+            backend:
+                condition: service_healthy
+            bot:
+                condition: service_started
         networks:
             - app-network
             - nginx_network
