@@ -37,10 +37,22 @@ mock.module("@tanstack/react-query", () => ({
 
 mock.module("@jahonbozor/ui", () => ({
     Skeleton: ({ className }: any) => <div className={className} data-testid="skeleton" />,
+    motion: {
+        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+        button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+    },
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
+        <input type="checkbox" checked={checked} onChange={(e: any) => onCheckedChange?.(e.target.checked)} {...props} />
+    ),
 }));
 
 mock.module("@/api/products.api", () => ({
     productsListOptions: () => ({}),
+}));
+
+mock.module("@/stores/ui.store", () => ({
+    useUIStore: () => ({ locale: "uz" }),
 }));
 
 import { CategorySection } from "../category-section";

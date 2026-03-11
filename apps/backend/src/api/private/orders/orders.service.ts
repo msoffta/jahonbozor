@@ -104,7 +104,7 @@ export abstract class OrdersService {
                 });
                 const orderIds = orderGroups.map((g) => g.orderId);
                 // Merge with existing id filter if present
-                if (whereClause.id && "in" in whereClause.id) {
+                if (whereClause.id && typeof whereClause.id !== "number" && "in" in whereClause.id) {
                     const existingIds = whereClause.id.in as number[];
                     whereClause.id = {
                         in: existingIds.filter((id) => orderIds.includes(id)),

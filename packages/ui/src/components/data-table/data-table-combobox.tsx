@@ -47,13 +47,6 @@ export function DataTableCombobox({
         [value, options],
     );
 
-    const displayValue = React.useMemo(() => {
-        if (isSelectedOption) {
-            return options.find((o) => o.value === value)?.label ?? value;
-        }
-        return value;
-    }, [value, options, isSelectedOption]);
-
     const filtered = React.useMemo(() => {
         if (!value || isSelectedOption) return options;
         const lower = value.toLowerCase();
