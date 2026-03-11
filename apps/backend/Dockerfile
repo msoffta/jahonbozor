@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM oven/bun:latest AS builder
+FROM oven/bun:1.3.10 AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ WORKDIR /app/apps/backend
 RUN bun run prisma:generate
 
 # Stage 2: Production
-FROM oven/bun:slim
+FROM oven/bun:1.3.10-slim
 
 WORKDIR /app
 
