@@ -66,6 +66,12 @@ jobs:
       - name: Generate Prisma client
         run: bun run --cwd apps/backend prisma:generate
 
+      - name: Generate TanStack Router files for admin
+        run: cd apps/frontend/admin && bun x vite build --mode development --outDir /tmp/admin-build
+
+      - name: Generate TanStack Router files for user
+        run: cd apps/frontend/user && bun x vite build --mode development --outDir /tmp/user-build
+
       - name: Type check backend
         run: bun run --cwd apps/backend typecheck
 
