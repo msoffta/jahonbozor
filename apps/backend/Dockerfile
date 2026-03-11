@@ -36,6 +36,7 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/backend ./apps/backend
 
 WORKDIR /app/apps/backend
+RUN mkdir -p public
 
 EXPOSE 3000
 
