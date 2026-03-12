@@ -226,6 +226,7 @@ export const uiMocks = {
         { get: (_target: any, prop: string) => getMotionComponent(prop) },
     ),
     AnimatePresence: ({ children }: any) => <>{children}</>,
+    LayoutGroup: ({ children }: any) => <>{children}</>,
 };
 
 /**
@@ -246,6 +247,7 @@ export function setupUIMocks() {
     mock.module("motion/react", () => ({
         motion: uiMocks.motion,
         AnimatePresence: uiMocks.AnimatePresence,
+        LayoutGroup: uiMocks.LayoutGroup,
     }));
 
     // Mock @jahonbozor/ui - must be AFTER motion/react mock

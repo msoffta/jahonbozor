@@ -23,16 +23,6 @@ mock.module("@tanstack/react-router", () => ({
 // Setup centralized UI mocks
 setupUIMocks();
 
-// Additional mocks specific to BottomNav - LayoutGroup is from motion/react
-mock.module("motion/react", () => {
-    const { uiMocks } = require("../../../test-utils/ui-mocks");
-    return {
-        motion: uiMocks.motion,
-        AnimatePresence: uiMocks.AnimatePresence,
-        LayoutGroup: ({ children }: any) => <>{children}</>,
-    };
-});
-
 mock.module("@tanstack/react-query", () => ({
     useQuery: () => ({ data: { orders: [] } }),
 }));
