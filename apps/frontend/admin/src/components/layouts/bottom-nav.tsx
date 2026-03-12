@@ -30,7 +30,7 @@ const navKeys = [
 
 // Fast, low-computation transition
 const fastTransition = {
-    type: "spring",
+    type: "spring" as const,
     stiffness: 500,
     damping: 40,
     mass: 1,

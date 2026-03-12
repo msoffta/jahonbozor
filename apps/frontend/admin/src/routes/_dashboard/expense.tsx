@@ -73,7 +73,7 @@ function ExpensePage() {
                         ? String(data.expenseDate)
                         : undefined,
                 });
-                return result.data?.id;
+                return result?.id;
             }
 
             // For initial creation, name and amount are strictly required
@@ -87,7 +87,7 @@ function ExpensePage() {
                 description: data.description ? String(data.description) : null,
                 expenseDate: String(data.expenseDate) || dayjs().toISOString(),
             });
-            return result.data?.id;
+            return result?.id;
         },
         [createExpense, updateExpense],
     );

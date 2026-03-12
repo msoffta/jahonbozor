@@ -59,9 +59,7 @@ function NewOrderPage() {
         [t, products, handleDeleteItem],
     );
 
-    const [newRowDefaultValues, setNewRowDefaultValues] = useState<
-        Record<string, unknown>
-    >({ quantity: 1 });
+    const newRowDefaultValues = useMemo(() => ({ quantity: 1 }), []);
 
     const handleNewRowChange = useCallback(
         (values: Record<string, unknown>, _rowId: string) => {

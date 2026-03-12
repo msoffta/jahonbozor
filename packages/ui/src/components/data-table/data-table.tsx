@@ -91,7 +91,7 @@ export function DataTable<TData>({
     const [multiRowStates, setMultiRowStates] = React.useState<NewRowState[]>(
         [],
     );
-    const [focusedRowId, setFocusedRowId] = React.useState<string | null>(null);
+    const [, setFocusedRowId] = React.useState<string | null>(null);
     const focusedRowIdRef = React.useRef<string | null>(null);
     const savingRowsRef = React.useRef<Set<string>>(new Set());
 

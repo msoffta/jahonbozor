@@ -54,14 +54,14 @@ Workspace-скрипты сами резолвят env:
 
 ### Testing
 ```bash
-bun run test               # Run backend tests only
-bun run test:backend       # Run backend tests (explicit)
-bun run test:bot           # Run bot tests
-bun run test:user          # Run user frontend tests
-bun run test:admin         # Run admin frontend tests
-bun run test:all           # Run all tests (backend + bot + user + admin)
+bun run test               # Run all tests (backend + bot + admin + user)
+bun run test:backend       # Run backend tests only
+bun run test:bot           # Run bot tests only
+bun run test:user          # Run user frontend tests only
+bun run test:admin         # Run admin frontend tests only
 bun run test:watch         # Watch mode (backend only)
 bun run test:coverage      # With coverage (backend only)
+bun run typecheck          # TypeScript check (backend + admin + user)
 ```
 
 ### Backend

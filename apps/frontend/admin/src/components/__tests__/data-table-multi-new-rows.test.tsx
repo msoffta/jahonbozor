@@ -93,7 +93,6 @@ const createNewRowStates = (count: number): NewRowState[] => {
 describe("DataTableMultiNewRows", () => {
     let onRowChange: ReturnType<typeof mock>;
     let onRowSave: ReturnType<typeof mock>;
-    let onRowDelete: ReturnType<typeof mock>;
     let onNeedMoreRows: ReturnType<typeof mock>;
     let defaultValuesFactory: ReturnType<typeof mock>;
 
@@ -101,9 +100,8 @@ describe("DataTableMultiNewRows", () => {
         mock.clearAllMocks();
         onRowChange = mock(() => {});
         onRowSave = mock(() => {});
-        onRowDelete = mock(() => {});
         onNeedMoreRows = mock(() => {});
-        defaultValuesFactory = mock((index: number) => ({ id: 0, name: "", value: 0 }));
+        defaultValuesFactory = mock((_index: number) => ({ id: 0, name: "", value: 0 }));
     });
 
     // ── Happy path ─────────────────────────────────────────────

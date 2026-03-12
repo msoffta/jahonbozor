@@ -121,7 +121,7 @@ function ProductsPage() {
                     id: linkedId as number,
                     ...body,
                 });
-                return result.data?.id;
+                return result?.id;
             }
 
             // For initial creation, check if all required fields are present
@@ -137,7 +137,7 @@ function ProductsPage() {
                 categoryId,
                 remaining: Number(data.remaining) || 0,
             });
-            return result.data?.id;
+            return result?.id;
         },
         [createProduct, updateProduct, resolveCategoryId],
     );

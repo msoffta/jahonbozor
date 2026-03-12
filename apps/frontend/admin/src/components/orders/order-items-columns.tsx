@@ -9,7 +9,7 @@ export interface OrderItemRow {
     productId: number;
     quantity: number;
     price: number;
-    product: { id: number; name: string; price?: number; remaining?: number };
+    product: { id: number; name: string; price?: number; remaining?: number; costprice?: number };
 }
 
 export interface OrderItemActions {

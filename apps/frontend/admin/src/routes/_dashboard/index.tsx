@@ -114,7 +114,7 @@ function OrdersPage() {
                     id: linkedId as number,
                     ...body,
                 });
-                return result.data?.id;
+                return result?.id;
             }
 
             // For creation, product is strictly required
@@ -139,7 +139,7 @@ function OrdersPage() {
                 ],
             });
 
-            return result.data?.id;
+            return result?.id;
         },
         [createOrder, updateOrder, navigate, products],
     );

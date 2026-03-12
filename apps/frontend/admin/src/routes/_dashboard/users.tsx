@@ -103,7 +103,7 @@ function UsersPage() {
                     id: linkedId as number,
                     ...body,
                 });
-                return result.data?.id;
+                return result?.id;
             }
 
             // For initial creation, fullname and username are strictly required
@@ -119,7 +119,7 @@ function UsersPage() {
                 photo: null,
                 language: (data.language === "ru" ? "ru" : "uz") as "uz" | "ru",
             });
-            return result.data?.id;
+            return result?.id;
         },
         [createClient, updateClient],
     );
