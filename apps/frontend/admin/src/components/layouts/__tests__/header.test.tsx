@@ -27,6 +27,10 @@ mock.module("@jahonbozor/ui", () => ({
     DropdownMenuLabel: ({ children }: any) => <span>{children}</span>,
     DropdownMenuSeparator: () => <hr />,
     DropdownMenuTrigger: ({ children }: any) => <>{children}</>,
+    Tooltip: ({ children }: any) => <>{children}</>,
+    TooltipContent: ({ children }: any) => <div>{children}</div>,
+    TooltipProvider: ({ children }: any) => <>{children}</>,
+    TooltipTrigger: ({ children }: any) => <>{children}</>,
     motion: new Proxy(
         {},
         {
