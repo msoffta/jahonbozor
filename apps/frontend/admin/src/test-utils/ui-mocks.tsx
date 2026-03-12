@@ -2,17 +2,11 @@ import { mock } from "bun:test";
 import { createElement } from "react";
 import * as React from "react";
 
-// Import real DataTable components and types from source
+// Import real DataTable components from source
 import { DataTable } from "../../../../../packages/ui/src/components/data-table/data-table";
 import { DataTableMultiNewRows } from "../../../../../packages/ui/src/components/data-table/data-table-multi-new-rows";
 import { DataTableNewRow } from "../../../../../packages/ui/src/components/data-table/data-table-new-row";
 import { DataTableSkeleton } from "../../../../../packages/ui/src/components/data-table/data-table-skeleton";
-import type {
-    DataTableProps,
-    DataTableColumnMeta,
-    DataTableTranslations,
-    NewRowState,
-} from "../../../../../packages/ui/src/components/data-table/types";
 
 /**
  * Comprehensive set of props that should be filtered out before spreading to DOM elements.
