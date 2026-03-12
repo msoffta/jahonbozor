@@ -8,7 +8,7 @@ setupUIMocks();
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableMultiNewRows } from "@jahonbozor/ui";
-import type { NewRowState } from "../../../../../../packages/ui/src/components/data-table/types";
+import type { NewRowState } from "@jahonbozor/ui";
 
 // ── Test data ──────────────────────────────────────────────────
 interface TestRow {

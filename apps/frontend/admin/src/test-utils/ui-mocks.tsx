@@ -2,6 +2,18 @@ import { mock } from "bun:test";
 import { createElement } from "react";
 import * as React from "react";
 
+// Import real DataTable components and types from source
+import { DataTable } from "../../../../../packages/ui/src/components/data-table/data-table";
+import { DataTableMultiNewRows } from "../../../../../packages/ui/src/components/data-table/data-table-multi-new-rows";
+import { DataTableNewRow } from "../../../../../packages/ui/src/components/data-table/data-table-new-row";
+import { DataTableSkeleton } from "../../../../../packages/ui/src/components/data-table/data-table-skeleton";
+import type {
+    DataTableProps,
+    DataTableColumnMeta,
+    DataTableTranslations,
+    NewRowState,
+} from "../../../../../packages/ui/src/components/data-table/types";
+
 /**
  * Comprehensive set of props that should be filtered out before spreading to DOM elements.
  * Includes Motion (framer-motion/motion) props, Radix UI props, and other framework-specific props.
@@ -93,10 +105,19 @@ function getMotionComponent(prop: string) {
 /**
  * Centralized UI component mocks for testing.
  * These mocks are designed to work with @testing-library/user-event and provide proper DOM elements.
+ *
+ * IMPORTANT: Real DataTable components are included here so tests can use them
+ * while still mocking the UI primitives and motion components.
  */
 export const uiMocks = {
     // Utility function
     cn: (...args: any[]) => args.filter(Boolean).join(" "),
+
+    // Real DataTable components (not mocks!)
+    DataTable,
+    DataTableMultiNewRows,
+    DataTableNewRow,
+    DataTableSkeleton,
 
     // Input: Supports both controlled and uncontrolled modes
     Input: React.forwardRef(
