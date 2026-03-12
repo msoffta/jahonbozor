@@ -18,11 +18,17 @@ interface OrderColumnsData {
     users: AdminUserItem[];
 }
 
+interface OrderColumnsOptions {
+    showItemColumns?: boolean;
+}
+
 export function getOrderColumns(
     t: TFunction,
     actions: OrderActions,
     data: OrderColumnsData,
+    options?: OrderColumnsOptions,
 ): ColumnDef<AdminOrderItem, any>[] {
+    const { showItemColumns = true } = options ?? {};
     const productOptions = data.products.map((p) => ({
         label: p.name,
         value: String(p.id),
@@ -41,7 +47,7 @@ export function getOrderColumns(
         { label: t("payment_credit_card"), value: "CREDIT_CARD" },
     ];
 
-    return [
+    const columns: ColumnDef<AdminOrderItem, any>[] = [
         {
             accessorKey: "id",
             header: t("order_id"),
@@ -63,67 +69,109 @@ export function getOrderColumns(
                 return id;
             },
         },
-        {
-            id: "product",
-            accessorFn: (row) => row.items[0]?.product?.name ?? "—",
-            header: t("order_product"),
-            size: 250,
-            meta: {
-                flex: 3,
-                editable: true,
-                inputType: "combobox" as const,
-                selectOptions: productOptions,
+    ];
+
+    if (showItemColumns) {
+        columns.push(
+            {
+                id: "product",
+                accessorFn: (row) => row.items[0]?.product?.name ?? "—",
+                header: t("order_product"),
+                size: 250,
+                meta: {
+                    flex: 3,
+                    editable: true,
+                    inputType: "combobox" as const,
+                    selectOptions: productOptions,
+                },
             },
-        },
-        {
-            id: "quantity",
-            accessorFn: (row) => row.items[0]?.quantity ?? 0,
-            header: t("order_quantity"),
-            size: 110,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
-            meta: {
-                flex: 1,
-                align: "left" as const,
-                editable: true,
-                inputType: "number" as const,
+            {
+                id: "quantity",
+                accessorFn: (row) => row.items[0]?.quantity ?? 0,
+                header: t("order_quantity"),
+                size: 110,
+                cell: ({ getValue }) => getValue<number>().toLocaleString(),
+                meta: {
+                    flex: 1,
+                    align: "left" as const,
+                    editable: true,
+                    inputType: "number" as const,
+                },
             },
-        },
-        {
-            id: "price",
-            accessorFn: (row) => row.items[0]?.price ?? 0,
-            header: t("order_costprice"),
-            size: 130,
-            cell: ({ getValue }) => {
-                const price = getValue<number>();
-                return (
-                    <span className="costprice-value">
-                        {price ? price.toLocaleString() : "—"}
-                    </span>
-                );
+            {
+                id: "price",
+                accessorFn: (row) => row.items[0]?.price ?? 0,
+                header: t("order_costprice"),
+                size: 130,
+                cell: ({ getValue }) => {
+                    const price = getValue<number>();
+                    return (
+                        <span className="costprice-value">
+                            {price ? price.toLocaleString() : "—"}
+                        </span>
+                    );
+                },
+                meta: {
+                    flex: 1.5,
+                    align: "left" as const,
+                    cellClassName: "costprice-hover-target",
+                    headerClassName: "costprice-hover-target",
+                    className: "costprice-hover-target",
+                },
             },
-            meta: {
-                flex: 1.5,
-                align: "left" as const,
-                cellClassName: "costprice-hover-target",
-                headerClassName: "costprice-hover-target",
-                className: "costprice-hover-target",
+            {
+                id: "remaining",
+                accessorFn: (row) => row.items[0]?.product?.remaining ?? 0,
+                header: t("order_remaining"),
+                size: 110,
+                cell: ({ getValue }) => getValue<number>().toLocaleString(),
+                meta: {
+                    flex: 1,
+                    align: "left" as const,
+                },
             },
-        },
-        {
-            id: "total",
-            accessorFn: (row) => {
-                const item = row.items[0];
-                if (!item) return 0;
-                return (item.price ?? 0) * (item.quantity ?? 1);
+            {
+                id: "total",
+                accessorFn: (row) => {
+                    const item = row.items[0];
+                    if (!item) return 0;
+                    return (item.price ?? 0) * (item.quantity ?? 1);
+                },
+                header: t("order_total"),
+                size: 130,
+                cell: ({ getValue }) => getValue<number>().toLocaleString(),
+                meta: {
+                    flex: 1.5,
+                    align: "left" as const,
+                },
             },
-            header: t("order_total"),
-            size: 130,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
-            meta: {
-                flex: 1.5,
-                align: "left" as const,
+        );
+    } else {
+        columns.push(
+            {
+                id: "itemsCount",
+                accessorFn: (row) => row.items.length,
+                header: t("order_products_count"),
+                size: 100,
+                cell: ({ getValue }) => getValue<number>(),
+                meta: { flex: 1, align: "center" as const },
             },
-        },
+            {
+                id: "total",
+                accessorFn: (row) =>
+                    row.items.reduce(
+                        (sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1),
+                        0,
+                    ),
+                header: t("order_total"),
+                size: 130,
+                cell: ({ getValue }) => getValue<number>().toLocaleString(),
+                meta: { flex: 1.5, align: "left" as const },
+            },
+        );
+    }
+
+    columns.push(
         {
             accessorKey: "paymentType",
             header: t("order_payment"),
@@ -132,7 +180,7 @@ export function getOrderColumns(
                 t(`payment_${getValue<string>().toLowerCase()}`),
             meta: {
                 flex: 1,
-                editable: true,
+                editable: showItemColumns,
                 inputType: "select" as const,
                 selectOptions: paymentOptions,
             },
@@ -144,7 +192,7 @@ export function getOrderColumns(
             size: 180,
             meta: {
                 flex: 1.5,
-                editable: true,
+                editable: showItemColumns,
                 inputType: "combobox" as const,
                 selectOptions: userOptions,
             },
@@ -211,5 +259,7 @@ export function getOrderColumns(
                 </motion.div>
             ),
         },
-    ];
+    );
+
+    return columns;
 }

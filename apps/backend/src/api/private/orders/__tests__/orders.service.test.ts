@@ -43,7 +43,7 @@ const mockOrderWithRelations = {
     items: [
         {
             ...mockOrderItem,
-            product: { id: 1, name: "Test Product", price: 100 },
+            product: { id: 1, name: "Test Product", price: 100, remaining: 10 },
         },
     ],
     user: null,

@@ -39,9 +39,10 @@ export function BottomNav() {
     const isOrderView =
         pathname.startsWith("/orders/") && activeOrderId !== null;
 
-    // Fetch recent lists (orders with >1 item)
+    // Fetch today's lists (orders with >1 item)
+    const todayStart = useMemo(() => dayjs().startOf("day").toISOString(), []);
     const { data: recentListsData } = useQuery(
-        ordersListQueryOptions({ limit: 5, minItemsCount: 2 }),
+        ordersListQueryOptions({ limit: 5, minItemsCount: 2, dateFrom: todayStart }),
     );
 
     const recentListsRaw = recentListsData?.orders ?? [];

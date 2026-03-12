@@ -9,7 +9,7 @@ export interface OrderItemRow {
     productId: number;
     quantity: number;
     price: number;
-    product: { id: number; name: string; price?: number };
+    product: { id: number; name: string; price?: number; remaining?: number };
 }
 
 export interface OrderItemActions {
@@ -76,6 +76,17 @@ export function getOrderItemColumns(
                 cellClassName: "costprice-hover-target",
                 headerClassName: "costprice-hover-target",
                 className: "costprice-hover-target",
+            },
+        },
+        {
+            id: "remaining",
+            accessorFn: (row) => row.product?.remaining ?? 0,
+            header: t("order_remaining"),
+            size: 100,
+            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            meta: {
+                flex: 1,
+                align: "left" as const,
             },
         },
         {

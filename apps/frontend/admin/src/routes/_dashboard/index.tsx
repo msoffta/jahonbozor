@@ -122,6 +122,7 @@ function OrdersPage() {
                 const productId = Number(values.product);
                 const product = products.find((p) => p.id === productId);
                 const price = product?.price ?? 0;
+                const remaining = product?.remaining ?? 0;
                 const newTotal = price * currentQuantity;
 
                 setNewRowDefaultValues((prev) => {
@@ -129,12 +130,14 @@ function OrdersPage() {
                         prev.product !== values.product ||
                         prev.price !== price ||
                         prev.total !== newTotal ||
-                        prev.quantity !== currentQuantity
+                        prev.quantity !== currentQuantity ||
+                        prev.remaining !== remaining
                     ) {
                         return {
                             ...prev,
                             product: values.product,
                             price,
+                            remaining,
                             quantity: currentQuantity,
                             total: newTotal,
                         };
@@ -149,6 +152,7 @@ function OrdersPage() {
                             quantity: 1,
                             product: "",
                             price: "",
+                            remaining: "",
                             total: "",
                         };
                     }

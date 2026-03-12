@@ -26,7 +26,7 @@ interface LocalItem {
     productId: number;
     quantity: number;
     price: number;
-    product: { id: number; name: string; price?: number };
+    product: { id: number; name: string; price?: number; remaining?: number };
 }
 
 function NewOrderPage() {
@@ -71,6 +71,7 @@ function NewOrderPage() {
                 const productId = Number(values.product);
                 const product = products.find((p) => p.id === productId);
                 const price = product?.price ?? 0;
+                const remaining = product?.remaining ?? 0;
                 const newTotal = price * currentQuantity;
 
                 setNewRowDefaultValues((prev) => {
@@ -78,12 +79,14 @@ function NewOrderPage() {
                         prev.product !== values.product ||
                         prev.price !== price ||
                         prev.total !== newTotal ||
-                        prev.quantity !== currentQuantity
+                        prev.quantity !== currentQuantity ||
+                        prev.remaining !== remaining
                     ) {
                         return {
                             ...prev,
                             product: values.product,
                             price,
+                            remaining,
                             quantity: currentQuantity,
                             total: newTotal,
                         };
@@ -100,6 +103,7 @@ function NewOrderPage() {
                             quantity: 1,
                             product: "",
                             price: "",
+                            remaining: "",
                             total: "",
                         };
                     }
@@ -130,6 +134,7 @@ function NewOrderPage() {
                     id: product.id,
                     name: product.name,
                     price: product.price,
+                    remaining: product.remaining,
                 },
             };
 
@@ -138,6 +143,7 @@ function NewOrderPage() {
                 quantity: 1,
                 product: "",
                 price: "",
+                remaining: "",
                 total: "",
             });
         },

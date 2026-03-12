@@ -7,7 +7,7 @@ import {
     Button,
     DataTable,
     DataTableSkeleton,
-    Input,
+    DatePicker,
     PageTransition,
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
@@ -70,7 +70,7 @@ function ListsPage() {
     );
 
     const columns = useMemo(
-        () => getOrderColumns(t, actions, { products, users }),
+        () => getOrderColumns(t, actions, { products, users }, { showItemColumns: false }),
         [t, actions, products, users],
     );
 
@@ -97,27 +97,21 @@ function ListsPage() {
 
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                        <Input
-                            type="date"
-                            value={dayjs(dateFrom).format("YYYY-MM-DD")}
-                            onChange={(event) =>
+                        <DatePicker
+                            value={dateFrom}
+                            onChange={(date) =>
                                 setDateFrom(
-                                    dayjs(event.target.value)
-                                        .startOf("day")
-                                        .toISOString(),
+                                    dayjs(date).startOf("day").toISOString(),
                                 )
                             }
                             className="h-8 w-36 text-xs"
                         />
                         <span className="text-muted-foreground text-xs">—</span>
-                        <Input
-                            type="date"
-                            value={dayjs(dateTo).format("YYYY-MM-DD")}
-                            onChange={(event) =>
+                        <DatePicker
+                            value={dateTo}
+                            onChange={(date) =>
                                 setDateTo(
-                                    dayjs(event.target.value)
-                                        .endOf("day")
-                                        .toISOString(),
+                                    dayjs(date).endOf("day").toISOString(),
                                 )
                             }
                             className="h-8 w-36 text-xs"

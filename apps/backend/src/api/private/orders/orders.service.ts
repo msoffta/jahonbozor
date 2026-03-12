@@ -64,8 +64,12 @@ export abstract class OrdersService {
             const whereClause: Prisma.OrderWhereInput = {
                 ...(paymentType && { paymentType }),
                 ...(status && { status }),
-                ...(dateFrom && { createdAt: { gte: dateFrom } }),
-                ...(dateTo && { createdAt: { lte: dateTo } }),
+                ...((dateFrom || dateTo) && {
+                    createdAt: {
+                        ...(dateFrom && { gte: dateFrom }),
+                        ...(dateTo && { lte: dateTo }),
+                    },
+                }),
             };
 
             // Filter by exact items count
@@ -135,6 +139,7 @@ export abstract class OrdersService {
                                         id: true,
                                         name: true,
                                         price: true,
+                                        remaining: true,
                                     },
                                 },
                             },
@@ -180,7 +185,7 @@ export abstract class OrdersService {
                     items: {
                         include: {
                             product: {
-                                select: { id: true, name: true, price: true },
+                                select: { id: true, name: true, price: true, remaining: true },
                             },
                         },
                     },
@@ -317,12 +322,13 @@ export abstract class OrdersService {
                     include: {
                         items: {
                             include: {
-                                product: { select: { id: true, name: true } },
+                                product: { select: { id: true, name: true, price: true, remaining: true } },
                             },
                         },
                         user: {
                             select: { id: true, fullname: true, phone: true },
                         },
+                        staff: { select: { id: true, fullname: true } },
                     },
                 });
 
@@ -374,6 +380,10 @@ export abstract class OrdersService {
                 items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
+                    product: {
+                        ...item.product,
+                        price: Number(item.product.price),
+                    },
                 })),
             };
 
@@ -443,7 +453,7 @@ export abstract class OrdersService {
                             items: {
                                 include: {
                                     product: {
-                                        select: { id: true, name: true },
+                                        select: { id: true, name: true, price: true, remaining: true },
                                     },
                                 },
                             },
@@ -480,6 +490,10 @@ export abstract class OrdersService {
                 items: updatedOrder.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
+                    product: {
+                        ...item.product,
+                        price: Number(item.product.price),
+                    },
                 })),
             };
             return { success: true, data: mapped };
