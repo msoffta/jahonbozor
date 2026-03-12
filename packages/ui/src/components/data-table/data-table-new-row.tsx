@@ -16,21 +16,30 @@ import { TableCell } from "../ui/table";
 import { DataTableCombobox } from "./data-table-combobox";
 
 interface DataTableNewRowProps<TData> {
+    id?: string;
     columns: ColumnDef<TData, any>[];
     onSave: (data: Record<string, unknown>) => void;
     defaultValues?: Partial<TData>;
     enableRowSelection?: boolean;
     onChange?: (values: Record<string, unknown>) => void;
+    externalValues?: Record<string, unknown>;
+    externalErrors?: Record<string, string>;
 }
 
 export function DataTableNewRow<TData>({
+    id = "new-row",
     columns,
     onSave,
     defaultValues,
     enableRowSelection,
     onChange,
+    externalValues,
+    externalErrors,
 }: DataTableNewRowProps<TData>) {
-    const [values, setValues] = React.useState<Record<string, unknown>>(() => {
+    // Determine if controlled mode
+    const isControlled = externalValues !== undefined;
+
+    const [internalValues, setInternalValues] = React.useState<Record<string, unknown>>(() => {
         const initial: Record<string, unknown> = {};
         for (const col of columns) {
             const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
@@ -42,13 +51,24 @@ export function DataTableNewRow<TData>({
         return initial;
     });
 
-    const [errors, setErrors] = React.useState<Record<string, string>>({});
+    const [internalErrors, setInternalErrors] = React.useState<Record<string, string>>({});
+
+    // Use external state if controlled, otherwise internal
+    const values = isControlled ? externalValues : internalValues;
+    const errors = isControlled ? (externalErrors ?? {}) : internalErrors;
+    const setValues = isControlled
+        ? (newValues: Record<string, unknown> | ((prev: Record<string, unknown>) => Record<string, unknown>)) => {
+              const resolved = typeof newValues === 'function' ? newValues(externalValues) : newValues;
+              onChange?.(resolved);
+          }
+        : setInternalValues;
+    const setErrors = isControlled ? () => {} : setInternalErrors;
     const inputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
 
-    // Update internal state when defaultValues change from outside
+    // Update internal state when defaultValues change from outside (uncontrolled mode only)
     React.useEffect(() => {
-        if (!defaultValues) return;
-        setValues((prev) => {
+        if (isControlled || !defaultValues) return;
+        setInternalValues((prev) => {
             let changed = false;
             const next = { ...prev };
             for (const col of columns) {
@@ -63,56 +83,61 @@ export function DataTableNewRow<TData>({
             }
             return changed ? next : prev;
         });
-    }, [defaultValues, columns]);
+    }, [isControlled, defaultValues, columns]);
 
-    // Notify parent on change
+    // Notify parent on change (uncontrolled mode only - controlled calls onChange directly)
     React.useEffect(() => {
-        onChange?.(values);
-    }, [values, onChange]);
+        if (isControlled) return;
+        onChange?.(internalValues);
+    }, [isControlled, internalValues, onChange]);
 
     const editableColumns = columns.filter((col) => col.meta?.editable);
 
     const handleSave = (currentValues: Record<string, unknown> = values) => {
-        const newErrors: Record<string, string> = {};
-        let hasError = false;
+        // In controlled mode, validation and error handling is managed by parent
+        // In uncontrolled mode, we validate here
+        if (!isControlled) {
+            const newErrors: Record<string, string> = {};
+            let hasError = false;
 
-        for (const col of editableColumns) {
-            const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
-            if (!key) continue;
+            for (const col of editableColumns) {
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                if (!key) continue;
 
-            const meta = col.meta;
-            if (meta?.validationSchema) {
-                const result = meta.validationSchema.safeParse(
-                    currentValues[key],
-                );
-                if (!result.success) {
-                    newErrors[key] =
-                        result.error.issues[0]?.message ?? "Invalid";
-                    hasError = true;
+                const meta = col.meta;
+                if (meta?.validationSchema) {
+                    const result = meta.validationSchema.safeParse(
+                        currentValues[key],
+                    );
+                    if (!result.success) {
+                        newErrors[key] =
+                            result.error.issues[0]?.message ?? "Invalid";
+                        hasError = true;
+                    }
                 }
             }
+
+            if (hasError) {
+                setInternalErrors(newErrors);
+                return;
+            }
+
+            setInternalErrors({});
         }
 
-        if (hasError) {
-            setErrors(newErrors);
-            return;
-        }
-
-        setErrors({});
         onSave(currentValues);
 
-        // Reset values
-        const reset: Record<string, unknown> = {};
-        for (const col of columns) {
-            const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
-            if (key) {
-                // In a new row context, a "reset" means clearing out inputs except for hardcoded form defaults
-                // Since this component is controlled from outside via defaultValues, we should blast all inputs
-                // and let the next defaultValues effect sync back the "1" for quantity etc.
-                reset[key] = "";
+        // Reset values only in uncontrolled mode
+        if (!isControlled) {
+            const reset: Record<string, unknown> = {};
+            for (const col of columns) {
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                if (key) {
+                    reset[key] = "";
+                }
             }
+            setInternalValues(reset);
         }
-        setValues(reset);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent, colIndex: number) => {
@@ -151,7 +176,7 @@ export function DataTableNewRow<TData>({
 
     return (
         <motion.tr
-            id="new-row"
+            id={id}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}

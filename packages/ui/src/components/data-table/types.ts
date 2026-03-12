@@ -60,6 +60,13 @@ declare module "@tanstack/react-table" {
     }
 }
 
+// ── New Row State ──────────────────────────────────────────────
+export interface NewRowState {
+    id: string;
+    values: Record<string, unknown>;
+    errors: Record<string, string>;
+}
+
 // ── i18n ───────────────────────────────────────────────────────
 export interface DataTableTranslations {
     search?: string;
@@ -108,6 +115,18 @@ export interface DataTableProps<TData> {
     onNewRowSave?: (data: Record<string, unknown>) => void;
     onNewRowChange?: (data: Record<string, unknown>) => void;
     newRowDefaultValues?: Partial<TData>;
+
+    // Multi-row feature
+    enableMultipleNewRows?: boolean;
+    multiRowCount?: number;
+    multiRowIncrement?: number;
+    multiRowPosition?: "start" | "end";
+    multiRowMaxCount?: number;
+    onMultiRowSave?: (data: Record<string, unknown>, rowId: string) => void | Promise<void>;
+    onMultiRowChange?: (data: Record<string, unknown>, rowId: string) => void;
+    onMultiRowDelete?: (rowId: string) => void;
+    multiRowDefaultValues?: Partial<TData> | ((rowIndex: number) => Partial<TData>);
+    multiRowValidate?: (data: Record<string, unknown>) => boolean | string;
 
     // Callbacks
     onRowSelectionChange?: (selection: Record<string, boolean>) => void;

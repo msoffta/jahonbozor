@@ -22,7 +22,7 @@ import { DataTableBody } from "./data-table-body";
 import { DataTableColumnHeader } from "./data-table-header";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
-import type { DataTableProps } from "./types";
+import type { DataTableProps, NewRowState } from "./types";
 
 const VIRTUALIZATION_THRESHOLD = 200;
 
