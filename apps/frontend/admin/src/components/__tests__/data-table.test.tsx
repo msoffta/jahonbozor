@@ -1,99 +1,10 @@
 import { describe, test, expect, mock } from "bun:test";
-import { createElement } from "react";
 import { render, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { setupUIMocks } from "../../test-utils/ui-mocks";
 
-const MOTION_PROPS = new Set([
-    "whileTap", "whileHover", "whileFocus", "whileDrag", "whileInView",
-    "initial", "animate", "exit", "transition", "variants", "layout",
-    "layoutId", "onAnimationStart", "onAnimationComplete",
-]);
-
-function filterMotionProps(props: Record<string, any>) {
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(props)) {
-        if (!MOTION_PROPS.has(key)) {
-            filtered[key] = value;
-        }
-    }
-    return filtered;
-}
-
-// Cached motion component factories — must return SAME function reference per element
-// so React can reconcile properly (otherwise unmounts/remounts on every render)
-const motionCache = new Map<string, any>();
-function getMotionComponent(prop: string) {
-    if (!motionCache.has(prop)) {
-        motionCache.set(prop, ({ children, className, ...rest }: any) =>
-            createElement(prop, { className, ...filterMotionProps(rest) }, children),
-        );
-    }
-    return motionCache.get(prop);
-}
-
-// Mock motion/react — DataTable sub-components import motion directly
-mock.module("motion/react", () => ({
-    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
-    AnimatePresence: ({ children }: any) => createElement("div", null, children),
-}));
-
-// Mock @jahonbozor/ui BEFORE importing DataTable
-mock.module("@jahonbozor/ui", () => ({
-    cn: (...args: any[]) => args.filter(Boolean).join(" "),
-    Tooltip: ({ children }: any) => <>{children}</>,
-    TooltipContent: ({ children }: any) => <div>{children}</div>,
-    TooltipProvider: ({ children }: any) => <>{children}</>,
-    TooltipTrigger: ({ children }: any) => <>{children}</>,
-    Button: ({ children, onClick, disabled, className, ...props }: any) => (
-        <button onClick={onClick} disabled={disabled} className={className} {...filterMotionProps(props)}>
-            {children}
-        </button>
-    ),
-    Input: ({ className, ...props }: any) => <input className={className} {...props} />,
-    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
-        <input
-            type="checkbox"
-            checked={checked}
-            onChange={(e: any) => onCheckedChange?.(e.target.checked)}
-            {...filterMotionProps(props)}
-        />
-    ),
-    Table: ({ children, className, ...props }: any) => (
-        <table className={className} {...filterMotionProps(props)}>
-            {children}
-        </table>
-    ),
-    TableBody: ({ children, ...props }: any) => <tbody {...filterMotionProps(props)}>{children}</tbody>,
-    TableCell: ({ children, colSpan, ...props }: any) => <td colSpan={colSpan} {...filterMotionProps(props)}>{children}</td>,
-    TableHead: ({ children, colSpan, ...props }: any) => <th colSpan={colSpan} {...filterMotionProps(props)}>{children}</th>,
-    TableHeader: ({ children, ...props }: any) => <thead {...filterMotionProps(props)}>{children}</thead>,
-    TableRow: ({ children, ...props }: any) => <tr {...filterMotionProps(props)}>{children}</tr>,
-    Select: ({ children, onValueChange, value, ...props }: any) => (
-        <select value={value} onChange={(e: any) => onValueChange?.(e.target.value)} {...filterMotionProps(props)}>
-            {children}
-        </select>
-    ),
-    SelectContent: ({ children }: any) => <>{children}</>,
-    SelectItem: ({ children, value, ...props }: any) => (
-        <option value={value} {...filterMotionProps(props)}>
-            {children}
-        </option>
-    ),
-    SelectTrigger: () => null,
-    SelectValue: () => null,
-    DropdownMenu: ({ children }: any) => <div>{children}</div>,
-    DropdownMenuTrigger: ({ children }: any) => <>{children}</>,
-    DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
-    DropdownMenuItem: ({ children, onClick, ...props }: any) => (
-        <button type="button" onClick={onClick} {...filterMotionProps(props)}>
-            {children}
-        </button>
-    ),
-    DropdownMenuLabel: ({ children }: any) => <span>{children}</span>,
-    DropdownMenuSeparator: () => <hr />,
-    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
+// Setup centralized UI mocks BEFORE importing components
+setupUIMocks();
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@jahonbozor/ui";

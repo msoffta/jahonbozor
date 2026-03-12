@@ -1,16 +1,13 @@
 import { describe, test, expect, mock } from "bun:test";
 import { render, fireEvent } from "@testing-library/react";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 mock.module("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-mock.module("@jahonbozor/ui", () => ({
-    motion: {
-        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-        span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
-    },
-}));
+// Setup centralized UI mocks
+setupUIMocks();
 
 import { SearchBar } from "../search-bar";
 

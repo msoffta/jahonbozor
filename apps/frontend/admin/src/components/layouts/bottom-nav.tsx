@@ -146,8 +146,9 @@ export function BottomNav() {
                         <TooltipProvider delayDuration={200}>
                             <AnimatePresence>
                                 {recentLists.map((order, index) => (
-                                    <Tooltip key={order.id}>
-                                        <TooltipTrigger asChild>
+                                    <React.Fragment key={order.id}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
                                             <Link
                                                 to="/orders/$orderId"
                                                 params={{
@@ -201,7 +202,8 @@ export function BottomNav() {
                                                 )}
                                             </p>
                                         </TooltipContent>
-                                    </Tooltip>
+                                        </Tooltip>
+                                    </React.Fragment>
                                 ))}
                             </AnimatePresence>
                         </TooltipProvider>

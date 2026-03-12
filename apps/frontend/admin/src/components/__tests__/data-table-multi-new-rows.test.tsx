@@ -1,72 +1,10 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
-import { createElement } from "react";
 import { render, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { setupUIMocks } from "../../test-utils/ui-mocks";
 
-const MOTION_PROPS = new Set([
-    "whileTap", "whileHover", "whileFocus", "whileDrag", "whileInView",
-    "initial", "animate", "exit", "transition", "variants", "layout",
-    "layoutId", "onAnimationStart", "onAnimationComplete",
-]);
-
-function filterMotionProps(props: Record<string, any>) {
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(props)) {
-        if (!MOTION_PROPS.has(key)) {
-            filtered[key] = value;
-        }
-    }
-    return filtered;
-}
-
-const motionCache = new Map<string, any>();
-function getMotionComponent(prop: string) {
-    if (!motionCache.has(prop)) {
-        motionCache.set(prop, ({ children, className, ...rest }: any) =>
-            createElement(prop, { className, ...filterMotionProps(rest) }, children),
-        );
-    }
-    return motionCache.get(prop);
-}
-
-mock.module("motion/react", () => ({
-    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
-    AnimatePresence: ({ children }: any) => createElement("div", null, children),
-}));
-
-mock.module("@jahonbozor/ui", () => ({
-    cn: (...args: any[]) => args.filter(Boolean).join(" "),
-    Tooltip: ({ children }: any) => <>{children}</>,
-    TooltipContent: ({ children }: any) => <div>{children}</div>,
-    TooltipProvider: ({ children }: any) => <>{children}</>,
-    TooltipTrigger: ({ children }: any) => <>{children}</>,
-    Button: ({ children, onClick, disabled, className, ...props }: any) => (
-        <button onClick={onClick} disabled={disabled} className={className} {...filterMotionProps(props)}>
-            {children}
-        </button>
-    ),
-    Input: ({ className, ...props }: any) => <input className={className} {...props} />,
-    TableBody: ({ children, ...props }: any) => <tbody {...filterMotionProps(props)}>{children}</tbody>,
-    TableCell: ({ children, colSpan, ...props }: any) => <td colSpan={colSpan} {...filterMotionProps(props)}>{children}</td>,
-    TableRow: ({ children, ...props }: any) => <tr {...filterMotionProps(props)}>{children}</tr>,
-    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    DataTable: ({ children, ...props }: any) => createElement("div", props, children),
-    DataTableNewRow: ({ id, onSave, onChange, externalValues }: any) => (
-        <tr data-testid="new-row" data-row-id={id}>
-            <td>
-                <input
-                    data-testid={`input-${id}`}
-                    value={(externalValues?.name as string) || ""}
-                    onChange={(e) => onChange?.({ ...externalValues, name: e.target.value })}
-                />
-            </td>
-            <td>
-                <button data-testid={`save-${id}`} onClick={() => onSave(externalValues)}>Save</button>
-            </td>
-        </tr>
-    ),
-}));
+// Setup centralized UI mocks BEFORE importing components
+setupUIMocks();
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableMultiNewRows } from "@jahonbozor/ui";
@@ -137,7 +75,7 @@ describe("DataTableMultiNewRows", () => {
         const rowStates = createNewRowStates(3);
         const firstRowId = rowStates[0].id;
 
-        const { getByTestId } = render(
+        const { getAllByRole } = render(
             <table>
                 <tbody data-testid="multi-new-rows">
                     <DataTableMultiNewRows
@@ -152,17 +90,21 @@ describe("DataTableMultiNewRows", () => {
             </table>,
         );
 
-        const input = getByTestId(`input-${firstRowId}`) as HTMLInputElement;
-        await user.type(input, "test value");
+        // Get first input from first row (3 columns, so first 3 inputs are first row)
+        const inputs = getAllByRole("textbox");
+        await user.type(inputs[0], "test value");
 
+        // onChange is called on each keystroke with the rowId
         expect(onRowChange).toHaveBeenCalled();
+        expect(onRowChange.mock.calls[0][0]).toBe(firstRowId);
     });
 
-    test("should call onRowSave when save button is clicked", () => {
+    test("should call onRowSave when Enter pressed on last input", async () => {
+        const user = userEvent.setup();
         const rowStates = createNewRowStates(3);
         const secondRowId = rowStates[1].id;
 
-        const { getByTestId } = render(
+        const { getAllByRole } = render(
             <table>
                 <tbody data-testid="multi-new-rows">
                     <DataTableMultiNewRows
@@ -177,8 +119,16 @@ describe("DataTableMultiNewRows", () => {
             </table>,
         );
 
-        const saveButton = getByTestId(`save-${secondRowId}`);
-        fireEvent.click(saveButton);
+        // Second row has 3 inputs: spinbutton (number) at indices 3,4,5
+        // Last input is index 5, but we need to use the "spinbutton" role for number inputs
+        const textInputs = getAllByRole("textbox"); // id, name (indices 0-1 for row 1, 3-4 for row 2)
+        const numberInputs = getAllByRole("spinbutton"); // value (indices 0 for row 1, 1 for row 2)
+
+        // Last input of second row is the number input at index 1
+        const lastInputOfSecondRow = numberInputs[1];
+
+        lastInputOfSecondRow.focus();
+        await user.keyboard("{Enter}");
 
         expect(onRowSave).toHaveBeenCalledWith(secondRowId);
     });

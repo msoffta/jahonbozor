@@ -1,72 +1,10 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
-import { createElement } from "react";
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { setupUIMocks } from "../../test-utils/ui-mocks";
 
-const MOTION_PROPS = new Set([
-    "whileTap", "whileHover", "whileFocus", "whileDrag", "whileInView",
-    "initial", "animate", "exit", "transition", "variants", "layout",
-    "layoutId", "onAnimationStart", "onAnimationComplete",
-]);
-
-function filterMotionProps(props: Record<string, any>) {
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(props)) {
-        if (!MOTION_PROPS.has(key)) {
-            filtered[key] = value;
-        }
-    }
-    return filtered;
-}
-
-const motionCache = new Map<string, any>();
-function getMotionComponent(prop: string) {
-    if (!motionCache.has(prop)) {
-        motionCache.set(prop, ({ children, className, ...rest }: any) =>
-            createElement(prop, { className, ...filterMotionProps(rest) }, children),
-        );
-    }
-    return motionCache.get(prop);
-}
-
-mock.module("motion/react", () => ({
-    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
-    AnimatePresence: ({ children }: any) => createElement("div", null, children),
-}));
-
-mock.module("@jahonbozor/ui", () => ({
-    cn: (...args: any[]) => args.filter(Boolean).join(" "),
-    Tooltip: ({ children }: any) => <>{children}</>,
-    TooltipContent: ({ children }: any) => <div>{children}</div>,
-    TooltipProvider: ({ children }: any) => <>{children}</>,
-    TooltipTrigger: ({ children }: any) => <>{children}</>,
-    Button: ({ children, onClick, disabled, className, ...props }: any) => (
-        <button onClick={onClick} disabled={disabled} className={className} {...filterMotionProps(props)}>
-            {children}
-        </button>
-    ),
-    Input: ({ className, value, onChange, ref, ...props }: any) => (
-        <input className={className} defaultValue={value} onChange={onChange} ref={ref} {...filterMotionProps(props)} />
-    ),
-    TableBody: ({ children, ...props }: any) => <tbody {...filterMotionProps(props)}>{children}</tbody>,
-    TableCell: ({ children, colSpan, ...props }: any) => <td colSpan={colSpan} {...filterMotionProps(props)}>{children}</td>,
-    TableRow: ({ children, ...props }: any) => <tr {...filterMotionProps(props)}>{children}</tr>,
-    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    Select: ({ children, onValueChange, value, ...props }: any) => (
-        <select value={value} onChange={(event: any) => onValueChange?.(event.target.value)} {...filterMotionProps(props)}>
-            {children}
-        </select>
-    ),
-    SelectContent: ({ children }: any) => <>{children}</>,
-    SelectItem: ({ children, value, ...props }: any) => (
-        <option value={value} {...filterMotionProps(props)}>
-            {children}
-        </option>
-    ),
-    SelectTrigger: () => null,
-    SelectValue: () => null,
-}));
+// Setup centralized UI mocks BEFORE importing components
+setupUIMocks();
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableNewRow } from "../../../../../../packages/ui/src/components/data-table/data-table-new-row";

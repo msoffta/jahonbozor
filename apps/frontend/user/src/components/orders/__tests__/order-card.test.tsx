@@ -1,5 +1,6 @@
 import { describe, test, expect, mock } from "bun:test";
 import { render } from "@testing-library/react";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 mock.module("react-i18next", () => ({
     useTranslation: () => ({
@@ -18,7 +19,12 @@ mock.module("@tanstack/react-router", () => ({
     ),
 }));
 
+// Setup centralized UI mocks
+setupUIMocks();
+
+// Component-specific mock
 mock.module("@jahonbozor/ui", () => ({
+    ...require("../../../test-utils/ui-mocks").uiMocks,
     Badge: ({ children, ...props }: any) => <span data-testid="badge" {...props}>{children}</span>,
 }));
 

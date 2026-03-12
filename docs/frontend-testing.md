@@ -496,3 +496,115 @@ describe("profileOptions", () => {
 - Use `container.querySelector` when a semantic query is available
 - Test third-party library internals (React Query caching, Zustand middleware)
 - Skip `cleanup()` — it's in `test/setup.ts` but never remove it
+
+## Mock Consistency and Isolation (Bun-specific)
+
+### Critical: Bun Test Isolation Issue
+
+Unlike Vitest/Jest, Bun's `mock.module` patches the module cache at runtime and affects ALL subsequent tests globally. Mocks are NOT isolated between test files.
+
+**Solution**: Use centralized mocks from `apps/frontend/admin/src/test-utils/ui-mocks.tsx`
+
+### Using Centralized UI Mocks
+
+```typescript
+import { setupUIMocks } from "../test-utils/ui-mocks";
+
+// At top of test file, before component imports
+setupUIMocks();
+
+import { MyComponent } from "../my-component";
+```
+
+This replaces inline `mock.module()` declarations for:
+- `motion/react` - motion components and AnimatePresence
+- `@jahonbozor/ui` - all UI components (Input, Button, Table*, Select*, Tooltip*, DropdownMenu*, etc.)
+
+### Mock Module Ordering (CRITICAL)
+
+Always follow this order to prevent conflicts:
+
+1. `setupUIMocks()` call (or inline mock.module calls)
+2. Component imports (MUST be after mocks)
+
+**Why?** Bun doesn't hoist mocks like Jest. Module cache is patched at runtime when mock.module executes.
+
+```typescript
+// ✅ CORRECT
+mock.module("react-i18next", () => ({
+    useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+setupUIMocks();  // Centralized mocks for motion/react and @jahonbozor/ui
+
+import { MyComponent } from "../my-component";
+
+// ❌ WRONG — import before mocks
+import { MyComponent } from "../my-component";
+setupUIMocks();  // Too late! Module already loaded
+```
+
+### Extending Centralized Mocks
+
+For tests requiring additional component-specific mocks:
+
+```typescript
+import { setupUIMocks } from "../test-utils/ui-mocks";
+
+// Setup centralized UI mocks first
+setupUIMocks();
+
+// Extend with additional mocks specific to this test
+mock.module("@jahonbozor/ui", () => ({
+    ...require("../test-utils/ui-mocks").uiMocks,
+    LayoutGroup: ({ children }: any) => <>{children}</>,
+}));
+
+import { MyComponent } from "../my-component";
+```
+
+### Prop Filtering
+
+All centralized mocks automatically filter:
+- **Motion props**: whileTap, whileHover, initial, animate, exit, etc.
+- **Radix props**: asChild
+- **Other framework props**: Custom component props that shouldn't reach DOM
+
+This prevents React warnings: "React does not recognize the `whileTap` prop on a DOM element"
+
+### Centralized Mocks Contents
+
+The `ui-mocks.tsx` file includes:
+- **Input**: Supports both controlled and uncontrolled modes with proper state management
+- **Button**: Filters asChild and motion props
+- **Table components**: Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+- **Select components**: Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+- **Tooltip components**: Tooltip, TooltipContent, TooltipProvider, TooltipTrigger
+- **Checkbox**: Standard checkbox with onCheckedChange callback
+- **DropdownMenu components**: DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator
+- **Motion**: Proxied motion.* components with prop filtering
+- **AnimatePresence**: Passthrough wrapper
+- **DataTableNewRow**: Simplified mock for multi-row tests
+
+### When NOT to Use Centralized Mocks
+
+Keep component-specific mocks when:
+- Test requires module-specific behavior (e.g., react-router, react-query, react-i18next)
+- Test needs special test doubles (spies with mockResolvedValue, etc.)
+- Component has unique requirements not covered by centralized mocks
+
+```typescript
+// Component-specific mocks alongside centralized mocks
+mock.module("react-i18next", () => ({
+    useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+mock.module("@tanstack/react-router", () => ({
+    Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+    useRouterState: ({ select }: any) => select({ location: { pathname: "/" } }),
+}));
+
+setupUIMocks();  // Centralized mocks for UI components
+
+import { MyComponent } from "../my-component";
+```

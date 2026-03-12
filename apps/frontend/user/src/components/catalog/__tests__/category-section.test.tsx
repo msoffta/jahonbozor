@@ -1,6 +1,7 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { render } from "@testing-library/react";
 import { useCartStore } from "@/stores/cart.store";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 const makeProducts = (count: number) =>
     Array.from({ length: count }, (_, i) => ({
@@ -35,17 +36,8 @@ mock.module("@tanstack/react-query", () => ({
     }),
 }));
 
-mock.module("@jahonbozor/ui", () => ({
-    Skeleton: ({ className }: any) => <div className={className} data-testid="skeleton" />,
-    motion: {
-        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-        button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-    },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
-        <input type="checkbox" checked={checked} onChange={(e: any) => onCheckedChange?.(e.target.checked)} {...props} />
-    ),
-}));
+// Setup centralized UI mocks
+setupUIMocks();
 
 mock.module("@/api/products.api", () => ({
     productsListOptions: () => ({}),

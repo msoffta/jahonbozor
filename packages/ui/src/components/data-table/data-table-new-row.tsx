@@ -188,6 +188,7 @@ export function DataTableNewRow<TData>({
         <motion.tr
             id={id}
             data-testid="new-row"
+            data-row-id={id}
             onFocus={onFocus}
             onBlur={(e) => {
                 // Only trigger blur if focus is moving outside the row

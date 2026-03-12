@@ -1,13 +1,9 @@
 import { describe, test, expect, mock } from "bun:test";
 import { render, fireEvent } from "@testing-library/react";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
-mock.module("@jahonbozor/ui", () => ({
-    motion: {
-        button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-        span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
-    },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
+// Setup centralized UI mocks
+setupUIMocks();
 
 import { QuantityControl } from "../quantity-control";
 
