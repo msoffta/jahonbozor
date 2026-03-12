@@ -89,18 +89,40 @@ function NewOrderPage() {
     );
 
     const handleNewRowSave = useCallback(
-        (data: Record<string, unknown>, _rowId: string) => {
-            if (!data.product) {
-                alert(t("error_product_required"));
-                return;
-            }
+        (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
+            if (!data.product) return;
 
             const productId = Number(data.product);
             const product = products.find((p) => p.id === productId);
             if (!product) return;
 
+            if (linkedId) {
+                // Update existing item in local list
+                setItems((prev) =>
+                    prev.map((item) =>
+                        item.id === linkedId
+                            ? {
+                                  ...item,
+                                  productId,
+                                  quantity: Number(data.quantity) || 1,
+                                  price: product.price,
+                                  product: {
+                                      id: product.id,
+                                      name: product.name,
+                                      price: product.price,
+                                      remaining: product.remaining,
+                                  },
+                              }
+                            : item,
+                    ),
+                );
+                return linkedId;
+            }
+
+            // Create new item in local list
+            const newId = Date.now();
             const newItem: LocalItem = {
-                id: Date.now(),
+                id: newId,
                 productId,
                 quantity: Number(data.quantity) || 1,
                 price: product.price,
@@ -113,8 +135,9 @@ function NewOrderPage() {
             };
 
             setItems((prev) => [...prev, newItem]);
+            return newId;
         },
-        [products, t],
+        [products],
     );
 
     function handleSaveList() {

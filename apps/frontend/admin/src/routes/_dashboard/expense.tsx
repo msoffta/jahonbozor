@@ -47,16 +47,43 @@ function ExpensePage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>) => {
-            createExpense.mutate({
+        async (
+            data: Record<string, unknown>,
+            _rowId: string,
+            linkedId?: unknown,
+        ) => {
+            // If already linked, update any field
+            if (linkedId) {
+                const result = await updateExpense.mutateAsync({
+                    id: linkedId as number,
+                    name: data.name ? String(data.name) : undefined,
+                    amount: data.amount ? Number(data.amount) : undefined,
+                    description: data.description
+                        ? String(data.description)
+                        : undefined,
+                    expenseDate: data.expenseDate
+                        ? String(data.expenseDate)
+                        : undefined,
+                });
+                return result.data?.id;
+            }
+
+            // For initial creation, name and amount are strictly required
+            if (!data.name || !data.amount) {
+                return; // Wait for essential data
+            }
+
+            const result = await createExpense.mutateAsync({
                 name: String(data.name),
                 amount: Number(data.amount),
                 description: data.description ? String(data.description) : null,
                 expenseDate: String(data.expenseDate) || dayjs().toISOString(),
             });
+            return result.data?.id;
         },
-        [createExpense],
+        [createExpense, updateExpense],
     );
+
 
     const translations: DataTableTranslations = {
         search: t("common:search"),

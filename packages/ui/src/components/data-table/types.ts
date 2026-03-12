@@ -65,6 +65,9 @@ export interface NewRowState {
     id: string;
     values: Record<string, unknown>;
     errors: Record<string, string>;
+    linkedId?: unknown;
+    isSaving?: boolean;
+    lastSavedValues?: Record<string, unknown>;
 }
 
 // ── i18n ───────────────────────────────────────────────────────
@@ -122,7 +125,7 @@ export interface DataTableProps<TData> {
     multiRowIncrement?: number;
     multiRowPosition?: "start" | "end";
     multiRowMaxCount?: number;
-    onMultiRowSave?: (data: Record<string, unknown>, rowId: string) => void | Promise<void>;
+    onMultiRowSave?: (data: Record<string, unknown>, rowId: string, linkedId?: unknown) => void | Promise<void | unknown>;
     onMultiRowChange?: (data: Record<string, unknown>, rowId: string) => void | Record<string, unknown>;
     onMultiRowDelete?: (rowId: string) => void;
     multiRowDefaultValues?: Partial<TData> | ((rowIndex: number) => Partial<TData>);

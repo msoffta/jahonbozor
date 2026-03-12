@@ -47,6 +47,12 @@ export function getOrderColumns(
         { label: t("payment_credit_card"), value: "CREDIT_CARD" },
     ];
 
+    const statusOptions = [
+        { label: t("status_new"), value: "NEW" },
+        { label: t("status_accepted"), value: "ACCEPTED" },
+        { label: t("status_cancelled"), value: "CANCELLED" },
+    ];
+
     const columns: ColumnDef<AdminOrderItem, any>[] = [
         {
             accessorKey: "id",
@@ -214,12 +220,11 @@ export function getOrderColumns(
             },
             meta: {
                 flex: 1,
+                editable: true,
+                inputType: "select" as const,
+                selectOptions: statusOptions,
                 filterVariant: "select" as const,
-                filterOptions: [
-                    { label: t("status_new"), value: "NEW" },
-                    { label: t("status_accepted"), value: "ACCEPTED" },
-                    { label: t("status_cancelled"), value: "CANCELLED" },
-                ],
+                filterOptions: statusOptions,
             },
         },
         {

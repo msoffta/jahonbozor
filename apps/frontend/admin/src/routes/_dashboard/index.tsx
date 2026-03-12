@@ -84,22 +84,41 @@ function OrdersPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>, _rowId: string) => {
+        async (
+            data: Record<string, unknown>,
+            _rowId: string,
+            linkedId?: unknown,
+        ) => {
             if (data.user === "CREATE_NEW") {
                 navigate({ to: "/users", search: { new: true } as any });
                 return;
             }
 
+            // If already linked, update any field
+            if (linkedId) {
+                const body: Record<string, unknown> = {};
+                if (data.user !== undefined)
+                    body.userId = data.user === "" ? null : Number(data.user);
+                if (data.paymentType) body.paymentType = data.paymentType;
+                // Note: items update logic would go here if supported by backend
+
+                const result = await updateOrder.mutateAsync({
+                    id: linkedId as number,
+                    ...body,
+                });
+                return result.data?.id;
+            }
+
+            // For creation, product is strictly required
             if (!data.product) {
-                alert(t("error_product_required"));
-                return;
+                return; // Wait for product selection
             }
 
             const productId = Number(data.product);
             const product = products.find((p) => p.id === productId);
             const price = product?.price ?? 0;
 
-            createOrder.mutate({
+            const result = await createOrder.mutateAsync({
                 userId: data.user ? Number(data.user) : null,
                 paymentType:
                     (data.paymentType as "CASH" | "CREDIT_CARD") || "CASH",
@@ -111,8 +130,10 @@ function OrdersPage() {
                     },
                 ],
             });
+
+            return result.data?.id;
         },
-        [createOrder, t, navigate, products],
+        [createOrder, updateOrder, navigate, products],
     );
 
     const handleNewRowChange = useCallback(

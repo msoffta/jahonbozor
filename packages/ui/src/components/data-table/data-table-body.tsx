@@ -34,6 +34,9 @@ interface DataTableBodyProps<TData> {
     onMultiRowChange?: (rowId: string, values: Record<string, unknown>) => void;
     onMultiRowSave?: (rowId: string) => void;
     onMultiRowDelete?: (rowId: string) => void;
+    onMultiRowFocus?: (rowId: string) => void;
+    onMultiRowBlur?: (rowId: string) => void;
+    onMultiRowFocusNext?: (rowId: string) => void;
     onNeedMoreRows?: () => void;
     multiRowDefaultValues?: Partial<TData> | ((index: number) => Partial<TData>);
 }
@@ -61,6 +64,9 @@ export function DataTableBody<TData>({
     onMultiRowChange,
     onMultiRowSave,
     onMultiRowDelete,
+    onMultiRowFocus,
+    onMultiRowBlur,
+    onMultiRowFocusNext,
     onNeedMoreRows,
     multiRowDefaultValues,
 }: DataTableBodyProps<TData>) {
@@ -96,6 +102,9 @@ export function DataTableBody<TData>({
                 onRowChange={onMultiRowChange}
                 onRowSave={onMultiRowSave}
                 onRowDelete={onMultiRowDelete}
+                onRowFocus={onMultiRowFocus}
+                onRowBlur={onMultiRowBlur}
+                onRowFocusNext={onMultiRowFocusNext}
                 enableRowSelection={enableRowSelection}
                 defaultValuesFactory={(index) =>
                     typeof multiRowDefaultValues === "function"

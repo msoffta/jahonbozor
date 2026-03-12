@@ -31,6 +31,8 @@ export function DataTableCombobox({
     const [showList, setShowList] = React.useState(false);
     const [visible, setVisible] = React.useState(false);
     const [closing, setClosing] = React.useState(false);
+    const [selectedIndex, setSelectedIndex] = React.useState(0);
+    const listRef = React.useRef<HTMLDivElement>(null);
     const innerRef = React.useRef<HTMLInputElement>(null);
     const selectingRef = React.useRef(false);
     const closingTimerRef =
@@ -52,6 +54,11 @@ export function DataTableCombobox({
         const lower = value.toLowerCase();
         return options.filter((o) => o.label.toLowerCase().includes(lower));
     }, [value, options, isSelectedOption]);
+
+    // Reset selected index when list filter changes
+    React.useEffect(() => {
+        setSelectedIndex(0);
+    }, [filtered.length]);
 
     const measurePos = React.useCallback(() => {
         const el = innerRef.current;
@@ -123,12 +130,21 @@ export function DataTableCombobox({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") {
-            const match = filtered.length > 0 ? filtered[0] : null;
-            if (match) {
-                handleSelect(match.value);
-            } else {
-                setShowList(false);
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setShowList(true);
+            setSelectedIndex((prev) =>
+                prev < filtered.length - 1 ? prev + 1 : prev,
+            );
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setShowList(true);
+            setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+        } else if (e.key === "Enter") {
+            if (showList && filtered.length > 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSelect(filtered[selectedIndex].value);
             }
         } else if (e.key === "Escape") {
             setShowList(false);
@@ -175,6 +191,7 @@ export function DataTableCombobox({
                 pos !== null &&
                 createPortal(
                     <div
+                        ref={listRef}
                         data-closing={closing || undefined}
                         style={{
                             position: "fixed",
@@ -187,7 +204,7 @@ export function DataTableCombobox({
                         className="combobox-dropdown max-h-48 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
                     >
                         {filtered.length > 0 ? (
-                            filtered.map((option) => (
+                            filtered.map((option, index) => (
                                 <div
                                     key={option.value}
                                     onMouseDown={(e) => {
@@ -195,7 +212,12 @@ export function DataTableCombobox({
                                         e.stopPropagation();
                                         handleSelect(option.value);
                                     }}
-                                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                                    className={cn(
+                                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+                                        selectedIndex === index
+                                            ? "bg-accent text-accent-foreground"
+                                            : "hover:bg-accent/50",
+                                    )}
                                 >
                                     {option.label}
                                 </div>

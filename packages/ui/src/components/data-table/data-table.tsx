@@ -65,7 +65,9 @@ export function DataTable<TData>({
     translations,
 }: DataTableProps<TData>) {
     const [data, setData] = React.useState(externalData);
-    const [sorting, setSorting] = React.useState<SortingState>([]);
+    const [sorting, setSorting] = React.useState<SortingState>([
+        { id: "id", desc: false },
+    ]);
     const [columnFilters, setColumnFilters] =
         React.useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] =
@@ -89,6 +91,7 @@ export function DataTable<TData>({
     const [multiRowStates, setMultiRowStates] = React.useState<NewRowState[]>(
         [],
     );
+    const [focusedRowId, setFocusedRowId] = React.useState<string | null>(null);
 
     // Initialize multi-rows if enabled
     React.useEffect(() => {
@@ -96,14 +99,18 @@ export function DataTable<TData>({
 
         const initialRows: NewRowState[] = Array.from(
             { length: multiRowCount },
-            (_, index) => ({
-                id: `__new_row_${Date.now()}_${index}`,
-                values:
+            (_, index) => {
+                const defaults =
                     typeof multiRowDefaultValues === "function"
                         ? multiRowDefaultValues(index)
-                        : { ...multiRowDefaultValues },
-                errors: {},
-            }),
+                        : { ...multiRowDefaultValues };
+                return {
+                    id: `__new_row_${Date.now()}_${index}`,
+                    values: defaults,
+                    errors: {},
+                    lastSavedValues: defaults,
+                };
+            },
         );
         setMultiRowStates(initialRows);
     }, [enableMultipleNewRows, multiRowCount, multiRowDefaultValues]);
@@ -128,7 +135,7 @@ export function DataTable<TData>({
     const handleMultiRowSave = React.useCallback(
         async (rowId: string) => {
             const rowState = multiRowStates.find((s) => s.id === rowId);
-            if (!rowState) return;
+            if (!rowState || rowState.isSaving) return;
 
             // Check if row is empty (skip save)
             const isEmpty = Object.values(rowState.values).every(
@@ -152,30 +159,119 @@ export function DataTable<TData>({
                 if (result === false) return;
             }
 
-            // Save
-            await onMultiRowSave?.(rowState.values, rowId);
-
-            // Reset row to defaults
-            const index = multiRowStates.findIndex((s) => s.id === rowId);
-            const defaults =
-                typeof multiRowDefaultValues === "function"
-                    ? multiRowDefaultValues(index)
-                    : { ...multiRowDefaultValues };
-
+            // Set saving state
             setMultiRowStates((prev) =>
                 prev.map((row) =>
-                    row.id === rowId
-                        ? { ...row, values: defaults, errors: {} }
-                        : row,
+                    row.id === rowId ? { ...row, isSaving: true } : row,
                 ),
             );
+
+            try {
+                // Save and get linked ID (e.g. database ID)
+                const resultId = await onMultiRowSave?.(
+                    rowState.values,
+                    rowId,
+                    rowState.linkedId,
+                );
+
+                const isCurrentlyFocused = focusedRowId === rowId;
+
+                setMultiRowStates((prev) =>
+                    prev.map((row) => {
+                        if (row.id !== rowId) return row;
+
+                        // If user is still in this row, don't clear it!
+                        // Just link it to the new database ID and mark as not saving
+                        if (isCurrentlyFocused) {
+                            return {
+                                ...row,
+                                linkedId: resultId ?? row.linkedId,
+                                isSaving: false,
+                                lastSavedValues: { ...row.values },
+                            };
+                        }
+
+                        // If user left the row, reset it to defaults
+                        const index = prev.findIndex((s) => s.id === rowId);
+                        const defaults =
+                            typeof multiRowDefaultValues === "function"
+                                ? multiRowDefaultValues(index)
+                                : { ...multiRowDefaultValues };
+
+                        return {
+                            ...row,
+                            values: defaults,
+                            errors: {},
+                            linkedId: undefined,
+                            isSaving: false,
+                            lastSavedValues: defaults,
+                        };
+                    }),
+                );
+            } catch (error) {
+                setMultiRowStates((prev) =>
+                    prev.map((row) =>
+                        row.id === rowId ? { ...row, isSaving: false } : row,
+                    ),
+                );
+            }
         },
         [
             multiRowStates,
             multiRowValidate,
             onMultiRowSave,
             multiRowDefaultValues,
+            focusedRowId,
         ],
+    );
+
+    const handleMultiRowFocus = React.useCallback((rowId: string) => {
+        setFocusedRowId(rowId);
+    }, []);
+
+    const handleMultiRowBlur = React.useCallback(
+        (rowId: string) => {
+            setFocusedRowId(null);
+
+            // When leaving a row that was already linked (saved), clear it
+            setMultiRowStates((prev) =>
+                prev.map((row) => {
+                    if (row.id === rowId && row.linkedId) {
+                        const index = prev.findIndex((s) => s.id === rowId);
+                        const defaults =
+                            typeof multiRowDefaultValues === "function"
+                                ? multiRowDefaultValues(index)
+                                : { ...multiRowDefaultValues };
+
+                        return {
+                            ...row,
+                            values: defaults,
+                            errors: {},
+                            linkedId: undefined,
+                        };
+                    }
+                    return row;
+                }),
+            );
+        },
+        [multiRowDefaultValues],
+    );
+
+    const handleMultiRowFocusNext = React.useCallback(
+        (rowId: string) => {
+            const index = multiRowStates.findIndex((r) => r.id === rowId);
+            if (index !== -1 && index < multiRowStates.length - 1) {
+                const nextRow = multiRowStates[index + 1];
+                setTimeout(() => {
+                    const nextRowEl = document.getElementById(nextRow.id);
+                    const firstInput = nextRowEl?.querySelector(
+                        "input, button, select",
+                    ) as HTMLElement;
+                    firstInput?.focus();
+                }, 0);
+            }
+        },
+        [multiRowStates],
     );
 
     const handleNeedMoreRows = React.useCallback(() => {
@@ -197,6 +293,35 @@ export function DataTable<TData>({
             return [...prev, ...moreRows];
         });
     }, [multiRowMaxCount, multiRowIncrement, multiRowDefaultValues]);
+
+    // ── Auto-save for multiple new rows ────────────────────────
+    React.useEffect(() => {
+        if (!enableMultipleNewRows || multiRowStates.length === 0) return;
+
+        const changedRows = multiRowStates.filter((row) => {
+            // Check if values differ from LAST SAVED values
+            const isChanged = Object.keys(row.values).some(
+                (key) => row.values[key] !== row.lastSavedValues?.[key],
+            );
+
+            // Also check if not empty
+            const isEmpty = Object.values(row.values).every(
+                (v) => v === "" || v === null || v === undefined,
+            );
+
+            return isChanged && !isEmpty;
+        });
+
+        if (changedRows.length === 0) return;
+
+        const timers = changedRows.map((row) => {
+            return setTimeout(() => {
+                handleMultiRowSave(row.id);
+            }, 1500); // 1.5s delay
+        });
+
+        return () => timers.forEach(clearTimeout);
+    }, [multiRowStates, handleMultiRowSave, enableMultipleNewRows]);
 
     // Sync external data
     React.useEffect(() => {
@@ -456,6 +581,9 @@ export function DataTable<TData>({
                             onMultiRowChange={handleMultiRowChange}
                             onMultiRowSave={handleMultiRowSave}
                             onMultiRowDelete={onMultiRowDelete}
+                            onMultiRowFocus={handleMultiRowFocus}
+                            onMultiRowBlur={handleMultiRowBlur}
+                            onMultiRowFocusNext={handleMultiRowFocusNext}
                             onNeedMoreRows={handleNeedMoreRows}
                             multiRowDefaultValues={multiRowDefaultValues}
                         />

@@ -1,4 +1,4 @@
-import { incomeListQueryOptions, useCreateIncome } from "@/api/income.api";
+import { incomeListQueryOptions, useCreateIncome, useUpdateIncome } from "@/api/income.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getIncomeColumns } from "@/components/income/income-columns";
 import type { DataTableTranslations } from "@jahonbozor/ui";
@@ -21,6 +21,7 @@ function IncomePage() {
     );
 
     const createIncome = useCreateIncome();
+    const updateIncome = useUpdateIncome();
 
     const products = productsData?.products ?? [];
 
@@ -29,21 +30,41 @@ function IncomePage() {
     const history = incomeData?.history ?? [];
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>) => {
-            if (!data.product || !data.quantity) return;
+        async (
+            data: Record<string, unknown>,
+            _rowId: string,
+            linkedId?: unknown,
+        ) => {
+            // If already linked, update any field
+            if (linkedId) {
+                const result = await updateIncome.mutateAsync({
+                    id: linkedId as number,
+                    productId: data.product ? Number(data.product) : undefined,
+                    quantity: data.quantity ? Number(data.quantity) : undefined,
+                    changeReason: data.changeReason
+                        ? String(data.changeReason)
+                        : undefined,
+                    createdAt: data.createdAt ? String(data.createdAt) : undefined,
+                });
+                return result.data?.id;
+            }
 
-            createIncome.mutate({
+            // For initial creation, product and quantity are strictly required
+            if (!data.product || !data.quantity) {
+                return; // Wait for essential data
+            }
+
+            const result = await createIncome.mutateAsync({
                 productId: Number(data.product),
                 quantity: Number(data.quantity),
-                changeReason: data.changeReason
-                    ? String(data.changeReason)
-                    : null,
+                changeReason: data.changeReason ? String(data.changeReason) : null,
                 createdAt: data.createdAt
                     ? String(data.createdAt)
                     : dayjs().toISOString(),
             });
+            return result.data?.id;
         },
-        [createIncome],
+        [createIncome, updateIncome],
     );
 
     const translations: DataTableTranslations = {

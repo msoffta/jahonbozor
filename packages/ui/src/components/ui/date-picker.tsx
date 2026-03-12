@@ -99,7 +99,21 @@ function DatePicker({
 
     // User types date manually
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const text = e.target.value;
+        let text = e.target.value;
+
+        // Auto-formatting (mask): 12032024 -> 12.03.2024
+        const digits = text.replace(/\D/g, "");
+        if (digits.length > 0) {
+            let formatted = digits.slice(0, 2);
+            if (digits.length > 2) formatted += "." + digits.slice(2, 4);
+            if (digits.length > 4) formatted += "." + digits.slice(4, 8);
+            if (showTime && digits.length > 8) {
+                formatted += " " + digits.slice(8, 10);
+                if (digits.length > 10) formatted += ":" + digits.slice(10, 12);
+            }
+            text = formatted;
+        }
+
         setInputText(text);
 
         if (!text) {
@@ -154,7 +168,17 @@ function DatePicker({
     };
 
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Escape") {
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            const current = dayjs(value || new Date());
+            if (current.isValid()) {
+                e.preventDefault();
+                const next =
+                    e.key === "ArrowUp"
+                        ? current.add(1, "day")
+                        : current.subtract(1, "day");
+                onChange(next.toDate());
+            }
+        } else if (e.key === "Escape") {
             setOpen(false);
         } else if (e.key === "Enter" && open) {
             setOpen(false);

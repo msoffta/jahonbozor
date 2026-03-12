@@ -22,6 +22,9 @@ interface DataTableNewRowProps<TData> {
     defaultValues?: Partial<TData>;
     enableRowSelection?: boolean;
     onChange?: (values: Record<string, unknown>) => void;
+    onFocus?: () => void;
+    onBlur?: () => void;
+    onFocusNextRow?: () => void;
     externalValues?: Record<string, unknown>;
     externalErrors?: Record<string, string>;
 }
@@ -33,6 +36,9 @@ export function DataTableNewRow<TData>({
     defaultValues,
     enableRowSelection,
     onChange,
+    onFocus,
+    onBlur,
+    onFocusNextRow,
     externalValues,
     externalErrors,
 }: DataTableNewRowProps<TData>) {
@@ -145,6 +151,7 @@ export function DataTableNewRow<TData>({
             e.preventDefault();
             if (colIndex === editableColumns.length - 1) {
                 handleSave();
+                onFocusNextRow?.();
             } else {
                 // Try to focus next editable input; if no ref registered, save
                 const nextCol = editableColumns[colIndex + 1];
@@ -167,8 +174,11 @@ export function DataTableNewRow<TData>({
             !e.shiftKey &&
             colIndex === editableColumns.length - 1
         ) {
-            e.preventDefault();
-            handleSave();
+            if (onFocusNextRow) {
+                e.preventDefault();
+                handleSave();
+                onFocusNextRow();
+            }
         }
     };
 
@@ -178,6 +188,13 @@ export function DataTableNewRow<TData>({
         <motion.tr
             id={id}
             data-testid="new-row"
+            onFocus={onFocus}
+            onBlur={(e) => {
+                // Only trigger blur if focus is moving outside the row
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    onBlur?.();
+                }
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}

@@ -9,6 +9,9 @@ interface DataTableMultiNewRowsProps<TData> {
     onRowChange: (rowId: string, values: Record<string, unknown>) => void;
     onRowSave: (rowId: string) => void;
     onRowDelete?: (rowId: string) => void;
+    onRowFocus?: (rowId: string) => void;
+    onRowBlur?: (rowId: string) => void;
+    onRowFocusNext?: (rowId: string) => void;
     enableRowSelection?: boolean;
     defaultValuesFactory: (rowIndex: number) => Partial<TData>;
     onNeedMoreRows: () => void;
@@ -19,6 +22,10 @@ export function DataTableMultiNewRows<TData>({
     rowStates,
     onRowChange,
     onRowSave,
+    onRowDelete: _onRowDelete,
+    onRowFocus,
+    onRowBlur,
+    onRowFocusNext,
     enableRowSelection,
     defaultValuesFactory,
     onNeedMoreRows,
@@ -55,6 +62,9 @@ export function DataTableMultiNewRows<TData>({
                     defaultValues={defaultValuesFactory(index)}
                     onSave={() => onRowSave(rowState.id)}
                     onChange={(values) => onRowChange(rowState.id, values)}
+                    onFocus={() => onRowFocus?.(rowState.id)}
+                    onBlur={() => onRowBlur?.(rowState.id)}
+                    onFocusNextRow={() => onRowFocusNext?.(rowState.id)}
                     enableRowSelection={enableRowSelection}
                     externalValues={rowState.values}
                     externalErrors={rowState.errors}
