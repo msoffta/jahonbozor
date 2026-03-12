@@ -40,6 +40,10 @@ mock.module("motion/react", () => ({
 // Mock @jahonbozor/ui BEFORE importing DataTable
 mock.module("@jahonbozor/ui", () => ({
     cn: (...args: any[]) => args.filter(Boolean).join(" "),
+    Tooltip: ({ children }: any) => <>{children}</>,
+    TooltipContent: ({ children }: any) => <div>{children}</div>,
+    TooltipProvider: ({ children }: any) => <>{children}</>,
+    TooltipTrigger: ({ children }: any) => <>{children}</>,
     Button: ({ children, onClick, disabled, className, ...props }: any) => (
         <button onClick={onClick} disabled={disabled} className={className} {...filterMotionProps(props)}>
             {children}
