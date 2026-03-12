@@ -1,5 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
-import { render, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setupUIMocks } from "../../test-utils/ui-mocks";
 
@@ -121,7 +121,6 @@ describe("DataTableMultiNewRows", () => {
 
         // Second row has 3 inputs: spinbutton (number) at indices 3,4,5
         // Last input is index 5, but we need to use the "spinbutton" role for number inputs
-        const textInputs = getAllByRole("textbox"); // id, name (indices 0-1 for row 1, 3-4 for row 2)
         const numberInputs = getAllByRole("spinbutton"); // value (indices 0 for row 1, 1 for row 2)
 
         // Last input of second row is the number input at index 1

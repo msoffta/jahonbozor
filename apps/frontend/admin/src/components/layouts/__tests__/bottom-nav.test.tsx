@@ -23,8 +23,8 @@ mock.module("@tanstack/react-router", () => ({
 // Setup centralized UI mocks
 setupUIMocks();
 
-// Additional mocks specific to BottomNav
-mock.module("@jahonbozor/ui", () => ({
+// Additional mocks specific to BottomNav - LayoutGroup is from motion/react
+mock.module("motion/react", () => ({
     ...require("../../../test-utils/ui-mocks").uiMocks,
     LayoutGroup: ({ children }: any) => <>{children}</>,
 }));

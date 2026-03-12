@@ -1,6 +1,5 @@
 import { mock } from "bun:test";
 import { createElement } from "react";
-import * as React from "react";
 
 /**
  * Comprehensive set of props that should be filtered out before spreading to DOM elements.
