@@ -19,14 +19,20 @@ import {
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
-    const { data: productsData, isLoading } = useQuery(
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const { data: productsData, isLoading: isProductsLoading } = useQuery(
         productsListQueryOptions({ limit: 100, includeDeleted }),
     );
 
@@ -149,6 +155,8 @@ function ProductsPage() {
         filterMax: t("common:filter_max"),
         filter: t("common:filter"),
     };
+
+    const isLoading = isProductsLoading || !isReady;
 
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -13,10 +13,18 @@ function OrdersPage() {
     const { t } = useTranslation("orders");
     const [page] = useState(1);
     const navigate = useNavigate();
-    const [newRowDefaultValues, setNewRowDefaultValues] = useState<Record<string, unknown>>({
+    const [isReady, setIsReady] = useState(false);
+
+    // Delay heavy rendering to allow BottomNav animations to finish smoothly
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 300);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const newRowDefaultValues = useMemo(() => ({
         paymentType: "CASH",
         quantity: 1,
-    });
+    }), []);
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
         ordersListQueryOptions({ 
@@ -52,10 +60,10 @@ function OrdersPage() {
         },
     }), [t, deleteOrder, updateOrder]);
 
-    const columns = useMemo(
-        () => getOrderColumns(t, actions, { products, users }),
-        [t, actions, products, users],
-    );
+    const columns = useMemo(() => {
+        if (!isReady) return [];
+        return getOrderColumns(t, actions, { products, users });
+    }, [t, actions, products, users, isReady]);
 
     const orders = ordersData?.orders ?? [];
 
@@ -175,7 +183,7 @@ function OrdersPage() {
         filter: t("common:filter"),
     };
 
-    const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading;
+    const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">

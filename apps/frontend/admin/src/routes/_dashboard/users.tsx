@@ -27,8 +27,14 @@ function UsersPage() {
     const { t } = useTranslation("clients");
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const { new: isNew } = Route.useSearch();
+    const [isReady, setIsReady] = useState(false);
 
-    const { data: clientsData, isLoading } = useQuery(
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const { data: clientsData, isLoading: isClientsLoading } = useQuery(
         clientsListQueryOptions({ limit: 100, includeDeleted }),
     );
 
@@ -36,6 +42,8 @@ function UsersPage() {
     const updateClient = useUpdateClient();
     const deleteClient = useDeleteClient();
     const restoreClient = useRestoreClient();
+
+    const isLoading = isClientsLoading || !isReady;
 
     useEffect(() => {
         if (isNew && !isLoading) {

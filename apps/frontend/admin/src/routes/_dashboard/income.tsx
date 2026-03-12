@@ -1,4 +1,4 @@
-import { incomeListQueryOptions, useCreateIncome, useUpdateIncome } from "@/api/income.api";
+import { incomeListQueryOptions, useCreateIncome } from "@/api/income.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getIncomeColumns } from "@/components/income/income-columns";
 import type { DataTableTranslations } from "@jahonbozor/ui";
@@ -6,11 +6,17 @@ import { DataTable, DataTableSkeleton, PageTransition } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import dayjs from "dayjs";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 function IncomePage() {
     const { t } = useTranslation("income");
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
 
     const { data: incomeData, isLoading: isIncomeLoading } = useQuery(
         incomeListQueryOptions({ limit: 100 }),
@@ -21,7 +27,6 @@ function IncomePage() {
     );
 
     const createIncome = useCreateIncome();
-    const updateIncome = useUpdateIncome();
 
     const products = productsData?.products ?? [];
 
@@ -30,41 +35,35 @@ function IncomePage() {
     const history = incomeData?.history ?? [];
 
     const handleNewRowSave = useCallback(
-        async (
-            data: Record<string, unknown>,
-            _rowId: string,
-            linkedId?: unknown,
-        ) => {
-            // If already linked, update any field
-            if (linkedId) {
-                const result = await updateIncome.mutateAsync({
-                    id: linkedId as number,
-                    productId: data.product ? Number(data.product) : undefined,
-                    quantity: data.quantity ? Number(data.quantity) : undefined,
+        async (data: Record<string, unknown>, _rowId: string) => {
+            // Product and quantity are strictly required
+            const productId = Number(data.product);
+            const quantity = Number(data.quantity);
+
+            if (!productId || isNaN(productId) || !quantity || isNaN(quantity)) {
+                return; // Wait for essential valid data
+            }
+
+            try {
+                const result = await createIncome.mutateAsync({
+                    productId,
+                    quantity,
                     changeReason: data.changeReason
-                        ? String(data.changeReason)
-                        : undefined,
-                    createdAt: data.createdAt ? String(data.createdAt) : undefined,
+                        ? String(data.changeReason).trim() || null
+                        : null,
+                    createdAt: data.createdAt
+                        ? String(data.createdAt)
+                        : dayjs().toISOString(),
                 });
-                return result.data?.id;
+                
+                // The API returns { product, historyEntry }
+                return result.historyEntry.id;
+            } catch (error) {
+                console.error("Failed to save income:", error);
+                return;
             }
-
-            // For initial creation, product and quantity are strictly required
-            if (!data.product || !data.quantity) {
-                return; // Wait for essential data
-            }
-
-            const result = await createIncome.mutateAsync({
-                productId: Number(data.product),
-                quantity: Number(data.quantity),
-                changeReason: data.changeReason ? String(data.changeReason) : null,
-                createdAt: data.createdAt
-                    ? String(data.createdAt)
-                    : dayjs().toISOString(),
-            });
-            return result.data?.id;
         },
-        [createIncome, updateIncome],
+        [createIncome],
     );
 
     const translations: DataTableTranslations = {
@@ -81,7 +80,11 @@ function IncomePage() {
         filter: t("common:filter"),
     };
 
-    const isLoading = isIncomeLoading || isProductsLoading;
+    const isLoading = isIncomeLoading || isProductsLoading || !isReady;
+
+    const multiRowDefaultValues = useMemo(() => ({
+        createdAt: dayjs().toISOString()
+    }), []);
 
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
@@ -109,9 +112,7 @@ function IncomePage() {
                     enableMultipleNewRows
                     multiRowCount={15}
                     onMultiRowSave={handleNewRowSave}
-                    multiRowDefaultValues={
-                        { createdAt: dayjs().toISOString() } as any
-                    }
+                    multiRowDefaultValues={multiRowDefaultValues}
                     translations={translations}
                 />
             )}
