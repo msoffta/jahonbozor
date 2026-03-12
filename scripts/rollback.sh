@@ -1,9 +1,7 @@
 #!/bin/bash
-set -e
 
 echo "🔄 Starting rollback..."
 
-# Check if we have a previous successful deployment
 if [ ! -f .last-successful-deploy ]; then
     echo "❌ No previous successful deployment found"
     echo "⚠️  Manual intervention required"
@@ -15,30 +13,23 @@ echo "📌 Rolling back to commit: $PREVIOUS_SHA"
 
 # Stop current containers
 echo "🛑 Stopping current containers..."
-docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down 2>/dev/null || true
 
-# Pull previous images (tagged with commit SHA)
+# Pull previous images
 echo "📦 Pulling previous images..."
 export GITHUB_SHA=$PREVIOUS_SHA
 export GITHUB_REPOSITORY=$GITHUB_REPOSITORY
-docker compose -f docker-compose.prod.yml pull
+if ! docker compose -f docker-compose.prod.yml pull; then
+    echo "❌ Failed to pull previous images — manual intervention required"
+    exit 1
+fi
 
-# Start previous containers
+# Start previous containers with health check
 echo "▶️  Starting previous containers..."
-docker compose -f docker-compose.prod.yml up -d
-
-# Wait for services to start
-echo "⏳ Waiting for services to start..."
-sleep 15
-
-# Verify rollback
-echo "🔍 Verifying rollback..."
-if docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+if docker compose -f docker-compose.prod.yml up -d --wait; then
     echo "✅ Rollback successful"
     docker compose -f docker-compose.prod.yml ps
-    exit 0
 else
-    echo "❌ Rollback failed"
-    echo "⚠️  Manual intervention required"
+    echo "❌ Rollback failed — manual intervention required"
     exit 1
 fi
