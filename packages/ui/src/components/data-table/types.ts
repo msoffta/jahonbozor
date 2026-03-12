@@ -123,7 +123,7 @@ export interface DataTableProps<TData> {
     multiRowPosition?: "start" | "end";
     multiRowMaxCount?: number;
     onMultiRowSave?: (data: Record<string, unknown>, rowId: string) => void | Promise<void>;
-    onMultiRowChange?: (data: Record<string, unknown>, rowId: string) => void;
+    onMultiRowChange?: (data: Record<string, unknown>, rowId: string) => void | Record<string, unknown>;
     onMultiRowDelete?: (rowId: string) => void;
     multiRowDefaultValues?: Partial<TData> | ((rowIndex: number) => Partial<TData>);
     multiRowValidate?: (data: Record<string, unknown>) => boolean | string;

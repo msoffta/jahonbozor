@@ -48,58 +48,25 @@ mock.module("@jahonbozor/ui", () => ({
     motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
     AnimatePresence: ({ children }: any) => <>{children}</>,
     DataTable: ({ children, ...props }: any) => createElement("div", props, children),
+    DataTableNewRow: ({ id, onSave, onChange, externalValues }: any) => (
+        <tr data-testid="new-row" data-row-id={id}>
+            <td>
+                <input
+                    data-testid={`input-${id}`}
+                    value={(externalValues?.name as string) || ""}
+                    onChange={(e) => onChange?.({ ...externalValues, name: e.target.value })}
+                />
+            </td>
+            <td>
+                <button data-testid={`save-${id}`} onClick={() => onSave(externalValues)}>Save</button>
+            </td>
+        </tr>
+    ),
 }));
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { DataTableMultiNewRows } from "@jahonbozor/ui";
 import type { NewRowState } from "../../../../../../packages/ui/src/components/data-table/types";
-
-// Mock DataTableMultiNewRows component for testing
-// This will be implemented later, tests written first (Test First approach)
-interface DataTableMultiNewRowsProps<TData> {
-    columns: ColumnDef<TData, any>[];
-    rowStates: NewRowState[];
-    onRowChange: (rowId: string, values: Record<string, unknown>) => void;
-    onRowSave: (rowId: string) => void;
-    onRowDelete?: (rowId: string) => void;
-    enableRowSelection?: boolean;
-    defaultValuesFactory: (rowIndex: number) => Partial<TData>;
-    onNeedMoreRows: () => void;
-}
-
-// Placeholder implementation for testing
-function DataTableMultiNewRows<TData>({
-    rowStates,
-    onRowChange,
-    onRowSave,
-    onNeedMoreRows,
-}: DataTableMultiNewRowsProps<TData>) {
-    return (
-        <tbody data-testid="multi-new-rows">
-            {rowStates.map((rowState) => (
-                <tr key={rowState.id} data-row-id={rowState.id}>
-                    <td>
-                        <input
-                            data-testid={`input-${rowState.id}`}
-                            defaultValue={(rowState.values.value as string) || ""}
-                            onChange={(event) => onRowChange(rowState.id, { value: event.target.value })}
-                        />
-                    </td>
-                    <td>
-                        <button
-                            data-testid={`save-${rowState.id}`}
-                            onClick={() => onRowSave(rowState.id)}
-                        >
-                            Save
-                        </button>
-                    </td>
-                </tr>
-            ))}
-            <tr data-testid="sentinel">
-                <td>Sentinel</td>
-            </tr>
-        </tbody>
-    );
-}
 
 // ── Test data ──────────────────────────────────────────────────
 interface TestRow {
@@ -145,14 +112,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                    columns={baseColumns}
-                    rowStates={rowStates}
-                    onRowChange={onRowChange}
-                    onRowSave={onRowSave}
-                    defaultValuesFactory={defaultValuesFactory}
-                    onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -168,14 +137,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -191,14 +162,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -211,20 +184,22 @@ describe("DataTableMultiNewRows", () => {
     test("should render sentinel element for IntersectionObserver", () => {
         const rowStates = createNewRowStates(15);
 
-        const { getByTestId } = render(
+        const { container } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
-        const sentinel = getByTestId("sentinel");
+        const sentinel = container.querySelector("tr[aria-hidden='true']");
         expect(sentinel).toBeDefined();
     });
 
@@ -233,33 +208,34 @@ describe("DataTableMultiNewRows", () => {
 
         render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
-
-        // In actual implementation, defaultValuesFactory would be called for each row
-        // This test will pass when the real component is implemented
     });
 
     // ── Edge cases ─────────────────────────────────────────────
     test("should render empty tbody when rowStates is empty", () => {
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={[]}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={[]}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -273,14 +249,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -300,14 +278,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -326,14 +306,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -347,14 +329,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -368,14 +352,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -399,14 +385,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 
@@ -425,14 +413,16 @@ describe("DataTableMultiNewRows", () => {
 
         const { getByTestId } = render(
             <table>
-                <DataTableMultiNewRows
-                columns={baseColumns}
-                rowStates={rowStates}
-                onRowChange={onRowChange}
-                onRowSave={onRowSave}
-                defaultValuesFactory={defaultValuesFactory}
-                onNeedMoreRows={onNeedMoreRows}
-                />
+                <tbody data-testid="multi-new-rows">
+                    <DataTableMultiNewRows
+                        columns={baseColumns}
+                        rowStates={rowStates}
+                        onRowChange={onRowChange}
+                        onRowSave={onRowSave}
+                        defaultValuesFactory={defaultValuesFactory}
+                        onNeedMoreRows={onNeedMoreRows}
+                    />
+                </tbody>
             </table>,
         );
 

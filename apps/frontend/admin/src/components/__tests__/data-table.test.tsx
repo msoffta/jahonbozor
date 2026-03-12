@@ -386,6 +386,25 @@ describe("DataTable", () => {
         expect(getByText("Empty")).toBeDefined();
     });
 
+    test("should render multiple new rows when enableMultipleNewRows is true", () => {
+        const { getAllByTestId } = render(
+            <DataTable
+                columns={baseColumns}
+                data={[]}
+                enableMultipleNewRows
+                multiRowCount={5}
+                onMultiRowSave={() => {}}
+                translations={{ noResults: "Empty" }}
+            />,
+        );
+
+        // Should render 5 new rows (plus possibly one for sentinel or similar if implementation uses it)
+        // Note: The actual implementation in DataTableBody might need to be updated first
+        // This test is expected to fail initially (Test First)
+        const newRows = getAllByTestId("new-row");
+        expect(newRows.length).toBe(5);
+    });
+
     test("should handle single row data", () => {
         const { getByText, queryByText } = render(
             <DataTable columns={baseColumns} data={[testData[0]]} pagination />,

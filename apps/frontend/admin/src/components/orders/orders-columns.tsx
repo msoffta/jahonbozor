@@ -101,22 +101,19 @@ export function getOrderColumns(
             {
                 id: "price",
                 accessorFn: (row) => row.items[0]?.price ?? 0,
-                header: t("order_costprice"),
-                size: 130,
+                header: t("order_price"),
+                size: 110,
                 cell: ({ getValue }) => {
                     const price = getValue<number>();
                     return (
-                        <span className="costprice-value">
+                        <span className="font-medium">
                             {price ? price.toLocaleString() : "—"}
                         </span>
                     );
                 },
                 meta: {
-                    flex: 1.5,
+                    flex: 1,
                     align: "left" as const,
-                    cellClassName: "costprice-hover-target",
-                    headerClassName: "costprice-hover-target",
-                    className: "costprice-hover-target",
                 },
             },
             {
@@ -232,6 +229,36 @@ export function getOrderColumns(
             cell: ({ getValue }) =>
                 dayjs(getValue<Date | string>()).format("DD.MM.YYYY HH:mm"),
             meta: { flex: 1.5 },
+        },
+        {
+            id: "costprice",
+            accessorFn: (row) =>
+                showItemColumns
+                    ? (row.items[0]?.product?.costprice ?? 0)
+                    : row.items.reduce(
+                          (sum, item) =>
+                              sum +
+                              (item.product?.costprice ?? 0) *
+                                  (item.quantity ?? 1),
+                          0,
+                      ),
+            header: t("order_costprice"),
+            size: 110,
+            cell: ({ getValue }) => {
+                const costprice = getValue<number>();
+                return (
+                    <span className="costprice-value">
+                        {costprice ? costprice.toLocaleString() : "—"}
+                    </span>
+                );
+            },
+            meta: {
+                flex: 1,
+                align: "left" as const,
+                cellClassName: "costprice-hover-target",
+                headerClassName: "costprice-hover-target",
+                className: "costprice-hover-target",
+            },
         },
         {
             id: "actions",

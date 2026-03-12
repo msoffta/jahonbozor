@@ -46,6 +46,19 @@ export function DataTable<TData>({
     onNewRowSave,
     onNewRowChange,
     newRowDefaultValues,
+
+    // Multi-row feature
+    enableMultipleNewRows = false,
+    multiRowCount = 15,
+    multiRowIncrement = 15,
+    multiRowPosition = "end",
+    multiRowMaxCount = 100,
+    onMultiRowSave,
+    onMultiRowChange,
+    onMultiRowDelete,
+    multiRowDefaultValues,
+    multiRowValidate,
+
     onRowSelectionChange,
     onRowClick,
     className,
@@ -71,6 +84,119 @@ export function DataTable<TData>({
     );
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
+
+    // ── Multi-row state management ─────────────────────────────
+    const [multiRowStates, setMultiRowStates] = React.useState<NewRowState[]>(
+        [],
+    );
+
+    // Initialize multi-rows if enabled
+    React.useEffect(() => {
+        if (!enableMultipleNewRows) return;
+
+        const initialRows: NewRowState[] = Array.from(
+            { length: multiRowCount },
+            (_, index) => ({
+                id: `__new_row_${Date.now()}_${index}`,
+                values:
+                    typeof multiRowDefaultValues === "function"
+                        ? multiRowDefaultValues(index)
+                        : { ...multiRowDefaultValues },
+                errors: {},
+            }),
+        );
+        setMultiRowStates(initialRows);
+    }, [enableMultipleNewRows, multiRowCount, multiRowDefaultValues]);
+
+    const handleMultiRowChange = React.useCallback(
+        (rowId: string, values: Record<string, unknown>) => {
+            let updatedValues = values;
+            const result = onMultiRowChange?.(values, rowId);
+            if (result && typeof result === "object") {
+                updatedValues = result;
+            }
+
+            setMultiRowStates((prev) =>
+                prev.map((row) =>
+                    row.id === rowId ? { ...row, values: updatedValues } : row,
+                ),
+            );
+        },
+        [onMultiRowChange],
+    );
+
+    const handleMultiRowSave = React.useCallback(
+        async (rowId: string) => {
+            const rowState = multiRowStates.find((s) => s.id === rowId);
+            if (!rowState) return;
+
+            // Check if row is empty (skip save)
+            const isEmpty = Object.values(rowState.values).every(
+                (v) => v === "" || v === null || v === undefined,
+            );
+            if (isEmpty) return;
+
+            // Validate if needed
+            if (multiRowValidate) {
+                const result = multiRowValidate(rowState.values);
+                if (typeof result === "string") {
+                    setMultiRowStates((prev) =>
+                        prev.map((row) =>
+                            row.id === rowId
+                                ? { ...row, errors: { _global: result } }
+                                : row,
+                        ),
+                    );
+                    return;
+                }
+                if (result === false) return;
+            }
+
+            // Save
+            await onMultiRowSave?.(rowState.values, rowId);
+
+            // Reset row to defaults
+            const index = multiRowStates.findIndex((s) => s.id === rowId);
+            const defaults =
+                typeof multiRowDefaultValues === "function"
+                    ? multiRowDefaultValues(index)
+                    : { ...multiRowDefaultValues };
+
+            setMultiRowStates((prev) =>
+                prev.map((row) =>
+                    row.id === rowId
+                        ? { ...row, values: defaults, errors: {} }
+                        : row,
+                ),
+            );
+        },
+        [
+            multiRowStates,
+            multiRowValidate,
+            onMultiRowSave,
+            multiRowDefaultValues,
+        ],
+    );
+
+    const handleNeedMoreRows = React.useCallback(() => {
+        setMultiRowStates((prev) => {
+            if (prev.length >= multiRowMaxCount) return prev;
+
+            const currentCount = prev.length;
+            const moreRows: NewRowState[] = Array.from(
+                { length: multiRowIncrement },
+                (_, index) => ({
+                    id: `__new_row_${Date.now()}_${currentCount + index}`,
+                    values:
+                        typeof multiRowDefaultValues === "function"
+                            ? multiRowDefaultValues(currentCount + index)
+                            : { ...multiRowDefaultValues },
+                    errors: {},
+                }),
+            );
+            return [...prev, ...moreRows];
+        });
+    }, [multiRowMaxCount, multiRowIncrement, multiRowDefaultValues]);
 
     // Sync external data
     React.useEffect(() => {
@@ -322,6 +448,16 @@ export function DataTable<TData>({
                             enableRowSelection={enableRowSelection}
                             onRowClick={onRowClick}
                             translations={translations}
+
+                            // Multi-row props
+                            enableMultipleNewRows={enableMultipleNewRows}
+                            multiRowStates={multiRowStates}
+                            multiRowPosition={multiRowPosition}
+                            onMultiRowChange={handleMultiRowChange}
+                            onMultiRowSave={handleMultiRowSave}
+                            onMultiRowDelete={onMultiRowDelete}
+                            onNeedMoreRows={handleNeedMoreRows}
+                            multiRowDefaultValues={multiRowDefaultValues}
                         />
                     </Table>
                 </div>

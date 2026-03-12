@@ -64,7 +64,7 @@ function NewOrderPage() {
     >({ quantity: 1 });
 
     const handleNewRowChange = useCallback(
-        (values: Record<string, unknown>) => {
+        (values: Record<string, unknown>, _rowId: string) => {
             const currentQuantity = Number(values.quantity) || 1;
 
             if (values.product) {
@@ -74,48 +74,22 @@ function NewOrderPage() {
                 const remaining = product?.remaining ?? 0;
                 const newTotal = price * currentQuantity;
 
-                setNewRowDefaultValues((prev) => {
-                    if (
-                        prev.product !== values.product ||
-                        prev.price !== price ||
-                        prev.total !== newTotal ||
-                        prev.quantity !== currentQuantity ||
-                        prev.remaining !== remaining
-                    ) {
-                        return {
-                            ...prev,
-                            product: values.product,
-                            price,
-                            remaining,
-                            quantity: currentQuantity,
-                            total: newTotal,
-                        };
-                    }
-                    return prev;
-                });
-            } else {
-                setNewRowDefaultValues((prev) => {
-                    if (
-                        prev.product !== undefined ||
-                        prev.price !== undefined
-                    ) {
-                        return {
-                            quantity: 1,
-                            product: "",
-                            price: "",
-                            remaining: "",
-                            total: "",
-                        };
-                    }
-                    return prev;
-                });
+                return {
+                    ...values,
+                    price,
+                    remaining,
+                    quantity: currentQuantity,
+                    total: newTotal,
+                };
             }
+
+            return values;
         },
         [products],
     );
 
     const handleNewRowSave = useCallback(
-        (data: Record<string, unknown>) => {
+        (data: Record<string, unknown>, _rowId: string) => {
             if (!data.product) {
                 alert(t("error_product_required"));
                 return;
@@ -139,13 +113,6 @@ function NewOrderPage() {
             };
 
             setItems((prev) => [...prev, newItem]);
-            setNewRowDefaultValues({
-                quantity: 1,
-                product: "",
-                price: "",
-                remaining: "",
-                total: "",
-            });
         },
         [products, t],
     );
@@ -275,10 +242,11 @@ function NewOrderPage() {
                     className="flex-1 costprice-table"
                     columns={columns}
                     data={items}
-                    enableNewRow
-                    onNewRowSave={handleNewRowSave}
-                    onNewRowChange={handleNewRowChange}
-                    newRowDefaultValues={newRowDefaultValues}
+                    enableMultipleNewRows
+                    multiRowCount={15}
+                    onMultiRowSave={handleNewRowSave}
+                    onMultiRowChange={handleNewRowChange}
+                    multiRowDefaultValues={newRowDefaultValues}
                     enableSorting={false}
                     translations={translations}
                 />

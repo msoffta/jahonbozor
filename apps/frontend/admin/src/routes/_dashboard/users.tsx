@@ -137,9 +137,10 @@ function UsersPage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing
-                    enableNewRow
+                    enableMultipleNewRows
+                    multiRowCount={15}
                     onCellEdit={handleCellEdit}
-                    onNewRowSave={handleNewRowSave}
+                    onMultiRowSave={handleNewRowSave}
                     translations={translations}
                 />
             )}

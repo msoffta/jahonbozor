@@ -84,7 +84,7 @@ function OrdersPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>) => {
+        async (data: Record<string, unknown>, _rowId: string) => {
             if (data.user === "CREATE_NEW") {
                 navigate({ to: "/users", search: { new: true } as any });
                 return;
@@ -101,13 +101,14 @@ function OrdersPage() {
 
             createOrder.mutate({
                 userId: data.user ? Number(data.user) : null,
-                paymentType: (data.paymentType as "CASH" | "CREDIT_CARD") || "CASH",
+                paymentType:
+                    (data.paymentType as "CASH" | "CREDIT_CARD") || "CASH",
                 items: [
                     {
                         productId,
                         quantity: Number(data.quantity) || 1,
                         price,
-                    }
+                    },
                 ],
             });
         },
@@ -115,7 +116,7 @@ function OrdersPage() {
     );
 
     const handleNewRowChange = useCallback(
-        (values: Record<string, unknown>) => {
+        (values: Record<string, unknown>, _rowId: string) => {
             const currentQuantity = Number(values.quantity) || 1;
 
             if (values.product) {
@@ -125,40 +126,16 @@ function OrdersPage() {
                 const remaining = product?.remaining ?? 0;
                 const newTotal = price * currentQuantity;
 
-                setNewRowDefaultValues((prev) => {
-                    if (
-                        prev.product !== values.product ||
-                        prev.price !== price ||
-                        prev.total !== newTotal ||
-                        prev.quantity !== currentQuantity ||
-                        prev.remaining !== remaining
-                    ) {
-                        return {
-                            ...prev,
-                            product: values.product,
-                            price,
-                            remaining,
-                            quantity: currentQuantity,
-                            total: newTotal,
-                        };
-                    }
-                    return prev;
-                });
-            } else {
-                setNewRowDefaultValues((prev) => {
-                    if (prev.product !== undefined || prev.price !== undefined) {
-                        return {
-                            paymentType: "CASH",
-                            quantity: 1,
-                            product: "",
-                            price: "",
-                            remaining: "",
-                            total: "",
-                        };
-                    }
-                    return prev;
-                });
+                return {
+                    ...values,
+                    price,
+                    remaining,
+                    quantity: currentQuantity,
+                    total: newTotal,
+                };
             }
+
+            return values;
         },
         [products],
     );
@@ -202,11 +179,12 @@ function OrdersPage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing
-                    enableNewRow
+                    enableMultipleNewRows
+                    multiRowCount={15}
                     onCellEdit={handleCellEdit}
-                    onNewRowSave={handleNewRowSave}
-                    onNewRowChange={handleNewRowChange}
-                    newRowDefaultValues={newRowDefaultValues}
+                    onMultiRowSave={handleNewRowSave}
+                    onMultiRowChange={handleNewRowChange}
+                    multiRowDefaultValues={newRowDefaultValues}
                     translations={translations}
                 />
             )}

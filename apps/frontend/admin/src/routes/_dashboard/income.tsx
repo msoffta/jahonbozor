@@ -85,9 +85,10 @@ function IncomePage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing={false}
-                    enableNewRow
-                    onNewRowSave={handleNewRowSave}
-                    newRowDefaultValues={
+                    enableMultipleNewRows
+                    multiRowCount={15}
+                    onMultiRowSave={handleNewRowSave}
+                    multiRowDefaultValues={
                         { createdAt: dayjs().toISOString() } as any
                     }
                     translations={translations}

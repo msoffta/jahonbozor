@@ -102,10 +102,11 @@ function ExpensePage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing
-                    enableNewRow
+                    enableMultipleNewRows
+                    multiRowCount={15}
                     onCellEdit={handleCellEdit}
-                    onNewRowSave={handleNewRowSave}
-                    newRowDefaultValues={{ expenseDate: dayjs().toISOString() } as any}
+                    onMultiRowSave={handleNewRowSave}
+                    multiRowDefaultValues={{ expenseDate: dayjs().toISOString() } as any}
                     translations={translations}
                 />
             )}

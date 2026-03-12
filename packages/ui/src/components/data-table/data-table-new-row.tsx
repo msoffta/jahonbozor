@@ -177,6 +177,7 @@ export function DataTableNewRow<TData>({
     return (
         <motion.tr
             id={id}
+            data-testid="new-row"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}

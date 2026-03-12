@@ -140,6 +140,7 @@ export abstract class OrdersService {
                                         name: true,
                                         price: true,
                                         remaining: true,
+                                        costprice: true,
                                     },
                                 },
                             },
@@ -161,6 +162,7 @@ export abstract class OrdersService {
                     product: {
                         ...item.product,
                         price: Number(item.product.price),
+                        costprice: Number(item.product.costprice),
                     },
                 })),
             }));
@@ -185,7 +187,13 @@ export abstract class OrdersService {
                     items: {
                         include: {
                             product: {
-                                select: { id: true, name: true, price: true, remaining: true },
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    price: true,
+                                    remaining: true,
+                                    costprice: true,
+                                },
                             },
                         },
                     },
@@ -219,6 +227,7 @@ export abstract class OrdersService {
                     product: {
                         ...item.product,
                         price: Number(item.product.price),
+                        costprice: Number(item.product.costprice),
                     },
                 })),
             };
@@ -322,7 +331,15 @@ export abstract class OrdersService {
                     include: {
                         items: {
                             include: {
-                                product: { select: { id: true, name: true, price: true, remaining: true } },
+                                product: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        price: true,
+                                        remaining: true,
+                                        costprice: true,
+                                    },
+                                },
                             },
                         },
                         user: {
@@ -383,6 +400,7 @@ export abstract class OrdersService {
                     product: {
                         ...item.product,
                         price: Number(item.product.price),
+                        costprice: Number(item.product.costprice),
                     },
                 })),
             };
@@ -453,7 +471,13 @@ export abstract class OrdersService {
                             items: {
                                 include: {
                                     product: {
-                                        select: { id: true, name: true, price: true, remaining: true },
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            price: true,
+                                            remaining: true,
+                                            costprice: true,
+                                        },
                                     },
                                 },
                             },
@@ -493,6 +517,7 @@ export abstract class OrdersService {
                     product: {
                         ...item.product,
                         price: Number(item.product.price),
+                        costprice: Number(item.product.costprice),
                     },
                 })),
             };

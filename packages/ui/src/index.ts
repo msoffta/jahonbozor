@@ -82,7 +82,7 @@ export {
 export { FadeIn } from "./components/motion/fade-in.tsx";
 export { PageTransition } from "./components/motion/page-transition.tsx";
 
-export { DataTable, DataTableSkeleton } from "./components/data-table/index.ts";
+export { DataTable, DataTableSkeleton, DataTableNewRow, DataTableMultiNewRows } from "./components/data-table/index.ts";
 export type {
     DataTableColumnMeta,
     DataTableProps,

@@ -57,7 +57,13 @@ export interface OrderItemResponse {
     quantity: number;
     price: number;
     data: unknown;
-    product: { id: number; name: string; price?: number; remaining?: number };
+    product: {
+        id: number;
+        name: string;
+        price?: number;
+        remaining?: number;
+        costprice?: number;
+    };
 }
 
 // Public (user) API responses
