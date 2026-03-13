@@ -87,6 +87,9 @@ jobs:
             - name: Type check frontend user
               run: cd apps/frontend/user && bunx tsc --noEmit -p tsconfig.app.json
 
+            - name: Type check UI package
+              run: cd packages/ui && bunx tsc --noEmit
+
     test-backend:
         name: Test Backend
         runs-on: ubuntu-latest

@@ -62,7 +62,7 @@ bun run test:user          # Run user frontend tests only
 bun run test:admin         # Run admin frontend tests only
 bun run test:watch         # Watch mode (backend only)
 bun run test:coverage      # With coverage (backend only)
-bun run typecheck          # TypeScript check (backend + admin + user)
+bun run typecheck          # TypeScript check (backend + bot + ui + admin + user)
 ```
 
 ### Backend
