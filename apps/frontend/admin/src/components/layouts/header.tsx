@@ -90,12 +90,6 @@ export function Header() {
                             </>
                         )}
                         <DropdownMenuItem asChild>
-                            <Link to="/profile">
-                                <User className="h-4 w-4" />
-                                {t("profile")}
-                            </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
                             <Link to="/settings">
                                 <Settings className="h-4 w-4" />
                                 {t("settings")}
