@@ -94,6 +94,7 @@ export function DataTable<TData>({
     const [, setFocusedRowId] = React.useState<string | null>(null);
     const focusedRowIdRef = React.useRef<string | null>(null);
     const savingRowsRef = React.useRef<Set<string>>(new Set());
+    const navigatingFromRowRef = React.useRef<string | null>(null);
 
     // Initialize multi-rows if enabled
     React.useEffect(() => {
@@ -218,9 +219,11 @@ export function DataTable<TData>({
                         if (row.id !== rowId) return row;
 
                         const isStillFocused = focusedRowIdRef.current === rowId;
+                        const isNavigating = navigatingFromRowRef.current === rowId;
 
-                        // If user moved away to another row, reset this slot to empty
-                        if (!isStillFocused) {
+                        // If save succeeded (returned ID) and user moved away (not navigating):
+                        // Reset to empty to avoid duplication with DB record
+                        if (resultId && !isStillFocused && !isNavigating) {
                             const index = prev.findIndex((s) => s.id === rowId);
                             const defaults = typeof multiRowDefaultValues === "function"
                                 ? multiRowDefaultValues(index)
@@ -236,7 +239,7 @@ export function DataTable<TData>({
                             };
                         }
 
-                        // If still focused, keep values but mark as saved
+                        // If still focused OR navigating, keep values and mark as saved
                         return {
                             ...row,
                             linkedId: resultId ?? row.linkedId,
@@ -266,11 +269,28 @@ export function DataTable<TData>({
 
     const handleMultiRowBlur = React.useCallback(
         (rowId: string) => {
-            setFocusedRowId(null);
-            focusedRowIdRef.current = null;
+            // Defer all cleanup to allow navigation and dropdown interactions to complete
+            // Increased delay from 0 to 150ms to handle combobox/select/datepicker dropdowns
+            setTimeout(() => {
+                // Only clear focus if no new row got focus in the meantime
+                if (focusedRowIdRef.current === rowId) {
+                    setFocusedRowId(null);
+                    focusedRowIdRef.current = null;
+                }
 
-            // Excel-like: trigger save on exit
-            handleMultiRowSave(rowId);
+                // Only save if:
+                // 1. Focus really left (not just temporarily for dropdown)
+                // 2. This row is NOT currently navigating (handleMultiRowFocusNext already saved it)
+                const isNavigating = navigatingFromRowRef.current === rowId;
+                if (focusedRowIdRef.current !== rowId && !isNavigating) {
+                    handleMultiRowSave(rowId);
+                }
+
+                // Clear navigating flag AFTER save check
+                if (navigatingFromRowRef.current === rowId) {
+                    navigatingFromRowRef.current = null;
+                }
+            }, 150);
         },
         [handleMultiRowSave],
     );
@@ -280,7 +300,10 @@ export function DataTable<TData>({
             const index = multiRowStates.findIndex((r) => r.id === rowId);
             if (index !== -1 && index < multiRowStates.length - 1) {
                 const nextRow = multiRowStates[index + 1];
-                
+
+                // Mark intentional navigation from this row
+                navigatingFromRowRef.current = rowId;
+
                 // Explicitly save row when moving to next via Tab/Enter selection
                 handleMultiRowSave(rowId);
 
