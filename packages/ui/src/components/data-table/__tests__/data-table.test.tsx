@@ -562,4 +562,46 @@ describe("DataTable", () => {
         expect(getByText("0")).toBeDefined();
         expect(getByText("-5")).toBeDefined();
     });
+
+    // ── Race Condition Fix: Multi-row Navigation ──────────────────
+    describe("Multi-row Tab navigation race condition fix", () => {
+        test("should render multiple new rows with enableMultipleNewRows", () => {
+            const onMultiRowSave = mock(() => {});
+            const editableColumns: ColumnDef<TestRow, any>[] = [
+                { accessorKey: "name", header: "Name", meta: { editable: true, inputType: "text" as const } },
+            ];
+
+            const { getAllByRole } = render(
+                <DataTable
+                    columns={editableColumns}
+                    data={[]}
+                    enableMultipleNewRows
+                    multiRowCount={3}
+                    onMultiRowSave={onMultiRowSave}
+                    multiRowDefaultValues={{ name: "" }}
+                    translations={{ noResults: "Empty" }}
+                />,
+            );
+
+            // Should render 3 text inputs (one per row)
+            const inputs = getAllByRole("textbox");
+            expect(inputs.length).toBe(3);
+        });
+
+        // NOTE: Full integration tests for the race condition fix require real browser environment.
+        // Bun's happy-dom cannot properly simulate the focus/blur event propagation through
+        // nested components (DataTable → DataTableBody → DataTableMultiNewRows → DataTableNewRow).
+        //
+        // The fix has been implemented in data-table.tsx (lines 96, 220-245, 268-285, 290-302):
+        // 1. Added navigatingFromRowRef to track intentional Tab/Enter navigation
+        // 2. Modified handleMultiRowSave to NOT reset saved rows (with linkedId)
+        // 3. Updated handleMultiRowBlur to defer focusedRowIdRef clearing
+        // 4. Updated handleMultiRowFocusNext to set navigation flag before save
+        //
+        // MANUAL TESTING REQUIRED:
+        // - /dashboard/income: Fill row1 → Tab → verify row1 NOT reset, focus on row2
+        // - /dashboard/expense: Multiple Tab navigations → verify no gaps
+        // - /dashboard/products: Tab with async save delay → verify no reset
+        // - /dashboard/users: Fill row → click outside → verify reset (if empty)
+    });
 });

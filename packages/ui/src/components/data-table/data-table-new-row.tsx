@@ -192,9 +192,22 @@ export function DataTableNewRow<TData>({
             onFocus={onFocus}
             onBlur={(e) => {
                 // Only trigger blur if focus is moving outside the row
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    onBlur?.();
-                }
+                const target = e.relatedTarget as Node;
+
+                // Ignore blur if relatedTarget is null (focus went to portal/dropdown)
+                if (!target) return;
+
+                // Ignore blur if focus is still within the row
+                if (e.currentTarget.contains(target)) return;
+
+                // Ignore blur if focus went to a portal element (combobox/select/datepicker dropdown)
+                const targetElement = target as Element;
+                if (targetElement?.closest?.('[data-radix-popper-content-wrapper]')) return;
+                if (targetElement?.closest?.('[role="listbox"]')) return;
+                if (targetElement?.closest?.('[role="dialog"]')) return;
+
+                // Focus is truly leaving the row
+                onBlur?.();
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
