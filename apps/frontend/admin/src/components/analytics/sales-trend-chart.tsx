@@ -44,28 +44,46 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
 							<CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
 							<XAxis dataKey="date" tick={{ fontSize: 12 }} />
 							<YAxis tick={{ fontSize: 12 }} />
-							<Tooltip />
+							<Tooltip
+								labelFormatter={(label) => {
+									return label;
+								}}
+								formatter={(value: number, name: string) => [
+									new Intl.NumberFormat(i18n.language === "ru" ? "ru-RU" : "uz-UZ", {
+										style: "currency",
+										currency: "UZS",
+										maximumFractionDigits: 0,
+									}).format(value),
+									name,
+								]}
+							/>
 							<Legend />
 							<Line
 								type="monotone"
 								dataKey="totalSales"
-								stroke="#71717a"
+								stroke="#3b82f6"
 								name={t("total_sales")}
 								strokeWidth={2}
+								dot={{ r: 4 }}
+								activeDot={{ r: 6 }}
 							/>
 							<Line
 								type="monotone"
 								dataKey="totalExpenses"
-								stroke="#a1a1aa"
+								stroke="#ef4444"
 								name={t("total_expenses")}
 								strokeWidth={2}
+								dot={{ r: 4 }}
+								activeDot={{ r: 6 }}
 							/>
 							<Line
 								type="monotone"
 								dataKey="profit"
-								stroke="#52525b"
+								stroke="#10b981"
 								name={t("profit")}
 								strokeWidth={2}
+								dot={{ r: 4 }}
+								activeDot={{ r: 6 }}
 							/>
 						</LineChart>
 					</ResponsiveContainer>

@@ -7,11 +7,14 @@ import {
 	Tooltip,
 	Legend,
 	ResponsiveContainer,
+	Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@jahonbozor/ui";
 import { motion } from "motion/react";
 import type { TopProductData } from "@jahonbozor/schemas/src/analytics";
 import { useTranslation } from "react-i18next";
+
+const COLORS = ["#3b82f6", "#2563eb", "#1d4ed8", "#1e40af", "#1e3a8a"];
 
 interface TopProductsChartProps {
 	data: TopProductData[];
@@ -36,13 +39,23 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
 							<CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
 							<XAxis dataKey="productName" tick={{ fontSize: 12 }} />
 							<YAxis tick={{ fontSize: 12 }} />
-							<Tooltip />
+							<Tooltip
+								formatter={(value: number, name: string) => [
+									value,
+									name === "quantitySold" ? t("quantity_sold") : name,
+								]}
+							/>
 							<Legend />
 							<Bar
 								dataKey="quantitySold"
-								fill="#71717a"
+								fill="#3b82f6"
 								name={t("quantity_sold")}
-							/>
+								radius={[4, 4, 0, 0]}
+							>
+								{data.map((_, index) => (
+									<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+								))}
+							</Bar>
 						</BarChart>
 					</ResponsiveContainer>
 				</CardContent>

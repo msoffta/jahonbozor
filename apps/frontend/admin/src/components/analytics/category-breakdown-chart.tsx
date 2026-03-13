@@ -11,14 +11,14 @@ import { motion } from "motion/react";
 import type { CategorySalesData } from "@jahonbozor/schemas/src/analytics";
 import { useTranslation } from "react-i18next";
 
-const COLORS = ["#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7"];
+const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
 
 interface CategoryBreakdownChartProps {
 	data: CategorySalesData[];
 }
 
 export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
-	const { t } = useTranslation();
+	const { t, i18n } = useTranslation();
 
 	const chartData = data.map((item) => ({
 		name: item.categoryName,
@@ -45,7 +45,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
 								cx="50%"
 								cy="50%"
 								outerRadius={100}
-								label
+								label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
 							>
 								{chartData.map((_, index) => (
 									<Cell
@@ -54,7 +54,15 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
 									/>
 								))}
 							</Pie>
-							<Tooltip />
+							<Tooltip
+								formatter={(value: number) =>
+									new Intl.NumberFormat(i18n.language === "ru" ? "ru-RU" : "uz-UZ", {
+										style: "currency",
+										currency: "UZS",
+										maximumFractionDigits: 0,
+									}).format(value)
+								}
+							/>
 							<Legend />
 						</PieChart>
 					</ResponsiveContainer>

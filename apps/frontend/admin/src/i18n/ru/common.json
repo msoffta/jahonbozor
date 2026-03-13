@@ -69,5 +69,9 @@
     "profit": "Прибыль",
     "orders_count": "Заказов",
     "date_from": "От",
-    "date_to": "До"
+    "date_to": "До",
+    "sales_trend": "Динамика продаж",
+    "top_products": "Топ товаров",
+    "quantity_sold": "Продано штук",
+    "category_breakdown": "Продажи по категориям"
 }
