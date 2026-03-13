@@ -62,5 +62,12 @@
     "filter_all": "Hammasi",
     "filter_min": "min",
     "filter_max": "maks",
-    "filter": "Filtr"
+    "filter": "Filtr",
+    "analytics_dashboard": "Analitika",
+    "total_sales": "Sotuvlar",
+    "total_expenses": "Chiqimlar",
+    "profit": "Foyda",
+    "orders_count": "Buyurtmalar",
+    "date_from": "Dan",
+    "date_to": "Gacha"
 }

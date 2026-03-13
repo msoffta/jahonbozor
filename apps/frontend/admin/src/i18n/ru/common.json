@@ -62,5 +62,12 @@
     "filter_all": "Все",
     "filter_min": "мин",
     "filter_max": "макс",
-    "filter": "Фильтр"
+    "filter": "Фильтр",
+    "analytics_dashboard": "Аналитика",
+    "total_sales": "Продажи",
+    "total_expenses": "Расходы",
+    "profit": "Прибыль",
+    "orders_count": "Заказов",
+    "date_from": "От",
+    "date_to": "До"
 }

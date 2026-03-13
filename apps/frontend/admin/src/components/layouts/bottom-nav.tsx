@@ -19,6 +19,8 @@ import dayjs from "dayjs";
 import { Home } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { Permission } from "@jahonbozor/schemas";
 
 const navKeys = [
     { to: "/income", key: "income" },
@@ -69,6 +71,7 @@ export function BottomNav() {
     const { t } = useTranslation();
     const { t: tOrders } = useTranslation("orders");
     const [dialogOpen, setDialogOpen] = useState(false);
+    const hasAnalyticsPermission = useHasPermission(Permission.ANALYTICS_VIEW);
 
     const params = useParams({ strict: false });
     const activeOrderId = params?.orderId ? Number(params.orderId) : null;
@@ -226,14 +229,22 @@ export function BottomNav() {
 
                     <LayoutGroup id="bottom-navigation">
                         <div className="flex flex-1 items-center justify-end gap-1.5">
-                            {navKeys.map((item) => (
-                                <NavPill 
-                                    key={item.to} 
-                                    item={item} 
-                                    isActive={pathname.startsWith(item.to)} 
-                                    t={t} 
-                                />
-                            ))}
+                            {navKeys
+                                .filter((item) => {
+                                    // Hide Summary if no ANALYTICS_VIEW permission
+                                    if (item.to === "/summary") {
+                                        return hasAnalyticsPermission;
+                                    }
+                                    return true;
+                                })
+                                .map((item) => (
+                                    <NavPill
+                                        key={item.to}
+                                        item={item}
+                                        isActive={pathname.startsWith(item.to)}
+                                        t={t}
+                                    />
+                                ))}
                         </div>
                     </LayoutGroup>
                 </div>

@@ -6,6 +6,7 @@ import { products } from "./products/products.index";
 import { orders } from "./orders/orders.index";
 import { expenses } from "./expenses/expenses.index";
 import { auditLogs } from "./audit-logs/audit-logs.index";
+import { analytics } from "./analytics/analytics.index";
 
 export const privateRoutes = new Elysia({ prefix: "/api/private" })
     .use(users)
@@ -14,4 +15,5 @@ export const privateRoutes = new Elysia({ prefix: "/api/private" })
     .use(products)
     .use(orders)
     .use(expenses)
-    .use(auditLogs);
+    .use(auditLogs)
+    .use(analytics);

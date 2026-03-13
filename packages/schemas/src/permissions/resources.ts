@@ -7,6 +7,7 @@ export const Resource = {
     SUBCATEGORIES: "subcategories",
     ORDERS: "orders",
     PRODUCT_HISTORY: "product-history",
+    ANALYTICS: "analytics",
 } as const;
 
 export type Resource = (typeof Resource)[keyof typeof Resource];

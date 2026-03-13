@@ -36,14 +36,19 @@ mock.module("@/components/orders/create-order-dialog", () => ({
     CreateOrderDialog: () => null,
 }));
 
+mock.module("@/hooks/use-permissions", () => ({
+    useHasPermission: () => false, // Default: no permissions
+}));
+
 import { BottomNav } from "../bottom-nav";
 
 describe("BottomNav", () => {
     test("should render navigation links including home and nav items", () => {
         const { getAllByRole } = render(<BottomNav />);
         const links = getAllByRole("link");
-        // Should have at least: list, home, and 5 nav items (income, users, expense, products, summary)
-        expect(links.length).toBeGreaterThanOrEqual(7);
+        // Should have at least: list, home, and 4 nav items (income, users, expense, products)
+        // Note: summary is hidden without ANALYTICS_VIEW permission
+        expect(links.length).toBeGreaterThanOrEqual(6);
     });
 
     test("should have correct link paths", () => {
@@ -56,7 +61,8 @@ describe("BottomNav", () => {
         expect(hrefs).toContain("/users");
         expect(hrefs).toContain("/expense");
         expect(hrefs).toContain("/products");
-        expect(hrefs).toContain("/summary");
+        // Summary is hidden without ANALYTICS_VIEW permission
+        expect(hrefs).not.toContain("/summary");
     });
 
     test("should render home link to /", () => {
@@ -67,13 +73,14 @@ describe("BottomNav", () => {
     });
 
     test("should render navigation labels with i18n keys", () => {
-        const { getByText } = render(<BottomNav />);
+        const { getByText, queryByText } = render(<BottomNav />);
 
         expect(getByText("income")).toBeDefined();
         expect(getByText("clients")).toBeDefined();
         expect(getByText("expense")).toBeDefined();
         expect(getByText("warehouse")).toBeDefined();
-        expect(getByText("summary")).toBeDefined();
+        // Summary is hidden without ANALYTICS_VIEW permission
+        expect(queryByText("summary")).toBeNull();
     });
 
     test("should render list button with i18n key", () => {

@@ -64,6 +64,9 @@ export const Permission = {
     // === AUDIT LOGS (read-only by design) ===
     AUDIT_LOGS_LIST: "audit-logs:list",
     AUDIT_LOGS_READ: "audit-logs:read",
+
+    // === ANALYTICS ===
+    ANALYTICS_VIEW: "analytics:view",
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -134,4 +137,5 @@ export const PermissionGroups = {
         Permission.AUDIT_LOGS_LIST,
         Permission.AUDIT_LOGS_READ,
     ],
+    ANALYTICS_ALL: [Permission.ANALYTICS_VIEW],
 } as const;
