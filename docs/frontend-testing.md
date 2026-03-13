@@ -4,6 +4,20 @@
 
 ## Quick Commands
 
+### UI Package (packages/ui)
+
+```bash
+# Run UI package tests (DataTable components)
+cd packages/ui
+bun test                          # Run all tests
+bun test --watch                  # Watch mode
+
+# Or from monorepo root
+bun run test:ui
+```
+
+### Frontend Apps (admin/user)
+
 ```bash
 # IMPORTANT: Run from the specific frontend app directory!
 cd apps/frontend/admin   # or apps/frontend/user
@@ -13,9 +27,13 @@ bun test --watch                  # Watch mode
 bun test --coverage               # With coverage report
 bun test --bail                   # Stop after first failure
 bun test --test-name-pattern "X"  # Filter by test name
+
+# Or from monorepo root
+bun run test:admin
+bun run test:user
 ```
 
-> **Note:** Tests must be run from `apps/frontend/admin/` or `apps/frontend/user/` where `bunfig.toml` is located. Running from monorepo root will skip the preload and mocks won't work.
+> **Note:** Tests must be run from their respective directories where `bunfig.toml` is located. Running from monorepo root will skip the preload and mocks won't work (except via npm scripts).
 
 ## Test Structure
 
@@ -42,7 +60,63 @@ apps/frontend/{admin,user}/
     │   └── product-card.test.tsx        # Domain component tests
     └── i18n/__tests__/
         └── config.test.ts              # i18n configuration tests
+
+packages/ui/
+├── test/
+│   └── setup.ts                          # Preload: happy-dom + cleanup
+├── bunfig.toml                           # Test configuration
+└── src/
+    └── components/
+        └── data-table/__tests__/
+            ├── data-table.test.tsx               # DataTable component (45 tests)
+            ├── data-table-new-row.test.tsx       # New row functionality
+            └── data-table-multi-new-rows.test.tsx # Multi-row functionality
 ```
+
+## UI Package Testing (packages/ui)
+
+### Overview
+
+UI package тестирует shared компоненты (DataTable, motion, shadcn/ui) изолированно от приложений.
+
+**Current Coverage:**
+- ✅ DataTable components (45 tests covering all scenarios)
+- ⏳ Motion components (not tested yet)
+- ⏳ shadcn/ui components (not tested yet)
+
+### Key Differences from App Tests
+
+1. **Real Components:** НЕ мокируем Input - используем реальные компоненты из `packages/ui`
+2. **fireEvent for Controlled Inputs:** Из-за известной проблемы с Bun + happy-dom + userEvent, используем `fireEvent` вместо `user.type()` для controlled inputs
+3. **React in devDependencies:** UI package требует `react` и `react-dom` в devDependencies (не только peerDependencies) для корректной работы тестов
+
+### Example Test
+
+```typescript
+import { describe, test, expect, mock } from "bun:test";
+import { render, fireEvent } from "@testing-library/react";
+
+// НЕ мокируем Input - используем реальный компонент
+import { DataTableNewRow } from "../data-table-new-row";
+
+test("should update value on input change", () => {
+    const { container } = render(<DataTableNewRow {...props} />);
+    const input = container.querySelector("input");
+
+    // Use fireEvent instead of user.type() for controlled inputs
+    fireEvent.change(input, { target: { value: "Test" } });
+
+    expect(input.value).toBe("Test");
+});
+```
+
+### Known Issues & Workarounds
+
+**Issue:** `userEvent.type()` only types first character with controlled inputs in Bun + happy-dom
+**Workaround:** Use `fireEvent.change()` + `fireEvent.keyDown()` instead
+**References:**
+- [userEvent.type Issue #533](https://github.com/testing-library/user-event/issues/533)
+- [Controlled Components Issue #549](https://github.com/testing-library/user-event/issues/549)
 
 ## Test Setup (happy-dom)
 

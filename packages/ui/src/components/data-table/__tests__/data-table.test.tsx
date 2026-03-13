@@ -1,13 +1,76 @@
 import { describe, test, expect, mock } from "bun:test";
 import { render, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { setupUIMocks } from "../../test-utils/ui-mocks";
+import { createElement } from "react";
+import * as React from "react";
 
-// Setup centralized UI mocks BEFORE importing components
-setupUIMocks();
+// Helper to filter non-DOM props
+const filterDOMProps = (props: Record<string, any>) => {
+    const FILTER_PROPS = new Set(["whileTap", "whileHover", "initial", "animate", "exit", "transition", "asChild"]);
+    const filtered: Record<string, any> = {};
+    for (const [key, value] of Object.entries(props)) {
+        if (!FILTER_PROPS.has(key)) filtered[key] = value;
+    }
+    return filtered;
+};
+
+// Mock motion/react
+mock.module("motion/react", () => ({
+    motion: new Proxy({}, {
+        get: (_target: any, prop: string) => {
+            return ({ children, className, ...rest }: any) =>
+                createElement(prop, { className, ...filterDOMProps(rest) }, children);
+        },
+    }),
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+    LayoutGroup: ({ children }: any) => <>{children}</>,
+}));
+
+// Mock UI components that DataTable depends on
+mock.module("../../ui/button.tsx", () => ({
+    Button: React.forwardRef(({ children, className, ...props }: any, ref: any) => (
+        <button ref={ref} className={className} {...filterDOMProps(props)}>{children}</button>
+    )),
+}));
+
+// НЕ мокируем Input - реальный компонент работает правильно
+
+mock.module("../../ui/checkbox.tsx", () => ({
+    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
+        <input type="checkbox" checked={checked} onChange={(e) => onCheckedChange?.(e.target.checked)} {...filterDOMProps(props)} />
+    ),
+}));
+
+mock.module("../../ui/select.tsx", () => ({
+    Select: ({ children, onValueChange, value }: any) => (
+        <select value={value} onChange={(e) => onValueChange?.(e.target.value)}>{children}</select>
+    ),
+    SelectContent: ({ children }: any) => <>{children}</>,
+    SelectItem: ({ children, value }: any) => <option value={value}>{children}</option>,
+    SelectTrigger: () => null,
+    SelectValue: () => null,
+}));
+
+mock.module("../../ui/table.tsx", () => ({
+    Table: ({ children, className, style }: any) => <table className={className} style={style}>{children}</table>,
+    TableBody: ({ children, style }: any) => <tbody style={style}>{children}</tbody>,
+    TableCell: ({ children, colSpan, style }: any) => <td colSpan={colSpan} style={style}>{children}</td>,
+    TableHead: ({ children, colSpan, style }: any) => <th colSpan={colSpan} style={style}>{children}</th>,
+    TableHeader: ({ children, className, style }: any) => <thead className={className} style={style}>{children}</thead>,
+    TableRow: ({ children, style }: any) => <tr style={style}>{children}</tr>,
+}));
+
+mock.module("../../ui/dropdown-menu.tsx", () => ({
+    DropdownMenu: ({ children }: any) => <div>{children}</div>,
+    DropdownMenuTrigger: ({ children }: any) => <>{children}</>,
+    DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
+    DropdownMenuItem: ({ children, onClick }: any) => <button type="button" onClick={onClick}>{children}</button>,
+    DropdownMenuLabel: ({ children }: any) => <span>{children}</span>,
+    DropdownMenuSeparator: () => <hr />,
+}));
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@jahonbozor/ui";
+import { DataTable } from "../data-table";
 
 // ── Test data ──────────────────────────────────────────────────
 interface TestRow {
@@ -231,8 +294,7 @@ describe("DataTable", () => {
         expect(onCellEdit).toHaveBeenCalledWith(0, "name", "Updated");
     });
 
-    test("should save new row on Enter and call onNewRowSave", async () => {
-        const user = userEvent.setup();
+    test("should save new row on Enter and call onNewRowSave", () => {
         const onNewRowSave = mock(() => {});
         const editableColumns: ColumnDef<TestRow, any>[] = [
             { accessorKey: "id", header: "ID", meta: { editable: true, inputType: "text" as const } },
@@ -255,7 +317,10 @@ describe("DataTable", () => {
 
         const inputs = getAllByRole("textbox");
         const lastInput = inputs[inputs.length - 1];
-        await user.type(lastInput, "test{Enter}");
+
+        // Use fireEvent instead of user.type() to avoid controlled input issues with Bun/happy-dom
+        fireEvent.change(lastInput, { target: { value: "test" } });
+        fireEvent.keyDown(lastInput, { key: "Enter", code: "Enter" });
 
         expect(onNewRowSave).toHaveBeenCalled();
     });

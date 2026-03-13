@@ -178,6 +178,28 @@ jobs:
             - name: Run bot tests
               run: bun run --cwd apps/bot test
 
+    test-ui:
+        name: Test UI Package
+        runs-on: ubuntu-latest
+        needs: install
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v1
+              with:
+                  bun-version: "1.3.10"
+
+            - name: Download node_modules
+              uses: actions/download-artifact@v4
+              with:
+                  name: node_modules
+
+            - name: Run UI package tests
+              run: cd packages/ui && bun test
+              working-directory: ${{ github.workspace }}
+
     test-frontend-admin:
         name: Test Frontend Admin
         runs-on: ubuntu-latest
@@ -230,6 +252,7 @@ jobs:
                 lint-typecheck,
                 test-backend,
                 test-bot,
+                test-ui,
                 test-frontend-admin,
                 test-frontend-user,
             ]

@@ -54,7 +54,8 @@ Workspace-скрипты сами резолвят env:
 
 ### Testing
 ```bash
-bun run test               # Run all tests (backend + bot + admin + user)
+bun run test               # Run all tests (ui + backend + bot + admin + user)
+bun run test:ui            # Run UI package tests (DataTable components)
 bun run test:backend       # Run backend tests only
 bun run test:bot           # Run bot tests only
 bun run test:user          # Run user frontend tests only
@@ -101,9 +102,11 @@ apps/
 packages/
 ├── schemas/               # Zod validation schemas (shared)
 ├── logger/                # Winston logger factory
-├── ui/                    # Shared UI components (shadcn/ui + Tailwind)
+├── ui/                    # Shared UI components (shadcn/ui + Tailwind) + tests
 └── utils/                 # Shared utilities
 ```
+
+> **UI Package Testing:** `packages/ui` содержит тесты для shared компонентов (DataTable - 45 tests). Тесты используют реальные компоненты и `fireEvent` для controlled inputs из-за ограничений Bun + happy-dom. См. [docs/frontend-testing.md#ui-package-testing](docs/frontend-testing.md#ui-package-testing-packagesui).
 
 > **Workspace config:** root `package.json` workspaces must list all apps explicitly:
 > `["apps/backend", "apps/bot", "apps/frontend/admin", "apps/frontend/user", "packages/*"]`
