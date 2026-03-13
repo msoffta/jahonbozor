@@ -19,14 +19,20 @@ import {
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
-    const { data: productsData, isLoading } = useQuery(
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const { data: productsData, isLoading: isProductsLoading } = useQuery(
         productsListQueryOptions({ limit: 100, includeDeleted }),
     );
 
@@ -94,17 +100,46 @@ function ProductsPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>) => {
+        async (
+            data: Record<string, unknown>,
+            _rowId: string,
+            linkedId?: unknown,
+        ) => {
+            // If already created, we can update any field individually
+            if (linkedId) {
+                const body: Record<string, unknown> = {};
+                if (data.name) body.name = String(data.name);
+                if (data.price !== undefined) body.price = Number(data.price);
+                if (data.costprice !== undefined)
+                    body.costprice = Number(data.costprice);
+                if (data.remaining !== undefined)
+                    body.remaining = Number(data.remaining);
+                if (data.category)
+                    body.categoryId = await resolveCategoryId(data.category);
+
+                const result = await updateProduct.mutateAsync({
+                    id: linkedId as number,
+                    ...body,
+                });
+                return result?.id;
+            }
+
+            // For initial creation, check if all required fields are present
+            if (!data.name || data.price === undefined || !data.category) {
+                return; // Wait for more data before creating
+            }
+
             const categoryId = await resolveCategoryId(data.category);
-            createProduct.mutate({
+            const result = await createProduct.mutateAsync({
                 name: String(data.name),
                 price: Number(data.price),
-                costprice: Number(data.costprice),
+                costprice: Number(data.costprice) || 0,
                 categoryId,
                 remaining: Number(data.remaining) || 0,
             });
+            return result?.id;
         },
-        [createProduct, resolveCategoryId],
+        [createProduct, updateProduct, resolveCategoryId],
     );
 
     const translations: DataTableTranslations = {
@@ -120,6 +155,8 @@ function ProductsPage() {
         filterMax: t("common:filter_max"),
         filter: t("common:filter"),
     };
+
+    const isLoading = isProductsLoading || !isReady;
 
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
@@ -153,9 +190,10 @@ function ProductsPage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing
-                    enableNewRow
+                    enableMultipleNewRows
+                    multiRowCount={15}
                     onCellEdit={handleCellEdit}
-                    onNewRowSave={handleNewRowSave}
+                    onMultiRowSave={handleNewRowSave}
                     translations={translations}
                 />
             )}

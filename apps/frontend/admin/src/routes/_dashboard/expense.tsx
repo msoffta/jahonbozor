@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -11,8 +11,14 @@ import { getExpenseColumns } from "@/components/expenses/expenses-columns";
 function ExpensePage() {
     const { t } = useTranslation("expenses");
     const [includeDeleted, setIncludeDeleted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
-    const { data: expensesData, isLoading } = useQuery(
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const { data: expensesData, isLoading: isExpensesLoading } = useQuery(
         expensesListQueryOptions({ limit: 100, includeDeleted }),
     );
 
@@ -20,6 +26,8 @@ function ExpensePage() {
     const updateExpense = useUpdateExpense();
     const deleteExpense = useDeleteExpense();
     const restoreExpense = useRestoreExpense();
+
+    const isLoading = isExpensesLoading || !isReady;
 
     const actions = useMemo(() => ({
         onDelete: (id: number) => deleteExpense.mutate(id),
@@ -47,16 +55,43 @@ function ExpensePage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>) => {
-            createExpense.mutate({
+        async (
+            data: Record<string, unknown>,
+            _rowId: string,
+            linkedId?: unknown,
+        ) => {
+            // If already linked, update any field
+            if (linkedId) {
+                const result = await updateExpense.mutateAsync({
+                    id: linkedId as number,
+                    name: data.name ? String(data.name) : undefined,
+                    amount: data.amount ? Number(data.amount) : undefined,
+                    description: data.description
+                        ? String(data.description)
+                        : undefined,
+                    expenseDate: data.expenseDate
+                        ? String(data.expenseDate)
+                        : undefined,
+                });
+                return result?.id;
+            }
+
+            // For initial creation, name and amount are strictly required
+            if (!data.name || !data.amount) {
+                return; // Wait for essential data
+            }
+
+            const result = await createExpense.mutateAsync({
                 name: String(data.name),
                 amount: Number(data.amount),
                 description: data.description ? String(data.description) : null,
                 expenseDate: String(data.expenseDate) || dayjs().toISOString(),
             });
+            return result?.id;
         },
-        [createExpense],
+        [createExpense, updateExpense],
     );
+
 
     const translations: DataTableTranslations = {
         search: t("common:search"),
@@ -71,6 +106,10 @@ function ExpensePage() {
         filterMax: t("common:filter_max"),
         filter: t("common:filter"),
     };
+
+    const multiRowDefaultValues = useMemo(() => ({
+        expenseDate: dayjs().toISOString()
+    }), []);
 
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
@@ -102,10 +141,11 @@ function ExpensePage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing
-                    enableNewRow
+                    enableMultipleNewRows
+                    multiRowCount={15}
                     onCellEdit={handleCellEdit}
-                    onNewRowSave={handleNewRowSave}
-                    newRowDefaultValues={{ expenseDate: dayjs().toISOString() } as any}
+                    onMultiRowSave={handleNewRowSave}
+                    multiRowDefaultValues={multiRowDefaultValues}
                     translations={translations}
                 />
             )}

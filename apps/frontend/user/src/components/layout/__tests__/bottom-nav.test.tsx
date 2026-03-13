@@ -1,6 +1,7 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { render } from "@testing-library/react";
 import { useCartStore } from "@/stores/cart.store";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 mock.module("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -15,18 +16,8 @@ mock.module("@tanstack/react-router", () => ({
     useRouterState: ({ select }: any) => select({ location: { pathname: "/" } }),
 }));
 
-mock.module("@jahonbozor/ui", () => ({
-    cn: (...args: any[]) => args.filter(Boolean).join(" "),
-    motion: {
-        div: ({ children, className, ...props }: any) => (
-            <div className={className} data-testid={props["data-testid"]}>
-                {children}
-            </div>
-        ),
-        span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
-    },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
+// Setup centralized UI mocks
+setupUIMocks();
 
 import { BottomNav } from "../bottom-nav";
 

@@ -1,5 +1,6 @@
 import { describe, test, expect, mock } from "bun:test";
 import { render } from "@testing-library/react";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 mock.module("@tanstack/react-router", () => ({
     Link: ({ children, to, ...props }: any) => (
@@ -9,9 +10,8 @@ mock.module("@tanstack/react-router", () => ({
     ),
 }));
 
-mock.module("@jahonbozor/ui", () => ({
-    cn: (...args: any[]) => args.filter(Boolean).join(" "),
-}));
+// Setup centralized UI mocks
+setupUIMocks();
 
 import { Header } from "../header";
 

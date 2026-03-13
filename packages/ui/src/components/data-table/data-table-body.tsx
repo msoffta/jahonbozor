@@ -7,6 +7,8 @@ import { cn } from "../../lib/utils";
 import { TableBody, TableCell, TableRow } from "../ui/table";
 import { DataTableEditableCell } from "./data-table-editable-cell";
 import { DataTableNewRow } from "./data-table-new-row";
+import { DataTableMultiNewRows } from "./data-table-multi-new-rows";
+import type { NewRowState } from "./types";
 
 interface DataTableBodyProps<TData> {
     table: TanStackTable<TData>;
@@ -24,6 +26,19 @@ interface DataTableBodyProps<TData> {
     enableRowSelection?: boolean;
     onRowClick?: (row: TData) => void;
     translations?: { noResults?: string };
+
+    // Multi-row props
+    enableMultipleNewRows?: boolean;
+    multiRowStates?: NewRowState[];
+    multiRowPosition?: "start" | "end";
+    onMultiRowChange?: (rowId: string, values: Record<string, unknown>) => void;
+    onMultiRowSave?: (rowId: string) => void;
+    onMultiRowDelete?: (rowId: string) => void;
+    onMultiRowFocus?: (rowId: string) => void;
+    onMultiRowBlur?: (rowId: string) => void;
+    onMultiRowFocusNext?: (rowId: string) => void;
+    onNeedMoreRows?: () => void;
+    multiRowDefaultValues?: Partial<TData> | ((index: number) => Partial<TData>);
 }
 
 export function DataTableBody<TData>({
@@ -42,6 +57,18 @@ export function DataTableBody<TData>({
     enableRowSelection,
     onRowClick,
     translations,
+
+    enableMultipleNewRows,
+    multiRowStates = [],
+    multiRowPosition = "end",
+    onMultiRowChange,
+    onMultiRowSave,
+    onMultiRowDelete,
+    onMultiRowFocus,
+    onMultiRowBlur,
+    onMultiRowFocusNext,
+    onNeedMoreRows,
+    multiRowDefaultValues,
 }: DataTableBodyProps<TData>) {
     const rows = table.getRowModel().rows;
     const parentRef = React.useRef<HTMLTableSectionElement>(null);
@@ -54,8 +81,9 @@ export function DataTableBody<TData>({
         enabled: !!isVirtualActive,
     });
 
-    const newRow =
-        enableNewRow && onNewRowSave ? (
+    // Single row (existing behavior)
+    const singleNewRow =
+        enableNewRow && !enableMultipleNewRows && onNewRowSave ? (
             <DataTableNewRow
                 columns={columns}
                 onSave={onNewRowSave}
@@ -65,10 +93,35 @@ export function DataTableBody<TData>({
             />
         ) : null;
 
-    if (rows.length === 0 && !enableNewRow) {
+    // Multiple rows (new behavior)
+    const multiNewRows =
+        enableMultipleNewRows && onMultiRowSave && onMultiRowChange ? (
+            <DataTableMultiNewRows
+                columns={columns}
+                rowStates={multiRowStates}
+                onRowChange={onMultiRowChange}
+                onRowSave={onMultiRowSave}
+                onRowDelete={onMultiRowDelete}
+                onRowFocus={onMultiRowFocus}
+                onRowBlur={onMultiRowBlur}
+                onRowFocusNext={onMultiRowFocusNext}
+                enableRowSelection={enableRowSelection}
+                defaultValuesFactory={(index) =>
+                    typeof multiRowDefaultValues === "function"
+                        ? multiRowDefaultValues(index)
+                        : { ...multiRowDefaultValues }
+                }
+                onNeedMoreRows={onNeedMoreRows || (() => {})}
+            />
+        ) : null;
+
+    const newRows = enableMultipleNewRows ? multiNewRows : singleNewRow;
+    const position = enableMultipleNewRows ? multiRowPosition : newRowPosition;
+
+    if (rows.length === 0 && !enableNewRow && !enableMultipleNewRows) {
         return (
             <TableBody>
-                {newRowPosition === "start" && newRow}
+                {position === "start" && newRows}
                 <TableRow>
                     <TableCell
                         colSpan={columns.length + (enableRowSelection ? 1 : 0)}
@@ -77,7 +130,7 @@ export function DataTableBody<TData>({
                         {translations?.noResults ?? "No results."}
                     </TableCell>
                 </TableRow>
-                {newRowPosition === "end" && newRow}
+                {position === "end" && newRows}
             </TableBody>
         );
     }
@@ -95,7 +148,7 @@ export function DataTableBody<TData>({
                     position: "relative",
                 }}
             >
-                {newRowPosition === "start" && newRow}
+                {position === "start" && newRows}
                 {virtualRows.map((virtualRow) => {
                     const row = rows[virtualRow.index];
                     return (
@@ -142,7 +195,7 @@ export function DataTableBody<TData>({
                         </TableRow>
                     );
                 })}
-                {newRowPosition === "end" && newRow}
+                {position === "end" && newRows}
             </TableBody>
         );
     }
@@ -151,7 +204,7 @@ export function DataTableBody<TData>({
     if (isShowAll && rows.length > 0) {
         return (
             <TableBody>
-                {newRowPosition === "start" && newRow}
+                {position === "start" && newRows}
                 {rows.map((row) => (
                     <motion.tr
                         key={row.id}
@@ -196,7 +249,7 @@ export function DataTableBody<TData>({
                         ))}
                     </motion.tr>
                 ))}
-                {newRowPosition === "end" && newRow}
+                {position === "end" && newRows}
             </TableBody>
         );
     }
@@ -204,7 +257,7 @@ export function DataTableBody<TData>({
     // Paginated mode (default)
     return (
         <TableBody>
-            {newRowPosition === "start" && newRow}
+            {position === "start" && newRows}
             {rows.map((row) => (
                 <motion.tr
                     key={row.id}
@@ -243,7 +296,7 @@ export function DataTableBody<TData>({
                     ))}
                 </motion.tr>
             ))}
-            {newRowPosition === "end" && newRow}
+            {position === "end" && newRows}
         </TableBody>
     );
 }

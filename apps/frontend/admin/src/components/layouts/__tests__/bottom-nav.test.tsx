@@ -1,6 +1,6 @@
 import { describe, test, expect, mock } from "bun:test";
-import { createElement } from "react";
 import { render } from "@testing-library/react";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 mock.module("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -20,23 +20,8 @@ mock.module("@tanstack/react-router", () => ({
     useParams: () => ({}),
 }));
 
-mock.module("@jahonbozor/ui", () => ({
-    cn: (...args: any[]) => args.filter(Boolean).join(" "),
-    motion: new Proxy(
-        {},
-        {
-            get: (_target: any, prop: string) =>
-                ({ children, className, ...rest }: any) =>
-                    createElement(prop, { className, ...rest }, children),
-        },
-    ),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    LayoutGroup: ({ children }: any) => <>{children}</>,
-    Tooltip: ({ children }: any) => <>{children}</>,
-    TooltipContent: ({ children }: any) => <div>{children}</div>,
-    TooltipProvider: ({ children }: any) => <>{children}</>,
-    TooltipTrigger: ({ children }: any) => <>{children}</>,
-}));
+// Setup centralized UI mocks
+setupUIMocks();
 
 mock.module("@tanstack/react-query", () => ({
     useQuery: () => ({ data: { orders: [] } }),

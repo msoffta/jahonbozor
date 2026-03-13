@@ -6,7 +6,8 @@
     "dev": "bun --env-file=../../.env run --watch src/index.ts",
     "start": "bun --env-file=../../.env run src/index.ts",
     "test": "bun --env-file=../../.env test",
-    "test:watch": "bun --env-file=../../.env test --watch"
+    "test:watch": "bun --env-file=../../.env test --watch",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "grammy": "^1.35.0",

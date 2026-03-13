@@ -1,7 +1,7 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
-import { createElement } from "react";
 import { render } from "@testing-library/react";
 import { useAuthStore } from "@/stores/auth.store";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 mock.module("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -15,26 +15,13 @@ mock.module("@tanstack/react-router", () => ({
     ),
 }));
 
+// Setup centralized UI mocks
+setupUIMocks();
+
+// Additional mocks specific to Header
 mock.module("@jahonbozor/ui", () => ({
-    cn: (...args: any[]) => args.filter(Boolean).join(" "),
+    ...require("../../../test-utils/ui-mocks").uiMocks,
     DropdownMenu: ({ children }: any) => <div data-testid="dropdown">{children}</div>,
-    DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
-    DropdownMenuItem: ({ children, onClick, ...props }: any) => (
-        <button type="button" onClick={onClick} {...props}>
-            {children}
-        </button>
-    ),
-    DropdownMenuLabel: ({ children }: any) => <span>{children}</span>,
-    DropdownMenuSeparator: () => <hr />,
-    DropdownMenuTrigger: ({ children }: any) => <>{children}</>,
-    motion: new Proxy(
-        {},
-        {
-            get: (_target: any, prop: string) =>
-                ({ children, className, ...rest }: any) =>
-                    createElement(prop, { className, ...rest }, children),
-        },
-    ),
 }));
 
 const mockLogout = mock(() => {});

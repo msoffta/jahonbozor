@@ -27,8 +27,14 @@ function UsersPage() {
     const { t } = useTranslation("clients");
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const { new: isNew } = Route.useSearch();
+    const [isReady, setIsReady] = useState(false);
 
-    const { data: clientsData, isLoading } = useQuery(
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const { data: clientsData, isLoading: isClientsLoading } = useQuery(
         clientsListQueryOptions({ limit: 100, includeDeleted }),
     );
 
@@ -36,6 +42,8 @@ function UsersPage() {
     const updateClient = useUpdateClient();
     const deleteClient = useDeleteClient();
     const restoreClient = useRestoreClient();
+
+    const isLoading = isClientsLoading || !isReady;
 
     useEffect(() => {
         if (isNew && !isLoading) {
@@ -78,8 +86,32 @@ function UsersPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>) => {
-            createClient.mutate({
+        async (
+            data: Record<string, unknown>,
+            _rowId: string,
+            linkedId?: unknown,
+        ) => {
+            // If already linked, update any field
+            if (linkedId) {
+                const body: Record<string, unknown> = {};
+                if (data.fullname) body.fullname = String(data.fullname);
+                if (data.username) body.username = String(data.username);
+                if (data.phone !== undefined) body.phone = String(data.phone) || null;
+                if (data.language) body.language = data.language;
+
+                const result = await updateClient.mutateAsync({
+                    id: linkedId as number,
+                    ...body,
+                });
+                return result?.id;
+            }
+
+            // For initial creation, fullname and username are strictly required
+            if (!data.fullname || !data.username) {
+                return; // Wait for essential data
+            }
+
+            const result = await createClient.mutateAsync({
                 fullname: String(data.fullname),
                 username: String(data.username),
                 phone: data.phone ? String(data.phone) : null,
@@ -87,9 +119,11 @@ function UsersPage() {
                 photo: null,
                 language: (data.language === "ru" ? "ru" : "uz") as "uz" | "ru",
             });
+            return result?.id;
         },
-        [createClient],
+        [createClient, updateClient],
     );
+
 
     const translations: DataTableTranslations = {
         search: t("common:search"),
@@ -137,9 +171,10 @@ function UsersPage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing
-                    enableNewRow
+                    enableMultipleNewRows
+                    multiRowCount={15}
                     onCellEdit={handleCellEdit}
-                    onNewRowSave={handleNewRowSave}
+                    onMultiRowSave={handleNewRowSave}
                     translations={translations}
                 />
             )}

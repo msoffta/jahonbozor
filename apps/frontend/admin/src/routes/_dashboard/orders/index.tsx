@@ -13,12 +13,18 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 function ListsPage() {
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 300);
+        return () => clearTimeout(timer);
+    }, []);
 
     const todayStart = dayjs().startOf("day").toISOString();
     const todayEnd = dayjs().endOf("day").toISOString();
@@ -69,10 +75,15 @@ function ListsPage() {
         [t, deleteOrder, navigate],
     );
 
-    const columns = useMemo(
-        () => getOrderColumns(t, actions, { products, users }, { showItemColumns: false }),
-        [t, actions, products, users],
-    );
+    const columns = useMemo(() => {
+        if (!isReady) return [];
+        return getOrderColumns(
+            t,
+            actions,
+            { products, users },
+            { showItemColumns: false },
+        );
+    }, [t, actions, products, users, isReady]);
 
     const translations: DataTableTranslations = {
         search: t("common:search"),
@@ -88,7 +99,7 @@ function ListsPage() {
         filter: t("common:filter"),
     };
 
-    const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading;
+    const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">

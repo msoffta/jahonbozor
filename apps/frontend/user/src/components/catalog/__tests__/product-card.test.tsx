@@ -1,22 +1,14 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { render, fireEvent } from "@testing-library/react";
 import { useCartStore } from "@/stores/cart.store";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 mock.module("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-mock.module("@jahonbozor/ui", () => ({
-    motion: {
-        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-        button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-        span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
-    },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
-        <input type="checkbox" checked={checked} onChange={(e: any) => onCheckedChange?.(e.target.checked)} {...props} />
-    ),
-}));
+// Setup centralized UI mocks
+setupUIMocks();
 
 import { ProductCard } from "../product-card";
 

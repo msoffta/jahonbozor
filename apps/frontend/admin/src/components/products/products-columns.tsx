@@ -57,19 +57,12 @@ export function getProductColumns(
             accessorKey: "costprice",
             header: t("product_costprice"),
             size: 120,
-            cell: ({ getValue }) => (
-                <span className="costprice-value">
-                    {getValue<number>().toLocaleString()}
-                </span>
-            ),
+            cell: ({ getValue }) => getValue<number>().toLocaleString(),
             meta: {
                 flex: 1,
                 align: "left" as const,
                 editable: true,
                 inputType: "currency" as const,
-                headerClassName: "costprice-hover-target",
-                cellClassName: "costprice-hover-target",
-                className: "costprice-hover-target",
             },
         },
         {

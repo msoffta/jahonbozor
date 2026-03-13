@@ -6,11 +6,17 @@ import { DataTable, DataTableSkeleton, PageTransition } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import dayjs from "dayjs";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 function IncomePage() {
     const { t } = useTranslation("income");
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
 
     const { data: incomeData, isLoading: isIncomeLoading } = useQuery(
         incomeListQueryOptions({ limit: 100 }),
@@ -29,19 +35,33 @@ function IncomePage() {
     const history = incomeData?.history ?? [];
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>) => {
-            if (!data.product || !data.quantity) return;
+        async (data: Record<string, unknown>, _rowId: string) => {
+            // Product and quantity are strictly required
+            const productId = Number(data.product);
+            const quantity = Number(data.quantity);
 
-            createIncome.mutate({
-                productId: Number(data.product),
-                quantity: Number(data.quantity),
-                changeReason: data.changeReason
-                    ? String(data.changeReason)
-                    : null,
-                createdAt: data.createdAt
-                    ? String(data.createdAt)
-                    : dayjs().toISOString(),
-            });
+            if (!productId || isNaN(productId) || !quantity || isNaN(quantity)) {
+                return; // Wait for essential valid data
+            }
+
+            try {
+                const result = await createIncome.mutateAsync({
+                    productId,
+                    quantity,
+                    changeReason: data.changeReason
+                        ? String(data.changeReason).trim() || null
+                        : null,
+                    createdAt: data.createdAt
+                        ? String(data.createdAt)
+                        : dayjs().toISOString(),
+                });
+                
+                // The API returns { product, historyEntry }
+                return result.historyEntry.id;
+            } catch (error) {
+                console.error("Failed to save income:", error);
+                return;
+            }
         },
         [createIncome],
     );
@@ -60,7 +80,11 @@ function IncomePage() {
         filter: t("common:filter"),
     };
 
-    const isLoading = isIncomeLoading || isProductsLoading;
+    const isLoading = isIncomeLoading || isProductsLoading || !isReady;
+
+    const multiRowDefaultValues = useMemo(() => ({
+        createdAt: dayjs().toISOString()
+    }), []);
 
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
@@ -85,11 +109,10 @@ function IncomePage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing={false}
-                    enableNewRow
-                    onNewRowSave={handleNewRowSave}
-                    newRowDefaultValues={
-                        { createdAt: dayjs().toISOString() } as any
-                    }
+                    enableMultipleNewRows
+                    multiRowCount={15}
+                    onMultiRowSave={handleNewRowSave}
+                    multiRowDefaultValues={multiRowDefaultValues}
                     translations={translations}
                 />
             )}

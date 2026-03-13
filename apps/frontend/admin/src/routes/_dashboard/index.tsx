@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -13,10 +13,18 @@ function OrdersPage() {
     const { t } = useTranslation("orders");
     const [page] = useState(1);
     const navigate = useNavigate();
-    const [newRowDefaultValues, setNewRowDefaultValues] = useState<Record<string, unknown>>({
+    const [isReady, setIsReady] = useState(false);
+
+    // Delay heavy rendering to allow BottomNav animations to finish smoothly
+    useEffect(() => {
+        const timer = setTimeout(() => setIsReady(true), 300);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const newRowDefaultValues = useMemo(() => ({
         paymentType: "CASH",
         quantity: 1,
-    });
+    }), []);
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
         ordersListQueryOptions({ 
@@ -52,10 +60,10 @@ function OrdersPage() {
         },
     }), [t, deleteOrder, updateOrder]);
 
-    const columns = useMemo(
-        () => getOrderColumns(t, actions, { products, users }),
-        [t, actions, products, users],
-    );
+    const columns = useMemo(() => {
+        if (!isReady) return [];
+        return getOrderColumns(t, actions, { products, users });
+    }, [t, actions, products, users, isReady]);
 
     const orders = ordersData?.orders ?? [];
 
@@ -84,38 +92,60 @@ function OrdersPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (data: Record<string, unknown>) => {
+        async (
+            data: Record<string, unknown>,
+            _rowId: string,
+            linkedId?: unknown,
+        ) => {
             if (data.user === "CREATE_NEW") {
                 navigate({ to: "/users", search: { new: true } as any });
                 return;
             }
 
+            // If already linked, update any field
+            if (linkedId) {
+                const body: Record<string, unknown> = {};
+                if (data.user !== undefined)
+                    body.userId = data.user === "" ? null : Number(data.user);
+                if (data.paymentType) body.paymentType = data.paymentType;
+                // Note: items update logic would go here if supported by backend
+
+                const result = await updateOrder.mutateAsync({
+                    id: linkedId as number,
+                    ...body,
+                });
+                return result?.id;
+            }
+
+            // For creation, product is strictly required
             if (!data.product) {
-                alert(t("error_product_required"));
-                return;
+                return; // Wait for product selection
             }
 
             const productId = Number(data.product);
             const product = products.find((p) => p.id === productId);
             const price = product?.price ?? 0;
 
-            createOrder.mutate({
+            const result = await createOrder.mutateAsync({
                 userId: data.user ? Number(data.user) : null,
-                paymentType: (data.paymentType as "CASH" | "CREDIT_CARD") || "CASH",
+                paymentType:
+                    (data.paymentType as "CASH" | "CREDIT_CARD") || "CASH",
                 items: [
                     {
                         productId,
                         quantity: Number(data.quantity) || 1,
                         price,
-                    }
+                    },
                 ],
             });
+
+            return result?.id;
         },
-        [createOrder, t, navigate, products],
+        [createOrder, updateOrder, navigate, products],
     );
 
     const handleNewRowChange = useCallback(
-        (values: Record<string, unknown>) => {
+        (values: Record<string, unknown>, _rowId: string) => {
             const currentQuantity = Number(values.quantity) || 1;
 
             if (values.product) {
@@ -125,40 +155,16 @@ function OrdersPage() {
                 const remaining = product?.remaining ?? 0;
                 const newTotal = price * currentQuantity;
 
-                setNewRowDefaultValues((prev) => {
-                    if (
-                        prev.product !== values.product ||
-                        prev.price !== price ||
-                        prev.total !== newTotal ||
-                        prev.quantity !== currentQuantity ||
-                        prev.remaining !== remaining
-                    ) {
-                        return {
-                            ...prev,
-                            product: values.product,
-                            price,
-                            remaining,
-                            quantity: currentQuantity,
-                            total: newTotal,
-                        };
-                    }
-                    return prev;
-                });
-            } else {
-                setNewRowDefaultValues((prev) => {
-                    if (prev.product !== undefined || prev.price !== undefined) {
-                        return {
-                            paymentType: "CASH",
-                            quantity: 1,
-                            product: "",
-                            price: "",
-                            remaining: "",
-                            total: "",
-                        };
-                    }
-                    return prev;
-                });
+                return {
+                    ...values,
+                    price,
+                    remaining,
+                    quantity: currentQuantity,
+                    total: newTotal,
+                };
             }
+
+            return values;
         },
         [products],
     );
@@ -177,7 +183,7 @@ function OrdersPage() {
         filter: t("common:filter"),
     };
 
-    const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading;
+    const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
@@ -202,11 +208,12 @@ function OrdersPage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing
-                    enableNewRow
+                    enableMultipleNewRows
+                    multiRowCount={15}
                     onCellEdit={handleCellEdit}
-                    onNewRowSave={handleNewRowSave}
-                    onNewRowChange={handleNewRowChange}
-                    newRowDefaultValues={newRowDefaultValues}
+                    onMultiRowSave={handleNewRowSave}
+                    onMultiRowChange={handleNewRowChange}
+                    multiRowDefaultValues={newRowDefaultValues}
                     translations={translations}
                 />
             )}

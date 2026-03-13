@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useRouterState } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { Home } from "lucide-react";
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 const navKeys = [
@@ -27,6 +27,42 @@ const navKeys = [
     { to: "/products", key: "warehouse" },
     { to: "/summary", key: "summary" },
 ] as const;
+
+// Fast, low-computation transition
+const fastTransition = {
+    type: "spring" as const,
+    stiffness: 500,
+    damping: 40,
+    mass: 1,
+};
+
+const NavPill = React.memo(({ item, isActive, t }: { item: typeof navKeys[number], isActive: boolean, t: any }) => (
+    <Link
+        key={item.to}
+        to={item.to}
+        className="relative"
+    >
+        {isActive && (
+            <motion.div
+                layoutId="activeNavPill"
+                className="absolute inset-0 rounded-lg bg-primary will-change-transform"
+                transition={fastTransition}
+            />
+        )}
+        <span
+            className={cn(
+                "relative z-10 block px-3 py-1.5 text-xs font-semibold uppercase transition-colors duration-200",
+                isActive
+                    ? "text-primary-foreground"
+                    : "rounded-lg border border-border text-foreground",
+            )}
+        >
+            {t(item.key)}
+        </span>
+    </Link>
+));
+
+NavPill.displayName = "NavPill";
 
 export function BottomNav() {
     const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -110,8 +146,9 @@ export function BottomNav() {
                         <TooltipProvider delayDuration={200}>
                             <AnimatePresence>
                                 {recentLists.map((order, index) => (
-                                    <Tooltip key={order.id}>
-                                        <TooltipTrigger asChild>
+                                    <React.Fragment key={order.id}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
                                             <Link
                                                 to="/orders/$orderId"
                                                 params={{
@@ -165,65 +202,38 @@ export function BottomNav() {
                                                 )}
                                             </p>
                                         </TooltipContent>
-                                    </Tooltip>
+                                        </Tooltip>
+                                    </React.Fragment>
                                 ))}
                             </AnimatePresence>
                         </TooltipProvider>
                     </div>
 
-                    <Link to="/" className="shrink-0 mx-2">
+                    <Link to="/" className="shrink-0 mx-4">
                         <motion.div
                             className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-xl",
+                                "flex h-11 w-20 items-center justify-center rounded-xl will-change-transform",
                                 pathname === "/"
-                                    ? "bg-primary text-primary-foreground"
-                                    : "text-muted-foreground",
+                                    ? "bg-primary text-primary-foreground shadow-md"
+                                    : "text-muted-foreground border border-border bg-background/50",
                             )}
-                            whileTap={{ scale: 0.9 }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 17,
-                            }}
+                            whileTap={{ scale: 0.92 }}
+                            transition={fastTransition}
                         >
-                            <Home className="h-5 w-5" />
+                            <Home className="h-6 w-6" />
                         </motion.div>
                     </Link>
 
-                    <LayoutGroup>
+                    <LayoutGroup id="bottom-navigation">
                         <div className="flex flex-1 items-center justify-end gap-1.5">
-                            {navKeys.map((item) => {
-                                const isActive = pathname.startsWith(item.to);
-                                return (
-                                    <Link
-                                        key={item.to}
-                                        to={item.to}
-                                        className="relative"
-                                    >
-                                        {isActive && (
-                                            <motion.div
-                                                layoutId="activeNavPill"
-                                                className="absolute inset-0 rounded-lg bg-primary"
-                                                transition={{
-                                                    type: "spring",
-                                                    stiffness: 400,
-                                                    damping: 30,
-                                                }}
-                                            />
-                                        )}
-                                        <span
-                                            className={cn(
-                                                "relative z-10 block px-3 py-1.5 text-xs font-semibold uppercase",
-                                                isActive
-                                                    ? "text-primary-foreground"
-                                                    : "rounded-lg border border-border text-foreground",
-                                            )}
-                                        >
-                                            {t(item.key)}
-                                        </span>
-                                    </Link>
-                                );
-                            })}
+                            {navKeys.map((item) => (
+                                <NavPill 
+                                    key={item.to} 
+                                    item={item} 
+                                    isActive={pathname.startsWith(item.to)} 
+                                    t={t} 
+                                />
+                            ))}
                         </div>
                     </LayoutGroup>
                 </div>

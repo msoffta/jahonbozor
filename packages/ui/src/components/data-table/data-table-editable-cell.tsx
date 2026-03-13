@@ -30,31 +30,40 @@ export function DataTableEditableCell<TData>({
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
-        setValue(initialValue);
-    }, [initialValue]);
-
-    React.useEffect(() => {
-        if (isEditing && inputRef.current) {
-            inputRef.current.focus();
-            inputRef.current.select();
+        if (!isEditing) {
+            setValue(initialValue);
         }
-    }, [isEditing]);
+    }, [initialValue, isEditing]);
 
-    const handleSave = () => {
+    const handleSave = React.useCallback((currentValue: unknown = value, closeEdit = true) => {
         if (meta?.validationSchema) {
-            const result = meta.validationSchema.safeParse(value);
+            const result = meta.validationSchema.safeParse(currentValue);
             if (!result.success) {
                 setError(result.error.issues[0]?.message ?? "Invalid value");
                 return;
             }
         }
         setError(null);
-        setIsEditing(false);
-        if (value !== initialValue) {
-            cell.table.options.meta?.updateData(cell.row.index, cell.column.id, value);
-            onCellEdit?.(cell.row.index, cell.column.id, value);
+        if (closeEdit) {
+            setIsEditing(false);
         }
-    };
+        
+        if (currentValue !== initialValue) {
+            cell.table.options.meta?.updateData(cell.row.index, cell.column.id, currentValue);
+            onCellEdit?.(cell.row.index, cell.column.id, currentValue);
+        }
+    }, [value, initialValue, meta, cell, onCellEdit]);
+
+    // Auto-save effect
+    React.useEffect(() => {
+        if (!isEditing || value === initialValue) return;
+
+        const timer = setTimeout(() => {
+            handleSave(value, false);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [value, isEditing, initialValue, handleSave]);
 
     const handleCancel = () => {
         setValue(initialValue);
@@ -65,7 +74,7 @@ export function DataTableEditableCell<TData>({
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            handleSave();
+            handleSave(value, true);
         } else if (e.key === "Escape") {
             e.preventDefault();
             handleCancel();

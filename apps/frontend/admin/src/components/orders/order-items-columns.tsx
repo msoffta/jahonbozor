@@ -9,7 +9,7 @@ export interface OrderItemRow {
     productId: number;
     quantity: number;
     price: number;
-    product: { id: number; name: string; price?: number; remaining?: number };
+    product: { id: number; name: string; price?: number; remaining?: number; costprice?: number };
 }
 
 export interface OrderItemActions {
@@ -60,12 +60,12 @@ export function getOrderItemColumns(
         },
         {
             accessorKey: "price",
-            header: t("order_costprice"),
-            size: 120,
+            header: t("order_price"),
+            size: 100,
             cell: ({ getValue }) => {
                 const price = getValue<number>();
                 return (
-                    <span className="costprice-value">
+                    <span className="font-medium">
                         {price ? price.toLocaleString() : "—"}
                     </span>
                 );
@@ -73,9 +73,6 @@ export function getOrderItemColumns(
             meta: {
                 flex: 1,
                 align: "left" as const,
-                cellClassName: "costprice-hover-target",
-                headerClassName: "costprice-hover-target",
-                className: "costprice-hover-target",
             },
         },
         {
@@ -98,6 +95,27 @@ export function getOrderItemColumns(
             meta: {
                 flex: 1,
                 align: "left" as const,
+            },
+        },
+        {
+            id: "costprice",
+            accessorFn: (row) => row.product?.costprice ?? 0,
+            header: t("order_costprice"),
+            size: 100,
+            cell: ({ getValue }) => {
+                const costprice = getValue<number>();
+                return (
+                    <span className="costprice-value">
+                        {costprice ? costprice.toLocaleString() : "—"}
+                    </span>
+                );
+            },
+            meta: {
+                flex: 1,
+                align: "left" as const,
+                cellClassName: "costprice-hover-target",
+                headerClassName: "costprice-hover-target",
+                className: "costprice-hover-target",
             },
         },
     ];

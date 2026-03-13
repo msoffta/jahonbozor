@@ -59,12 +59,10 @@ function NewOrderPage() {
         [t, products, handleDeleteItem],
     );
 
-    const [newRowDefaultValues, setNewRowDefaultValues] = useState<
-        Record<string, unknown>
-    >({ quantity: 1 });
+    const newRowDefaultValues = useMemo(() => ({ quantity: 1 }), []);
 
     const handleNewRowChange = useCallback(
-        (values: Record<string, unknown>) => {
+        (values: Record<string, unknown>, _rowId: string) => {
             const currentQuantity = Number(values.quantity) || 1;
 
             if (values.product) {
@@ -74,59 +72,55 @@ function NewOrderPage() {
                 const remaining = product?.remaining ?? 0;
                 const newTotal = price * currentQuantity;
 
-                setNewRowDefaultValues((prev) => {
-                    if (
-                        prev.product !== values.product ||
-                        prev.price !== price ||
-                        prev.total !== newTotal ||
-                        prev.quantity !== currentQuantity ||
-                        prev.remaining !== remaining
-                    ) {
-                        return {
-                            ...prev,
-                            product: values.product,
-                            price,
-                            remaining,
-                            quantity: currentQuantity,
-                            total: newTotal,
-                        };
-                    }
-                    return prev;
-                });
-            } else {
-                setNewRowDefaultValues((prev) => {
-                    if (
-                        prev.product !== undefined ||
-                        prev.price !== undefined
-                    ) {
-                        return {
-                            quantity: 1,
-                            product: "",
-                            price: "",
-                            remaining: "",
-                            total: "",
-                        };
-                    }
-                    return prev;
-                });
+                return {
+                    ...values,
+                    price,
+                    remaining,
+                    quantity: currentQuantity,
+                    total: newTotal,
+                };
             }
+
+            return values;
         },
         [products],
     );
 
     const handleNewRowSave = useCallback(
-        (data: Record<string, unknown>) => {
-            if (!data.product) {
-                alert(t("error_product_required"));
-                return;
-            }
+        (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
+            if (!data.product) return;
 
             const productId = Number(data.product);
             const product = products.find((p) => p.id === productId);
             if (!product) return;
 
+            if (linkedId) {
+                // Update existing item in local list
+                setItems((prev) =>
+                    prev.map((item) =>
+                        item.id === linkedId
+                            ? {
+                                  ...item,
+                                  productId,
+                                  quantity: Number(data.quantity) || 1,
+                                  price: product.price,
+                                  product: {
+                                      id: product.id,
+                                      name: product.name,
+                                      price: product.price,
+                                      remaining: product.remaining,
+                                  },
+                              }
+                            : item,
+                    ),
+                );
+                return linkedId;
+            }
+
+            // Create new item in local list
+            const newId = Date.now();
             const newItem: LocalItem = {
-                id: Date.now(),
+                id: newId,
                 productId,
                 quantity: Number(data.quantity) || 1,
                 price: product.price,
@@ -139,15 +133,9 @@ function NewOrderPage() {
             };
 
             setItems((prev) => [...prev, newItem]);
-            setNewRowDefaultValues({
-                quantity: 1,
-                product: "",
-                price: "",
-                remaining: "",
-                total: "",
-            });
+            return newId;
         },
-        [products, t],
+        [products],
     );
 
     function handleSaveList() {
@@ -275,10 +263,11 @@ function NewOrderPage() {
                     className="flex-1 costprice-table"
                     columns={columns}
                     data={items}
-                    enableNewRow
-                    onNewRowSave={handleNewRowSave}
-                    onNewRowChange={handleNewRowChange}
-                    newRowDefaultValues={newRowDefaultValues}
+                    enableMultipleNewRows
+                    multiRowCount={15}
+                    onMultiRowSave={handleNewRowSave}
+                    onMultiRowChange={handleNewRowChange}
+                    multiRowDefaultValues={newRowDefaultValues}
                     enableSorting={false}
                     translations={translations}
                 />

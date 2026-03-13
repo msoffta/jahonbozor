@@ -27,13 +27,13 @@ async function main() {
         where: { username: "root" },
         update: { roleId: rootRole.id },
         create: {
-            fullname: "Root Admin",
-            username: "root",
-            passwordHash: rootHash,
-            telegramId: BigInt(0),
-            roleId: rootRole.id,
-        },
-    });
+        fullname: "Root Admin",
+        username: "root",
+        passwordHash: rootHash,
+        telegramId: BigInt(0),
+        roleId: rootRole.id,
+    },
+});
 
     console.log(`✅ Staff "${rootStaff.username}" (id=${rootStaff.id}) — role: ${rootRole.name}`);
 }

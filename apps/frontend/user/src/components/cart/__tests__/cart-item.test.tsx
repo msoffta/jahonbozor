@@ -1,22 +1,14 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { render, fireEvent } from "@testing-library/react";
 import { useCartStore } from "@/stores/cart.store";
+import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 mock.module("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-mock.module("@jahonbozor/ui", () => ({
-    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
-        <input
-            type="checkbox"
-            checked={checked}
-            onChange={(e) => onCheckedChange(e.target.checked)}
-            data-testid="checkbox"
-            {...props}
-        />
-    ),
-}));
+// Setup centralized UI mocks
+setupUIMocks();
 
 mock.module("@/components/catalog/quantity-control", () => ({
     QuantityControl: ({ quantity, onIncrement, onDecrement }: any) => (
