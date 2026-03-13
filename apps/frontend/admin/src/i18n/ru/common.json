@@ -73,5 +73,23 @@
     "sales_trend": "Динамика продаж",
     "top_products": "Топ товаров",
     "quantity_sold": "Продано штук",
-    "category_breakdown": "Продажи по категориям"
+    "category_breakdown": "Продажи по категориям",
+    "roles": "Роли",
+    "permissions": "Права доступа",
+    "saving": "Сохранение...",
+    "table_columns": "Столбцы",
+    "table_show_all": "Все",
+    "table_previous": "Назад",
+    "table_next": "Вперёд",
+    "validation": {
+        "required": "Обязательное поле",
+        "invalid_string": "Неверный формат",
+        "too_small": "Минимум символов: {{count}}",
+        "too_big": "Максимум символов: {{count}}",
+        "invalid_type": "Неверный тип",
+        "invalid_date": "Неверная дата",
+        "invalid_email": "Неверный email",
+        "invalid_url": "Неверная ссылка",
+        "invalid_uuid": "Неверный UUID"
+    }
 }

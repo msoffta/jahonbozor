@@ -7,8 +7,12 @@ import { uz } from "date-fns/locale/uz";
 import { StrictMode, Suspense, lazy, useMemo } from "react";
 import ReactDOM from "react-dom/client";
 
-import "@/i18n/config";
-import "@/index.css";
+import "./i18n/config";
+import { initZodI18n } from "./lib/zod-i18n";
+import "./index.css";
+
+initZodI18n();
+
 import { queryClient } from "@/lib/query-client";
 import { useUIStore } from "@/stores/ui.store";
 import { routeTree } from "./routeTree.gen";

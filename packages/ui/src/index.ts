@@ -22,7 +22,7 @@ export {
 } from "./components/ui/card.tsx";
 export { Checkbox } from "./components/ui/checkbox.tsx";
 export { DatePicker } from "./components/ui/date-picker.tsx";
-export { Drawer, DrawerHeader, DrawerTitle } from "./components/ui/drawer.tsx";
+export { Drawer, DrawerHeader, DrawerTitle, DrawerContent, DrawerFooter, ScrollArea } from "./components/ui/drawer.tsx";
 export {
     DropdownMenu,
     DropdownMenuContent,

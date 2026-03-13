@@ -1,3 +1,6 @@
+import z from "zod";
+export { z };
+
 // === BACKWARDS COMPATIBILITY ===
 // These exports are used by the backend and must remain available
 export * from "./auth/auth.model";

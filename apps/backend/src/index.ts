@@ -1,5 +1,11 @@
 import { Elysia } from "elysia";
 import { sentry } from "elysiajs-sentry";
+
+// Fix for BigInt serialization: https://github.com/GoogleChromeLabs/jsbi/issues/30
+(BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+};
+
 import cors from "@elysiajs/cors";
 import openapi from "@elysiajs/openapi";
 import staticPlugin from "@elysiajs/static";

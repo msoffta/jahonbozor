@@ -73,5 +73,12 @@
     "sales_trend": "Sotuvlar dinamikasi",
     "top_products": "Top mahsulotlar",
     "quantity_sold": "Sotilgan dona",
-    "category_breakdown": "Kategoriyalar bo'yicha sotuvlar"
+    "category_breakdown": "Kategoriyalar bo'yicha sotuvlar",
+    "roles": "Rollar",
+    "permissions": "Huquqlar",
+    "saving": "Saqlanmoqda...",
+    "table_columns": "Ustunlar",
+    "table_show_all": "Hammasi",
+    "table_previous": "Orqaga",
+    "table_next": "Oldinga"
 }

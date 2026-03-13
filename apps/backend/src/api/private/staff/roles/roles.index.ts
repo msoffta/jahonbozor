@@ -20,10 +20,10 @@ const RoleQueryParams = t.Object({
     includeStaffCount: t.Optional(t.BooleanString()),
 });
 
-export const roles = new Elysia({ prefix: "/roles" })
+export const roles = new Elysia()
     .use(authMiddleware)
     .get(
-        "/",
+        "/roles",
         async ({ query, logger }): Promise<RolesListResponse> => {
             try {
                 return await RolesService.getAllRoles(query, logger);
@@ -38,7 +38,7 @@ export const roles = new Elysia({ prefix: "/roles" })
         },
     )
     .get(
-        "/:id",
+        "/roles/:id",
         async ({ params, query, set, logger }): Promise<RoleDetailResponse> => {
             try {
                 const result = await RolesService.getRole(
@@ -53,7 +53,7 @@ export const roles = new Elysia({ prefix: "/roles" })
 
                 return result;
             } catch (error) {
-                logger.error("Roles: Unhandled error in GET /:id", { id: params.id, error });
+                logger.error("Roles: Unhandled error in GET /roles/:id", { id: params.id, error });
                 return { success: false, error };
             }
         },
@@ -64,7 +64,7 @@ export const roles = new Elysia({ prefix: "/roles" })
         },
     )
     .post(
-        "/",
+        "/roles",
         async ({ body, user, set, logger, requestId }): Promise<RoleDetailResponse> => {
             try {
                 const result = await RolesService.createRole(
@@ -89,7 +89,7 @@ export const roles = new Elysia({ prefix: "/roles" })
         },
     )
     .patch(
-        "/:id",
+        "/roles/:id",
         async ({ params, body, user, set, logger, requestId }): Promise<RoleDetailResponse> => {
             try {
                 const result = await RolesService.updateRole(
@@ -105,7 +105,7 @@ export const roles = new Elysia({ prefix: "/roles" })
 
                 return result;
             } catch (error) {
-                logger.error("Roles: Unhandled error in PATCH /:id", { id: params.id, error });
+                logger.error("Roles: Unhandled error in PATCH /roles/:id", { id: params.id, error });
                 return { success: false, error };
             }
         },
@@ -116,7 +116,7 @@ export const roles = new Elysia({ prefix: "/roles" })
         },
     )
     .delete(
-        "/:id",
+        "/roles/:id",
         async ({ params, user, set, logger, requestId }): Promise<RoleDetailResponse> => {
             try {
                 const result = await RolesService.deleteRole(
@@ -131,7 +131,7 @@ export const roles = new Elysia({ prefix: "/roles" })
 
                 return result;
             } catch (error) {
-                logger.error("Roles: Unhandled error in DELETE /:id", { id: params.id, error });
+                logger.error("Roles: Unhandled error in DELETE /roles/:id", { id: params.id, error });
                 return { success: false, error };
             }
         },

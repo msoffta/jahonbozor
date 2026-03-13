@@ -16,6 +16,8 @@ const staffIdParams = t.Object({
 
 export const staff = new Elysia({ prefix: "/staff" })
     .use(authMiddleware)
+    .use(roles)
+    // --- Static & Root routes first ---
     .get(
         "/",
         async ({ query, logger }): Promise<StaffListResponse> => {
@@ -31,6 +33,32 @@ export const staff = new Elysia({ prefix: "/staff" })
             query: StaffPagination,
         },
     )
+    .post(
+        "/",
+        async ({ body, user, set, logger, requestId }): Promise<StaffDetailResponse> => {
+            try {
+                const result = await StaffService.createStaff(
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    set.status = 400;
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Staff: Unhandled error in POST /staff", { error });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.STAFF_CREATE],
+            body: CreateStaffBody,
+        },
+    )
+    // --- Dynamic routes last to avoid capturing sub-routers ---
     .get(
         "/:id",
         async ({ params, user, permissions, set, logger }): Promise<StaffDetailResponse> => {
@@ -68,31 +96,6 @@ export const staff = new Elysia({ prefix: "/staff" })
         {
             permissions: [Permission.STAFF_READ_OWN],
             params: staffIdParams,
-        },
-    )
-    .post(
-        "/",
-        async ({ body, user, set, logger, requestId }): Promise<StaffDetailResponse> => {
-            try {
-                const result = await StaffService.createStaff(
-                    body,
-                    { staffId: user.id, user, requestId },
-                    logger,
-                );
-
-                if (!result.success) {
-                    set.status = 400;
-                }
-
-                return result;
-            } catch (error) {
-                logger.error("Staff: Unhandled error in POST /staff", { error });
-                return { success: false, error };
-            }
-        },
-        {
-            permissions: [Permission.STAFF_CREATE],
-            body: CreateStaffBody,
         },
     )
     .patch(
@@ -175,5 +178,4 @@ export const staff = new Elysia({ prefix: "/staff" })
             permissions: [Permission.STAFF_DELETE],
             params: staffIdParams,
         },
-    )
-    .use(roles);
+    );
