@@ -19,7 +19,7 @@ import dayjs from "dayjs";
 import { Home } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useHasPermission } from "@/hooks/use-permissions";
+import { useHasPermission, useHasAnyPermission } from "@/hooks/use-permissions";
 import { Permission } from "@jahonbozor/schemas";
 
 const navKeys = [
@@ -71,7 +71,20 @@ export function BottomNav() {
     const { t } = useTranslation();
     const { t: tOrders } = useTranslation("orders");
     const [dialogOpen, setDialogOpen] = useState(false);
+
+    // Permission checks for navigation filtering
     const hasAnalyticsPermission = useHasPermission(Permission.ANALYTICS_VIEW);
+    const hasIncomePermission = useHasPermission(Permission.PRODUCT_HISTORY_LIST);
+    const hasUsersPermission = useHasPermission(Permission.USERS_LIST);
+    const hasExpensesPermission = useHasPermission(Permission.EXPENSES_LIST);
+    const hasProductsPermission = useHasPermission(Permission.PRODUCTS_LIST);
+
+    // Permission checks for action buttons
+    const canCreateOrders = useHasPermission(Permission.ORDERS_CREATE);
+    const canListOrders = useHasAnyPermission([
+        Permission.ORDERS_LIST_ALL,
+        Permission.ORDERS_LIST_OWN,
+    ]);
 
     const params = useParams({ strict: false });
     const activeOrderId = params?.orderId ? Number(params.orderId) : null;
@@ -111,39 +124,43 @@ export function BottomNav() {
                 {/* Main nav bar */}
                 <div className="flex h-14 items-center justify-between px-6">
                     <div className="flex flex-1 items-center gap-1.5 overflow-x-auto scrollbar-none">
-                        <Link to="/orders">
+                        {canListOrders && (
+                            <Link to="/orders">
+                                <motion.button
+                                    type="button"
+                                    className={cn(
+                                        "shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold uppercase",
+                                        pathname === "/orders" ||
+                                            pathname === "/orders/"
+                                            ? "bg-primary text-primary-foreground border-primary"
+                                            : "text-foreground",
+                                    )}
+                                    whileTap={{ scale: 0.95 }}
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 400,
+                                        damping: 17,
+                                    }}
+                                >
+                                    {t("list")}
+                                </motion.button>
+                            </Link>
+                        )}
+                        {canCreateOrders && (
                             <motion.button
                                 type="button"
-                                className={cn(
-                                    "shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold uppercase",
-                                    pathname === "/orders" ||
-                                        pathname === "/orders/"
-                                        ? "bg-primary text-primary-foreground border-primary"
-                                        : "text-foreground",
-                                )}
-                                whileTap={{ scale: 0.95 }}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-lg font-semibold text-foreground"
+                                whileTap={{ scale: 0.9, rotate: 90 }}
                                 transition={{
                                     type: "spring",
                                     stiffness: 400,
                                     damping: 17,
                                 }}
+                                onClick={() => setDialogOpen(true)}
                             >
-                                {t("list")}
+                                +
                             </motion.button>
-                        </Link>
-                        <motion.button
-                            type="button"
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-lg font-semibold text-foreground"
-                            whileTap={{ scale: 0.9, rotate: 90 }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 17,
-                            }}
-                            onClick={() => setDialogOpen(true)}
-                        >
-                            +
-                        </motion.button>
+                        )}
 
                         {/* Recent lists pills — inline between + and Home */}
                         <TooltipProvider delayDuration={200}>
@@ -231,7 +248,19 @@ export function BottomNav() {
                         <div className="flex flex-1 items-center justify-end gap-1.5">
                             {navKeys
                                 .filter((item) => {
-                                    // Hide Summary if no ANALYTICS_VIEW permission
+                                    // Filter navigation items based on permissions
+                                    if (item.to === "/income") {
+                                        return hasIncomePermission;
+                                    }
+                                    if (item.to === "/users") {
+                                        return hasUsersPermission;
+                                    }
+                                    if (item.to === "/expense") {
+                                        return hasExpensesPermission;
+                                    }
+                                    if (item.to === "/products") {
+                                        return hasProductsPermission;
+                                    }
                                     if (item.to === "/summary") {
                                         return hasAnalyticsPermission;
                                     }

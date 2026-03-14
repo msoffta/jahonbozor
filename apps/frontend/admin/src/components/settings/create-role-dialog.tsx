@@ -8,7 +8,6 @@ import {
 	Input,
 } from "@jahonbozor/ui";
 import { useForm } from "@tanstack/react-form";
-import { zodValidator } from "@tanstack/zod-form-adapter";
 import { CreateRoleBody } from "@jahonbozor/schemas";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -32,7 +31,6 @@ export function CreateRoleDialog({
 			name: "",
 			permissions: [],
 		} as CreateRoleBody,
-		validatorAdapter: zodValidator(),
 		validators: {
 			onSubmit: CreateRoleBody,
 		},
@@ -102,8 +100,8 @@ export function CreateRoleDialog({
 								{t("common:cancel")}
 							</Button>
 							<form.Subscribe
-								selector={(state) => [state.canSubmit, state.isSubmitting]}
-								children={([canSubmit, isSubmitting]) => (
+								selector={(state) => [state.isSubmitting]}
+								children={([isSubmitting]) => (
 									<Button type="submit" disabled={isSubmitting || isSaving} className="flex-1">
 										{isSaving || isSubmitting ? t("common:saving") : t("common:create")}
 									</Button>

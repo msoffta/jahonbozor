@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { PageTransition } from "@jahonbozor/ui";
 
@@ -13,5 +13,9 @@ function CategoriesPage() {
 }
 
 export const Route = createFileRoute("/_dashboard/categories/")({
+    beforeLoad: async () => {
+        // Categories page is not implemented yet, redirect to home
+        throw redirect({ to: "/" });
+    },
     component: CategoriesPage,
 });

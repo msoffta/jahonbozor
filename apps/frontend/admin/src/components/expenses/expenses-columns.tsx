@@ -10,11 +10,18 @@ export interface ExpenseActions {
     onRestore: (id: number) => void;
 }
 
+interface ExpenseColumnsOptions {
+    canDelete?: boolean;
+}
+
 export function getExpenseColumns(
     t: TFunction,
     actions: ExpenseActions,
+    options?: ExpenseColumnsOptions,
 ): ColumnDef<ExpenseItem, any>[] {
-    return [
+    const { canDelete = true } = options ?? {};
+
+    const columns: ColumnDef<ExpenseItem, any>[] = [
         {
             accessorKey: "id",
             header: t("expense_id"),
@@ -85,7 +92,11 @@ export function getExpenseColumns(
             size: 140,
             cell: ({ getValue }) => new Date(getValue<Date | string>()).toLocaleDateString(),
         },
-        {
+    ];
+
+    // Only add actions column if user has delete permission
+    if (canDelete) {
+        columns.push({
             id: "actions",
             header: t("expense_actions"),
             size: 100,
@@ -118,6 +129,8 @@ export function getExpenseColumns(
                     </motion.div>
                 );
             },
-        },
-    ];
+        });
+    }
+
+    return columns;
 }

@@ -14,11 +14,17 @@ export interface ProductActions {
     onRestore: (id: number) => void;
 }
 
+interface ProductColumnsOptions {
+    canDelete?: boolean;
+}
+
 export function getProductColumns(
     t: TFunction,
     categories: CategoryItem[],
     actions: ProductActions,
+    options?: ProductColumnsOptions,
 ): ColumnDef<AdminProductItem, any>[] {
+    const { canDelete = true } = options ?? {};
     const filterOptions = categories.map((c) => ({
         label: c.name,
         value: c.name,
@@ -28,7 +34,7 @@ export function getProductColumns(
         value: String(c.id),
     }));
 
-    return [
+    const columns: ColumnDef<AdminProductItem, any>[] = [
         {
             accessorKey: "id",
             header: t("product_id"),
@@ -126,7 +132,11 @@ export function getProductColumns(
             cell: ({ getValue }) =>
                 new Date(getValue<Date | string>()).toLocaleDateString(),
         },
-        {
+    ];
+
+    // Only add actions column if user has delete permission
+    if (canDelete) {
+        columns.push({
             id: "actions",
             header: t("product_actions"),
             size: 100,
@@ -166,6 +176,8 @@ export function getProductColumns(
                     </motion.div>
                 );
             },
-        },
-    ];
+        });
+    }
+
+    return columns;
 }

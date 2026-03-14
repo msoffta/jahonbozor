@@ -1,7 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/stores/auth.store";
+import { Permission, hasPermission, hasAnyPermission } from "@jahonbozor/schemas";
+import { useHasPermission, useHasAnyPermission } from "@/hooks/use-permissions";
 import { PageTransition, DataTable, DataTableSkeleton } from "@jahonbozor/ui";
 import type { DataTableTranslations } from "@jahonbozor/ui";
 import { ordersListQueryOptions, useDeleteOrder, useUpdateOrder, useCreateOrder } from "@/api/orders.api";
@@ -14,6 +17,14 @@ function OrdersPage() {
     const [page] = useState(1);
     const navigate = useNavigate();
     const [isReady, setIsReady] = useState(false);
+
+    // Permission checks for component-level actions
+    const canCreate = useHasPermission(Permission.ORDERS_CREATE);
+    const canUpdate = useHasAnyPermission([
+        Permission.ORDERS_UPDATE_ALL,
+        Permission.ORDERS_UPDATE_OWN,
+    ]);
+    const canDelete = useHasPermission(Permission.ORDERS_DELETE);
 
     // Delay heavy rendering to allow BottomNav animations to finish smoothly
     useEffect(() => {
@@ -62,8 +73,8 @@ function OrdersPage() {
 
     const columns = useMemo(() => {
         if (!isReady) return [];
-        return getOrderColumns(t, actions, { products, users });
-    }, [t, actions, products, users, isReady]);
+        return getOrderColumns(t, actions, { products, users }, { canDelete });
+    }, [t, actions, products, users, isReady, canDelete]);
 
     const orders = ordersData?.orders ?? [];
 
@@ -207,8 +218,8 @@ function OrdersPage() {
                     enableFiltering
                     enableColumnVisibility
                     enableColumnResizing
-                    enableEditing
-                    enableMultipleNewRows
+                    enableEditing={canUpdate}
+                    enableMultipleNewRows={canCreate}
                     multiRowCount={15}
                     onCellEdit={handleCellEdit}
                     onMultiRowSave={handleNewRowSave}
@@ -222,5 +233,35 @@ function OrdersPage() {
 }
 
 export const Route = createFileRoute("/_dashboard/")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+
+        // Check if user has permission to list orders
+        const canListOrders = hasAnyPermission(permissions, [
+            Permission.ORDERS_LIST_ALL,
+            Permission.ORDERS_LIST_OWN,
+        ]);
+
+        if (!canListOrders) {
+            // Redirect to first accessible page
+            if (hasPermission(permissions, Permission.ANALYTICS_VIEW)) {
+                throw redirect({ to: "/summary" });
+            }
+            if (hasPermission(permissions, Permission.PRODUCTS_LIST)) {
+                throw redirect({ to: "/products" });
+            }
+            if (hasPermission(permissions, Permission.USERS_LIST)) {
+                throw redirect({ to: "/users" });
+            }
+            if (hasPermission(permissions, Permission.EXPENSES_LIST)) {
+                throw redirect({ to: "/expense" });
+            }
+            if (hasPermission(permissions, Permission.PRODUCT_HISTORY_LIST)) {
+                throw redirect({ to: "/income" });
+            }
+            // If no permissions at all, redirect to settings
+            throw redirect({ to: "/settings" });
+        }
+    },
     component: OrdersPage,
 });

@@ -18,14 +18,22 @@ import {
     PageTransition,
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/stores/auth.store";
+import { Permission, hasPermission } from "@jahonbozor/schemas";
+import { useHasPermission } from "@/hooks/use-permissions";
 
 function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const [isReady, setIsReady] = useState(false);
+
+    // Permission checks for component-level actions
+    const canCreate = useHasPermission(Permission.PRODUCTS_CREATE);
+    const canUpdate = useHasPermission(Permission.PRODUCTS_UPDATE);
+    const canDelete = useHasPermission(Permission.PRODUCTS_DELETE);
 
     useEffect(() => {
         const timer = setTimeout(() => setIsReady(true), 150);
@@ -76,8 +84,8 @@ function ProductsPage() {
     );
 
     const columns = useMemo(
-        () => getProductColumns(t, categories, actions),
-        [t, categories, actions],
+        () => getProductColumns(t, categories, actions, { canDelete }),
+        [t, categories, actions, canDelete],
     );
 
     const products = productsData?.products ?? [];
@@ -189,8 +197,8 @@ function ProductsPage() {
                     enableFiltering
                     enableColumnVisibility
                     enableColumnResizing
-                    enableEditing
-                    enableMultipleNewRows
+                    enableEditing={canUpdate}
+                    enableMultipleNewRows={canCreate}
                     multiRowCount={15}
                     onCellEdit={handleCellEdit}
                     onMultiRowSave={handleNewRowSave}
@@ -202,5 +210,11 @@ function ProductsPage() {
 }
 
 export const Route = createFileRoute("/_dashboard/products/")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        if (!hasPermission(permissions, Permission.PRODUCTS_LIST)) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: ProductsPage,
 });

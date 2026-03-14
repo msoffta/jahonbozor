@@ -1,9 +1,6 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
 import type { QueryFunctionContext } from "@tanstack/react-query";
 
-// Mock window before any imports
-(globalThis as any).window = { location: { origin: "http://localhost:3000" } };
-
 interface MockEdenResponse {
 	data: Record<string, unknown> | null;
 	error: Record<string, unknown> | null;

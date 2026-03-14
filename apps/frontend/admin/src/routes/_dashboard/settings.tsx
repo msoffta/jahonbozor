@@ -32,7 +32,7 @@ function SettingsPage() {
 			<h1 className="text-2xl font-bold mb-6">{t("title")}</h1>
 
 			<Tabs defaultValue={defaultTab} className="flex-1 flex flex-col min-h-0">
-				<TabsList className="mb-6 w-full sm:w-auto inline-grid grid-cols-2 h-auto p-1 bg-muted/50 rounded-lg sm:max-w-[400px]">
+				<TabsList className="mb-6 w-full sm:w-auto inline-grid grid-cols-2 h-auto p-1 bg-muted/50 rounded-lg sm:max-w-100">
 					{hasStaffPermission && (
 						<TabsTrigger 
 							value="staff" 

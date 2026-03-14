@@ -4,14 +4,20 @@ import { getIncomeColumns } from "@/components/income/income-columns";
 import type { DataTableTranslations } from "@jahonbozor/ui";
 import { DataTable, DataTableSkeleton, PageTransition } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/stores/auth.store";
+import { Permission, hasPermission } from "@jahonbozor/schemas";
+import { useHasPermission } from "@/hooks/use-permissions";
 
 function IncomePage() {
     const { t } = useTranslation("income");
     const [isReady, setIsReady] = useState(false);
+
+    // Permission check for creating income records
+    const canCreate = useHasPermission(Permission.PRODUCT_HISTORY_CREATE);
 
     useEffect(() => {
         const timer = setTimeout(() => setIsReady(true), 150);
@@ -109,7 +115,7 @@ function IncomePage() {
                     enableColumnVisibility
                     enableColumnResizing
                     enableEditing={false}
-                    enableMultipleNewRows
+                    enableMultipleNewRows={canCreate}
                     multiRowCount={15}
                     onMultiRowSave={handleNewRowSave}
                     multiRowDefaultValues={multiRowDefaultValues}
@@ -121,5 +127,11 @@ function IncomePage() {
 }
 
 export const Route = createFileRoute("/_dashboard/income")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        if (!hasPermission(permissions, Permission.PRODUCT_HISTORY_LIST)) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: IncomePage,
 });

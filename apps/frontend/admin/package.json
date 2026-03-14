@@ -21,7 +21,6 @@
     "@tanstack/react-router": "^1.159.4",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.18",
-    "@tanstack/zod-form-adapter": "^0.42.1",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.19",
     "i18next": "^25.2.0",

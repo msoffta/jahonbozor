@@ -109,8 +109,8 @@ export function EditPermissionsDrawer({
 		{ name: "Categories", icon: Layers, permissions: PermissionGroups.CATEGORIES_ALL },
 		{ name: "Orders", icon: ShoppingCart, permissions: PermissionGroups.ORDERS_ALL },
 		{ name: "Expenses", icon: DollarSign, permissions: PermissionGroups.EXPENSES_ALL },
-		{ name: "ProductHistory", icon: History, permissions: (PermissionGroups as any).PRODUCT_HISTORY_ALL || [] },
-		{ name: "AuditLogs", icon: FileSearch, permissions: (PermissionGroups as any).AUDIT_LOGS_ALL || [] },
+		{ name: "ProductHistory", icon: History, permissions: PermissionGroups.PRODUCT_HISTORY_ALL || [] },
+		{ name: "AuditLogs", icon: FileSearch, permissions: PermissionGroups.AUDIT_LOGS_ALL || [] },
 		{ name: "Analytics", icon: BarChart3, permissions: PermissionGroups.ANALYTICS_ALL },
 	], []);
 
@@ -229,7 +229,7 @@ export function EditPermissionsDrawer({
 																<label
 																	className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl border transition-all duration-200 ${
 																		isSelected 
-																			? "border-primary/40 bg-primary/[0.03] shadow-sm" 
+																			? "border-primary/40 bg-primary/3 shadow-sm" 
 																			: "border-transparent hover:bg-muted/50"
 																	}`}
 																>
@@ -249,7 +249,7 @@ export function EditPermissionsDrawer({
 																	</div>
 																</label>
 															</TooltipTrigger>
-															<TooltipContent side="top" className="max-w-[300px] text-xs">
+															<TooltipContent side="top" className="max-w-75 text-xs">
 																{description}
 															</TooltipContent>
 														</Tooltip>

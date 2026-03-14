@@ -12,6 +12,10 @@ export const CreateStaffBody = Staff.omit({
     password: z.string().min(6),
 });
 
+export const CreateStaffForm = CreateStaffBody.omit({
+    telegramId: true,
+});
+
 export const UpdateStaffBody = CreateStaffBody.partial();
 
 export const StaffPagination = PaginationQuery.extend({
@@ -19,6 +23,7 @@ export const StaffPagination = PaginationQuery.extend({
     searchQuery: z.string().optional(),
 });
 
+export type CreateStaffForm = z.infer<typeof CreateStaffForm>;
 export type CreateStaffBody = z.infer<typeof CreateStaffBody>;
 export type UpdateStaffBody = z.infer<typeof UpdateStaffBody>;
 export type StaffPagination = z.infer<typeof StaffPagination>;
@@ -38,6 +43,13 @@ export interface StaffItem {
     updatedAt: Date | string;
 }
 
-export type StaffListResponse = ReturnSchema<{ count: number; staff: StaffItem[] }>;
+export type StaffListResponse = ReturnSchema<{
+    count: number;
+    staff: StaffItem[];
+}>;
 export type StaffDetailResponse = ReturnSchema<StaffItem>;
-export type StaffDeleteResponse = ReturnSchema<{ id: number; fullname: string; username: string }>;
+export type StaffDeleteResponse = ReturnSchema<{
+    id: number;
+    fullname: string;
+    username: string;
+}>;

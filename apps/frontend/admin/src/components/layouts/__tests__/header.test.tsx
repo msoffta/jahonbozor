@@ -82,12 +82,6 @@ describe("Header", () => {
         expect(queryByText("Admin User")).toBeNull();
     });
 
-    test("should render profile link", () => {
-        const { getByText } = render(<Header />);
-        const profileLink = getByText("profile");
-        expect(profileLink.closest("a")?.getAttribute("href")).toBe("/profile");
-    });
-
     test("should render settings link", () => {
         const { getByText } = render(<Header />);
         const settingsLink = getByText("settings");

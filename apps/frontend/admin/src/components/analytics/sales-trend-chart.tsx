@@ -48,13 +48,13 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
 								labelFormatter={(label) => {
 									return label;
 								}}
-								formatter={(value: number, name: string) => [
+								formatter={(value, name) => [
 									new Intl.NumberFormat(i18n.language === "ru" ? "ru-RU" : "uz-UZ", {
 										style: "currency",
 										currency: "UZS",
 										maximumFractionDigits: 0,
-									}).format(value),
-									name,
+									}).format(Number(value ?? 0)),
+									String(name ?? ""),
 								]}
 							/>
 							<Legend />

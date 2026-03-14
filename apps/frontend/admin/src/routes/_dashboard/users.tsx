@@ -14,10 +14,13 @@ import {
     PageTransition,
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import z from "zod";
+import { useAuthStore } from "@/stores/auth.store";
+import { Permission, hasPermission } from "@jahonbozor/schemas";
+import { useHasPermission } from "@/hooks/use-permissions";
 
 const usersSearchSchema = z.object({
     new: z.boolean().optional(),
@@ -28,6 +31,11 @@ function UsersPage() {
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const { new: isNew } = Route.useSearch();
     const [isReady, setIsReady] = useState(false);
+
+    // Permission checks for component-level actions
+    const canCreate = useHasPermission(Permission.USERS_CREATE);
+    const canUpdate = useHasPermission(Permission.USERS_UPDATE_ALL);
+    const canDelete = useHasPermission(Permission.USERS_DELETE);
 
     useEffect(() => {
         const timer = setTimeout(() => setIsReady(true), 150);
@@ -68,7 +76,7 @@ function UsersPage() {
         [deleteClient, restoreClient],
     );
 
-    const columns = useMemo(() => getClientColumns(t, actions), [t, actions]);
+    const columns = useMemo(() => getClientColumns(t, actions, { canDelete }), [t, actions, canDelete]);
 
     const clients = clientsData?.users ?? [];
 
@@ -170,8 +178,8 @@ function UsersPage() {
                     enableFiltering
                     enableColumnVisibility
                     enableColumnResizing
-                    enableEditing
-                    enableMultipleNewRows
+                    enableEditing={canUpdate}
+                    enableMultipleNewRows={canCreate}
                     multiRowCount={15}
                     onCellEdit={handleCellEdit}
                     onMultiRowSave={handleNewRowSave}
@@ -184,5 +192,11 @@ function UsersPage() {
 
 export const Route = createFileRoute("/_dashboard/users")({
     validateSearch: (search) => usersSearchSchema.parse(search),
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        if (!hasPermission(permissions, Permission.USERS_LIST)) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: UsersPage,
 });

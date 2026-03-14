@@ -11,15 +11,21 @@ import {
     PageTransition,
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/stores/auth.store";
+import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
+import { useHasPermission } from "@/hooks/use-permissions";
 
 function ListsPage() {
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
     const [isReady, setIsReady] = useState(false);
+
+    // Permission check for delete action
+    const canDelete = useHasPermission(Permission.ORDERS_DELETE);
 
     useEffect(() => {
         const timer = setTimeout(() => setIsReady(true), 300);
@@ -81,9 +87,9 @@ function ListsPage() {
             t,
             actions,
             { products, users },
-            { showItemColumns: false },
+            { showItemColumns: false, canDelete },
         );
-    }, [t, actions, products, users, isReady]);
+    }, [t, actions, products, users, isReady, canDelete]);
 
     const translations: DataTableTranslations = {
         search: t("common:search"),
@@ -166,5 +172,15 @@ function ListsPage() {
 }
 
 export const Route = createFileRoute("/_dashboard/orders/")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        const canListOrders = hasAnyPermission(permissions, [
+            Permission.ORDERS_LIST_ALL,
+            Permission.ORDERS_LIST_OWN,
+        ]);
+        if (!canListOrders) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: ListsPage,
 });

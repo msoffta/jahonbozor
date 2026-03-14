@@ -80,5 +80,9 @@
     "table_columns": "Ustunlar",
     "table_show_all": "Hammasi",
     "table_previous": "Orqaga",
-    "table_next": "Oldinga"
+    "table_next": "Oldinga",
+    "no_permission": "Ruxsat rad etildi",
+    "read_only_access": "Faqat ko'rish rejimi",
+    "no_access_title": "Kirish ruxsati yo'q",
+    "no_access_message": "Ushbu sahifaga kirish uchun sizda yetarli ruxsatlar yo'q"
 }

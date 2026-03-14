@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
@@ -7,11 +7,19 @@ import { PageTransition, DataTable, DataTableSkeleton, Checkbox } from "@jahonbo
 import type { DataTableTranslations } from "@jahonbozor/ui";
 import { expensesListQueryOptions, useCreateExpense, useUpdateExpense, useDeleteExpense, useRestoreExpense } from "@/api/expenses.api";
 import { getExpenseColumns } from "@/components/expenses/expenses-columns";
+import { useAuthStore } from "@/stores/auth.store";
+import { Permission, hasPermission } from "@jahonbozor/schemas";
+import { useHasPermission } from "@/hooks/use-permissions";
 
 function ExpensePage() {
     const { t } = useTranslation("expenses");
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const [isReady, setIsReady] = useState(false);
+
+    // Permission checks for expense actions
+    const canCreate = useHasPermission(Permission.EXPENSES_CREATE);
+    const canUpdate = useHasPermission(Permission.EXPENSES_UPDATE);
+    const canDelete = useHasPermission(Permission.EXPENSES_DELETE);
 
     useEffect(() => {
         const timer = setTimeout(() => setIsReady(true), 150);
@@ -35,8 +43,8 @@ function ExpensePage() {
     }), [deleteExpense, restoreExpense]);
 
     const columns = useMemo(
-        () => getExpenseColumns(t, actions),
-        [t, actions],
+        () => getExpenseColumns(t, actions, { canDelete }),
+        [t, actions, canDelete],
     );
 
     const expenses = expensesData?.expenses ?? [];
@@ -140,8 +148,8 @@ function ExpensePage() {
                     enableFiltering
                     enableColumnVisibility
                     enableColumnResizing
-                    enableEditing
-                    enableMultipleNewRows
+                    enableEditing={canUpdate}
+                    enableMultipleNewRows={canCreate}
                     multiRowCount={15}
                     onCellEdit={handleCellEdit}
                     onMultiRowSave={handleNewRowSave}
@@ -154,5 +162,11 @@ function ExpensePage() {
 }
 
 export const Route = createFileRoute("/_dashboard/expense")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        if (!hasPermission(permissions, Permission.EXPENSES_LIST)) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: ExpensePage,
 });

@@ -45,7 +45,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
 								cx="50%"
 								cy="50%"
 								outerRadius={100}
-								label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+								label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
 							>
 								{chartData.map((_, index) => (
 									<Cell
@@ -55,12 +55,12 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
 								))}
 							</Pie>
 							<Tooltip
-								formatter={(value: number) =>
+								formatter={(value) =>
 									new Intl.NumberFormat(i18n.language === "ru" ? "ru-RU" : "uz-UZ", {
 										style: "currency",
 										currency: "UZS",
 										maximumFractionDigits: 0,
-									}).format(value)
+									}).format(Number(value ?? 0))
 								}
 							/>
 							<Legend />

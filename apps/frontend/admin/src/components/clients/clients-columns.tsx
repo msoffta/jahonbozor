@@ -9,11 +9,18 @@ export interface ClientActions {
     onRestore: (id: number) => void;
 }
 
+interface ClientColumnsOptions {
+    canDelete?: boolean;
+}
+
 export function getClientColumns(
     t: TFunction,
     actions: ClientActions,
+    options?: ClientColumnsOptions,
 ): ColumnDef<AdminUserItem, unknown>[] {
-    return [
+    const { canDelete = true } = options ?? {};
+
+    const columns: ColumnDef<AdminUserItem, unknown>[] = [
         {
             accessorKey: "id",
             header: t("client_id"),
@@ -77,7 +84,11 @@ export function getClientColumns(
             cell: ({ getValue }) =>
                 new Date(getValue<Date | string>()).toLocaleDateString(),
         },
-        {
+    ];
+
+    // Only add actions column if user has delete permission
+    if (canDelete) {
+        columns.push({
             id: "actions",
             header: t("client_actions"),
             size: 100,
@@ -117,6 +128,8 @@ export function getClientColumns(
                     </motion.div>
                 );
             },
-        },
-    ];
+        });
+    }
+
+    return columns;
 }

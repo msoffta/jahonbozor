@@ -40,9 +40,9 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
 							<XAxis dataKey="productName" tick={{ fontSize: 12 }} />
 							<YAxis tick={{ fontSize: 12 }} />
 							<Tooltip
-								formatter={(value: number, name: string) => [
-									value,
-									name === "quantitySold" ? t("quantity_sold") : name,
+								formatter={(value, name) => [
+									Number(value ?? 0),
+									String(name) === "quantitySold" ? t("quantity_sold") : String(name ?? ""),
 								]}
 							/>
 							<Legend />

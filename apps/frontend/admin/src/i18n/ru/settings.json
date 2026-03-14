@@ -33,6 +33,8 @@
 	"create_role": "Создать роль",
 	"create_role_title": "Новая роль",
 
+    "select_role": "Выберите роль",
+
 	"edit_permissions_title": "Права доступа: {{roleName}}",
 	"permissions_selected": "выбрано",
 	"search_permissions_placeholder": "Поиск разрешений...",

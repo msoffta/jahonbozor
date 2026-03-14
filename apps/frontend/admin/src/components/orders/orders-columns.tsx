@@ -20,6 +20,7 @@ interface OrderColumnsData {
 
 interface OrderColumnsOptions {
     showItemColumns?: boolean;
+    canDelete?: boolean;
 }
 
 export function getOrderColumns(
@@ -28,7 +29,7 @@ export function getOrderColumns(
     data: OrderColumnsData,
     options?: OrderColumnsOptions,
 ): ColumnDef<AdminOrderItem, any>[] {
-    const { showItemColumns = true } = options ?? {};
+    const { showItemColumns = true, canDelete = true } = options ?? {};
     const productOptions = data.products.map((p) => ({
         label: p.name,
         value: String(p.id),
@@ -265,7 +266,11 @@ export function getOrderColumns(
                 className: "costprice-hover-target",
             },
         },
-        {
+    );
+
+    // Only add actions column if user has delete permission
+    if (canDelete) {
+        columns.push({
             id: "actions",
             header: t("order_actions"),
             size: 80,
@@ -290,8 +295,8 @@ export function getOrderColumns(
                     </Button>
                 </motion.div>
             ),
-        },
-    );
+        });
+    }
 
     return columns;
 }

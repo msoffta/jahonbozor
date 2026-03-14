@@ -11,17 +11,23 @@ import {
     PageTransition,
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/stores/auth.store";
+import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
+import { useHasPermission } from "@/hooks/use-permissions";
 
 function OrderDetailPage() {
     const { orderId } = Route.useParams();
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
     const numericId = Number(orderId);
+
+    // Permission check for delete action
+    const canDelete = useHasPermission(Permission.ORDERS_DELETE);
 
     const { data: order, isLoading } = useQuery(
         orderDetailQueryOptions(numericId),
@@ -133,14 +139,16 @@ function OrderDetailPage() {
                     <Badge variant="secondary">
                         {t(`payment_${order.paymentType.toLowerCase()}`)}
                     </Badge>
-                    <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={handleDelete}
-                        disabled={deleteOrder.isPending}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canDelete && (
+                        <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={handleDelete}
+                            disabled={deleteOrder.isPending}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -171,5 +179,15 @@ function OrderDetailPage() {
 }
 
 export const Route = createFileRoute("/_dashboard/orders/$orderId")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        const canReadOrders = hasAnyPermission(permissions, [
+            Permission.ORDERS_READ_ALL,
+            Permission.ORDERS_READ_OWN,
+        ]);
+        if (!canReadOrders) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: OrderDetailPage,
 });
