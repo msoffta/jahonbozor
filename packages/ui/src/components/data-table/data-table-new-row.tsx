@@ -14,6 +14,7 @@ import {
 } from "../ui/select";
 import { TableCell } from "../ui/table";
 import { DataTableCombobox } from "./data-table-combobox";
+import { Checkbox } from "../ui/checkbox";
 
 interface DataTableNewRowProps<TData> {
     id?: string;
@@ -45,7 +46,9 @@ export function DataTableNewRow<TData>({
     // Determine if controlled mode
     const isControlled = externalValues !== undefined;
 
-    const [internalValues, setInternalValues] = React.useState<Record<string, unknown>>(() => {
+    const [internalValues, setInternalValues] = React.useState<
+        Record<string, unknown>
+    >(() => {
         const initial: Record<string, unknown> = {};
         for (const col of columns) {
             const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
@@ -57,14 +60,25 @@ export function DataTableNewRow<TData>({
         return initial;
     });
 
-    const [internalErrors, setInternalErrors] = React.useState<Record<string, string>>({});
+    const [internalErrors, setInternalErrors] = React.useState<
+        Record<string, string>
+    >({});
 
     // Use external state if controlled, otherwise internal
     const values = isControlled ? externalValues : internalValues;
     const errors = isControlled ? (externalErrors ?? {}) : internalErrors;
     const setValues = isControlled
-        ? (newValues: Record<string, unknown> | ((prev: Record<string, unknown>) => Record<string, unknown>)) => {
-              const resolved = typeof newValues === 'function' ? newValues(externalValues) : newValues;
+        ? (
+              newValues:
+                  | Record<string, unknown>
+                  | ((
+                        prev: Record<string, unknown>,
+                    ) => Record<string, unknown>),
+          ) => {
+              const resolved =
+                  typeof newValues === "function"
+                      ? newValues(externalValues)
+                      : newValues;
               onChange?.(resolved);
           }
         : setInternalValues;
@@ -107,7 +121,8 @@ export function DataTableNewRow<TData>({
             let hasError = false;
 
             for (const col of editableColumns) {
-                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                const key =
+                    "accessorKey" in col ? String(col.accessorKey) : col.id;
                 if (!key) continue;
 
                 const meta = col.meta;
@@ -137,7 +152,8 @@ export function DataTableNewRow<TData>({
         if (!isControlled) {
             const reset: Record<string, unknown> = {};
             for (const col of columns) {
-                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                const key =
+                    "accessorKey" in col ? String(col.accessorKey) : col.id;
                 if (key) {
                     reset[key] = "";
                 }
@@ -202,7 +218,12 @@ export function DataTableNewRow<TData>({
 
                 // Ignore blur if focus went to a portal element (combobox/select/datepicker dropdown)
                 const targetElement = target as Element;
-                if (targetElement?.closest?.('[data-radix-popper-content-wrapper]')) return;
+                if (
+                    targetElement?.closest?.(
+                        "[data-radix-popper-content-wrapper]",
+                    )
+                )
+                    return;
                 if (targetElement?.closest?.('[role="listbox"]')) return;
                 if (targetElement?.closest?.('[role="dialog"]')) return;
 
@@ -214,7 +235,11 @@ export function DataTableNewRow<TData>({
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
             className="border-b border-dashed bg-muted/30"
         >
-            {enableRowSelection && <TableCell />}
+            {enableRowSelection && (
+                <TableCell>
+                    <Checkbox />
+                </TableCell>
+            )}
             {columns.map((col) => {
                 const key =
                     "accessorKey" in col ? String(col.accessorKey) : col.id;

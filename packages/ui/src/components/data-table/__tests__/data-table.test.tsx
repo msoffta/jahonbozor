@@ -1,5 +1,5 @@
 import { describe, test, expect, mock } from "bun:test";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement } from "react";
 import * as React from "react";

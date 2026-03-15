@@ -84,6 +84,7 @@ export function DataTable<TData>({
     const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(
         {},
     );
+    const [dragSumInfo, setDragSumInfo] = React.useState<{ sum: number; count: number } | null>(null);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -604,6 +605,7 @@ export function DataTable<TData>({
                             onMultiRowFocusNext={handleMultiRowFocusNext}
                             onNeedMoreRows={handleNeedMoreRows}
                             multiRowDefaultValues={multiRowDefaultValues}
+                            onDragSumChange={setDragSumInfo}
                         />
                     </Table>
                 </div>
@@ -647,6 +649,7 @@ export function DataTable<TData>({
                     isShowAll={isShowAll}
                     onShowAllChange={setIsShowAll}
                     translations={translations}
+                    dragSumInfo={dragSumInfo}
                 />
             )}
         </div>

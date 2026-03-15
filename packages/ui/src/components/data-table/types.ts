@@ -26,6 +26,9 @@ export interface DataTableColumnMeta {
     filterVariant?: "text" | "select" | "range";
     filterOptions?: { label: string; value: string }[];
 
+    // Drag-to-select sum
+    enableDragSum?: boolean;
+
     // Inline editing
     editable?: boolean;
     inputType?:

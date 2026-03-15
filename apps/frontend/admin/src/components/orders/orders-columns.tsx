@@ -9,7 +9,10 @@ import { Trash2 } from "lucide-react";
 
 export interface OrderActions {
     onDelete: (id: number) => void;
-    onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => void;
+    onStatusChange: (
+        id: number,
+        status: "NEW" | "ACCEPTED" | "CANCELLED",
+    ) => void;
     onNavigate?: (id: number) => void;
 }
 
@@ -147,6 +150,7 @@ export function getOrderColumns(
                 meta: {
                     flex: 1.5,
                     align: "left" as const,
+                    enableDragSum: true,
                 },
             },
         );
@@ -164,7 +168,8 @@ export function getOrderColumns(
                 id: "total",
                 accessorFn: (row) =>
                     row.items.reduce(
-                        (sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1),
+                        (sum, item) =>
+                            sum + (item.price ?? 0) * (item.quantity ?? 1),
                         0,
                     ),
                 header: t("order_total"),
