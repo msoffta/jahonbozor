@@ -78,8 +78,18 @@ function OrderDetailPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("payment_method")}:</span>
-                    <span>{order.paymentType === "CREDIT_CARD" ? t("payment_card") : t("payment_cash")}</span>
+                    <span>
+                        {order.paymentType === "CREDIT_CARD" ? t("payment_card") : 
+                         order.paymentType === "DEBT" ? t("payment_debt", { defaultValue: "Долг" }) : 
+                         t("payment_cash")}
+                    </span>
                 </div>
+                {order.comment && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("order_comment", { defaultValue: "Комментарий" })}:</span>
+                        <span className="text-right italic">{order.comment}</span>
+                    </div>
+                )}
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("total")}:</span>
                     <span className="font-bold">{formatPrice(total, loc)} {t("sum")}</span>

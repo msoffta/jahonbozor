@@ -50,6 +50,7 @@ export function useCreateOrder() {
     return useMutation({
         mutationFn: async (body: {
             paymentType: "CASH" | "CREDIT_CARD" | "DEBT";
+            comment?: string | null;
             items: Array<{ productId: number; quantity: number; price: number }>;
         }): Promise<UserOrderItem> => {
             const { data, error } = await api.api.public.orders.post(body);

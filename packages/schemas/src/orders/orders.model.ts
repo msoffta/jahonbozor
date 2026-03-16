@@ -15,6 +15,7 @@ export const Order = BaseModel.extend({
     staffId: z.number().nullable(),
     paymentType: PaymentType,
     status: OrderStatus,
+    comment: z.string().nullish(),
     data: z.record(z.string(), z.unknown()).nullable(),
     items: z.array(OrderItem.omit({ orderId: true })).optional(),
 });

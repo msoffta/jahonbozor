@@ -10,6 +10,7 @@ import {
     motion,
     PageTransition,
     toast,
+    Input,
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -27,7 +28,7 @@ interface LocalItem {
     productId: number;
     quantity: number;
     price: number;
-    product: { id: number; name: string; price?: number; remaining?: number };
+    product: { id: number; name: string; price?: number; remaining?: number; costprice?: number };
 }
 
 function NewOrderPage() {
@@ -39,6 +40,7 @@ function NewOrderPage() {
     const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD" | "DEBT">(
         "CASH",
     );
+    const [comment, setComment] = useState("");
 
     const { data: clientData } = useQuery(
         clientDetailQueryOptions(userId ?? 0),
@@ -71,12 +73,14 @@ function NewOrderPage() {
                 const product = products.find((p) => p.id === productId);
                 const price = product?.price ?? 0;
                 const remaining = product?.remaining ?? 0;
+                const costprice = product?.costprice ?? 0;
                 const newTotal = price * currentQuantity;
 
                 return {
                     ...values,
                     price,
                     remaining,
+                    costprice,
                     quantity: currentQuantity,
                     total: newTotal,
                 };
@@ -110,6 +114,7 @@ function NewOrderPage() {
                                       name: product.name,
                                       price: product.price,
                                       remaining: product.remaining,
+                                      costprice: product.costprice,
                                   },
                               }
                             : item,
@@ -130,6 +135,7 @@ function NewOrderPage() {
                     name: product.name,
                     price: product.price,
                     remaining: product.remaining,
+                    costprice: product.costprice,
                 },
             };
 
@@ -140,7 +146,7 @@ function NewOrderPage() {
     );
 
     function handleSaveList() {
-        if (items.length < 2) {
+        if (items.length < 1) {
             toast.error(t("min_items_required"));
             return;
         }
@@ -154,6 +160,7 @@ function NewOrderPage() {
             {
                 userId: userId ?? null,
                 paymentType,
+                comment: comment.trim() || null,
                 items: items.map((item) => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -216,6 +223,13 @@ function NewOrderPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <Input
+                        placeholder={t("order_comment", { defaultValue: "Комментарий" })}
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        className="w-48 h-9 text-sm"
+                    />
+
                     {/* Payment type toggle */}
                     <div className="flex rounded-lg border border-border overflow-hidden">
                         <motion.button
@@ -246,7 +260,7 @@ function NewOrderPage() {
 
                     <Button
                         onClick={handleSaveList}
-                        disabled={items.length < 2 || createOrder.isPending}
+                        disabled={items.length < 1 || createOrder.isPending}
                         className="gap-2"
                     >
                         <Save className="h-4 w-4" />

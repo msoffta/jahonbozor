@@ -125,6 +125,11 @@ function OrderDetailPage() {
                                 )}
                             </span>
                         </div>
+                        {order.comment && (
+                            <p className="mt-1 text-sm italic text-muted-foreground">
+                                {order.comment}
+                            </p>
+                        )}
                     </div>
                 </div>
 

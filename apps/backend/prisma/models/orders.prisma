@@ -17,6 +17,7 @@ model Order {
   items       OrderItem[]
   paymentType PaymentType
   status      OrderStatus @default(NEW)
+  comment     String?
   data        Json
 
   user  Users? @relation(fields: [userId], references: [id], onDelete: SetNull)

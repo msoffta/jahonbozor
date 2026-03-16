@@ -17,7 +17,10 @@ export const ProductsPagination = PaginationQuery.extend({
     categoryIds: z.string().optional(),
     minPrice: z.coerce.number().optional(),
     maxPrice: z.coerce.number().optional(),
-    includeDeleted: z.coerce.boolean().optional().default(false),
+    includeDeleted: z
+        .preprocess((val) => val === "true" || val === true, z.boolean())
+        .optional()
+        .default(false),
 });
 
 export type CreateProductBody = z.infer<typeof CreateProductBody>;

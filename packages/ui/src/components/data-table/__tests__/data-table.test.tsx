@@ -587,5 +587,5 @@ describe("DataTable", () => {
             const inputs = getAllByRole("textbox");
             expect(inputs.length).toBe(3);
         });
-    });
+});
 });

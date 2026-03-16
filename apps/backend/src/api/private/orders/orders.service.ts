@@ -23,7 +23,7 @@ interface ServiceContext {
 function createOrderSnapshot(
     order: Pick<
         Order,
-        "userId" | "staffId" | "paymentType" | "status" | "data"
+        "userId" | "staffId" | "paymentType" | "status" | "comment" | "data"
     >,
 ) {
     return {
@@ -31,6 +31,7 @@ function createOrderSnapshot(
         staffId: order.staffId,
         paymentType: order.paymentType,
         status: order.status,
+        comment: order.comment,
         data: order.data,
     };
 }
@@ -313,6 +314,7 @@ export abstract class OrdersService {
                         staffId,
                         paymentType: orderData.paymentType,
                         status: "NEW",
+                        comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
                             create: orderData.items.map((item) => {
@@ -462,6 +464,9 @@ export abstract class OrdersService {
                             }),
                             ...(orderData.status && {
                                 status: orderData.status,
+                            }),
+                            ...(orderData.comment !== undefined && {
+                                comment: orderData.comment,
                             }),
                             ...(orderData.data && {
                                 data: orderData.data as Prisma.JsonObject,

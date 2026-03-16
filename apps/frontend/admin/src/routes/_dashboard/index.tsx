@@ -187,12 +187,14 @@ function OrdersPage() {
                 const product = products.find((p) => p.id === productId);
                 const price = product?.price ?? 0;
                 const remaining = product?.remaining ?? 0;
+                const costprice = product?.costprice ?? 0;
                 const newTotal = price * currentQuantity;
 
                 return {
                     ...values,
                     price,
                     remaining,
+                    costprice,
                     quantity: currentQuantity,
                     total: newTotal,
                 };

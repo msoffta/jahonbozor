@@ -27,8 +27,20 @@ export const TelegramLoginBody = TelegramAuthBody.extend({
 
 export const UsersPagination = PaginationQuery.extend({
     searchQuery: z.string().optional(),
-    includeOrders: z.coerce.boolean().optional(),
-    includeDeleted: z.coerce.boolean().optional(),
+    includeOrders: z.preprocess(
+        (val) => {
+            if (val === undefined || val === null || val === "") return undefined;
+            return val === "true" || val === true;
+        },
+        z.boolean().optional(),
+    ),
+    includeDeleted: z.preprocess(
+        (val) => {
+            if (val === undefined || val === null || val === "") return undefined;
+            return val === "true" || val === true;
+        },
+        z.boolean().optional(),
+    ),
 });
 
 export type CreateUserBody = z.infer<typeof CreateUserBody>;

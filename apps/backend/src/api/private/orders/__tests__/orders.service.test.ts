@@ -22,6 +22,7 @@ const mockOrder: Order = {
     staffId: 1,
     paymentType: "CASH",
     status: "NEW",
+    comment: null,
     data: {},
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),

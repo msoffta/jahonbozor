@@ -21,6 +21,7 @@ export const CreateOrderBody = Order.omit({
     items: true,
 }).extend({
     userId: z.number().nullish(),
+    comment: z.string().nullish(),
     data: z.record(z.string(), z.unknown()).nullish(),
     items: z.array(CreateOrderItemBody).min(1),
 });
@@ -28,6 +29,7 @@ export const CreateOrderBody = Order.omit({
 export const UpdateOrderBody = Order.pick({
     paymentType: true,
     status: true,
+    comment: true,
     data: true,
 }).partial();
 
@@ -71,6 +73,7 @@ export interface UserOrderItem {
     id: number;
     paymentType: string;
     status: string;
+    comment: string | null;
     createdAt: Date | string;
     updatedAt: Date | string;
     items: OrderItemResponse[];

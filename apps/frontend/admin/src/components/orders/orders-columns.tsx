@@ -1,7 +1,7 @@
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
-import { Badge, Button, motion } from "@jahonbozor/ui";
+import { Button, motion } from "@jahonbozor/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import dayjs from "dayjs";
 import type { TFunction } from "i18next";
@@ -50,12 +50,6 @@ export function getOrderColumns(
         { label: t("payment_cash"), value: "CASH" },
         { label: t("payment_credit_card"), value: "CREDIT_CARD" },
         { label: t("payment_debt"), value: "DEBT" },
-    ];
-
-    const statusOptions = [
-        { label: t("status_new"), value: "NEW" },
-        { label: t("status_accepted"), value: "ACCEPTED" },
-        { label: t("status_cancelled"), value: "CANCELLED" },
     ];
 
     const columns: ColumnDef<AdminOrderItem, any>[] = [
@@ -205,33 +199,6 @@ export function getOrderColumns(
                 editable: showItemColumns,
                 inputType: "combobox" as const,
                 selectOptions: userOptions,
-            },
-        },
-        {
-            accessorKey: "status",
-            header: t("order_status"),
-            size: 120,
-            cell: ({ row }) => {
-                const status = row.original.status;
-                const variant =
-                    status === "ACCEPTED"
-                        ? "default"
-                        : status === "CANCELLED"
-                          ? "destructive"
-                          : "outline";
-                return (
-                    <Badge variant={variant}>
-                        {t(`status_${status.toLowerCase()}`)}
-                    </Badge>
-                );
-            },
-            meta: {
-                flex: 1,
-                editable: true,
-                inputType: "select" as const,
-                selectOptions: statusOptions,
-                filterVariant: "select" as const,
-                filterOptions: statusOptions,
             },
         },
         {

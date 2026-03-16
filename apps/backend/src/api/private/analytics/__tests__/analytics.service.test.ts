@@ -58,6 +58,7 @@ const createMockOrder = (overrides: Partial<Order> = {}): Order => ({
 	staffId: 1,
 	paymentType: "CASH",
 	status: "NEW",
+    comment: null,
 	data: null,
 	createdAt: new Date("2024-06-01T10:00:00Z"),
 	updatedAt: new Date("2024-06-01T10:00:00Z"),

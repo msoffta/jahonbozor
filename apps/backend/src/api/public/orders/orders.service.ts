@@ -12,12 +12,13 @@ interface ServiceContext {
     requestId?: string;
 }
 
-function createOrderSnapshot(order: Pick<Order, "userId" | "staffId" | "paymentType" | "status" | "data">) {
+function createOrderSnapshot(order: Pick<Order, "userId" | "staffId" | "paymentType" | "status" | "comment" | "data">) {
     return {
         userId: order.userId,
         staffId: order.staffId,
         paymentType: order.paymentType,
         status: order.status,
+        comment: order.comment,
         data: order.data,
     };
 }
@@ -81,6 +82,7 @@ export abstract class PublicOrdersService {
                         staffId: null,
                         paymentType: orderData.paymentType,
                         status: "NEW",
+                        comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
                             create: orderData.items.map(item => {

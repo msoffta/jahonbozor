@@ -6,7 +6,7 @@ import { useCartStore } from "@/stores/cart.store";
 import { useUIStore } from "@/stores/ui.store";
 import { useCreateOrder } from "@/api/orders.api";
 import { ProductCard } from "@/components/catalog/product-card";
-import { Button, Checkbox, cn } from "@jahonbozor/ui";
+import { Button, Checkbox, cn, Input } from "@jahonbozor/ui";
 
 function formatPrice(price: number, locale: string): string {
     return price.toLocaleString(locale).replace(/,/g, " ");
@@ -22,6 +22,7 @@ function CartPage() {
         () => new Set(items.map((i) => i.productId)),
     );
     const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD" | "DEBT">("CREDIT_CARD");
+    const [comment, setComment] = useState("");
     const createOrder = useCreateOrder();
 
     const allSelected = items.length > 0 && selectedIds.size === items.length;
@@ -54,6 +55,7 @@ function CartPage() {
         createOrder.mutate(
             {
                 paymentType,
+                comment: comment.trim() || null,
                 items: selectedItems.map((item) => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -78,7 +80,7 @@ function CartPage() {
     }
 
     return (
-        <div className="pb-48">
+        <div className="pb-52">
             <div className="flex items-center gap-2 border-b px-4 py-3">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
                 <span className="text-sm">{t("select_all")}</span>
@@ -100,6 +102,14 @@ function CartPage() {
             </div>
 
             <div className="fixed bottom-20 left-0 right-0 border-t bg-background px-4 py-3">
+                <div className="mb-3">
+                    <Input
+                        placeholder={t("order_comment", { defaultValue: "Комментарий к заказу" })}
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        className="h-9 text-sm"
+                    />
+                </div>
                 <div className="mb-2 flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
                     <button
                         onClick={() => setPaymentType("CREDIT_CARD")}

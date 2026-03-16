@@ -60,6 +60,7 @@ export const updateOrderFn = async ({
     id: number;
     status?: "NEW" | "ACCEPTED" | "CANCELLED";
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
+    comment?: string | null;
     data?: any;
 }) => {
     const { data, error } = await api.api.private.orders({ id }).patch(body);
@@ -78,6 +79,7 @@ export const deleteOrderFn = async (id: number) => {
 export const createOrderFn = async (body: {
     userId?: number | null;
     paymentType: "CASH" | "CREDIT_CARD" | "DEBT";
+    comment?: string | null;
     items: { productId: number; quantity: number; price: number }[];
 }) => {
     const { data, error } = await api.api.private.orders.post(body);

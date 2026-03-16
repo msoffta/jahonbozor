@@ -5,6 +5,7 @@ const mockOrder = {
     id: 1,
     paymentType: "CASH",
     status: "NEW",
+    comment: null,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
     items: [],
