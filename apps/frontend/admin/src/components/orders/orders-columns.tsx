@@ -49,6 +49,7 @@ export function getOrderColumns(
     const paymentOptions = [
         { label: t("payment_cash"), value: "CASH" },
         { label: t("payment_credit_card"), value: "CREDIT_CARD" },
+        { label: t("payment_debt"), value: "DEBT" },
     ];
 
     const statusOptions = [

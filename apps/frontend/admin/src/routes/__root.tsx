@@ -8,7 +8,7 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import * as Sentry from "@sentry/react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
-import { Button, motion } from "@jahonbozor/ui";
+import { Button, motion, Toaster } from "@jahonbozor/ui";
 import { useAuthStore } from "@/stores/auth.store";
 import { tryRefreshToken } from "@/api/client";
 
@@ -56,7 +56,10 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 const RootLayout = () => (
-    <Outlet />
+    <>
+        <Outlet />
+        <Toaster position="bottom-center" />
+    </>
 );
 
 export const Route = createRootRouteWithContext<RouterContext>()({

@@ -9,6 +9,7 @@ import {
     DataTableSkeleton,
     motion,
     PageTransition,
+    toast,
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -35,7 +36,7 @@ function NewOrderPage() {
     const { userId } = Route.useSearch();
 
     const [items, setItems] = useState<LocalItem[]>([]);
-    const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD">(
+    const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD" | "DEBT">(
         "CASH",
     );
 
@@ -140,7 +141,12 @@ function NewOrderPage() {
 
     function handleSaveList() {
         if (items.length < 2) {
-            alert(t("min_items_required"));
+            toast.error(t("min_items_required"));
+            return;
+        }
+
+        if (paymentType === "DEBT" && !userId) {
+            toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
             return;
         }
 
@@ -227,6 +233,14 @@ function NewOrderPage() {
                             whileTap={{ scale: 0.95 }}
                         >
                             {t("payment_credit_card")}
+                        </motion.button>
+                        <motion.button
+                            type="button"
+                            className={`px-3 py-1.5 text-xs font-medium ${paymentType === "DEBT" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                            onClick={() => setPaymentType("DEBT")}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            {t("payment_debt", { defaultValue: "Долг" })}
                         </motion.button>
                     </div>
 

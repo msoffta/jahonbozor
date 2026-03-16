@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/auth.store";
 import { Permission, hasPermission, hasAnyPermission } from "@jahonbozor/schemas";
 import { useHasPermission, useHasAnyPermission } from "@/hooks/use-permissions";
-import { PageTransition, DataTable, DataTableSkeleton } from "@jahonbozor/ui";
+import { PageTransition, DataTable, DataTableSkeleton, toast } from "@jahonbozor/ui";
 import type { DataTableTranslations } from "@jahonbozor/ui";
 import { ordersListQueryOptions, useDeleteOrder, useUpdateOrder, useCreateOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
@@ -97,9 +97,18 @@ function OrdersPage() {
                 body[columnId] = value;
             }
 
+            if (body.paymentType === "DEBT" && !order.userId && !body.userId) {
+                toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+                throw new Error("Validation failed");
+            }
+            if (order.paymentType === "DEBT" && columnId === "user" && body.userId === null) {
+                toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+                throw new Error("Validation failed");
+            }
+
             updateOrder.mutate({ id: order.id, ...body });
         },
-        [orders, updateOrder, navigate],
+        [orders, updateOrder, navigate, t],
     );
 
     const handleNewRowSave = useCallback(
@@ -121,6 +130,15 @@ function OrdersPage() {
                 if (data.paymentType) body.paymentType = data.paymentType;
                 // Note: items update logic would go here if supported by backend
 
+                const existingOrder = orders.find(o => o.id === linkedId);
+                const isDebt = body.paymentType === "DEBT" || (existingOrder?.paymentType === "DEBT" && !body.paymentType);
+                const hasNoUser = (body.userId === null) || (!body.userId && !existingOrder?.userId);
+
+                if (isDebt && hasNoUser) {
+                    toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+                    throw new Error("Validation failed");
+                }
+
                 const result = await updateOrder.mutateAsync({
                     id: linkedId as number,
                     ...body,
@@ -133,14 +151,19 @@ function OrdersPage() {
                 return; // Wait for product selection
             }
 
+            const paymentType = (data.paymentType as "CASH" | "CREDIT_CARD" | "DEBT") || "CASH";
+            if (paymentType === "DEBT" && !data.user) {
+                toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+                throw new Error("Validation failed");
+            }
+
             const productId = Number(data.product);
             const product = products.find((p) => p.id === productId);
             const price = product?.price ?? 0;
 
             const result = await createOrder.mutateAsync({
                 userId: data.user ? Number(data.user) : null,
-                paymentType:
-                    (data.paymentType as "CASH" | "CREDIT_CARD") || "CASH",
+                paymentType,
                 items: [
                     {
                         productId,
@@ -152,7 +175,7 @@ function OrdersPage() {
 
             return result?.id;
         },
-        [createOrder, updateOrder, navigate, products],
+        [createOrder, updateOrder, navigate, products, orders, t],
     );
 
     const handleNewRowChange = useCallback(

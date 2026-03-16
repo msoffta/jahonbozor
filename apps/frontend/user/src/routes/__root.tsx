@@ -9,7 +9,7 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import * as Sentry from "@sentry/react";
 import { AlertTriangle } from "lucide-react";
-import { Button, motion } from "@jahonbozor/ui";
+import { Button, motion, Toaster } from "@jahonbozor/ui";
 
 import { Header } from "@/components/layout/header";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -66,7 +66,12 @@ function RootLayout() {
     const isLogin = pathname === "/login";
 
     if (isLogin) {
-        return <Outlet />;
+        return (
+            <>
+                <Outlet />
+                <Toaster position="bottom-center" />
+            </>
+        );
     }
 
     return (
@@ -76,6 +81,7 @@ function RootLayout() {
                 <Outlet />
             </main>
             <BottomNav />
+            <Toaster position="bottom-center" />
         </div>
     );
 }

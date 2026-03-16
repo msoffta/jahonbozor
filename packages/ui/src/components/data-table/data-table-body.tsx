@@ -86,7 +86,6 @@ export function DataTableBody<TData>({
     const [isDragging, setIsDragging] = React.useState(false);
     const [dragStart, setDragStart] = React.useState<{ row: number; col: string } | null>(null);
     const [dragCurrent, setDragCurrent] = React.useState<{ row: number } | null>(null);
-    const [copied, setCopied] = React.useState(false);
 
     React.useEffect(() => {
         const handleMouseUp = () => setIsDragging(false);

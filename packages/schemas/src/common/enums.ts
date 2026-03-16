@@ -1,6 +1,6 @@
 import z from "zod";
 
-export const PaymentType = z.enum(["CASH", "CREDIT_CARD"]);
+export const PaymentType = z.enum(["CASH", "CREDIT_CARD", "DEBT"]);
 export type PaymentType = z.infer<typeof PaymentType>;
 
 export const OrderStatus = z.enum(["NEW", "ACCEPTED", "CANCELLED"]);

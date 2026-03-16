@@ -72,6 +72,8 @@ export {
     TooltipProvider,
     TooltipTrigger,
 } from "./components/ui/tooltip.tsx";
+export { Toaster } from "./components/ui/sonner.tsx";
+export { toast } from "sonner";
 
 export { AnimatePresence, LayoutGroup, motion } from "motion/react";
 

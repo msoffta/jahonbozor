@@ -21,7 +21,7 @@ function CartPage() {
     const [selectedIds, setSelectedIds] = useState<Set<number>>(
         () => new Set(items.map((i) => i.productId)),
     );
-    const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD">("CREDIT_CARD");
+    const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD" | "DEBT">("CREDIT_CARD");
     const createOrder = useCreateOrder();
 
     const allSelected = items.length > 0 && selectedIds.size === items.length;
@@ -100,11 +100,11 @@ function CartPage() {
             </div>
 
             <div className="fixed bottom-20 left-0 right-0 border-t bg-background px-4 py-3">
-                <div className="mb-2 flex gap-2">
+                <div className="mb-2 flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
                     <button
                         onClick={() => setPaymentType("CREDIT_CARD")}
                         className={cn(
-                            "rounded-full px-3 py-1 text-xs font-medium",
+                            "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium",
                             paymentType === "CREDIT_CARD"
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-secondary text-secondary-foreground",
@@ -115,13 +115,24 @@ function CartPage() {
                     <button
                         onClick={() => setPaymentType("CASH")}
                         className={cn(
-                            "rounded-full px-3 py-1 text-xs font-medium",
+                            "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium",
                             paymentType === "CASH"
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-secondary text-secondary-foreground",
                         )}
                     >
                         {t("payment_cash")}
+                    </button>
+                    <button
+                        onClick={() => setPaymentType("DEBT")}
+                        className={cn(
+                            "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium",
+                            paymentType === "DEBT"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-secondary-foreground",
+                        )}
+                    >
+                        {t("payment_debt", { defaultValue: "Долг" })}
                     </button>
                 </div>
                 <div className="flex items-center justify-between">
