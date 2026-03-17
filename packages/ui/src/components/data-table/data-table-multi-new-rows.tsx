@@ -14,6 +14,7 @@ interface DataTableMultiNewRowsProps<TData> {
     onRowFocus?: (rowId: string) => void;
     onRowBlur?: (rowId: string) => void;
     onRowFocusNext?: (rowId: string) => void;
+    onRowSaveAndLoop?: (rowId: string) => Promise<boolean>;
     enableRowSelection?: boolean;
     defaultValuesFactory: (rowIndex: number) => Partial<TData>;
     onNeedMoreRows: () => void;
@@ -27,6 +28,7 @@ export function DataTableMultiNewRows<TData>({
     onRowFocus,
     onRowBlur,
     onRowFocusNext,
+    onRowSaveAndLoop,
     enableRowSelection,
     defaultValuesFactory,
     onNeedMoreRows,
@@ -66,6 +68,9 @@ export function DataTableMultiNewRows<TData>({
                     onFocus={() => onRowFocus?.(rowState.id)}
                     onBlur={() => onRowBlur?.(rowState.id)}
                     onFocusNextRow={() => onRowFocusNext?.(rowState.id)}
+                    onSaveAndLoop={
+                        onRowSaveAndLoop ? () => onRowSaveAndLoop(rowState.id) : undefined
+                    }
                     enableRowSelection={enableRowSelection}
                     externalValues={rowState.values}
                     externalErrors={rowState.errors}

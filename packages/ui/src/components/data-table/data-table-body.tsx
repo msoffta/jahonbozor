@@ -46,6 +46,7 @@ interface DataTableBodyProps<TData> {
     onMultiRowFocus?: (rowId: string) => void;
     onMultiRowBlur?: (rowId: string) => void;
     onMultiRowFocusNext?: (rowId: string) => void;
+    onMultiRowSaveAndLoop?: (rowId: string) => Promise<boolean>;
     onNeedMoreRows?: () => void;
     multiRowDefaultValues?: Partial<TData> | ((index: number) => Partial<TData>);
     onDragSumChange?: (sumInfo: { sum: number; count: number } | null) => void;
@@ -75,6 +76,7 @@ export function DataTableBody<TData>({
     onMultiRowFocus,
     onMultiRowBlur,
     onMultiRowFocusNext,
+    onMultiRowSaveAndLoop,
     onNeedMoreRows,
     multiRowDefaultValues,
     onDragSumChange,
@@ -215,6 +217,7 @@ export function DataTableBody<TData>({
                 onRowFocus={onMultiRowFocus}
                 onRowBlur={onMultiRowBlur}
                 onRowFocusNext={onMultiRowFocusNext}
+                onRowSaveAndLoop={onMultiRowSaveAndLoop}
                 enableRowSelection={enableRowSelection}
                 defaultValuesFactory={(index) =>
                     typeof multiRowDefaultValues === "function"

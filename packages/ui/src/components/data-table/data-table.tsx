@@ -347,6 +347,7 @@ export function DataTable<TData>({
                             onMultiRowFocus={multiRow.handleFocus}
                             onMultiRowBlur={multiRow.handleBlur}
                             onMultiRowFocusNext={multiRow.handleFocusNext}
+                            onMultiRowSaveAndLoop={multiRow.handleSaveAndLoop}
                             onNeedMoreRows={multiRow.handleNeedMoreRows}
                             multiRowDefaultValues={multiRowDefaultValues}
                             onDragSumChange={setDragSumInfo}

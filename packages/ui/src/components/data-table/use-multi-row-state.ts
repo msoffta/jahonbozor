@@ -229,6 +229,104 @@ export function useMultiRowState({
         [rowStates, handleSave],
     );
 
+    const handleSaveAndLoop = React.useCallback(
+        async (rowId: string): Promise<boolean> => {
+            if (savingRowsRef.current.has(rowId)) return false;
+
+            const rowState = rowStates.find((s) => s.id === rowId);
+            if (!rowState || rowState.isSaving) return false;
+
+            const isEmpty = Object.values(rowState.values).every(
+                (v) => v === "" || v === null || v === undefined,
+            );
+
+            const isChanged = Object.keys(rowState.values).some(
+                (key) => rowState.values[key] !== rowState.lastSavedValues?.[key],
+            );
+
+            // Empty and unchanged without linkedId → nothing to do
+            if (isEmpty && !rowState.linkedId) return false;
+            if (!isChanged && !rowState.linkedId) return false;
+
+            // Has linkedId but no changes → just reset (user is done editing)
+            if (!isChanged && rowState.linkedId) {
+                setRowStates((prev) =>
+                    prev.map((row) => {
+                        if (row.id !== rowId) return row;
+                        const index = prev.findIndex((s) => s.id === rowId);
+                        const defaults =
+                            typeof defaultValues === "function"
+                                ? defaultValues(index)
+                                : { ...defaultValues };
+                        return {
+                            ...row,
+                            values: defaults,
+                            errors: {},
+                            linkedId: undefined,
+                            isSaving: false,
+                            lastSavedValues: defaults,
+                        };
+                    }),
+                );
+                return true;
+            }
+
+            if (validate) {
+                const result = validate(rowState.values);
+                if (typeof result === "string") {
+                    setRowStates((prev) =>
+                        prev.map((row) =>
+                            row.id === rowId ? { ...row, errors: { _global: result } } : row,
+                        ),
+                    );
+                    return false;
+                }
+                if (result === false) return false;
+            }
+
+            savingRowsRef.current.add(rowId);
+            setRowStates((prev) =>
+                prev.map((row) => (row.id === rowId ? { ...row, isSaving: true } : row)),
+            );
+
+            const valuesToSave = { ...rowState.values };
+
+            try {
+                await onSave?.(valuesToSave, rowId, rowState.linkedId);
+
+                // Always reset after successful save (Excel-like loop)
+                setRowStates((prev) =>
+                    prev.map((row) => {
+                        if (row.id !== rowId) return row;
+                        const index = prev.findIndex((s) => s.id === rowId);
+                        const defaults =
+                            typeof defaultValues === "function"
+                                ? defaultValues(index)
+                                : { ...defaultValues };
+                        return {
+                            ...row,
+                            values: defaults,
+                            errors: {},
+                            linkedId: undefined,
+                            isSaving: false,
+                            lastSavedValues: defaults,
+                        };
+                    }),
+                );
+                return true;
+            } catch (error) {
+                onError?.(error, rowId);
+                setRowStates((prev) =>
+                    prev.map((row) => (row.id === rowId ? { ...row, isSaving: false } : row)),
+                );
+                return false;
+            } finally {
+                savingRowsRef.current.delete(rowId);
+            }
+        },
+        [rowStates, validate, onSave, defaultValues, onError],
+    );
+
     const handleNeedMoreRows = React.useCallback(() => {
         setRowStates((prev) => {
             if (prev.length >= maxCount) return prev;
@@ -253,6 +351,7 @@ export function useMultiRowState({
         handleFocus,
         handleBlur,
         handleFocusNext,
+        handleSaveAndLoop,
         handleNeedMoreRows,
     };
 }

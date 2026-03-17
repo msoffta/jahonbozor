@@ -32,6 +32,7 @@ interface DataTableNewRowProps<TData> {
     onFocus?: () => void;
     onBlur?: () => void;
     onFocusNextRow?: () => void;
+    onSaveAndLoop?: () => Promise<boolean>;
     externalValues?: Record<string, unknown>;
     externalErrors?: Record<string, string>;
 }
@@ -46,6 +47,7 @@ export function DataTableNewRow<TData>({
     onFocus,
     onBlur,
     onFocusNextRow,
+    onSaveAndLoop,
     externalValues,
     externalErrors,
 }: DataTableNewRowProps<TData>) {
@@ -160,12 +162,30 @@ export function DataTableNewRow<TData>({
         }
     };
 
+    const focusFirstEditable = () => {
+        const firstCol = editableColumns[0];
+        const firstKey =
+            firstCol && ("accessorKey" in firstCol ? String(firstCol.accessorKey) : firstCol.id);
+        const firstInput = firstKey ? inputRefs.current.get(firstKey) : null;
+        firstInput?.focus();
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent, colIndex: number) => {
         if (e.key === "Enter") {
             e.preventDefault();
             if (colIndex === editableColumns.length - 1) {
-                handleSave();
-                onFocusNextRow?.();
+                if (onSaveAndLoop) {
+                    void onSaveAndLoop().then((saved) => {
+                        if (saved) {
+                            focusFirstEditable();
+                        } else {
+                            onFocusNextRow?.();
+                        }
+                    });
+                } else {
+                    handleSave();
+                    onFocusNextRow?.();
+                }
             } else {
                 // Try to focus next editable input; if no ref registered, save
                 const nextCol = editableColumns[colIndex + 1];
@@ -180,8 +200,16 @@ export function DataTableNewRow<TData>({
                 }
             }
         } else if (e.key === "Tab" && !e.shiftKey && colIndex === editableColumns.length - 1) {
-            if (onFocusNextRow) {
-                e.preventDefault();
+            e.preventDefault();
+            if (onSaveAndLoop) {
+                void onSaveAndLoop().then((saved) => {
+                    if (saved) {
+                        focusFirstEditable();
+                    } else {
+                        onFocusNextRow?.();
+                    }
+                });
+            } else if (onFocusNextRow) {
                 handleSave();
                 onFocusNextRow();
             }

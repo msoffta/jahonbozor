@@ -999,6 +999,320 @@ describe("useMultiRowState", () => {
         });
     });
 
+    // ── handleSaveAndLoop ────────────────────────────────────────
+    describe("handleSaveAndLoop", () => {
+        test("saves and resets row to defaults on success", async () => {
+            const onSave = vi.fn().mockResolvedValue("created-id");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 2,
+                defaultValues: { name: "", quantity: 0 },
+                onSave,
+            });
+
+            const rowId = result.current.rowStates[0].id;
+
+            await act(async () => {
+                result.current.handleChange(rowId, { name: "Product A", quantity: 5 });
+            });
+
+            let saved: boolean;
+            await act(async () => {
+                saved = await result.current.handleSaveAndLoop(rowId);
+            });
+
+            expect(saved!).toBe(true);
+            expect(onSave).toHaveBeenCalledWith(
+                { name: "Product A", quantity: 5 },
+                rowId,
+                undefined,
+            );
+            // Row should be reset to defaults
+            expect(result.current.rowStates[0].values).toEqual({ name: "", quantity: 0 });
+            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+            expect(result.current.rowStates[0].errors).toEqual({});
+            expect(result.current.rowStates[0].isSaving).toBe(false);
+            expect(result.current.rowStates[0].lastSavedValues).toEqual({ name: "", quantity: 0 });
+        });
+
+        test("resets row even when it is focused", async () => {
+            const onSave = vi.fn().mockResolvedValue("id-123");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                defaultValues: { name: "" },
+                onSave,
+            });
+
+            const rowId = result.current.rowStates[0].id;
+
+            // Focus the row (handleSave would NOT reset in this case)
+            await act(async () => {
+                result.current.handleFocus(rowId);
+            });
+            await act(async () => {
+                result.current.handleChange(rowId, { name: "focused-item" });
+            });
+
+            let saved: boolean;
+            await act(async () => {
+                saved = await result.current.handleSaveAndLoop(rowId);
+            });
+
+            // Unlike handleSave, handleSaveAndLoop ALWAYS resets on success
+            expect(saved!).toBe(true);
+            expect(result.current.rowStates[0].values).toEqual({ name: "" });
+            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+        });
+
+        test("resets row with linkedId and no changes", async () => {
+            const onSave = vi.fn().mockResolvedValue("linked-42");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                defaultValues: { name: "" },
+                onSave,
+            });
+
+            const rowId = result.current.rowStates[0].id;
+
+            // First: save to establish linkedId (via handleSave with focus)
+            await act(async () => {
+                result.current.handleFocus(rowId);
+            });
+            await act(async () => {
+                result.current.handleChange(rowId, { name: "saved" });
+            });
+            await act(async () => {
+                await result.current.handleSave(rowId);
+            });
+            expect(result.current.rowStates[0].linkedId).toBe("linked-42");
+
+            // Now call handleSaveAndLoop without making changes
+            let saved: boolean;
+            await act(async () => {
+                saved = await result.current.handleSaveAndLoop(rowId);
+            });
+
+            // Should reset because linkedId exists (user is done with this row)
+            expect(saved!).toBe(true);
+            expect(result.current.rowStates[0].values).toEqual({ name: "" });
+            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+        });
+
+        test("returns false for empty row", async () => {
+            const onSave = vi.fn().mockResolvedValue(undefined);
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                defaultValues: { name: "", quantity: null },
+                onSave,
+            });
+
+            const rowId = result.current.rowStates[0].id;
+
+            let saved: boolean;
+            await act(async () => {
+                saved = await result.current.handleSaveAndLoop(rowId);
+            });
+
+            expect(saved!).toBe(false);
+            expect(onSave).not.toHaveBeenCalled();
+        });
+
+        test("returns false for unchanged row without linkedId", async () => {
+            const onSave = vi.fn().mockResolvedValue(undefined);
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                defaultValues: { name: "initial", quantity: 5 },
+                onSave,
+            });
+
+            const rowId = result.current.rowStates[0].id;
+
+            let saved: boolean;
+            await act(async () => {
+                saved = await result.current.handleSaveAndLoop(rowId);
+            });
+
+            expect(saved!).toBe(false);
+            expect(onSave).not.toHaveBeenCalled();
+        });
+
+        test("returns false and sets errors on validation failure", async () => {
+            const onSave = vi.fn().mockResolvedValue(undefined);
+            const validate = vi.fn().mockReturnValue("Name is required");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                defaultValues: { name: "" },
+                onSave,
+                validate,
+            });
+
+            const rowId = result.current.rowStates[0].id;
+
+            await act(async () => {
+                result.current.handleChange(rowId, { name: "value" });
+            });
+
+            let saved: boolean;
+            await act(async () => {
+                saved = await result.current.handleSaveAndLoop(rowId);
+            });
+
+            expect(saved!).toBe(false);
+            expect(onSave).not.toHaveBeenCalled();
+            expect(result.current.rowStates[0].errors).toEqual({ _global: "Name is required" });
+        });
+
+        test("returns false and keeps values on save error", async () => {
+            const error = new Error("Network error");
+            const onSave = vi.fn().mockRejectedValue(error);
+            const onError = vi.fn();
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                defaultValues: { name: "" },
+                onSave,
+                onError,
+            });
+
+            const rowId = result.current.rowStates[0].id;
+
+            await act(async () => {
+                result.current.handleChange(rowId, { name: "will-fail" });
+            });
+
+            let saved: boolean;
+            await act(async () => {
+                saved = await result.current.handleSaveAndLoop(rowId);
+            });
+
+            expect(saved!).toBe(false);
+            expect(onError).toHaveBeenCalledWith(error, rowId);
+            // Values should be preserved for retry
+            expect(result.current.rowStates[0].values).toEqual({ name: "will-fail" });
+            expect(result.current.rowStates[0].isSaving).toBe(false);
+        });
+
+        test("deduplicates concurrent calls", async () => {
+            let resolveSave: () => void;
+            const savePromise = new Promise<string>((resolve) => {
+                resolveSave = () => resolve("id");
+            });
+            const onSave = vi.fn().mockReturnValue(savePromise);
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                defaultValues: { name: "" },
+                onSave,
+            });
+
+            const rowId = result.current.rowStates[0].id;
+
+            await act(async () => {
+                result.current.handleChange(rowId, { name: "dedup-test" });
+            });
+
+            // Start first call
+            let promise1: Promise<boolean>;
+            await act(async () => {
+                promise1 = result.current.handleSaveAndLoop(rowId);
+            });
+
+            // Second call while first is in progress
+            let saved2: boolean;
+            await act(async () => {
+                saved2 = await result.current.handleSaveAndLoop(rowId);
+            });
+
+            expect(saved2!).toBe(false);
+            expect(onSave).toHaveBeenCalledTimes(1);
+
+            // Resolve the pending save
+            await act(async () => {
+                resolveSave!();
+                await promise1!;
+            });
+        });
+
+        test("does not affect other rows", async () => {
+            const onSave = vi.fn().mockResolvedValue("id");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                defaultValues: { name: "default" },
+                onSave,
+            });
+
+            const row0Id = result.current.rowStates[0].id;
+
+            // Change row 0 and row 1
+            await act(async () => {
+                result.current.handleChange(row0Id, { name: "changed-0" });
+                result.current.handleChange(result.current.rowStates[1].id, { name: "changed-1" });
+            });
+
+            await act(async () => {
+                await result.current.handleSaveAndLoop(row0Id);
+            });
+
+            // Row 0 should be reset
+            expect(result.current.rowStates[0].values).toEqual({ name: "default" });
+            // Row 1 should be untouched
+            expect(result.current.rowStates[1].values).toEqual({ name: "changed-1" });
+            // Row 2 should be untouched
+            expect(result.current.rowStates[2].values).toEqual({ name: "default" });
+        });
+
+        test("uses function defaultValues with correct index on reset", async () => {
+            const defaultValuesFn = vi.fn((index: number) => ({ label: `Row ${index}` }));
+            const onSave = vi.fn().mockResolvedValue("id");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                defaultValues: defaultValuesFn,
+                onSave,
+            });
+
+            // Save and loop row at index 1
+            const row1Id = result.current.rowStates[1].id;
+
+            await act(async () => {
+                result.current.handleChange(row1Id, { label: "edited" });
+            });
+
+            defaultValuesFn.mockClear();
+
+            await act(async () => {
+                await result.current.handleSaveAndLoop(row1Id);
+            });
+
+            // Should have called defaultValues with index 1 for the reset
+            expect(defaultValuesFn).toHaveBeenCalledWith(1);
+            expect(result.current.rowStates[1].values).toEqual({ label: "Row 1" });
+        });
+
+        test("returns false for non-existent row id", async () => {
+            const onSave = vi.fn().mockResolvedValue(undefined);
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                onSave,
+            });
+
+            let saved: boolean;
+            await act(async () => {
+                saved = await result.current.handleSaveAndLoop("non-existent");
+            });
+
+            expect(saved!).toBe(false);
+            expect(onSave).not.toHaveBeenCalled();
+        });
+    });
+
     // ── Return value shape ───────────────────────────────────────
     describe("return value", () => {
         test("returns all expected handler functions", async () => {
@@ -1010,6 +1324,7 @@ describe("useMultiRowState", () => {
             expect(typeof result.current.handleFocus).toBe("function");
             expect(typeof result.current.handleBlur).toBe("function");
             expect(typeof result.current.handleFocusNext).toBe("function");
+            expect(typeof result.current.handleSaveAndLoop).toBe("function");
             expect(typeof result.current.handleNeedMoreRows).toBe("function");
         });
     });
