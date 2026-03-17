@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+**/routeTree.gen.ts
+**/src/generated/**
+bun.lock
+logs
+certs

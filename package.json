@@ -1,55 +1,84 @@
 {
-    "name": "jahonbozor",
-    "private": true,
-    "type": "module",
-    "workspaces": [
-        "apps/backend",
-        "apps/bot",
-        "apps/frontend/admin",
-        "apps/frontend/user",
-        "packages/*"
+  "name": "jahonbozor",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/backend",
+    "apps/bot",
+    "apps/frontend/admin",
+    "apps/frontend/user",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd apps/backend dev",
+    "dev:bot": "bun run --cwd apps/bot dev",
+    "dev:admin": "bun run --cwd apps/frontend/admin dev",
+    "dev:user": "bun run --cwd apps/frontend/user dev",
+    "dev:all": "concurrently -n backend,bot,user,admin -c blue,magenta,green,yellow \"bun run dev\" \"bun run dev:bot\" \"bun run dev:user\" \"bun run dev:admin\"",
+    "test": "bun run test:ui && bun run test:backend && bun run test:bot && bun run test:admin && bun run test:user",
+    "test:ui": "bun run --cwd packages/ui test",
+    "test:backend": "bun run --cwd apps/backend test",
+    "test:bot": "bun run --cwd apps/bot test",
+    "test:admin": "bun run --cwd apps/frontend/admin test",
+    "test:user": "bun run --cwd apps/frontend/user test",
+    "test:watch": "bun run --cwd apps/backend test:watch",
+    "test:coverage": "bun run --cwd apps/backend test:coverage",
+    "typecheck": "bun run --cwd apps/backend typecheck && bun run --cwd apps/bot typecheck && bun run --cwd packages/ui typecheck && bun run --cwd apps/frontend/admin typecheck && bun run --cwd apps/frontend/user typecheck",
+    "build:admin": "bun run --cwd apps/frontend/admin build",
+    "build:user": "bun run --cwd apps/frontend/user build",
+    "build:all": "bun run build:admin && bun run build:user",
+    "prisma:generate": "bun run --cwd apps/backend prisma:generate",
+    "prisma:seed": "bun run --cwd apps/backend prisma:seed",
+    "prisma:migrate": "bun run --cwd apps/backend prisma:migrate",
+    "prisma:studio": "bun run --cwd apps/backend prisma:studio",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "nginx:up": "docker compose up -d nginx",
+    "nginx:down": "docker compose stop nginx",
+    "nginx:restart": "docker compose restart nginx",
+    "nginx:logs": "docker compose logs -f nginx",
+    "prod:build": "docker compose -f docker-compose.prod.yml build",
+    "prod:up": "docker compose -f docker-compose.prod.yml up -d",
+    "prod:down": "docker compose -f docker-compose.prod.yml down",
+    "prod:logs": "docker compose -f docker-compose.prod.yml logs -f",
+    "prod:deploy": "bun run prod:build && bun run prod:up",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "simple-git-hooks"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/bun": "latest",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-dom": "^2.12.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "eslint-plugin-react-x": "^2.12.2",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "globals": "^17.4.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "simple-git-hooks": "^2.13.1",
+    "typescript-eslint": "^8.57.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "bun x lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
     ],
-    "scripts": {
-        "dev": "bun run --cwd apps/backend dev",
-        "dev:bot": "bun run --cwd apps/bot dev",
-        "dev:admin": "bun run --cwd apps/frontend/admin dev",
-        "dev:user": "bun run --cwd apps/frontend/user dev",
-        "dev:all": "concurrently -n backend,bot,user,admin -c blue,magenta,green,yellow \"bun run dev\" \"bun run dev:bot\" \"bun run dev:user\" \"bun run dev:admin\"",
-        "test": "bun run test:ui && bun run test:backend && bun run test:bot && bun run test:admin && bun run test:user",
-        "test:ui": "bun run --cwd packages/ui test",
-        "test:backend": "bun run --cwd apps/backend test",
-        "test:bot": "bun run --cwd apps/bot test",
-        "test:admin": "bun run --cwd apps/frontend/admin test",
-        "test:user": "bun run --cwd apps/frontend/user test",
-        "test:watch": "bun run --cwd apps/backend test:watch",
-        "test:coverage": "bun run --cwd apps/backend test:coverage",
-        "typecheck": "bun run --cwd apps/backend typecheck && bun run --cwd apps/bot typecheck && bun run --cwd packages/ui typecheck && bun run --cwd apps/frontend/admin typecheck && bun run --cwd apps/frontend/user typecheck",
-        "build:admin": "bun run --cwd apps/frontend/admin build",
-        "build:user": "bun run --cwd apps/frontend/user build",
-        "build:all": "bun run build:admin && bun run build:user",
-        "prisma:generate": "bun run --cwd apps/backend prisma:generate",
-        "prisma:seed": "bun run --cwd apps/backend prisma:seed",
-        "prisma:migrate": "bun run --cwd apps/backend prisma:migrate",
-        "prisma:studio": "bun run --cwd apps/backend prisma:studio",
-        "db:up": "docker compose up -d postgres",
-        "db:down": "docker compose down",
-        "nginx:up": "docker compose up -d nginx",
-        "nginx:down": "docker compose stop nginx",
-        "nginx:restart": "docker compose restart nginx",
-        "nginx:logs": "docker compose logs -f nginx",
-        "prod:build": "docker compose -f docker-compose.prod.yml build",
-        "prod:up": "docker compose -f docker-compose.prod.yml up -d",
-        "prod:down": "docker compose -f docker-compose.prod.yml down",
-        "prod:logs": "docker compose -f docker-compose.prod.yml logs -f",
-        "prod:deploy": "bun run prod:build && bun run prod:up"
-    },
-    "devDependencies": {
-        "@types/bun": "latest",
-        "concurrently": "^9.2.1",
-        "eslint-plugin-react-dom": "^2.12.2",
-        "eslint-plugin-react-x": "^2.12.2"
-    },
-    "peerDependencies": {
-        "typescript": "^5.9.3"
-    }
+    "*.{json,md,yml,yaml,css,prisma}": [
+      "prettier --write"
+    ]
+  }
 }

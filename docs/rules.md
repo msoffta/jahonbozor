@@ -34,6 +34,7 @@ Quick reference for code conventions. See CLAUDE.md for detailed guidance.
 - [Frontend Import Order](#frontend-import-order)
 - [Frontend Tailwind](#frontend-tailwind)
 - [Frontend Testing](#frontend-testing)
+- [Linting & Formatting](#linting--formatting)
 
 ---
 
@@ -64,12 +65,14 @@ bun run typecheck    # Проверка типов
 ## TypeScript
 
 ### DO
+
 - Use specific types: `Permission[]` not `string[]`
 - Use `unknown` for dynamic data
 - Use descriptive names: `tokenRecord`, `staffData`, `existingProduct`
 - Export type with schema: `export type X = z.infer<typeof X>`
 
 ### DON'T
+
 - Use `any` — use `unknown`
 - Use abbreviations: `t`, `u`, `e`, `s`
 - Use single letters (except `i` in loops)
@@ -77,6 +80,7 @@ bun run typecheck    # Проверка типов
 ## Zod Schemas
 
 ### DO
+
 ```typescript
 z.record(z.string(), z.unknown())     // JSON fields
 .nullable()                            // Prisma String?
@@ -88,37 +92,41 @@ z.enum(ALL_PERMISSIONS)                // Permission enum
 ```
 
 ### DON'T
+
 ```typescript
-z.record(z.string(), z.any())         // Never use z.any()
-.nullable().optional()                 // Use .nullish() instead
+z.record(z.string(), z.any()) // Never use z.any()
+    .nullable()
+    .optional(); // Use .nullish() instead
 ```
 
 ### Zod 4 Specifics
 
 ```typescript
 // ISO datetime validation (Zod 4)
-z.iso.datetime()
+z.iso.datetime();
 
 // Union for Date fields (Date at runtime, string in JSON)
-z.union([z.coerce.date(), z.iso.datetime()])
+z.union([z.coerce.date(), z.iso.datetime()]);
 
 // Unified error parameter (Zod 4 replaces message/invalid_type_error/required_error)
-z.string().min(1, { error: "Обязательное поле" })  // NOT { message: "..." }
-z.number({ error: (issue) => issue.input === undefined ? "Обязательное поле" : "Должно быть числом" })
+z.string().min(1, { error: "Обязательное поле" }); // NOT { message: "..." }
+z.number({
+    error: (issue) => (issue.input === undefined ? "Обязательное поле" : "Должно быть числом"),
+});
 
 // Human-readable error formatting
 import { prettifyError } from "@jahonbozor/schemas";
-prettifyError(zodError)  // for logging
+prettifyError(zodError); // for logging
 ```
 
 ## Naming
 
-| Pattern | Example |
-|---------|---------|
+| Pattern         | Example                                            |
+| --------------- | -------------------------------------------------- |
 | Service methods | `getAllProducts`, `createProduct`, `deleteProduct` |
-| Route params | `productIdParams`, `auditLogIdParams` |
-| Snapshots | `createProductSnapshot(product)` |
-| Context | `AuditContext`, `staffId`, `requestId` |
+| Route params    | `productIdParams`, `auditLogIdParams`              |
+| Snapshots       | `createProductSnapshot(product)`                   |
+| Context         | `AuditContext`, `staffId`, `requestId`             |
 
 ## File Structure
 
@@ -132,11 +140,11 @@ prettifyError(zodError)  // for logging
 
 ```typescript
 export abstract class DomainService {
-    static async getAll(params, logger): Promise<ReturnSchema>
-    static async getById(id, logger): Promise<ReturnSchema>
-    static async create(data, context, logger): Promise<ReturnSchema>
-    static async update(id, data, context, logger): Promise<ReturnSchema>
-    static async delete(id, context, logger): Promise<ReturnSchema>
+    static async getAll(params, logger): Promise<ReturnSchema>;
+    static async getById(id, logger): Promise<ReturnSchema>;
+    static async create(data, context, logger): Promise<ReturnSchema>;
+    static async update(id, data, context, logger): Promise<ReturnSchema>;
+    static async delete(id, context, logger): Promise<ReturnSchema>;
 }
 ```
 
@@ -160,18 +168,19 @@ export abstract class DomainService {
 
 ## Logging
 
-| Level | Use Case | Example |
-|-------|----------|---------|
-| `error` | System failures | `logger.error("DB: Connection failed", { error })` |
-| `warn` | Auth failures, validation | `logger.warn("Auth: Invalid token", { userId })` |
-| `info` | Business events | `logger.info("Orders: Completed", { orderId })` |
-| `debug` | Dev details | `logger.debug("Request", { body })` |
+| Level   | Use Case                  | Example                                            |
+| ------- | ------------------------- | -------------------------------------------------- |
+| `error` | System failures           | `logger.error("DB: Connection failed", { error })` |
+| `warn`  | Auth failures, validation | `logger.warn("Auth: Invalid token", { userId })`   |
+| `info`  | Business events           | `logger.info("Orders: Completed", { orderId })`    |
+| `debug` | Dev details               | `logger.debug("Request", { body })`                |
 
 **Format:** `"Module: Action/Status"` + metadata object
 
 ## Audit Logging
 
 ### When to Audit
+
 - CREATE, UPDATE, DELETE, RESTORE operations
 - LOGIN, LOGOUT events
 - Permission changes
@@ -179,11 +188,13 @@ export abstract class DomainService {
 - Inventory adjustments
 
 ### AuditContext
+
 ```typescript
 { requestId, user, logger, ipAddress?, userAgent? }
 ```
 
 ### Pattern
+
 ```typescript
 await auditInTransaction(transaction, { requestId, user, logger }, {
     entityType: "product",      // table name
@@ -200,6 +211,7 @@ await audit({ requestId, user, logger }, { ... });
 ## Transactions
 
 ### DO
+
 ```typescript
 await prisma.$transaction(async (transaction) => {
     const record = await transaction.model.create({ data });
@@ -210,15 +222,17 @@ await prisma.$transaction(async (transaction) => {
 ```
 
 ### DON'T
+
 ```typescript
 // Don't mix transaction and non-transaction calls
-const record = await prisma.model.create({ data });  // outside
-await transaction.history.create({ data });           // inside
+const record = await prisma.model.create({ data }); // outside
+await transaction.history.create({ data }); // inside
 ```
 
 ## Comments
 
 ### DO
+
 ```typescript
 // Token rotation: revoke old token to prevent replay attacks
 await Auth.revokeRefreshToken(token);
@@ -228,6 +242,7 @@ const secretKey = crypto.createHash("sha256")...
 ```
 
 ### DON'T
+
 ```typescript
 const userId = user.id; // get user id
 if (tokenRecord.revoked) { // check if revoked
@@ -235,14 +250,14 @@ if (tokenRecord.revoked) { // check if revoked
 
 ## HTTP Status Codes
 
-| Code | When |
-|------|------|
-| 200 | Success (default) |
-| 400 | Validation error, business logic failure |
-| 401 | Unauthorized (no/invalid token) |
-| 403 | Forbidden (no permission) |
-| 404 | Resource not found |
-| 500 | Internal server error |
+| Code | When                                     |
+| ---- | ---------------------------------------- |
+| 200  | Success (default)                        |
+| 400  | Validation error, business logic failure |
+| 401  | Unauthorized (no/invalid token)          |
+| 403  | Forbidden (no permission)                |
+| 404  | Resource not found                       |
+| 500  | Internal server error                    |
 
 ## Permissions
 
@@ -273,13 +288,17 @@ await prisma.model.update({
 });
 
 // Query active only
-where: { deletedAt: null }
+where: {
+    deletedAt: null;
+}
 
 // Include deleted
-where: includeDeleted ? {} : { deletedAt: null }
+where: includeDeleted ? {} : { deletedAt: null };
 
 // Restore
-data: { deletedAt: null }
+data: {
+    deletedAt: null;
+}
 ```
 
 ## Category Hierarchy
@@ -325,6 +344,7 @@ Every handler receives `requestId` and `logger` via middleware:
 ```
 
 ### Child Logger
+
 ```typescript
 const childLogger = createChildLogger(parentLogger, { requestId, userId });
 ```
@@ -332,6 +352,7 @@ const childLogger = createChildLogger(parentLogger, { requestId, userId });
 ## Unit Testing
 
 ### File Structure
+
 ```
 apps/backend/
 ├── test/
@@ -405,7 +426,7 @@ describe("Users.createUser", () => {
 
     test("should create user with valid data", async () => {
         // Arrange — TypeScript enforces all required fields
-        const mockUser = { id: 1, fullname: "John", phone: "+998...", /* all fields */ };
+        const mockUser = { id: 1, fullname: "John", phone: "+998..." /* all fields */ };
         prismaMock.users.create.mockResolvedValue(mockUser);
 
         // Act
@@ -439,9 +460,7 @@ describe("Users API", () => {
     const app = new Elysia().use(users);
 
     test("GET /users", async () => {
-        const response = await app.handle(
-            new Request("http://localhost/users")
-        );
+        const response = await app.handle(new Request("http://localhost/users"));
 
         expect(response.status).toBe(200);
         const body = await response.json();
@@ -453,12 +472,12 @@ describe("Users API", () => {
 ### Test Modifiers
 
 ```typescript
-test.skip("incomplete", () => {});        // Skip
-test.todo("implement later");             // TODO
-test.only("debug this", () => {});        // Only this
+test.skip("incomplete", () => {}); // Skip
+test.todo("implement later"); // TODO
+test.only("debug this", () => {}); // Only this
 
 test("with timeout", () => {}, { timeout: 10000 }); // 10s timeout
-test("retry", () => {}, { retry: 3 });    // Up to 3 retries
+test("retry", () => {}, { retry: 3 }); // Up to 3 retries
 ```
 
 ### Parametrized Tests
@@ -495,6 +514,7 @@ bun run test:backend -- --coverage      # With coverage
 ### Test Coverage (обязательно)
 
 Каждый метод должен иметь тесты на:
+
 1. **Happy path** — успешный сценарий
 2. **Edge cases** — пустые значения, null, граничные значения
 3. **Error cases** — ошибки БД, валидации, 404
@@ -519,6 +539,7 @@ test("should validate input", ...);                 // validation
 - [ ] Права доступа (если есть)
 
 ### DO
+
 - Test behavior, not implementation
 - Use AAA pattern (Arrange-Act-Assert)
 - Group tests with `describe`
@@ -526,6 +547,7 @@ test("should validate input", ...);                 // validation
 - Use `mockDeep` for type-safe Prisma mocks — no `as any`
 
 ### DON'T
+
 - Don't rely on test execution order
 - Don't leave `.only` in commits
 - Don't test internal implementation details
@@ -539,15 +561,15 @@ test("should validate input", ...);                 // validation
 
 ## Frontend File Naming
 
-| Type | Convention | Example |
-|------|-----------|---------|
-| Components | `kebab-case.tsx` | `product-form.tsx` |
-| Stores | `{domain}.store.ts` | `auth.store.ts`, `ui.store.ts` |
-| API files | `{domain}.api.ts` | `products.api.ts` |
+| Type        | Convention          | Example                            |
+| ----------- | ------------------- | ---------------------------------- |
+| Components  | `kebab-case.tsx`    | `product-form.tsx`                 |
+| Stores      | `{domain}.store.ts` | `auth.store.ts`, `ui.store.ts`     |
+| API files   | `{domain}.api.ts`   | `products.api.ts`                  |
 | Route files | TanStack convention | `$productId.tsx`, `_dashboard.tsx` |
-| Tests | `{name}.test.ts(x)` | `product-form.test.tsx` |
-| i18n | `{namespace}.json` | `products.json`, `common.json` |
-| Hooks | `use-{name}.ts` | `use-permissions.ts` |
+| Tests       | `{name}.test.ts(x)` | `product-form.test.tsx`            |
+| i18n        | `{namespace}.json`  | `products.json`, `common.json`     |
+| Hooks       | `use-{name}.ts`     | `use-permissions.ts`               |
 
 ### Frontend Domain Structure
 
@@ -581,12 +603,14 @@ export function ProductForm({ defaultValues, onSubmit, isLoading }: ProductFormP
 ```
 
 ### DO
+
 - Named exports, no default exports
 - Hooks first, then derived state, then handlers, then render
 - Descriptive prop interfaces
 - Use `useTranslation()` for all user-facing text
 
 ### DON'T
+
 - No default exports
 - No inline styles (`style={}`)
 - No business logic in components — delegate to hooks/api layer
@@ -645,6 +669,7 @@ export const Route = createFileRoute("/_dashboard/products/")({
 ## Frontend State Management
 
 ### Rules
+
 - **Zustand** = client state (auth, UI preferences, cart)
 - **TanStack Query** = server state (products, orders, etc.)
 - **Never** store server data in Zustand
@@ -655,17 +680,15 @@ export const Route = createFileRoute("/_dashboard/products/")({
 
 ```typescript
 import { create } from "zustand";
-import { persist } from "zustand/middleware";  // only when needed
+import { persist } from "zustand/middleware"; // only when needed
 
 export const useAuthStore = create<AuthState>((set) => ({
     token: null,
     user: null,
     permissions: [],
     isAuthenticated: false,
-    setAuth: (token, user, permissions) =>
-        set({ token, user, permissions, isAuthenticated: true }),
-    clearAuth: () =>
-        set({ token: null, user: null, permissions: [], isAuthenticated: false }),
+    setAuth: (token, user, permissions) => set({ token, user, permissions, isAuthenticated: true }),
+    clearAuth: () => set({ token: null, user: null, permissions: [], isAuthenticated: false }),
 }));
 ```
 
@@ -755,6 +778,7 @@ const form = useForm({
 ```
 
 ### Rules
+
 - Use `zodValidator()` adapter with schemas from `@jahonbozor/schemas`
 - Per-field validation via `validators.onChange` with Zod shape
 - Accept `defaultValues`, `onSubmit`, `isLoading` as props
@@ -763,6 +787,7 @@ const form = useForm({
 ## Frontend i18n
 
 ### Languages
+
 - **uz** — Uzbek (default, fallback)
 - **ru** — Russian
 
@@ -784,15 +809,17 @@ i18n/
 
 ```typescript
 const { t } = useTranslation("products");
-t("title")         // "Mahsulotlar"
-t("common:save")   // Cross-namespace access
+t("title"); // "Mahsulotlar"
+t("common:save"); // Cross-namespace access
 ```
 
 ### Language Switch
 
 ```typescript
 const locale = useUIStore((state) => state.locale);
-useEffect(() => { i18n.changeLanguage(locale); }, [locale]);
+useEffect(() => {
+    i18n.changeLanguage(locale);
+}, [locale]);
 ```
 
 ## Frontend Import Order
@@ -822,6 +849,7 @@ import type { ProductFormProps } from "./types";
 ## Frontend Tailwind
 
 ### DO
+
 - Utility classes only — no custom CSS per component
 - `cn()` for conditional classes: `cn("base", condition && "conditional")`
 - Mobile-first responsive: `sm:`, `md:`, `lg:`
@@ -829,6 +857,7 @@ import type { ProductFormProps } from "./types";
 - Import `@jahonbozor/ui/globals.css` in `main.tsx`
 
 ### DON'T
+
 - No inline `style` attributes
 - No hardcoded colors — use semantic tokens
 - No custom CSS files per component
@@ -839,6 +868,7 @@ import type { ProductFormProps } from "./types";
 Все фронтенд-приложения должны быть **интерактивными и приятными** в использовании.
 
 ### Обязательно
+
 - **`PageTransition`** — обёртка контента каждой страницы (fade-in + slide-up)
 - **`whileTap`** — на всех кнопках и интерактивных элементах (scale: 0.9-0.95)
 - **`AnimatePresence`** — для conditional renders (errors, toasts, modals)
@@ -846,15 +876,25 @@ import type { ProductFormProps } from "./types";
 - **Cursor types** — `pointer` на кликабельных, `text` на инпутах, `not-allowed` на disabled (глобально через `globals.css`)
 
 ### Spring Configs
-| Name | Config | Use |
-|------|--------|-----|
-| Snappy | `stiffness: 400, damping: 17` | whileTap, press feedback |
-| Smooth | `stiffness: 300, damping: 25` | Page transitions, entrance |
+
+| Name     | Config                        | Use                         |
+| -------- | ----------------------------- | --------------------------- |
+| Snappy   | `stiffness: 400, damping: 17` | whileTap, press feedback    |
+| Smooth   | `stiffness: 300, damping: 25` | Page transitions, entrance  |
 | Balanced | `stiffness: 400, damping: 30` | Layout animations, nav pill |
 
 ### Импорт
+
 ```typescript
-import { motion, AnimatePresence, LayoutGroup, PageTransition, AnimatedList, AnimatedListItem, FadeIn } from "@jahonbozor/ui";
+import {
+    motion,
+    AnimatePresence,
+    LayoutGroup,
+    PageTransition,
+    AnimatedList,
+    AnimatedListItem,
+    FadeIn,
+} from "@jahonbozor/ui";
 ```
 
 > Подробнее: [docs/frontend.md](frontend.md#animation-motion)
@@ -862,12 +902,14 @@ import { motion, AnimatePresence, LayoutGroup, PageTransition, AnimatedList, Ani
 ## Frontend Testing
 
 ### Stack
+
 - **Vitest** — test runner (with `vi.mock()` auto-hoisting)
 - `@testing-library/react` — component rendering
 - `@testing-library/user-event` — user interactions
 - `happy-dom` — DOM implementation (via `vitest.config.ts`)
 
 ### Test Priority
+
 1. **Must:** Zustand stores, permission hooks, auth flow, form validation
 2. **Should:** Table components, API layer, route guards
 3. **Nice:** Layout components, i18n switching
@@ -892,7 +934,10 @@ import { useAuthStore } from "../auth.store";
 describe("Auth Store", () => {
     beforeEach(() => {
         useAuthStore.setState({
-            token: null, user: null, permissions: [], isAuthenticated: false,
+            token: null,
+            user: null,
+            permissions: [],
+            isAuthenticated: false,
         });
     });
 
@@ -934,6 +979,7 @@ beforeEach(() => {
 `getByRole` > `getByLabelText` > `getByText` > `getByDisplayValue` > `container.querySelector`
 
 ### DO
+
 - Test behavior, not implementation
 - AAA pattern (Arrange-Act-Assert)
 - Reset store state in `beforeEach`
@@ -943,6 +989,7 @@ beforeEach(() => {
 - Use `waitFor()` for async assertions
 
 ### DON'T
+
 - Don't test internal component state
 - Don't test third-party libraries
 - Don't leave `.only` in commits
@@ -951,3 +998,115 @@ beforeEach(() => {
 - Don't mock what you don't own (prefer integration over unit for routes)
 
 > Full guide: [docs/frontend-testing.md](frontend-testing.md)
+
+## Linting & Formatting
+
+### Tooling
+
+| Tool             | Purpose                            | Config                                 |
+| ---------------- | ---------------------------------- | -------------------------------------- |
+| ESLint 10        | Code quality, bugs, best practices | `eslint.config.js` (root, flat config) |
+| Prettier         | Code formatting                    | `.prettierrc.json` (root)              |
+| simple-git-hooks | Pre-commit hook                    | `package.json` → `simple-git-hooks`    |
+| lint-staged      | Run lint/format on staged files    | `package.json` → `lint-staged`         |
+
+### Commands
+
+```bash
+bun run lint               # ESLint check all workspaces
+bun run lint:fix           # ESLint auto-fix
+bun run format             # Prettier format all files
+bun run format:check       # Check formatting (CI)
+```
+
+### ESLint Config Structure
+
+Единый `eslint.config.js` в корне монорепо. Структура:
+
+1. **Global ignores** — `dist/`, `node_modules/`, `coverage/`, `*.gen.ts`, `src/generated/`
+2. **Base (all `*.{ts,tsx}`)** — recommended + type-checked + stylistic + import sorting
+3. **React (frontend + ui)** — React hooks, refresh, react-x, react-dom
+4. **Backend + Bot** — Node/Bun globals
+5. **Pure packages** — Node globals
+6. **Startup files** — `no-console: off` для entry points
+7. **Config files** — разрешён `export default`
+8. **Test files** — ослаблены strict правила
+9. **eslint-config-prettier** — последний, отключает formatting-правила
+
+### Key Rules
+
+| Rule                                         | Level  | Notes                                                        |
+| -------------------------------------------- | ------ | ------------------------------------------------------------ |
+| `simple-import-sort/imports`                 | error  | react → 3rd-party → @jahonbozor → aliases → relative → types |
+| `simple-import-sort/exports`                 | error  | Sorted exports                                               |
+| `@typescript-eslint/no-explicit-any`         | warn\* | Upgrade to error после cleanup                               |
+| `@typescript-eslint/consistent-type-imports` | error  | `import type` для type-only                                  |
+| `@typescript-eslint/no-unused-vars`          | error  | `_prefix` ignored                                            |
+| `no-console`                                 | warn\* | Upgrade to error после cleanup                               |
+| `@typescript-eslint/no-floating-promises`    | error  | Must handle promises                                         |
+| `no-restricted-syntax` (default export)      | warn\* | Named exports preferred                                      |
+| `@typescript-eslint/no-misused-promises`     | error  | `checksVoidReturn.attributes: false`                         |
+
+> \* Правила с `warn` будут повышены до `error` после исправления существующих нарушений.
+
+### Import Order (enforced by ESLint)
+
+```typescript
+// 1. Side effects
+import "./styles.css";
+
+// 2. Node/Bun builtins
+import { resolve } from "node:path";
+
+// 3. React
+import { useState } from "react";
+
+// 4. Third-party
+import { useQuery } from "@tanstack/react-query";
+
+// 5. @jahonbozor workspace packages
+import { Button } from "@jahonbozor/ui";
+
+// 6. Workspace aliases (@backend/, @bot/, @/)
+import { api } from "@/lib/api-client";
+
+// 7. Relative imports
+import { helper } from "./utils";
+
+// 8. Type imports
+import type { Props } from "./types";
+```
+
+### Prettier Config
+
+- Double quotes, semicolons, trailing commas
+- 4-space indent (2-space for JSON/YAML/Prisma)
+- 100 char print width
+- `prettier-plugin-tailwindcss` — auto-sorts Tailwind classes
+
+### Pre-commit Hook
+
+Автоматически запускается при `git commit`:
+
+- `*.{ts,tsx}` → `eslint --fix` + `prettier --write`
+- `*.{json,md,yml,yaml,css,prisma}` → `prettier --write`
+
+### CI Integration
+
+В `lint-typecheck` job CI pipeline добавлены шаги:
+
+- `bun run lint` (с `continue-on-error: true` до cleanup)
+- `bun run format:check` (с `continue-on-error: true` до cleanup)
+
+### Overrides & Exceptions
+
+- **Test files** (`__tests__/`, `*.test.*`, `test/`) — `any`, `non-null-assertion`, `unsafe-*` разрешены
+- **Entry files** (`apps/*/src/index.ts`) — `console.*` разрешён
+- **Config files** (`vite.config.ts`, `vitest.config.ts`) — `export default` разрешён
+- **Eslint disable** — использовать точечно с комментарием причины:
+    ```typescript
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BigInt serialization hack
+    (BigInt.prototype as any).toJSON = function () {
+        return this.toString();
+    };
+    ```
