@@ -1,5 +1,5 @@
-import { defineConfig } from "vitest/config";
 import path from "path";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
     test: {
@@ -13,11 +13,7 @@ export default defineConfig({
         coverage: {
             provider: "v8",
             reporter: ["text", "json", "html"],
-            exclude: [
-                "src/generated/**",
-                "src/**/__tests__/**",
-                "test/**",
-            ],
+            exclude: ["src/generated/**", "src/**/__tests__/**", "test/**"],
         },
         alias: {
             "@backend/lib": path.resolve(__dirname, "./src/lib"),

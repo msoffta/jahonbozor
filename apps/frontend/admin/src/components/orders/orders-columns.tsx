@@ -1,18 +1,17 @@
+import { format } from "date-fns";
+import { Trash2 } from "lucide-react";
+
+import { Button, motion } from "@jahonbozor/ui";
+
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
-import { Button, motion } from "@jahonbozor/ui";
 import type { ColumnDef } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import type { TFunction } from "i18next";
-import { Trash2 } from "lucide-react";
 
 export interface OrderActions {
     onDelete: (id: number) => void;
-    onStatusChange: (
-        id: number,
-        status: "NEW" | "ACCEPTED" | "CANCELLED",
-    ) => void;
+    onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => void;
     onNavigate?: (id: number) => void;
 }
 
@@ -31,7 +30,7 @@ export function getOrderColumns(
     actions: OrderActions,
     data: OrderColumnsData,
     options?: OrderColumnsOptions,
-): ColumnDef<AdminOrderItem, any>[] {
+): ColumnDef<AdminOrderItem, unknown>[] {
     const { showItemColumns = true, canDelete = true } = options ?? {};
     const productOptions = data.products.map((p) => ({
         label: p.name,
@@ -52,7 +51,7 @@ export function getOrderColumns(
         { label: t("payment_debt"), value: "DEBT" },
     ];
 
-    const columns: ColumnDef<AdminOrderItem, any>[] = [
+    const columns: ColumnDef<AdminOrderItem, unknown>[] = [
         {
             accessorKey: "id",
             header: t("order_id"),
@@ -64,7 +63,7 @@ export function getOrderColumns(
                     return (
                         <button
                             type="button"
-                            className="font-medium text-primary underline-offset-2 hover:underline"
+                            className="text-primary font-medium underline-offset-2 hover:underline"
                             onClick={() => actions.onNavigate!(id)}
                         >
                             {id}
@@ -111,9 +110,7 @@ export function getOrderColumns(
                 cell: ({ getValue }) => {
                     const price = getValue<number>();
                     return (
-                        <span className="font-medium">
-                            {price ? price.toLocaleString() : "—"}
-                        </span>
+                        <span className="font-medium">{price ? price.toLocaleString() : "—"}</span>
                     );
                 },
                 meta: {
@@ -163,8 +160,7 @@ export function getOrderColumns(
                 id: "total",
                 accessorFn: (row) =>
                     row.items.reduce(
-                        (sum, item) =>
-                            sum + (item.price ?? 0) * (item.quantity ?? 1),
+                        (sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1),
                         0,
                     ),
                 header: t("order_total"),
@@ -180,8 +176,7 @@ export function getOrderColumns(
             accessorKey: "paymentType",
             header: t("order_payment"),
             size: 120,
-            cell: ({ getValue }) =>
-                t(`payment_${getValue<string>().toLowerCase()}`),
+            cell: ({ getValue }) => t(`payment_${getValue<string>().toLowerCase()}`),
             meta: {
                 flex: 1,
                 editable: showItemColumns,
@@ -205,8 +200,7 @@ export function getOrderColumns(
             accessorKey: "createdAt",
             header: t("order_date"),
             size: 140,
-            cell: ({ getValue }) =>
-                dayjs(getValue<Date | string>()).format("DD.MM.YYYY HH:mm"),
+            cell: ({ getValue }) => format(new Date(getValue<Date | string>()), "dd.MM.yyyy HH:mm"),
             meta: { flex: 1.5 },
         },
         {
@@ -216,9 +210,7 @@ export function getOrderColumns(
                     ? (row.items[0]?.product?.costprice ?? 0)
                     : row.items.reduce(
                           (sum, item) =>
-                              sum +
-                              (item.product?.costprice ?? 0) *
-                                  (item.quantity ?? 1),
+                              sum + (item.product?.costprice ?? 0) * (item.quantity ?? 1),
                           0,
                       ),
             header: t("order_costprice"),
@@ -249,14 +241,11 @@ export function getOrderColumns(
             size: 80,
             meta: { align: "center" as const },
             cell: ({ row }) => (
-                <motion.div
-                    whileTap={{ scale: 0.9 }}
-                    className="inline-flex justify-center w-full"
-                >
+                <motion.div whileTap={{ scale: 0.9 }} className="inline-flex w-full justify-center">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="text-muted-foreground hover:text-destructive h-8 w-8"
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();

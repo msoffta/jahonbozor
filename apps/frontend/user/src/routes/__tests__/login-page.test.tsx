@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const { mockMutate, mocks } = vi.hoisted(() => ({
     mockMutate: vi.fn(),
@@ -9,7 +9,14 @@ const { mockMutate, mocks } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-client", () => ({
-    api: { api: { public: { auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } }, users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } } } } },
+    api: {
+        api: {
+            public: {
+                auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } },
+                users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } },
+            },
+        },
+    },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -45,6 +52,9 @@ vi.mock("@jahonbozor/ui", async () => {
 vi.mock("@/api/auth.api", () => ({
     authKeys: { me: ["auth", "me"] },
     profileOptions: () => ({ queryKey: ["auth", "me"] }),
+}));
+
+vi.mock("@/hooks/use-auth", () => ({
     useTelegramLogin: () => ({
         mutate: mockMutate,
         isPending: mocks.isPending,
@@ -55,7 +65,9 @@ vi.mock("@/api/auth.api", () => ({
 }));
 
 import { render } from "@testing-library/react";
+
 import { useUIStore } from "@/stores/ui.store";
+
 import { Route } from "../login";
 
 const LoginPage = (Route as any).component ?? (Route as any).options?.component;

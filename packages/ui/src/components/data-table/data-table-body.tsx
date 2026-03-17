@@ -1,24 +1,28 @@
-import type { ColumnDef, Row, Table as TanStackTable } from "@tanstack/react-table";
+import * as React from "react";
+
 import { flexRender } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion } from "motion/react";
-import * as React from "react";
+
 import { cn } from "../../lib/utils";
 import { TableBody, TableCell, TableRow } from "../ui/table";
 import { DataTableEditableCell } from "./data-table-editable-cell";
-import { DataTableNewRow } from "./data-table-new-row";
 import { DataTableMultiNewRows } from "./data-table-multi-new-rows";
+import { DataTableNewRow } from "./data-table-new-row";
+
 import type { NewRowState } from "./types";
+import type { ColumnDef, Row, Table as TanStackTable } from "@tanstack/react-table";
 
 const VIRTUAL_ROW_HEIGHT_PX = 40;
 const VIRTUALIZER_OVERSCAN = 20;
+// eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional no-op for optional callbacks
 const NOOP = () => {};
-
 
 const DRAG_SUM_HIGHLIGHT = "bg-drag-sum ring-1 ring-inset ring-drag-sum-border";
 
 interface DataTableBodyProps<TData> {
     table: TanStackTable<TData>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TanStack Table ColumnDef requires `any` for heterogeneous column value types
     columns: ColumnDef<TData, any>[];
     isVirtualActive?: boolean;
     scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
@@ -107,7 +111,7 @@ export function DataTableBody<TData>({
         for (let i = minRow; i <= maxRow; i++) {
             const row = rows[i];
             if (!row) continue;
-            
+
             const cell = row.getAllCells().find((c) => c.column.id === dragStart.col);
             if (!cell) continue;
 
@@ -126,7 +130,12 @@ export function DataTableBody<TData>({
 
     React.useEffect(() => {
         if (onDragSumChange) {
-            if (dragStart && dragCurrent && dragStart.row !== dragCurrent.row && selectedAreaSum > 0) {
+            if (
+                dragStart &&
+                dragCurrent &&
+                dragStart.row !== dragCurrent.row &&
+                selectedAreaSum > 0
+            ) {
                 const count = Math.abs(dragStart.row - dragCurrent.row) + 1;
                 onDragSumChange({ sum: selectedAreaSum, count });
             } else {
@@ -212,7 +221,7 @@ export function DataTableBody<TData>({
                         ? multiRowDefaultValues(index)
                         : { ...multiRowDefaultValues }
                 }
-                onNeedMoreRows={onNeedMoreRows || NOOP}
+                onNeedMoreRows={onNeedMoreRows ?? NOOP}
             />
         ) : null;
 
@@ -256,9 +265,7 @@ export function DataTableBody<TData>({
                     return (
                         <TableRow
                             key={row.id}
-                            data-state={
-                                row.getIsSelected() ? "selected" : undefined
-                            }
+                            data-state={row.getIsSelected() ? "selected" : undefined}
                             style={{
                                 display: "flex",
                                 position: "absolute",
@@ -288,7 +295,7 @@ export function DataTableBody<TData>({
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                     data-state={row.getIsSelected() ? "selected" : undefined}
                     className={cn(
-                        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+                        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
                         onRowClick ? "cursor-pointer" : "",
                     )}
                     onClick={() => onRowClick?.(row.original)}

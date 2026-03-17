@@ -1,35 +1,20 @@
-import type { StaffListResponse, StaffDetailResponse, StaffDeleteResponse } from "@jahonbozor/schemas/src/staff";
-import {
-    CreateStaffBody,
-    UpdateStaffBody,
-    StaffPagination,
-} from "@jahonbozor/schemas/src/staff";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import type { Prisma } from "@backend/generated/prisma/client";
-import { prisma } from "@backend/lib/prisma";
-import { auditInTransaction } from "@backend/lib/audit";
 import { password } from "bun";
 
-interface AuditContext {
-    staffId: number;
-    user: Token;
-    requestId?: string;
-}
+import { auditInTransaction } from "@backend/lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import { createStaffSnapshot } from "@backend/lib/snapshots";
 
-function createStaffSnapshot(staff: {
-    fullname: string;
-    username: string;
-    roleId: number;
-    telegramId?: bigint | null;
-}) {
-    return {
-        fullname: staff.fullname,
-        username: staff.username,
-        roleId: staff.roleId,
-        telegramId: staff.telegramId?.toString() ?? null,
-    };
-}
+import type { Prisma } from "@backend/generated/prisma/client";
+import type { ServiceContext } from "@backend/lib/audit";
+import type { Logger } from "@jahonbozor/logger";
+import type {
+    CreateStaffBody,
+    StaffDeleteResponse,
+    StaffDetailResponse,
+    StaffListResponse,
+    StaffPagination,
+    UpdateStaffBody,
+} from "@jahonbozor/schemas/src/staff";
 
 const staffSelect = {
     id: true,
@@ -55,6 +40,7 @@ export abstract class StaffService {
     ): Promise<StaffListResponse> {
         try {
             const whereClause = {
+                deletedAt: null,
                 AND: [
                     searchQuery
                         ? {
@@ -83,7 +69,13 @@ export abstract class StaffService {
                 data: { count, staff: staffList },
             };
         } catch (error) {
-            logger.error("Staff: Error in getAllStaff", { searchQuery, roleId, page, limit, error });
+            logger.error("Staff: Error in getAllStaff", {
+                searchQuery,
+                roleId,
+                page,
+                limit,
+                error,
+            });
             return { success: false, error };
         }
     }
@@ -91,7 +83,7 @@ export abstract class StaffService {
     static async getStaff(staffId: number, logger: Logger): Promise<StaffDetailResponse> {
         try {
             const staffRecord = await prisma.staff.findUnique({
-                where: { id: staffId },
+                where: { id: staffId, deletedAt: null },
                 select: staffSelect,
             });
 
@@ -109,7 +101,7 @@ export abstract class StaffService {
 
     static async createStaff(
         staffData: CreateStaffBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<StaffDetailResponse> {
         try {
@@ -168,7 +160,7 @@ export abstract class StaffService {
     static async updateStaff(
         staffId: number,
         staffData: UpdateStaffBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<StaffDetailResponse> {
         try {
@@ -190,7 +182,10 @@ export abstract class StaffService {
                 });
 
                 if (duplicateUsername) {
-                    logger.warn("Staff: Username already exists", { staffId, username: staffData.username });
+                    logger.warn("Staff: Username already exists", {
+                        staffId,
+                        username: staffData.username,
+                    });
                     return { success: false, error: "Username already exists" };
                 }
             }
@@ -255,7 +250,7 @@ export abstract class StaffService {
 
     static async deleteStaff(
         staffId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<StaffDeleteResponse> {
         try {
@@ -268,14 +263,20 @@ export abstract class StaffService {
                 return { success: false, error: "Staff not found" };
             }
 
+            if (existingStaff.deletedAt) {
+                logger.warn("Staff: Staff already deleted", { staffId });
+                return { success: false, error: "Staff already deleted" };
+            }
+
             const [deletedStaff] = await prisma.$transaction(async (transaction) => {
-                // Revoke all refresh tokens before deleting staff
+                // Revoke all refresh tokens before soft deleting staff
                 await transaction.refreshToken.deleteMany({
                     where: { staffId },
                 });
 
-                const staff = await transaction.staff.delete({
+                const staff = await transaction.staff.update({
                     where: { id: staffId },
+                    data: { deletedAt: new Date() },
                     select: {
                         id: true,
                         fullname: true,
@@ -306,6 +307,65 @@ export abstract class StaffService {
             return { success: true, data: deletedStaff };
         } catch (error) {
             logger.error("Staff: Error in deleteStaff", { staffId, error });
+            return { success: false, error };
+        }
+    }
+
+    static async restoreStaff(
+        staffId: number,
+        context: ServiceContext,
+        logger: Logger,
+    ): Promise<StaffDeleteResponse> {
+        try {
+            const existingStaff = await prisma.staff.findUnique({
+                where: { id: staffId },
+            });
+
+            if (!existingStaff) {
+                logger.warn("Staff: Staff not found for restore", { staffId });
+                return { success: false, error: "Staff not found" };
+            }
+
+            if (!existingStaff.deletedAt) {
+                logger.warn("Staff: Staff is not deleted", { staffId });
+                return { success: false, error: "Staff is not deleted" };
+            }
+
+            const [restoredStaff] = await prisma.$transaction(async (transaction) => {
+                const staff = await transaction.staff.update({
+                    where: { id: staffId },
+                    data: { deletedAt: null },
+                    select: {
+                        id: true,
+                        fullname: true,
+                        username: true,
+                    },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "staff",
+                        entityId: staffId,
+                        action: "RESTORE",
+                        previousData: { deletedAt: existingStaff.deletedAt },
+                        newData: createStaffSnapshot(existingStaff),
+                    },
+                );
+
+                return [staff];
+            });
+
+            logger.info("Staff: Staff restored", {
+                staffId,
+                username: restoredStaff.username,
+                restoredBy: context.staffId,
+            });
+
+            return { success: true, data: restoredStaff };
+        } catch (error) {
+            logger.error("Staff: Error in restoreStaff", { staffId, error });
             return { success: false, error };
         }
     }

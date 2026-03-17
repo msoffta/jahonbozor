@@ -1,18 +1,23 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger } from "@backend/test/setup";
-import type { Staff } from "@backend/generated/prisma/client";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { StaffService } from "../staff.service";
 
+import type { Staff } from "@backend/generated/prisma/client";
+
 // Mock staff data (telegramId as string for JSON serialization)
-const mockStaff: Staff = {
+const _mockStaff: Staff = {
     id: 1,
     fullname: "John Doe",
     username: "johndoe",
     passwordHash: "$argon2id$...",
     telegramId: BigInt(123456789),
     roleId: 1,
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -77,7 +82,13 @@ const createTestApp = () => {
         })
         .post("/staff", async ({ body, logger, requestId }) => {
             return await StaffService.createStaff(
-                body as { fullname: string; username: string; password: string; telegramId: string; roleId: number },
+                body as {
+                    fullname: string;
+                    username: string;
+                    password: string;
+                    telegramId: string;
+                    roleId: number;
+                },
                 { staffId: mockUser.id, user: mockUser, requestId },
                 logger,
             );
@@ -85,7 +96,12 @@ const createTestApp = () => {
         .patch("/staff/:id", async ({ params, body, logger, requestId }) => {
             return await StaffService.updateStaff(
                 Number(params.id),
-                body as { fullname?: string; username?: string; password?: string; roleId?: number },
+                body as {
+                    fullname?: string;
+                    username?: string;
+                    password?: string;
+                    roleId?: number;
+                },
                 { staffId: mockUser.id, user: mockUser, requestId },
                 logger,
             );
@@ -161,9 +177,7 @@ describe("Staff API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/staff?roleId=1"),
-            );
+            const response = await app.handle(new Request("http://localhost/staff?roleId=1"));
             const body = await response.json();
 
             // Assert
@@ -185,9 +199,7 @@ describe("Staff API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/staff"),
-            );
+            const response = await app.handle(new Request("http://localhost/staff"));
             const body = await response.json();
 
             // Assert
@@ -209,9 +221,7 @@ describe("Staff API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/staff/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/staff/1"));
             const body = await response.json();
 
             // Assert
@@ -231,9 +241,7 @@ describe("Staff API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/staff/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/staff/999"));
             const body = await response.json();
 
             // Assert

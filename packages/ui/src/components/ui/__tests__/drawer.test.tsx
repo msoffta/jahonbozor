@@ -1,17 +1,18 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-vi.mock("motion/react", async () =>
-    (await import("../../data-table/__tests__/test-helpers")).motionMock,
+vi.mock(
+    "motion/react",
+    async () => (await import("../../data-table/__tests__/test-helpers")).motionMock,
 );
 
 import {
     Drawer,
-    DrawerHeader,
-    DrawerTitle,
     DrawerContent,
     DrawerFooter,
+    DrawerHeader,
+    DrawerTitle,
     ScrollArea,
 } from "../drawer";
 
@@ -59,10 +60,10 @@ describe("Drawer", () => {
             </Drawer>,
         );
 
-        // The backdrop is the first motion.div with bg-black/60 class
-        const backdrop = document.querySelector(".bg-black\\/60");
+        // The backdrop is the first motion.div with bg-overlay class
+        const backdrop = document.querySelector(".bg-overlay");
         expect(backdrop).toBeDefined();
-        await user.click(backdrop as Element);
+        await user.click(backdrop!);
 
         expect(onOpenChange).toHaveBeenCalledWith(false);
     });
@@ -141,9 +142,7 @@ describe("Drawer", () => {
 // ── DrawerHeader ────────────────────────────────────────────────
 describe("DrawerHeader", () => {
     test("should render with default class", () => {
-        const { container } = render(
-            <DrawerHeader>Header Text</DrawerHeader>,
-        );
+        const { container } = render(<DrawerHeader>Header Text</DrawerHeader>);
 
         const el = container.firstElementChild as HTMLElement;
         expect(el.className).toContain("px-6");
@@ -163,9 +162,7 @@ describe("DrawerHeader", () => {
     });
 
     test("should pass additional HTML props", () => {
-        render(
-            <DrawerHeader data-testid="header-el">Header</DrawerHeader>,
-        );
+        render(<DrawerHeader data-testid="header-el">Header</DrawerHeader>);
 
         expect(screen.getByTestId("header-el")).toBeDefined();
     });
@@ -190,9 +187,7 @@ describe("DrawerTitle", () => {
     });
 
     test("should render with custom className", () => {
-        const { container } = render(
-            <DrawerTitle className="extra-title">Title</DrawerTitle>,
-        );
+        const { container } = render(<DrawerTitle className="extra-title">Title</DrawerTitle>);
 
         const el = container.firstElementChild as HTMLElement;
         expect(el.className).toContain("extra-title");
@@ -208,9 +203,7 @@ describe("DrawerContent", () => {
     });
 
     test("should render with flex-1 and overflow-hidden classes", () => {
-        const { container } = render(
-            <DrawerContent>Content</DrawerContent>,
-        );
+        const { container } = render(<DrawerContent>Content</DrawerContent>);
 
         const el = container.firstElementChild as HTMLElement;
         expect(el.className).toContain("flex-1");
@@ -237,9 +230,7 @@ describe("DrawerFooter", () => {
     });
 
     test("should render with border-t class", () => {
-        const { container } = render(
-            <DrawerFooter>Footer</DrawerFooter>,
-        );
+        const { container } = render(<DrawerFooter>Footer</DrawerFooter>);
 
         const el = container.firstElementChild as HTMLElement;
         expect(el.className).toContain("border-t");
@@ -248,9 +239,7 @@ describe("DrawerFooter", () => {
     });
 
     test("should render with custom className", () => {
-        const { container } = render(
-            <DrawerFooter className="my-footer">Footer</DrawerFooter>,
-        );
+        const { container } = render(<DrawerFooter className="my-footer">Footer</DrawerFooter>);
 
         const el = container.firstElementChild as HTMLElement;
         expect(el.className).toContain("my-footer");
@@ -267,27 +256,21 @@ describe("ScrollArea", () => {
     });
 
     test("should render with overflow-y-auto class", () => {
-        const { container } = render(
-            <ScrollArea>Content</ScrollArea>,
-        );
+        const { container } = render(<ScrollArea>Content</ScrollArea>);
 
         const el = container.firstElementChild as HTMLElement;
         expect(el.className).toContain("overflow-y-auto");
     });
 
     test("should render with custom-scrollbar class", () => {
-        const { container } = render(
-            <ScrollArea>Content</ScrollArea>,
-        );
+        const { container } = render(<ScrollArea>Content</ScrollArea>);
 
         const el = container.firstElementChild as HTMLElement;
         expect(el.className).toContain("custom-scrollbar");
     });
 
     test("should render with custom className", () => {
-        const { container } = render(
-            <ScrollArea className="extra-scroll">Content</ScrollArea>,
-        );
+        const { container } = render(<ScrollArea className="extra-scroll">Content</ScrollArea>);
 
         const el = container.firstElementChild as HTMLElement;
         expect(el.className).toContain("extra-scroll");

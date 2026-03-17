@@ -1,14 +1,16 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-import type { Mock } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import type { Mock } from "vitest";
 
 vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
 vi.mock("../../ui/button.tsx", async () => (await import("./test-helpers")).buttonMock);
 vi.mock("../../ui/table.tsx", async () => (await import("./test-helpers")).tableMock);
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableNewRow } from "../data-table-new-row";
+
+import type { ColumnDef } from "@tanstack/react-table";
 
 // ── Test data ──────────────────────────────────────────────────
 interface TestRow {
@@ -20,7 +22,11 @@ interface TestRow {
 const baseColumns: ColumnDef<TestRow, any>[] = [
     { accessorKey: "id", header: "ID", meta: { editable: true, inputType: "text" as const } },
     { accessorKey: "name", header: "Name", meta: { editable: true, inputType: "text" as const } },
-    { accessorKey: "value", header: "Value", meta: { editable: true, inputType: "number" as const } },
+    {
+        accessorKey: "value",
+        header: "Value",
+        meta: { editable: true, inputType: "number" as const },
+    },
 ];
 
 // ── Tests ──────────────────────────────────────────────────────
@@ -37,13 +43,15 @@ describe("DataTableNewRow", () => {
     describe("Uncontrolled mode", () => {
         test("should render with default values", () => {
             const { container } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        columns={baseColumns}
-                        onSave={onSave}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            columns={baseColumns}
+                            onSave={onSave}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                        />
+                    </tbody>
+                </table>,
             );
 
             const row = container.querySelector("tr");
@@ -54,18 +62,20 @@ describe("DataTableNewRow", () => {
 
         test("should call onChange when input value changes", () => {
             const { container } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        columns={baseColumns}
-                        onSave={onSave}
-                        onChange={onChange}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            columns={baseColumns}
+                            onSave={onSave}
+                            onChange={onChange}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                        />
+                    </tbody>
+                </table>,
             );
 
             const inputs = container.querySelectorAll("input");
-            const nameInput = inputs[1] as HTMLInputElement;
+            const nameInput = inputs[1];
 
             // Use fireEvent instead of user.type() to avoid controlled input issues with Bun/happy-dom
             fireEvent.change(nameInput, { target: { value: "Test" } });
@@ -79,17 +89,19 @@ describe("DataTableNewRow", () => {
         test("should call onSave when Enter is pressed on last field", async () => {
             const user = userEvent.setup();
             const { container } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        columns={baseColumns}
-                        onSave={onSave}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            columns={baseColumns}
+                            onSave={onSave}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                        />
+                    </tbody>
+                </table>,
             );
 
             const inputs = container.querySelectorAll("input");
-            const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
+            const lastInput = inputs[inputs.length - 1];
 
             lastInput.focus();
             await user.keyboard("{Enter}");
@@ -99,17 +111,19 @@ describe("DataTableNewRow", () => {
 
         test("should maintain internal state when not controlled", () => {
             const { container } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        columns={baseColumns}
-                        onSave={onSave}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            columns={baseColumns}
+                            onSave={onSave}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                        />
+                    </tbody>
+                </table>,
             );
 
             const inputs = container.querySelectorAll("input");
-            const nameInput = inputs[1] as HTMLInputElement;
+            const nameInput = inputs[1];
 
             // Use fireEvent instead of user.type() to avoid controlled input issues with Bun/happy-dom
             fireEvent.change(nameInput, { target: { value: "Internal" } });
@@ -125,20 +139,22 @@ describe("DataTableNewRow", () => {
             const externalValues = { id: 1, name: "External", value: 50 };
 
             const { container } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        id="controlled-row"
-                        columns={baseColumns}
-                        onSave={onSave}
-                        onChange={onChange}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                        externalValues={externalValues}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            id="controlled-row"
+                            columns={baseColumns}
+                            onSave={onSave}
+                            onChange={onChange}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                            externalValues={externalValues}
+                        />
+                    </tbody>
+                </table>,
             );
 
             const inputs = container.querySelectorAll("input");
-            const nameInput = inputs[1] as HTMLInputElement;
+            const nameInput = inputs[1];
 
             await user.clear(nameInput);
             await user.type(nameInput, "NewValue");
@@ -152,17 +168,19 @@ describe("DataTableNewRow", () => {
             const externalErrors = { name: "Name is required" };
 
             const { getByText } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        id="error-row"
-                        columns={baseColumns}
-                        onSave={onSave}
-                        onChange={onChange}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                        externalValues={externalValues}
-                        externalErrors={externalErrors}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            id="error-row"
+                            columns={baseColumns}
+                            onSave={onSave}
+                            onChange={onChange}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                            externalValues={externalValues}
+                            externalErrors={externalErrors}
+                        />
+                    </tbody>
+                </table>,
             );
 
             expect(getByText("Name is required")).toBeDefined();
@@ -174,17 +192,19 @@ describe("DataTableNewRow", () => {
             const externalErrors = { name: "Invalid name" };
 
             const { container, getByText } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        id="preserve-error-row"
-                        columns={baseColumns}
-                        onSave={onSave}
-                        onChange={onChange}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                        externalValues={externalValues}
-                        externalErrors={externalErrors}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            id="preserve-error-row"
+                            columns={baseColumns}
+                            onSave={onSave}
+                            onChange={onChange}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                            externalValues={externalValues}
+                            externalErrors={externalErrors}
+                        />
+                    </tbody>
+                </table>,
             );
 
             // Error should be visible
@@ -192,7 +212,7 @@ describe("DataTableNewRow", () => {
 
             // Try to save via Enter on last input
             const inputs = container.querySelectorAll("input");
-            const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
+            const lastInput = inputs[inputs.length - 1];
             lastInput.focus();
             await user.keyboard("{Enter}");
 
@@ -202,14 +222,16 @@ describe("DataTableNewRow", () => {
 
         test("should use custom id when provided", () => {
             const { container } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        id="custom-id-row"
-                        columns={baseColumns}
-                        onSave={onSave}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            id="custom-id-row"
+                            columns={baseColumns}
+                            onSave={onSave}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                        />
+                    </tbody>
+                </table>,
             );
 
             const row = container.querySelector("tr");
@@ -218,13 +240,15 @@ describe("DataTableNewRow", () => {
 
         test("should default to 'new-row' id when not provided", () => {
             const { container } = render(
-                <table><tbody>
-                    <DataTableNewRow
-                        columns={baseColumns}
-                        onSave={onSave}
-                        defaultValues={{ id: 0, name: "", value: 0 }}
-                    />
-                </tbody></table>,
+                <table>
+                    <tbody>
+                        <DataTableNewRow
+                            columns={baseColumns}
+                            onSave={onSave}
+                            defaultValues={{ id: 0, name: "", value: 0 }}
+                        />
+                    </tbody>
+                </table>,
             );
 
             const row = container.querySelector("tr");
@@ -235,16 +259,18 @@ describe("DataTableNewRow", () => {
     // ── Edge cases ─────────────────────────────────────────────
     test("should handle empty externalValues object", () => {
         const { container } = render(
-            <table><tbody>
-                <DataTableNewRow
-                    id="empty-external"
-                    columns={baseColumns}
-                    onSave={onSave}
-                    onChange={onChange}
-                    defaultValues={{ id: 0, name: "", value: 0 }}
-                    externalValues={{}}
-                />
-            </tbody></table>,
+            <table>
+                <tbody>
+                    <DataTableNewRow
+                        id="empty-external"
+                        columns={baseColumns}
+                        onSave={onSave}
+                        onChange={onChange}
+                        defaultValues={{ id: 0, name: "", value: 0 }}
+                        externalValues={{}}
+                    />
+                </tbody>
+            </table>,
         );
 
         const row = container.querySelector("tr");
@@ -253,17 +279,19 @@ describe("DataTableNewRow", () => {
 
     test("should handle undefined externalErrors", () => {
         const { container } = render(
-            <table><tbody>
-                <DataTableNewRow
-                    id="no-errors"
-                    columns={baseColumns}
-                    onSave={onSave}
-                    onChange={onChange}
-                    defaultValues={{ id: 0, name: "", value: 0 }}
-                    externalValues={{ id: 1, name: "Test", value: 10 }}
-                    externalErrors={undefined}
-                />
-            </tbody></table>,
+            <table>
+                <tbody>
+                    <DataTableNewRow
+                        id="no-errors"
+                        columns={baseColumns}
+                        onSave={onSave}
+                        onChange={onChange}
+                        defaultValues={{ id: 0, name: "", value: 0 }}
+                        externalValues={{ id: 1, name: "Test", value: 10 }}
+                        externalErrors={undefined}
+                    />
+                </tbody>
+            </table>,
         );
 
         const row = container.querySelector("tr");

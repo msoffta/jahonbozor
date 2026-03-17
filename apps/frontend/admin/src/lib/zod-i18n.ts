@@ -1,15 +1,13 @@
-import { z } from "@jahonbozor/schemas";
 import i18next from "i18next";
+
+import { z } from "@jahonbozor/schemas";
 
 export const initZodI18n = () => {
     z.config({
         customError: (issue) => {
             switch (issue.code) {
                 case "invalid_type":
-                    if (
-                        issue.received === "undefined" ||
-                        issue.received === "null"
-                    ) {
+                    if (issue.received === "undefined" || issue.received === "null") {
                         return i18next.t("common:validation.required");
                     }
                     if (issue.expected === "date") {

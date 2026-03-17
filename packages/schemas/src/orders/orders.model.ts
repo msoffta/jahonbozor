@@ -1,6 +1,7 @@
 import z from "zod";
+
 import { BaseModel } from "../common/base.model";
-import { PaymentType, OrderStatus } from "../common/enums";
+import { OrderStatus, PaymentType } from "../common/enums";
 
 export const OrderItem = BaseModel.extend({
     orderId: z.number(),

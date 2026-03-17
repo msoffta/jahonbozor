@@ -1,16 +1,18 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-import type { Mock } from "vitest";
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import type { Mock } from "vitest";
 
 vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
 vi.mock("../../ui/button.tsx", async () => (await import("./test-helpers")).buttonMock);
 vi.mock("../../ui/checkbox.tsx", async () => (await import("./test-helpers")).checkboxMock);
 vi.mock("../../ui/table.tsx", async () => (await import("./test-helpers")).tableMock);
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableMultiNewRows } from "../data-table-multi-new-rows";
+
 import type { NewRowState } from "../types";
+import type { ColumnDef } from "@tanstack/react-table";
 
 // ── Test data ──────────────────────────────────────────────────
 interface TestRow {
@@ -22,7 +24,11 @@ interface TestRow {
 const baseColumns: ColumnDef<TestRow, any>[] = [
     { accessorKey: "id", header: "ID", meta: { editable: true, inputType: "text" as const } },
     { accessorKey: "name", header: "Name", meta: { editable: true, inputType: "text" as const } },
-    { accessorKey: "value", header: "Value", meta: { editable: true, inputType: "number" as const } },
+    {
+        accessorKey: "value",
+        header: "Value",
+        meta: { editable: true, inputType: "number" as const },
+    },
 ];
 
 const createNewRowStates = (count: number): NewRowState[] => {
@@ -271,7 +277,9 @@ describe("DataTableMultiNewRows", () => {
             </table>,
         );
 
-        const row = getByTestId("multi-new-rows").querySelector("tr[data-row-id='__new_row_error']");
+        const row = getByTestId("multi-new-rows").querySelector(
+            "tr[data-row-id='__new_row_error']",
+        );
         expect(row).toBeDefined();
     });
 
@@ -350,7 +358,9 @@ describe("DataTableMultiNewRows", () => {
             </table>,
         );
 
-        const row = getByTestId("multi-new-rows").querySelector("tr[data-row-id='__new_row_controlled']");
+        const row = getByTestId("multi-new-rows").querySelector(
+            "tr[data-row-id='__new_row_controlled']",
+        );
         expect(row).toBeDefined();
     });
 
@@ -378,7 +388,9 @@ describe("DataTableMultiNewRows", () => {
             </table>,
         );
 
-        const row = getByTestId("multi-new-rows").querySelector("tr[data-row-id='__new_row_with_error']");
+        const row = getByTestId("multi-new-rows").querySelector(
+            "tr[data-row-id='__new_row_with_error']",
+        );
         expect(row).toBeDefined();
     });
 });

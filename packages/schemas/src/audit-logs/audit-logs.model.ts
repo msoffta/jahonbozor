@@ -1,5 +1,6 @@
 import z from "zod";
-import { AuditAction, ActorType } from "../common/enums";
+
+import { ActorType, AuditAction } from "../common/enums";
 
 export const AuditLog = z.object({
     id: z.number(),

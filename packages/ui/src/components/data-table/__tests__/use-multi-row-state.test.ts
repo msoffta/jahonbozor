@@ -1,5 +1,6 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useMultiRowState } from "../use-multi-row-state";
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -16,9 +17,7 @@ function createOptions(overrides?: Partial<Parameters<typeof useMultiRowState>[0
 }
 
 /** Renders the hook and waits for the initial effect to run */
-async function renderMultiRowHook(
-    overrides?: Partial<Parameters<typeof useMultiRowState>[0]>,
-) {
+async function renderMultiRowHook(overrides?: Partial<Parameters<typeof useMultiRowState>[0]>) {
     const options = createOptions(overrides);
     const hook = renderHook(() => useMultiRowState(options));
     // Wait for the useEffect initialization
@@ -104,9 +103,7 @@ describe("useMultiRowState", () => {
             });
 
             // Verify they are separate objects (not shared references)
-            expect(result.current.rowStates[0].values).not.toBe(
-                result.current.rowStates[1].values,
-            );
+            expect(result.current.rowStates[0].values).not.toBe(result.current.rowStates[1].values);
         });
 
         test("rows have lastSavedValues matching initial values", async () => {
@@ -178,12 +175,10 @@ describe("useMultiRowState", () => {
         });
 
         test("calls onChange callback and uses returned values", async () => {
-            const onChange = vi.fn(
-                (values: Record<string, unknown>, _rowId: string) => ({
-                    ...values,
-                    computed: "auto-filled",
-                }),
-            );
+            const onChange = vi.fn((values: Record<string, unknown>, _rowId: string) => ({
+                ...values,
+                computed: "auto-filled",
+            }));
 
             const { result } = await renderMultiRowHook({
                 initialCount: 1,
@@ -243,11 +238,7 @@ describe("useMultiRowState", () => {
                 await result.current.handleSave(rowId);
             });
 
-            expect(onSave).toHaveBeenCalledWith(
-                { name: "Product A" },
-                rowId,
-                undefined,
-            );
+            expect(onSave).toHaveBeenCalledWith({ name: "Product A" }, rowId, undefined);
         });
 
         test("passes linkedId to onSave when present", async () => {
@@ -284,11 +275,7 @@ describe("useMultiRowState", () => {
                 await result.current.handleSave(rowId);
             });
 
-            expect(onSave).toHaveBeenLastCalledWith(
-                { name: "Second" },
-                rowId,
-                "new-linked-id",
-            );
+            expect(onSave).toHaveBeenLastCalledWith({ name: "Second" }, rowId, "new-linked-id");
         });
 
         test("skips save for empty rows", async () => {
@@ -373,7 +360,7 @@ describe("useMultiRowState", () => {
 
             // Attempt second save while first is in progress
             await act(async () => {
-                result.current.handleSave(rowId);
+                void result.current.handleSave(rowId);
             });
 
             // Only one call should have been made
@@ -588,7 +575,7 @@ describe("useMultiRowState", () => {
 
             // Start save without awaiting
             act(() => {
-                result.current.handleSave(rowId);
+                void result.current.handleSave(rowId);
             });
 
             // isSaving should be true while save is in progress
@@ -970,11 +957,7 @@ describe("useMultiRowState", () => {
                 vi.advanceTimersByTime(0); // flush the setTimeout(fn, 0)
             });
 
-            expect(onSave).toHaveBeenCalledWith(
-                { name: "navigate-test" },
-                row0Id,
-                undefined,
-            );
+            expect(onSave).toHaveBeenCalledWith({ name: "navigate-test" }, row0Id, undefined);
         });
 
         test("does nothing for last row (no next row)", async () => {

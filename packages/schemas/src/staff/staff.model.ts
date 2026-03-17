@@ -1,13 +1,12 @@
 import z from "zod";
+
 import { BaseModel } from "../base.model";
 import { PermissionsArraySchema } from "../permissions";
 
 export const Staff = BaseModel.extend({
     fullname: z.string(),
     username: z.string(),
-    telegramId: z
-        .union([z.string(), z.number()])
-        .transform((telegramId) => telegramId.toString()),
+    telegramId: z.union([z.string(), z.number()]).transform((telegramId) => telegramId.toString()),
     passwordHash: z.string(),
     roleId: z.number(),
     role: z.object({

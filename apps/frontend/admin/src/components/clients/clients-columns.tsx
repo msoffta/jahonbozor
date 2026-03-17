@@ -1,8 +1,10 @@
-import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
+import { RotateCcw, Trash2 } from "lucide-react";
+
 import { Badge, Button, motion } from "@jahonbozor/ui";
+
+import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { RotateCcw, Trash2 } from "lucide-react";
 
 export interface ClientActions {
     onDelete: (id: number) => void;
@@ -81,8 +83,7 @@ export function getClientColumns(
             accessorKey: "createdAt",
             header: t("client_created"),
             size: 140,
-            cell: ({ getValue }) =>
-                new Date(getValue<Date | string>()).toLocaleDateString(),
+            cell: ({ getValue }) => new Date(getValue<Date | string>()).toLocaleDateString(),
         },
     ];
 
@@ -98,16 +99,14 @@ export function getClientColumns(
                 return (
                     <motion.div
                         whileTap={{ scale: 0.9 }}
-                        className="inline-flex justify-center w-full"
+                        className="inline-flex w-full justify-center"
                     >
                         {isDeleted ? (
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                onClick={() =>
-                                    actions.onRestore(row.original.id)
-                                }
+                                className="text-muted-foreground hover:text-primary h-8 w-8"
+                                onClick={() => actions.onRestore(row.original.id)}
                                 title={t("action_restore")}
                             >
                                 <RotateCcw className="h-4 w-4" />
@@ -116,10 +115,8 @@ export function getClientColumns(
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() =>
-                                    actions.onDelete(row.original.id)
-                                }
+                                className="text-muted-foreground hover:text-destructive h-8 w-8"
+                                onClick={() => actions.onDelete(row.original.id)}
                                 title={t("action_delete")}
                             >
                                 <Trash2 className="h-4 w-4" />

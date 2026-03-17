@@ -1,8 +1,14 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useAuthStore } from "@/stores/auth.store";
 
 const { mockGet, mockPost } = vi.hoisted(() => ({
-    mockGet: vi.fn(() => Promise.resolve({ data: { success: true, data: { id: 1, fullname: "Test" } }, error: null })),
+    mockGet: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: { id: 1, fullname: "Test" } },
+            error: null,
+        }),
+    ),
     mockPost: vi.fn(() => Promise.resolve({ data: { success: true, data: {} }, error: null })),
 }));
 

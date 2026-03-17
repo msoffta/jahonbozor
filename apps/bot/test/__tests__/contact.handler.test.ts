@@ -1,6 +1,8 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { mockAuditLog, mockUser, prismaMock } from "../setup";
+
 import type { Context } from "grammy";
-import { prismaMock, mockUser, mockAuditLog } from "../setup";
 
 // Mock the logger module before importing handler — vi.hoisted so it's available in hoisted vi.mock factory
 const mockLogger = vi.hoisted(() => ({
@@ -9,7 +11,7 @@ const mockLogger = vi.hoisted(() => ({
     error: vi.fn(),
     debug: vi.fn(),
 }));
-vi.mock("@bot/lib/logger", () => ({ default: mockLogger }));
+vi.mock("@bot/lib/logger", () => ({ logger: mockLogger }));
 
 import { handleContact } from "@bot/handlers/contact.handler";
 
@@ -40,9 +42,7 @@ describe("handleContact", () => {
         // getUserInfo lookup
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser());
         // PhoneService lookups
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
         prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
 
@@ -182,9 +182,7 @@ describe("handleContact", () => {
         // getUserInfo lookup — Russian user
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser({ language: "ru" }));
         // PhoneService lookups
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
         prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
 
@@ -205,9 +203,7 @@ describe("handleContact", () => {
         // getUserInfo lookup — unknown language
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser({ language: "en" }));
         // PhoneService lookups
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
         prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
 
@@ -241,13 +237,11 @@ describe("handleContact", () => {
         expect(replyText).toContain("Xatolik yuz berdi");
     });
 
-    test("does not throw when ctx.reply fails", async () => {
+    test("sends fallback error reply when ctx.reply fails on success path", async () => {
         // getUserInfo lookup
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser());
         // PhoneService lookups
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
         prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
 
@@ -255,20 +249,54 @@ describe("handleContact", () => {
             contact: { phone_number: "+998901234567", user_id: 100, first_name: "Test" },
             from: { id: 100 },
         });
-        // Make ctx.reply throw (Telegram API failure)
+        // First ctx.reply throws (Telegram API failure), second (fallback) succeeds
         vi.mocked(ctx.reply).mockRejectedValueOnce(new Error("Telegram API unavailable"));
 
         await expect(handleContact(ctx)).resolves.toBeUndefined();
-        expect(mockLogger.error).toHaveBeenCalled();
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            "Bot: Failed to handle contact",
+            expect.objectContaining({ error: expect.any(Error) }),
+        );
+        // Fallback reply was attempted
+        expect(ctx.reply).toHaveBeenCalledTimes(2);
+        const fallbackText = vi.mocked(ctx.reply).mock.calls[1][0];
+        expect(fallbackText).toContain("Xatolik yuz berdi");
+        expect(fallbackText).toContain("Произошла ошибка");
+    });
+
+    test("logs error when fallback reply also fails", async () => {
+        // getUserInfo lookup
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser());
+        // PhoneService lookups
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
+        prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
+        prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
+
+        const ctx = createMockContext({
+            contact: { phone_number: "+998901234567", user_id: 100, first_name: "Test" },
+            from: { id: 100 },
+        });
+        // Both reply calls fail
+        vi.mocked(ctx.reply)
+            .mockRejectedValueOnce(new Error("Telegram API unavailable"))
+            .mockRejectedValueOnce(new Error("Still unavailable"));
+
+        await expect(handleContact(ctx)).resolves.toBeUndefined();
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            "Bot: Failed to handle contact",
+            expect.objectContaining({ error: expect.any(Error) }),
+        );
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            "Bot: Failed to send error reply",
+            expect.objectContaining({ error: expect.any(Error) }),
+        );
     });
 
     test("defaults to uz and logs error when getUserInfo DB fails", async () => {
         // getUserInfo lookup — DB error → returns defaults { language: "uz", phone: null }
         prismaMock.users.findFirst.mockRejectedValueOnce(new Error("DB error"));
         // PhoneService lookups (falls back to uz)
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
         prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
 
@@ -303,6 +331,26 @@ describe("handleContact", () => {
         const replyText = vi.mocked(ctx.reply).mock.calls[0][0];
         expect(replyText).toContain("noto'g'ri");
         expect(prismaMock.users.update).not.toHaveBeenCalled();
+    });
+
+    test("sends fallback error reply when ctx.reply fails on wrong-contact path", async () => {
+        // getUserInfo lookup
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser());
+
+        const ctx = createMockContext({
+            contact: { phone_number: "+998901234567", user_id: 200, first_name: "Other" },
+            from: { id: 100 },
+        });
+        // First ctx.reply (wrongContact message) throws
+        vi.mocked(ctx.reply).mockRejectedValueOnce(new Error("Telegram timeout"));
+
+        await expect(handleContact(ctx)).resolves.toBeUndefined();
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            "Bot: Failed to handle contact",
+            expect.objectContaining({ error: expect.any(Error) }),
+        );
+        // Fallback reply was attempted
+        expect(ctx.reply).toHaveBeenCalledTimes(2);
     });
 
     test("rejects when contact user_id is 0 (different from from.id)", async () => {

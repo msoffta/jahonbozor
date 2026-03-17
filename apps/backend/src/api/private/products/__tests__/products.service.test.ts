@@ -1,8 +1,11 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { ProductsService } from "../products.service";
+
+import type { AuditLog, Category, Product, ProductHistory } from "@backend/generated/prisma/client";
 import type { Token } from "@jahonbozor/schemas";
-import type { Product, Category, ProductHistory, AuditLog } from "@backend/generated/prisma/client";
 
 const mockUser: Token = {
     id: 1,
@@ -37,6 +40,7 @@ const createMockCategory = (overrides: Partial<Category> = {}): Category => ({
     id: 1,
     name: "Test Category",
     parentId: null,
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     ...overrides,
@@ -145,7 +149,14 @@ describe("ProductsService", () => {
 
             // Act
             await ProductsService.getAllProducts(
-                { page: 1, limit: 20, searchQuery: "", minPrice: 50, maxPrice: 150, includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    searchQuery: "",
+                    minPrice: 50,
+                    maxPrice: 150,
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -297,7 +308,9 @@ describe("ProductsService", () => {
 
             prismaMock.product.findUnique.mockResolvedValue(existingProduct);
             prismaMock.product.update.mockResolvedValue(updatedProduct);
-            prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory({ operation: "UPDATE" }));
+            prismaMock.productHistory.create.mockResolvedValue(
+                createMockProductHistory({ operation: "UPDATE" }),
+            );
             prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "UPDATE" }));
 
             // Act
@@ -378,7 +391,9 @@ describe("ProductsService", () => {
             prismaMock.product.findUnique.mockResolvedValue(existingProduct);
             prismaMock.category.findUnique.mockResolvedValue(newCategory);
             prismaMock.product.update.mockResolvedValue(updatedProduct);
-            prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory({ operation: "UPDATE" }));
+            prismaMock.productHistory.create.mockResolvedValue(
+                createMockProductHistory({ operation: "UPDATE" }),
+            );
             prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "UPDATE" }));
 
             // Act
@@ -403,7 +418,9 @@ describe("ProductsService", () => {
 
             prismaMock.product.findUnique.mockResolvedValue(existingProduct);
             prismaMock.product.update.mockResolvedValue(deletedProduct);
-            prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory({ operation: "DELETE" }));
+            prismaMock.productHistory.create.mockResolvedValue(
+                createMockProductHistory({ operation: "DELETE" }),
+            );
             prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "DELETE" }));
 
             // Act
@@ -449,7 +466,9 @@ describe("ProductsService", () => {
 
             prismaMock.product.findUnique.mockResolvedValue(deletedProduct);
             prismaMock.product.update.mockResolvedValue(restoredProduct);
-            prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory({ operation: "RESTORE" }));
+            prismaMock.productHistory.create.mockResolvedValue(
+                createMockProductHistory({ operation: "RESTORE" }),
+            );
             prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "RESTORE" }));
 
             // Act
@@ -506,7 +525,13 @@ describe("ProductsService", () => {
                 prismaMock.$transaction.mockResolvedValue([0, []]);
 
                 const result = await ProductsService.getAllProducts(
-                    { page: 1, limit: 20, searchQuery: "", categoryIds: "abc,def", includeDeleted: false },
+                    {
+                        page: 1,
+                        limit: 20,
+                        searchQuery: "",
+                        categoryIds: "abc,def",
+                        includeDeleted: false,
+                    },
                     mockLogger,
                 );
 
@@ -530,7 +555,14 @@ describe("ProductsService", () => {
                 prismaMock.$transaction.mockResolvedValue([0, []]);
 
                 const result = await ProductsService.getAllProducts(
-                    { page: 1, limit: 20, searchQuery: "", minPrice: 100, maxPrice: 50, includeDeleted: false },
+                    {
+                        page: 1,
+                        limit: 20,
+                        searchQuery: "",
+                        minPrice: 100,
+                        maxPrice: 50,
+                        includeDeleted: false,
+                    },
                     mockLogger,
                 );
 
@@ -565,15 +597,14 @@ describe("ProductsService", () => {
                 const existingProduct = createMockProduct({ id: 1 });
                 prismaMock.product.findUnique.mockResolvedValue(existingProduct);
                 prismaMock.product.update.mockResolvedValue(existingProduct);
-                prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory({ operation: "UPDATE" }));
-                prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "UPDATE" }));
-
-                const result = await ProductsService.updateProduct(
-                    1,
-                    {},
-                    mockContext,
-                    mockLogger,
+                prismaMock.productHistory.create.mockResolvedValue(
+                    createMockProductHistory({ operation: "UPDATE" }),
                 );
+                prismaMock.auditLog.create.mockResolvedValue(
+                    createMockAuditLog({ action: "UPDATE" }),
+                );
+
+                const result = await ProductsService.updateProduct(1, {}, mockContext, mockLogger);
 
                 const success = expectSuccess(result);
                 expect(success.data?.id).toBe(1);
@@ -583,8 +614,12 @@ describe("ProductsService", () => {
                 const existingProduct = createMockProduct({ id: 1, categoryId: 1 });
                 prismaMock.product.findUnique.mockResolvedValue(existingProduct);
                 prismaMock.product.update.mockResolvedValue(existingProduct);
-                prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory({ operation: "UPDATE" }));
-                prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "UPDATE" }));
+                prismaMock.productHistory.create.mockResolvedValue(
+                    createMockProductHistory({ operation: "UPDATE" }),
+                );
+                prismaMock.auditLog.create.mockResolvedValue(
+                    createMockAuditLog({ action: "UPDATE" }),
+                );
 
                 const result = await ProductsService.updateProduct(
                     1,
@@ -593,7 +628,7 @@ describe("ProductsService", () => {
                     mockLogger,
                 );
 
-                const success = expectSuccess(result);
+                expectSuccess(result);
                 expect(prismaMock.category.findUnique).not.toHaveBeenCalled();
             });
         });

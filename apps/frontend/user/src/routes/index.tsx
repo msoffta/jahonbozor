@@ -1,21 +1,30 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useState, useCallback } from "react";
-import { SearchBar } from "@/components/catalog/search-bar";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+
+import {
+    AnimatedList,
+    AnimatedListItem,
+    AnimatePresence,
+    motion,
+    PageTransition,
+    Skeleton,
+} from "@jahonbozor/ui";
+
+import { categoriesListOptions } from "@/api/categories.api";
+import { productsListOptions } from "@/api/products.api";
 import { CategorySection } from "@/components/catalog/category-section";
 import { ProductCard } from "@/components/catalog/product-card";
-import { productsListOptions } from "@/api/products.api";
-import { categoriesListOptions } from "@/api/categories.api";
-import { Skeleton, PageTransition, AnimatedList, AnimatedListItem, AnimatePresence, motion } from "@jahonbozor/ui";
+import { SearchBar } from "@/components/catalog/search-bar";
 
 function HomePage() {
     const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState("");
 
-    const { data: categoriesData, isLoading: categoriesLoading } = useQuery(
-        categoriesListOptions(),
-    );
+    const { data: categoriesData, isLoading: categoriesLoading } =
+        useQuery(categoriesListOptions());
     const { data: searchData, isLoading: searchLoading } = useQuery({
         ...productsListOptions({ limit: 20, searchQuery }),
         enabled: searchQuery.length > 0,
@@ -30,7 +39,7 @@ function HomePage() {
 
     return (
         <PageTransition>
-            <div className="sticky top-14 z-40 bg-background">
+            <div className="bg-background sticky top-14 z-40">
                 <SearchBar value={searchQuery} onChange={handleSearch} />
             </div>
 
@@ -55,7 +64,7 @@ function HomePage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="px-4 py-8 text-center text-muted-foreground"
+                        className="text-muted-foreground px-4 py-8 text-center"
                     >
                         {t("no_data")}
                     </motion.p>
@@ -111,5 +120,8 @@ function HomePage() {
 }
 
 export const Route = createFileRoute("/")({
+    loader: ({ context }) => {
+        void context.queryClient.ensureQueryData(categoriesListOptions());
+    },
     component: HomePage,
 });

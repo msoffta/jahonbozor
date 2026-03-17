@@ -1,15 +1,20 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger } from "@backend/test/setup";
-import type { Category } from "@backend/generated/prisma/client";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger, prismaMock } from "@backend/test/setup";
+
 import { CategoriesService } from "../categories.service";
+
+import type { Category } from "@backend/generated/prisma/client";
 
 // Mock data
 const mockCategory: Category = {
     id: 1,
     name: "Electronics",
     parentId: null,
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -18,6 +23,7 @@ const mockChildCategory: Category = {
     id: 5,
     name: "Smartphones",
     parentId: 1,
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -64,7 +70,12 @@ const createTestApp = () => {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
                     searchQuery: query.searchQuery,
-                    parentId: query.parentId === "null" ? null : query.parentId ? Number(query.parentId) : undefined,
+                    parentId:
+                        query.parentId === "null"
+                            ? null
+                            : query.parentId
+                              ? Number(query.parentId)
+                              : undefined,
                     includeChildren: query.includeChildren === "true",
                     includeProducts: query.includeProducts === "true",
                     includeParent: query.includeParent === "true",
@@ -186,9 +197,7 @@ describe("Categories API Routes", () => {
             prismaMock.$transaction.mockResolvedValueOnce([0, []]);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/categories"),
-            );
+            const response = await app.handle(new Request("http://localhost/categories"));
             const body = await response.json();
 
             // Assert
@@ -208,9 +217,7 @@ describe("Categories API Routes", () => {
             prismaMock.category.findMany.mockResolvedValueOnce(mockTree);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/categories/tree"),
-            );
+            const response = await app.handle(new Request("http://localhost/categories/tree"));
             const body = await response.json();
 
             // Assert
@@ -239,12 +246,10 @@ describe("Categories API Routes", () => {
     describe("GET /categories/:id", () => {
         test("should return category by id", async () => {
             // Arrange
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/categories/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/categories/1"));
             const body = await response.json();
 
             // Assert
@@ -256,12 +261,10 @@ describe("Categories API Routes", () => {
 
         test("should return error when category not found", async () => {
             // Arrange
-            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+            prismaMock.category.findFirst.mockResolvedValueOnce(null);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/categories/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/categories/999"));
             const body = await response.json();
 
             // Assert
@@ -273,15 +276,18 @@ describe("Categories API Routes", () => {
             // Arrange
             const categoryWithChildren = {
                 ...mockCategory,
-                children: [{
-                    id: 2,
-                    name: "Child",
-                    parentId: 1,
-                    createdAt: new Date("2024-01-01"),
-                    updatedAt: new Date("2024-01-01"),
-                }],
+                children: [
+                    {
+                        id: 2,
+                        name: "Child",
+                        parentId: 1,
+                        deletedAt: null,
+                        createdAt: new Date("2024-01-01"),
+                        updatedAt: new Date("2024-01-01"),
+                    },
+                ],
             };
-            prismaMock.category.findUnique.mockResolvedValueOnce(categoryWithChildren);
+            prismaMock.category.findFirst.mockResolvedValueOnce(categoryWithChildren);
 
             // Act
             const response = await app.handle(
@@ -461,14 +467,15 @@ describe("Categories API Routes", () => {
     });
 
     describe("DELETE /categories/:id", () => {
-        test("should delete category without children or products", async () => {
+        test("should soft delete category without children or products", async () => {
             // Arrange
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            const deletedCategory = { ...mockCategory, deletedAt: new Date() };
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
             prismaMock.category.count.mockResolvedValueOnce(0); // No children
             prismaMock.product.count.mockResolvedValueOnce(0); // No products
             prismaMock.$transaction.mockImplementationOnce(async (callback) => {
                 const mockTx = {
-                    category: { delete: vi.fn(() => Promise.resolve(mockCategory)) },
+                    category: { update: vi.fn(() => Promise.resolve(deletedCategory)) },
                     auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return (callback as (tx: unknown) => Promise<unknown>)(mockTx);
@@ -487,7 +494,7 @@ describe("Categories API Routes", () => {
 
         test("should return error when category not found", async () => {
             // Arrange
-            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+            prismaMock.category.findFirst.mockResolvedValueOnce(null);
 
             // Act
             const response = await app.handle(
@@ -502,7 +509,7 @@ describe("Categories API Routes", () => {
 
         test("should return error when category has children", async () => {
             // Arrange
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
             prismaMock.category.count.mockResolvedValueOnce(3); // Has children
 
             // Act
@@ -518,7 +525,7 @@ describe("Categories API Routes", () => {
 
         test("should return error when category has products", async () => {
             // Arrange
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
             prismaMock.category.count.mockResolvedValueOnce(0); // No children
             prismaMock.product.count.mockResolvedValueOnce(5); // Has products
 
@@ -630,11 +637,9 @@ describe("Categories API edge cases", () => {
     });
 
     test("GET /categories/:id with id=0 should return not found", async () => {
-        prismaMock.category.findUnique.mockResolvedValueOnce(null);
+        prismaMock.category.findFirst.mockResolvedValueOnce(null);
 
-        const response = await app.handle(
-            new Request("http://localhost/categories/0"),
-        );
+        const response = await app.handle(new Request("http://localhost/categories/0"));
         const body = await response.json();
 
         expect(body.success).toBe(false);
@@ -644,9 +649,7 @@ describe("Categories API edge cases", () => {
     test("GET /categories with empty results should return empty list", async () => {
         prismaMock.$transaction.mockResolvedValueOnce([0, []]);
 
-        const response = await app.handle(
-            new Request("http://localhost/categories"),
-        );
+        const response = await app.handle(new Request("http://localhost/categories"));
         const body = await response.json();
 
         expect(response.status).toBe(200);
@@ -658,9 +661,7 @@ describe("Categories API edge cases", () => {
     test("GET /categories/tree should return empty tree when no categories", async () => {
         prismaMock.category.findMany.mockResolvedValueOnce([]);
 
-        const response = await app.handle(
-            new Request("http://localhost/categories/tree"),
-        );
+        const response = await app.handle(new Request("http://localhost/categories/tree"));
         const body = await response.json();
 
         expect(response.status).toBe(200);
@@ -685,7 +686,7 @@ describe("Categories API edge cases", () => {
     });
 
     test("DELETE /categories/:id with children should return constraint error", async () => {
-        prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+        prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
         prismaMock.category.count.mockResolvedValueOnce(2);
 
         const response = await app.handle(

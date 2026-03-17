@@ -13,8 +13,12 @@ model Staff {
   productHistories ProductHistory[]
   expenses         Expense[]
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([deletedAt])
 }
 
 model Role {
@@ -23,8 +27,12 @@ model Role {
   permissions String[]
   staffs      Staff[]
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([deletedAt])
 }
 
 model RefreshToken {

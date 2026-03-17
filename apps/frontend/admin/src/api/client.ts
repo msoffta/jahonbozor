@@ -1,7 +1,9 @@
 import { treaty } from "@elysiajs/eden";
-import type { App } from "@jahonbozor/backend";
 import * as Sentry from "@sentry/react";
+
 import { useAuthStore } from "@/stores/auth.store";
+
+import type { App } from "@jahonbozor/backend";
 
 let isRefreshing = false;
 

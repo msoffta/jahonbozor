@@ -1,5 +1,6 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useAuthStore } from "@/stores/auth.store";
 
 vi.mock("react-i18next", () => ({

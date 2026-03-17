@@ -1,14 +1,11 @@
-import { clientsListQueryOptions } from "@/api/clients.api";
-import { ordersListQueryOptions, useDeleteOrder } from "@/api/orders.api";
-import { productsListQueryOptions } from "@/api/products.api";
-import { getOrderColumns } from "@/components/orders/orders-columns";
-import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import dayjs from "dayjs";
-import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { endOfDay, startOfDay } from "date-fns";
+
+import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
 import {
     AnimatePresence,
     Button,
@@ -18,10 +15,16 @@ import {
     motion,
     PageTransition,
 } from "@jahonbozor/ui";
-import { useAuthStore } from "@/stores/auth.store";
-import { useHasPermission } from "@/hooks/use-permissions";
+
+import { clientsListQueryOptions } from "@/api/clients.api";
+import { ordersListQueryOptions, useDeleteOrder } from "@/api/orders.api";
+import { productsListQueryOptions } from "@/api/products.api";
+import { getOrderColumns } from "@/components/orders/orders-columns";
+import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function ListsPage() {
     const { t } = useTranslation("orders");
@@ -35,8 +38,8 @@ function ListsPage() {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
-    const todayStart = dayjs().startOf("day").toISOString();
-    const todayEnd = dayjs().endOf("day").toISOString();
+    const todayStart = startOfDay(new Date()).toISOString();
+    const todayEnd = endOfDay(new Date()).toISOString();
 
     const [dateFrom, setDateFrom] = useState(todayStart);
     const [dateTo, setDateTo] = useState(todayEnd);
@@ -74,7 +77,7 @@ function ListsPage() {
                 // Not used on lists page
             },
             onNavigate: (id: number) => {
-                navigate({
+                void navigate({
                     to: "/orders/$orderId",
                     params: { orderId: String(id) },
                 });
@@ -96,29 +99,25 @@ function ListsPage() {
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+            <div className="mb-6 flex items-center justify-between">
                 <h1 className="text-2xl font-bold">{t("lists_title")}</h1>
 
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                         <DatePicker
                             value={dateFrom}
-                            onChange={(date) =>
-                                setDateFrom(
-                                    dayjs(date).startOf("day").toISOString(),
-                                )
-                            }
+                            onChange={(date) => {
+                                if (date) setDateFrom(startOfDay(new Date(date)).toISOString());
+                            }}
                             className="h-8 w-36 text-xs"
                         />
                         <span className="text-muted-foreground text-xs">—</span>
                         <DatePicker
                             value={dateTo}
-                            onChange={(date) =>
-                                setDateTo(
-                                    dayjs(date).endOf("day").toISOString(),
-                                )
-                            }
+                            onChange={(date) => {
+                                if (date) setDateTo(endOfDay(new Date(date)).toISOString());
+                            }}
                             className="h-8 w-36 text-xs"
                         />
                     </div>
@@ -137,13 +136,24 @@ function ListsPage() {
 
             <AnimatePresence mode="wait">
                 {isLoading ? (
-                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
                         <DataTableSkeleton columns={8} rows={10} className="flex-1" />
                     </motion.div>
                 ) : (
-                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
                         <DataTable
-                            className="flex-1 costprice-table"
+                            className="costprice-table flex-1"
                             columns={columns}
                             data={orders}
                             pagination

@@ -1,4 +1,5 @@
-import { describe, test, expect, vi, beforeAll } from "vitest";
+import { beforeAll, describe, expect, test, vi } from "vitest";
+
 import { prismaMock } from "../setup";
 
 // Mock grammy before importing index
@@ -9,8 +10,11 @@ vi.mock("grammy", () => ({
         constructor() {}
         on() {}
         command() {}
+        catch() {}
         api = { setWebhook: mockSetWebhook };
     },
+    GrammyError: class GrammyError extends Error {},
+    HttpError: class HttpError extends Error {},
     webhookCallback: () => () => mockHandleUpdate(),
 }));
 
@@ -21,7 +25,7 @@ const mockLogger = vi.hoisted(() => ({
     error: vi.fn(),
     debug: vi.fn(),
 }));
-vi.mock("@bot/lib/logger", () => ({ default: mockLogger }));
+vi.mock("@bot/lib/logger", () => ({ logger: mockLogger }));
 
 // Mock Bun.serve — capture the fetch handler so we can call it directly
 let serverFetch: (req: Request) => Response | Promise<Response>;
@@ -41,14 +45,14 @@ process.env.BOT_PORT = "0";
 // State captured during module initialization (before mockReset clears call history)
 let webhookCalledWith: string | undefined;
 let webhookLoggedSuccess = false;
-let shutdownHandler: (() => Promise<void>) | undefined;
+let shutdownHandler: (() => void) | undefined;
 
 describe("bot webhook server", () => {
     beforeAll(async () => {
         // Spy on process.on to capture shutdown handler
         const originalProcessOn = process.on.bind(process);
         vi.spyOn(process, "on").mockImplementation(((event: string, handler: Function) => {
-            if (event === "SIGTERM") shutdownHandler = handler as () => Promise<void>;
+            if (event === "SIGTERM") shutdownHandler = handler as () => void;
             return originalProcessOn(event, handler as (...args: unknown[]) => void);
         }) as typeof process.on);
 
@@ -60,10 +64,11 @@ describe("bot webhook server", () => {
 
         // Capture state before mockReset clears it
         if (mockSetWebhook.mock.calls.length > 0) {
-            webhookCalledWith = String(mockSetWebhook.mock.calls[0]);
+            webhookCalledWith = String((mockSetWebhook.mock.calls as unknown[][])[0][0]);
         }
         webhookLoggedSuccess = mockLogger.info.mock.calls.some(
-            (call: unknown[]) => typeof call[0] === "string" && call[0].includes("Bot webhook registered"),
+            (call: unknown[]) =>
+                typeof call[0] === "string" && call[0].includes("Bot: Webhook registered"),
         );
     });
 
@@ -102,6 +107,35 @@ describe("bot webhook server", () => {
         expect(body).toHaveProperty("uptime");
     });
 
+    test("GET /health logs error when DB is unreachable", async () => {
+        const dbError = new Error("Connection refused");
+        prismaMock.$queryRaw.mockRejectedValueOnce(dbError);
+        vi.mocked(mockLogger.error).mockClear();
+
+        await serverFetch(new Request("http://localhost/health"));
+
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            "Bot: Health check DB unreachable",
+            expect.objectContaining({ error: dbError }),
+        );
+    });
+
+    test("GET /bot returns 404 (only POST handled)", async () => {
+        const response = await serverFetch(new Request("http://localhost/bot"));
+
+        expect(response.status).toBe(404);
+    });
+
+    test("POST /health also returns health status (any method accepted)", async () => {
+        prismaMock.$queryRaw.mockResolvedValueOnce([{ "?column?": 1 }]);
+
+        const response = await serverFetch(
+            new Request("http://localhost/health", { method: "POST" }),
+        );
+
+        expect(response.status).toBe(200);
+    });
+
     test("GET /unknown returns 404", async () => {
         const response = await serverFetch(new Request("http://localhost/unknown"));
 
@@ -136,7 +170,10 @@ describe("graceful shutdown", () => {
         // Re-spy process.exit (restoreAllMocks clears previous spy)
         const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
 
-        await shutdownHandler!();
+        shutdownHandler!();
+
+        // Allow async shutdown to complete
+        await new Promise((r) => setTimeout(r, 50));
 
         expect(mockServer.stop).toHaveBeenCalled();
         expect(prismaMock.$disconnect).toHaveBeenCalled();

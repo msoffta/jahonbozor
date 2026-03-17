@@ -1,6 +1,7 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { createMockLogger } from "@backend/test/setup";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { sendContactRequest } from "@backend/lib/telegram";
+import { createMockLogger } from "@backend/test/setup";
 
 // Save original env and fetch
 const originalEnv = process.env.TELEGRAM_BOT_TOKEN;

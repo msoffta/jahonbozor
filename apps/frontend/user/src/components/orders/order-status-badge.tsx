@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+
 import { Badge } from "@jahonbozor/ui";
 
 interface OrderStatusBadgeProps {
@@ -6,12 +7,20 @@ interface OrderStatusBadgeProps {
 }
 
 export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
-    const { t } = useTranslation();
+    const { t } = useTranslation("orders");
 
     return (
         <Badge
-            variant={status === "NEW" ? "default" : status === "CANCELLED" ? "destructive" : "secondary"}
-            className={status === "NEW" ? "bg-primary" : status === "CANCELLED" ? "" : "bg-accent text-accent-foreground"}
+            variant={
+                status === "NEW" ? "default" : status === "CANCELLED" ? "destructive" : "secondary"
+            }
+            className={
+                status === "NEW"
+                    ? "bg-primary"
+                    : status === "CANCELLED"
+                      ? ""
+                      : "bg-accent text-accent-foreground"
+            }
         >
             {status === "NEW"
                 ? t("status_new")
@@ -22,7 +31,10 @@ export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
     );
 }
 
-export function getPaymentTypeLabel(paymentType: string, t: (key: string, options?: Record<string, string>) => string): string {
+export function getPaymentTypeLabel(
+    paymentType: string,
+    t: (key: string, options?: Record<string, string>) => string,
+): string {
     if (paymentType === "CREDIT_CARD") return t("payment_card");
     if (paymentType === "DEBT") return t("payment_debt");
     return t("payment_cash");

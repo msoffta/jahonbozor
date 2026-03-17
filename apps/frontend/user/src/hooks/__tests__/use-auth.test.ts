@@ -1,11 +1,19 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 
 type EdenFn = (...args: unknown[]) => Promise<{ data: unknown; error: unknown }>;
 
-const { mockTelegramPost, mockLogoutPost, mockLanguagePut } = vi.hoisted(() => ({
+const {
+    mockTelegramPost,
+    mockLogoutPost,
+    mockLanguagePut,
+    mockNavigate,
+    mockClear,
+    mockToastError,
+} = vi.hoisted(() => ({
     mockTelegramPost: vi.fn<EdenFn>(() =>
         Promise.resolve({
             data: {
@@ -24,12 +32,11 @@ const { mockTelegramPost, mockLogoutPost, mockLanguagePut } = vi.hoisted(() => (
             error: null,
         }),
     ),
-    mockLogoutPost: vi.fn<EdenFn>(() =>
-        Promise.resolve({ data: null, error: null }),
-    ),
-    mockLanguagePut: vi.fn<EdenFn>(() =>
-        Promise.resolve({ data: { success: true }, error: null }),
-    ),
+    mockLogoutPost: vi.fn<EdenFn>(() => Promise.resolve({ data: null, error: null })),
+    mockLanguagePut: vi.fn<EdenFn>(() => Promise.resolve({ data: { success: true }, error: null })),
+    mockNavigate: vi.fn(),
+    mockClear: vi.fn(),
+    mockToastError: vi.fn(),
 }));
 
 vi.mock("@/lib/api-client", () => ({
@@ -56,19 +63,23 @@ vi.mock("@/lib/api-client", () => ({
     },
 }));
 
+vi.mock("@jahonbozor/ui", () => ({
+    toast: { error: mockToastError },
+}));
+
+vi.mock("@/lib/i18n", () => ({
+    i18n: { t: (key: string) => key },
+}));
+
 vi.mock("@tanstack/react-query", () => ({
-    QueryClient: class MockQueryClient {
-        defaultOptions = {};
-        clear = vi.fn();
-        constructor() {}
-    },
-    useMutation: ({ mutationFn, onSuccess, onSettled }: any) => ({
+    useMutation: ({ mutationFn, onSuccess, onError, onSettled }: any) => ({
         mutate: async (...args: any[]) => {
             try {
                 const result = await mutationFn(...args);
                 if (onSuccess) await onSuccess(result, ...args);
                 return result;
             } catch (e) {
+                if (onError) onError(e);
                 throw e;
             } finally {
                 if (onSettled) onSettled();
@@ -78,7 +89,14 @@ vi.mock("@tanstack/react-query", () => ({
         isPending: false,
         isError: false,
     }),
+    useQueryClient: () => ({
+        clear: mockClear,
+    }),
     queryOptions: (opts: any) => opts,
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+    useNavigate: () => mockNavigate,
 }));
 
 vi.mock("@sentry/react", () => ({
@@ -86,7 +104,8 @@ vi.mock("@sentry/react", () => ({
 }));
 
 import * as Sentry from "@sentry/react";
-import { useTelegramLogin, useLogout, useUpdateLanguage } from "../auth.api";
+
+import { useLogout, useTelegramLogin, useUpdateLanguage } from "../use-auth";
 
 describe("useTelegramLogin", () => {
     const loginBody = {
@@ -106,6 +125,7 @@ describe("useTelegramLogin", () => {
             isAuthenticated: false,
         });
         useUIStore.setState({ locale: "uz" });
+        mockNavigate.mockClear();
     });
 
     test("should call API with body and current locale", async () => {
@@ -135,6 +155,13 @@ describe("useTelegramLogin", () => {
             language: "uz",
             type: "user",
         });
+    });
+
+    test("should navigate to home on successful login", async () => {
+        const { result } = renderHook(() => useTelegramLogin());
+        await result.current.mutate(loginBody);
+
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
 
     test("should set UI locale from user language", async () => {
@@ -192,19 +219,17 @@ describe("useTelegramLogin", () => {
         });
 
         const { result } = renderHook(() => useTelegramLogin());
-        await expect(result.current.mutate(loginBody)).rejects.toThrow(
-            "Network error",
-        );
+        await expect(result.current.mutate(loginBody)).rejects.toThrow("Network error");
     });
 
-    test("should not set auth when result has no data", async () => {
+    test("should throw on unsuccessful response", async () => {
         mockTelegramPost.mockResolvedValueOnce({
             data: { success: false },
             error: null,
         });
 
         const { result } = renderHook(() => useTelegramLogin());
-        await result.current.mutate(loginBody);
+        await expect(result.current.mutate(loginBody)).rejects.toThrow("Request failed");
 
         expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });
@@ -214,9 +239,7 @@ describe("useTelegramLogin", () => {
         const { result } = renderHook(() => useTelegramLogin());
         await result.current.mutate(bodyWithNumId);
 
-        expect(mockTelegramPost).toHaveBeenCalledWith(
-            expect.objectContaining({ id: "456" }),
-        );
+        expect(mockTelegramPost).toHaveBeenCalledWith(expect.objectContaining({ id: "456" }));
     });
 
     test("should handle null phone in response", async () => {
@@ -241,6 +264,22 @@ describe("useTelegramLogin", () => {
         await result.current.mutate(loginBody);
 
         expect(useAuthStore.getState().user?.phone).toBeNull();
+    });
+
+    test("should show error toast on API error", async () => {
+        mockTelegramPost.mockResolvedValueOnce({
+            data: null,
+            error: new Error("Network error"),
+        });
+
+        const { result } = renderHook(() => useTelegramLogin());
+        try {
+            await result.current.mutate(loginBody);
+        } catch {
+            // expected
+        }
+
+        expect(mockToastError).toHaveBeenCalledWith("error");
     });
 
     test("should call Sentry.setUser on successful login", async () => {
@@ -268,6 +307,8 @@ describe("useLogout", () => {
             },
             isAuthenticated: true,
         });
+        mockNavigate.mockClear();
+        mockClear.mockClear();
     });
 
     test("should call logout API", async () => {
@@ -292,6 +333,20 @@ describe("useLogout", () => {
         await result.current.mutate();
 
         expect(Sentry.setUser).toHaveBeenCalledWith(null);
+    });
+
+    test("should clear query client on logout", async () => {
+        const { result } = renderHook(() => useLogout());
+        await result.current.mutate();
+
+        expect(mockClear).toHaveBeenCalled();
+    });
+
+    test("should navigate to login page on settled", async () => {
+        const { result } = renderHook(() => useLogout());
+        await result.current.mutate();
+
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/login" });
     });
 
     test("should clear auth store even on API error", async () => {
@@ -335,9 +390,23 @@ describe("useUpdateLanguage", () => {
         });
 
         const { result } = renderHook(() => useUpdateLanguage());
-        await expect(result.current.mutate("ru")).rejects.toThrow(
-            "Unauthorized",
-        );
+        await expect(result.current.mutate("ru")).rejects.toThrow("Unauthorized");
+    });
+
+    test("should show error toast on API error", async () => {
+        mockLanguagePut.mockResolvedValueOnce({
+            data: null,
+            error: new Error("Unauthorized"),
+        });
+
+        const { result } = renderHook(() => useUpdateLanguage());
+        try {
+            await result.current.mutate("ru");
+        } catch {
+            // expected
+        }
+
+        expect(mockToastError).toHaveBeenCalledWith("error");
     });
 
     test("should return data on success", async () => {

@@ -1,4 +1,5 @@
 import z from "zod";
+
 import { BaseModel } from "../common/base.model";
 
 export const Category = BaseModel.extend({

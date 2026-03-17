@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const { mockNavigate, mocks } = vi.hoisted(() => ({
     mockNavigate: vi.fn(),
@@ -21,7 +21,9 @@ const { mockNavigate, mocks } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-client", () => ({
-    api: { api: { public: { products: Object.assign(() => ({ get: vi.fn() }), { get: vi.fn() }) } } },
+    api: {
+        api: { public: { products: Object.assign(() => ({ get: vi.fn() }), { get: vi.fn() }) } },
+    },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -40,14 +42,22 @@ vi.mock("@tanstack/react-router", () => ({
     }),
     lazyRouteComponent: (component: any) => component,
     Link: ({ children, to, ...props }: any) => (
-        <a href={to} {...props}>{children}</a>
+        <a href={to} {...props}>
+            {children}
+        </a>
     ),
     useNavigate: () => mockNavigate,
 }));
 
 vi.mock("@tanstack/react-query", () => ({
     useQuery: () => mocks.queryReturn,
-    useInfiniteQuery: () => ({ data: undefined, isLoading: false, isFetchingNextPage: false, hasNextPage: false, fetchNextPage: vi.fn() }),
+    useInfiniteQuery: () => ({
+        data: undefined,
+        isLoading: false,
+        isFetchingNextPage: false,
+        hasNextPage: false,
+        fetchNextPage: vi.fn(),
+    }),
     useMutation: () => ({ mutate: vi.fn(), isPending: false }),
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
     queryOptions: (opts: any) => opts,
@@ -55,7 +65,12 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/api/products.api", () => ({
-    productKeys: { all: ["products"], lists: () => ["products", "list"], details: () => ["products", "detail"], detail: (id: number) => ["products", "detail", id] },
+    productKeys: {
+        all: ["products"],
+        lists: () => ["products", "list"],
+        details: () => ["products", "detail"],
+        detail: (id: number) => ["products", "detail", id],
+    },
     productsListOptions: (params: any) => ({ queryKey: ["products", "list", params] }),
     productsInfiniteOptions: (params: any) => ({ queryKey: ["products", "list", params] }),
     productDetailOptions: (id: number) => ({ queryKey: ["products", "detail", id] }),
@@ -87,8 +102,10 @@ vi.mock("@jahonbozor/ui", async () => {
 });
 
 import { render } from "@testing-library/react";
+
 import { useCartStore } from "@/stores/cart.store";
 import { useUIStore } from "@/stores/ui.store";
+
 import { Route } from "../_public/products/$productId";
 
 const mockProduct = {

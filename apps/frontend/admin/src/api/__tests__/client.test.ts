@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useAuthStore } from "@/stores/auth.store";
 
 // Mock Sentry
@@ -61,11 +62,13 @@ describe("api client", () => {
         });
 
         test("should clear auth on non-ok refresh response", async () => {
-            useAuthStore.getState().setAuth(
-                "old-token",
-                { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "old-token",
+                    { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
+                    [],
+                );
 
             vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
                 ok: false,
@@ -81,11 +84,13 @@ describe("api client", () => {
         });
 
         test("should clear auth when refresh response has no token", async () => {
-            useAuthStore.getState().setAuth(
-                "old-token",
-                { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "old-token",
+                    { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
+                    [],
+                );
 
             vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
                 ok: true,
@@ -124,11 +129,13 @@ describe("api client", () => {
         });
 
         test("should clear auth on network error", async () => {
-            useAuthStore.getState().setAuth(
-                "old-token",
-                { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "old-token",
+                    { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
+                    [],
+                );
 
             vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
 
@@ -192,11 +199,13 @@ describe("api client", () => {
 
     describe("headers", () => {
         test("should include Authorization header when token exists", () => {
-            useAuthStore.getState().setAuth(
-                "test-token",
-                { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "test-token",
+                    { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
+                    [],
+                );
 
             const { token } = useAuthStore.getState();
             const headers = token ? { Authorization: `Bearer ${token}` } : undefined;

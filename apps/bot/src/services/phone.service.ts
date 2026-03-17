@@ -1,11 +1,30 @@
-import type { Logger } from "@jahonbozor/logger";
+import { validatePhone } from "@bot/lib/phone-validation";
 import { prisma } from "@bot/lib/prisma";
+
+import type { Logger } from "@jahonbozor/logger";
 
 type PhoneResult =
     | { success: true }
-    | { success: false; error: "PHONE_TAKEN" | "USER_NOT_FOUND" | "ALREADY_HAS_PHONE" | "DB_ERROR" };
+    | {
+          success: false;
+          error:
+              | "PHONE_TAKEN"
+              | "USER_NOT_FOUND"
+              | "ALREADY_HAS_PHONE"
+              | "INVALID_PHONE"
+              | "DB_ERROR";
+      };
 
-export async function savePhone(telegramId: string, phone: string, logger: Logger): Promise<PhoneResult> {
+export async function savePhone(
+    telegramId: string,
+    phone: string,
+    logger: Logger,
+): Promise<PhoneResult> {
+    if (!validatePhone(phone)) {
+        logger.warn("PhoneService: Invalid phone format", { telegramId, phone });
+        return { success: false, error: "INVALID_PHONE" };
+    }
+
     try {
         return await prisma.$transaction(async (tx) => {
             const user = await tx.users.findFirst({

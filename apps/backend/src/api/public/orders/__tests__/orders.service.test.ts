@@ -1,8 +1,11 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import type { Order, Product, AuditLog, Prisma } from "@backend/generated/prisma/client";
-import type { Token } from "@jahonbozor/schemas";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { PublicOrdersService } from "../orders.service";
+
+import type { AuditLog, Order, Product } from "@backend/generated/prisma/client";
+import type { Token } from "@jahonbozor/schemas";
 
 const mockProduct = {
     id: 1,
@@ -24,6 +27,7 @@ const mockOrder: Order = {
     status: "NEW",
     comment: null,
     data: {},
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -68,21 +72,25 @@ describe("PublicOrders Service", () => {
     describe("createOrder", () => {
         const validOrderData = {
             paymentType: "CASH" as const,
-            items: [
-                { productId: 1, quantity: 2, price: 100 },
-            ],
+            items: [{ productId: 1, quantity: 2, price: 100 }],
         };
 
         test("should create order with valid data", async () => {
             // Arrange
             prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
-            prismaMock.order.create.mockResolvedValueOnce(mockOrderWithRelations as unknown as Order);
+            prismaMock.order.create.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
             prismaMock.product.update.mockResolvedValueOnce(mockProduct);
             prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
 
             // Act
-            const result = await PublicOrdersService.createOrder(validOrderData, mockContext, mockLogger);
+            const result = await PublicOrdersService.createOrder(
+                validOrderData,
+                mockContext,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -99,7 +107,11 @@ describe("PublicOrders Service", () => {
             prismaMock.product.findMany.mockResolvedValueOnce([]);
 
             // Act
-            const result = await PublicOrdersService.createOrder(validOrderData, mockContext, mockLogger);
+            const result = await PublicOrdersService.createOrder(
+                validOrderData,
+                mockContext,
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -117,7 +129,11 @@ describe("PublicOrders Service", () => {
                 ...validOrderData,
                 items: [{ productId: 1, quantity: 10, price: 100 }],
             };
-            const result = await PublicOrdersService.createOrder(orderWithHighQuantity, mockContext, mockLogger);
+            const result = await PublicOrdersService.createOrder(
+                orderWithHighQuantity,
+                mockContext,
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -138,7 +154,9 @@ describe("PublicOrders Service", () => {
         test("should create ProductHistory records", async () => {
             // Arrange
             prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
-            prismaMock.order.create.mockResolvedValueOnce(mockOrderWithRelations as unknown as Order);
+            prismaMock.order.create.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
             prismaMock.product.update.mockResolvedValueOnce(mockProduct);
             prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
@@ -153,7 +171,9 @@ describe("PublicOrders Service", () => {
         test("should create AuditLog entry", async () => {
             // Arrange
             prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
-            prismaMock.order.create.mockResolvedValueOnce(mockOrderWithRelations as unknown as Order);
+            prismaMock.order.create.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
             prismaMock.product.update.mockResolvedValueOnce(mockProduct);
             prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
@@ -172,7 +192,11 @@ describe("PublicOrders Service", () => {
             prismaMock.$transaction.mockRejectedValueOnce(dbError);
 
             // Act
-            const result = await PublicOrdersService.createOrder(validOrderData, mockContext, mockLogger);
+            const result = await PublicOrdersService.createOrder(
+                validOrderData,
+                mockContext,
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -263,7 +287,9 @@ describe("PublicOrders Service", () => {
             // Assert
             expectSuccess(result);
             // Verify both gte and lte are passed in the count/findMany where clause
-            const countArgs = prismaMock.order.count.mock.calls[0]?.[0] as { where: { createdAt?: { gte?: string; lte?: string } } } | undefined;
+            const countArgs = prismaMock.order.count.mock.calls[0]?.[0] as
+                | { where: { createdAt?: { gte?: string; lte?: string } } }
+                | undefined;
             expect(countArgs?.where.createdAt).toEqual({
                 gte: dateFrom,
                 lte: dateTo,
@@ -274,7 +300,9 @@ describe("PublicOrders Service", () => {
     describe("getUserOrder", () => {
         test("should return user's order by id", async () => {
             // Arrange
-            prismaMock.order.findUnique.mockResolvedValueOnce(mockOrderWithRelations as unknown as Order);
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
 
             // Act
             const result = await PublicOrdersService.getUserOrder(1, 1, mockLogger);
@@ -311,11 +339,14 @@ describe("PublicOrders Service", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("Forbidden");
-            expect(mockLogger.warn).toHaveBeenCalledWith("PublicOrders: User not authorized to view order", {
-                orderId: 1,
-                userId: 1,
-                orderUserId: 2,
-            });
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                "PublicOrders: User not authorized to view order",
+                {
+                    orderId: 1,
+                    userId: 1,
+                    orderUserId: 2,
+                },
+            );
         });
 
         test("should handle database error", async () => {
@@ -367,7 +398,9 @@ describe("PublicOrders Service", () => {
 
         test("should cancel NEW order and restore inventory", async () => {
             // Arrange
-            prismaMock.order.findUnique.mockResolvedValueOnce(mockOrderWithProducts as unknown as Order);
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                mockOrderWithProducts as unknown as Order,
+            );
             prismaMock.product.update.mockResolvedValueOnce(mockProduct);
             prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
             prismaMock.order.update.mockResolvedValueOnce(mockCancelledOrder as unknown as Order);
@@ -379,11 +412,14 @@ describe("PublicOrders Service", () => {
             // Assert
             const success = expectSuccess(result);
             expect(success.data?.status).toBe("CANCELLED");
-            expect(mockLogger.info).toHaveBeenCalledWith("PublicOrders: Order cancelled and stock restored", {
-                orderId: 1,
-                userId: 1,
-                itemsRestored: 1,
-            });
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                "PublicOrders: Order cancelled and stock restored",
+                {
+                    orderId: 1,
+                    userId: 1,
+                    itemsRestored: 1,
+                },
+            );
         });
 
         test("should return error when order not found", async () => {
@@ -440,7 +476,9 @@ describe("PublicOrders Service", () => {
                     },
                 ],
             };
-            prismaMock.order.findUnique.mockResolvedValueOnce(orderWithDeletedProduct as unknown as Order);
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                orderWithDeletedProduct as unknown as Order,
+            );
             prismaMock.order.update.mockResolvedValueOnce(mockCancelledOrder as unknown as Order);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
 
@@ -482,7 +520,9 @@ describe("PublicOrders Service", () => {
 
         test("should create audit log with ORDER_STATUS_CHANGE action", async () => {
             // Arrange
-            prismaMock.order.findUnique.mockResolvedValueOnce(mockOrderWithProducts as unknown as Order);
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                mockOrderWithProducts as unknown as Order,
+            );
             prismaMock.product.update.mockResolvedValueOnce(mockProduct);
             prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
             prismaMock.order.update.mockResolvedValueOnce(mockCancelledOrder as unknown as Order);
@@ -526,7 +566,9 @@ describe("PublicOrders Service", () => {
         test("createOrder with exact stock should succeed", async () => {
             const exactStockProduct = { ...mockProduct, remaining: 2 };
             prismaMock.product.findMany.mockResolvedValueOnce([exactStockProduct]);
-            prismaMock.order.create.mockResolvedValueOnce(mockOrderWithRelations as unknown as Order);
+            prismaMock.order.create.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
             prismaMock.product.update.mockResolvedValueOnce(mockProduct);
             prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);

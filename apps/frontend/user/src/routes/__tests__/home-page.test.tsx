@@ -1,14 +1,29 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-    categoriesData: undefined as { categories: Array<{ id: number; name: string }> } | undefined,
+    categoriesData: undefined as { categories: { id: number; name: string }[] } | undefined,
     categoriesLoading: false,
-    searchData: undefined as { products: Array<{ id: number; name: string; price: number; remaining: number }> } | undefined,
+    searchData: undefined as
+        | { products: { id: number; name: string; price: number; remaining: number }[] }
+        | undefined,
     searchLoading: false,
 }));
 
 vi.mock("@/lib/api-client", () => ({
-    api: { api: { public: { products: { get: vi.fn() }, categories: { get: vi.fn() }, auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } }, users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } }, orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), { get: vi.fn(), post: vi.fn() }) } } },
+    api: {
+        api: {
+            public: {
+                products: { get: vi.fn() },
+                categories: { get: vi.fn() },
+                auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } },
+                users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } },
+                orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), {
+                    get: vi.fn(),
+                    post: vi.fn(),
+                }),
+            },
+        },
+    },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -24,7 +39,9 @@ vi.mock("@tanstack/react-router", () => ({
     createFileRoute: () => (config: any) => config,
     lazyRouteComponent: (component: any) => component,
     Link: ({ children, to, ...props }: any) => (
-        <a href={to} {...props}>{children}</a>
+        <a href={to} {...props}>
+            {children}
+        </a>
     ),
 }));
 
@@ -36,7 +53,13 @@ vi.mock("@tanstack/react-query", () => ({
         }
         return { data: mocks.searchData, isLoading: mocks.searchLoading };
     },
-    useInfiniteQuery: () => ({ data: undefined, isLoading: false, isFetchingNextPage: false, hasNextPage: false, fetchNextPage: vi.fn() }),
+    useInfiniteQuery: () => ({
+        data: undefined,
+        isLoading: false,
+        isFetchingNextPage: false,
+        hasNextPage: false,
+        fetchNextPage: vi.fn(),
+    }),
     useMutation: () => ({ mutate: vi.fn(), isPending: false }),
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
     queryOptions: (opts: any) => opts,
@@ -53,14 +76,23 @@ vi.mock("@jahonbozor/ui", async () => {
 });
 
 vi.mock("@/api/products.api", () => ({
-    productKeys: { all: ["products"], lists: () => ["products", "list"], details: () => ["products", "detail"], detail: (id: number) => ["products", "detail", id] },
+    productKeys: {
+        all: ["products"],
+        lists: () => ["products", "list"],
+        details: () => ["products", "detail"],
+        detail: (id: number) => ["products", "detail", id],
+    },
     productsListOptions: (params: any) => ({ queryKey: ["products", params] }),
     productsInfiniteOptions: (params: any) => ({ queryKey: ["products", "list", params] }),
     productDetailOptions: (id: number) => ({ queryKey: ["products", "detail", id] }),
 }));
 
 vi.mock("@/api/categories.api", () => ({
-    categoryKeys: { all: ["categories"], list: () => ["categories", "list"], detail: (id: number) => ["categories", "detail", id] },
+    categoryKeys: {
+        all: ["categories"],
+        list: () => ["categories", "list"],
+        detail: (id: number) => ["categories", "detail", id],
+    },
     categoriesListOptions: () => ({ queryKey: ["categories"] }),
 }));
 
@@ -92,7 +124,8 @@ vi.mock("@/components/catalog/product-card", () => ({
     ),
 }));
 
-import { render, fireEvent } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
+
 import { Route } from "../index";
 
 const HomePage = (Route as any).component ?? (Route as any).options?.component;

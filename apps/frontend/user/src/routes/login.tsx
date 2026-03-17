@@ -1,8 +1,11 @@
 import { useEffect, useRef } from "react";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { cn, motion, AnimatePresence, PageTransition } from "@jahonbozor/ui";
-import { useTelegramLogin } from "@/api/auth.api";
+
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
+import { AnimatePresence, cn, motion, PageTransition } from "@jahonbozor/ui";
+
+import { useTelegramLogin } from "@/hooks/use-auth";
 import { useUIStore } from "@/stores/ui.store";
 
 const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? "";
@@ -18,34 +21,36 @@ interface TelegramLoginData {
 }
 
 function LoginPage() {
-    const { t } = useTranslation();
+    const { t } = useTranslation("profile");
     const telegramRef = useRef<HTMLDivElement>(null);
     const telegramLogin = useTelegramLogin();
-    const navigate = useNavigate();
     const locale = useUIStore((state) => state.locale);
     const setLocale = useUIStore((state) => state.setLocale);
 
     useEffect(() => {
-        if (!TELEGRAM_BOT_USERNAME || !telegramRef.current) return;
+        if (!TELEGRAM_BOT_USERNAME) return;
 
-        (window as unknown as Record<string, unknown>).onTelegramAuth = (user: TelegramLoginData) => {
-            telegramLogin.mutate(
-                {
-                    id: user.id,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    username: user.username,
-                    photo_url: user.photo_url,
-                    auth_date: user.auth_date,
-                    hash: user.hash,
-                },
-                {
-                    onSuccess: () => {
-                        navigate({ to: "/" });
-                    },
-                },
-            );
+        (window as unknown as Record<string, unknown>).onTelegramAuth = (
+            user: TelegramLoginData,
+        ) => {
+            telegramLogin.mutate({
+                id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                username: user.username,
+                photo_url: user.photo_url,
+                auth_date: user.auth_date,
+                hash: user.hash,
+            });
         };
+
+        return () => {
+            delete (window as unknown as Record<string, unknown>).onTelegramAuth;
+        };
+    }, [telegramLogin]);
+
+    useEffect(() => {
+        if (!TELEGRAM_BOT_USERNAME || !telegramRef.current) return;
 
         const script = document.createElement("script");
         script.src = "https://telegram.org/js/telegram-widget.js?22";
@@ -57,21 +62,15 @@ function LoginPage() {
         script.async = true;
 
         telegramRef.current.appendChild(script);
-
-        return () => {
-            delete (window as unknown as Record<string, unknown>).onTelegramAuth;
-        };
-    }, [telegramLogin, navigate]);
+    }, []);
 
     return (
-        <PageTransition className="flex min-h-screen items-center justify-center bg-background px-4">
-            <div className="w-full max-w-sm space-y-6 rounded-2xl bg-surface p-8 shadow-sm">
+        <PageTransition className="bg-background flex min-h-screen items-center justify-center px-4">
+            <div className="bg-surface w-full max-w-sm space-y-6 rounded-2xl p-8 shadow-sm">
                 {/* Logo */}
                 <div className="text-center">
                     <img src="/logo.svg" alt="Jahon Bozor" className="mx-auto h-10" />
-                    <p className="mt-3 text-sm text-muted-foreground">
-                        {t("login_telegram")}
-                    </p>
+                    <p className="text-muted-foreground mt-3 text-sm">{t("login_telegram")}</p>
                 </div>
 
                 {/* Language selector */}
@@ -115,7 +114,7 @@ function LoginPage() {
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -5 }}
-                            className="text-center text-sm text-muted-foreground"
+                            className="text-muted-foreground text-center text-sm"
                         >
                             {t("loading")}
                         </motion.p>
@@ -128,7 +127,7 @@ function LoginPage() {
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -5 }}
-                            className="text-center text-sm text-destructive"
+                            className="text-destructive text-center text-sm"
                         >
                             {t("error")}
                         </motion.p>
@@ -136,7 +135,7 @@ function LoginPage() {
                 </AnimatePresence>
 
                 {!TELEGRAM_BOT_USERNAME && (
-                    <p className="text-center text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-center text-xs">
                         {t("bot_username_not_configured")}
                     </p>
                 )}

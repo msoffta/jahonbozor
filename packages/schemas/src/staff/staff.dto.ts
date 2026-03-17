@@ -1,4 +1,5 @@
 import z from "zod";
+
 import { PaginationQuery } from "../common/pagination.model";
 import { Staff } from "./staff.model";
 

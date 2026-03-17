@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 
@@ -7,6 +8,7 @@ vi.mock("@sentry/react", () => ({
 }));
 
 import * as Sentry from "@sentry/react";
+
 import { tryRefreshToken } from "../api-client";
 
 const mockUser = {
@@ -34,7 +36,8 @@ describe("api-client", () => {
                 language: "ru",
             };
 
-            const fetchSpy = vi.spyOn(globalThis, "fetch")
+            const fetchSpy = vi
+                .spyOn(globalThis, "fetch")
                 .mockResolvedValueOnce({
                     ok: true,
                     json: () => Promise.resolve({ success: true, data: { token: "new-token" } }),

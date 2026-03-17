@@ -35,6 +35,7 @@ Quick reference for code conventions. See CLAUDE.md for detailed guidance.
 - [Frontend Tailwind](#frontend-tailwind)
 - [Frontend Testing](#frontend-testing)
 - [Linting & Formatting](#linting--formatting)
+- [Versioning & Commits](#versioning--commits)
 
 ---
 
@@ -1110,3 +1111,60 @@ import type { Props } from "./types";
         return this.toString();
     };
     ```
+
+## Versioning & Commits
+
+### Conventional Commits (enforced)
+
+Формат коммит-сообщений — [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:** `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`, `build`, `revert`
+
+**Scopes:** `backend`, `bot`, `admin`, `user`, `ui`, `schemas`, `logger`, `utils`, `ci`, `deps`
+
+**Примеры:**
+
+```
+feat(backend): add product search endpoint
+fix(ui): correct DataTable cell alignment on resize
+chore(deps): update Prisma to v7.4
+ci: add release workflow for changesets
+```
+
+> Scope опционален (warning, не error), но рекомендуется.
+
+### Commands
+
+```bash
+bun run commit             # Интерактивный промпт (commitizen)
+bun run changeset          # Создать changeset файл
+bun run version-packages   # Bump версий + CHANGELOG (только CI)
+```
+
+### Changesets
+
+- **Когда создавать:** PR с user-facing или developer-facing изменениями
+- **Когда НЕ нужен:** CI-only, docs-only, test-only изменения
+- **Стратегия:** Fixed versioning — все workspace получают одинаковую версию
+- **Flow:** `bun run changeset` → выбрать пакеты → тип bump → описание → файл в `.changeset/`
+
+### Git Hooks
+
+| Hook         | Tool        | Command                                              |
+| ------------ | ----------- | ---------------------------------------------------- |
+| `pre-commit` | lint-staged | `eslint --fix` + `prettier --write` на staged файлах |
+| `commit-msg` | commitlint  | Валидация формата conventional commits               |
+
+### Release Flow
+
+1. PR с кодом + `.changeset/*.md` файлом → merge в `main`
+2. `release.yml` создаёт/обновляет "Version Packages" PR (bump `package.json` + `CHANGELOG.md`)
+3. Merge "Version Packages" PR → `ci-cd.yml` → build Docker images с semver тегами → deploy

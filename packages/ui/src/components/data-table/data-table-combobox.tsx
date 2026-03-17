@@ -1,5 +1,6 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
+
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
 
@@ -23,6 +24,8 @@ interface DataTableComboboxProps {
     onKeyDown?: (e: React.KeyboardEvent) => void;
     onBlur?: () => void;
     inputRef?: (el: HTMLInputElement | null) => void;
+    /** Text to display when no options match the query */
+    noResultsText?: string;
 }
 
 export function DataTableCombobox({
@@ -36,6 +39,7 @@ export function DataTableCombobox({
     onKeyDown,
     onBlur,
     inputRef: externalRef,
+    noResultsText,
 }: DataTableComboboxProps) {
     const listboxId = React.useId();
     const [showList, setShowList] = React.useState(false);
@@ -45,8 +49,7 @@ export function DataTableCombobox({
     const listRef = React.useRef<HTMLDivElement>(null);
     const innerRef = React.useRef<HTMLInputElement>(null);
     const selectingRef = React.useRef(false);
-    const closingTimerRef =
-        React.useRef<ReturnType<typeof setTimeout>>(undefined);
+    const closingTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined);
     const [pos, setPos] = React.useState<{
         top: number;
         left: number;
@@ -108,9 +111,7 @@ export function DataTableCombobox({
 
     const setRef = React.useCallback(
         (el: HTMLInputElement | null) => {
-            (
-                innerRef as React.MutableRefObject<HTMLInputElement | null>
-            ).current = el;
+            (innerRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
             externalRef?.(el);
         },
         [externalRef],
@@ -143,9 +144,7 @@ export function DataTableCombobox({
         if (e.key === "ArrowDown") {
             e.preventDefault();
             setShowList(true);
-            setSelectedIndex((prev) =>
-                prev < filtered.length - 1 ? prev + 1 : prev,
-            );
+            setSelectedIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : prev));
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
             setShowList(true);
@@ -169,8 +168,7 @@ export function DataTableCombobox({
         if (!value) {
             setSearchQuery("");
         } else if (value && isSelectedOption) {
-            const label =
-                options.find((o) => o.value === value)?.label ?? value;
+            const label = options.find((o) => o.value === value)?.label ?? value;
             setSearchQuery(label);
         } else {
             setSearchQuery(value);
@@ -222,7 +220,7 @@ export function DataTableCombobox({
                             zIndex: COMBOBOX_PORTAL_Z_INDEX,
                             pointerEvents: closing ? "none" : undefined,
                         }}
-                        className="combobox-dropdown max-h-48 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                        className="combobox-dropdown bg-popover text-popover-foreground max-h-48 overflow-auto rounded-md border p-1 shadow-md"
                     >
                         {filtered.length > 0 ? (
                             filtered.map((option, index) => (
@@ -237,7 +235,7 @@ export function DataTableCombobox({
                                         handleSelect(option.value);
                                     }}
                                     className={cn(
-                                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+                                        "relative flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none",
                                         selectedIndex === index
                                             ? "bg-accent text-accent-foreground"
                                             : "hover:bg-accent/50",
@@ -247,8 +245,8 @@ export function DataTableCombobox({
                                 </div>
                             ))
                         ) : (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground italic">
-                                {placeholder || "No results"}
+                            <div className="text-muted-foreground px-2 py-1.5 text-sm italic">
+                                {noResultsText ?? "No results"}
                             </div>
                         )}
                     </div>,

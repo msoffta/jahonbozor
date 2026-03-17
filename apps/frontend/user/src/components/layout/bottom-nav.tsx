@@ -1,8 +1,11 @@
-import { Home, ShoppingCart, ClipboardList, User } from "lucide-react";
-import { Link, useRouterState } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+
+import { Link, useRouterState } from "@tanstack/react-router";
+import { ClipboardList, Home, ShoppingCart, User } from "lucide-react";
+
+import { AnimatePresence, cn, motion } from "@jahonbozor/ui";
+
 import { useCartStore } from "@/stores/cart.store";
-import { cn, motion, AnimatePresence } from "@jahonbozor/ui";
 
 const navItems = [
     { to: "/", icon: Home, labelKey: "home" },
@@ -14,35 +17,35 @@ const navItems = [
 export function BottomNav() {
     const { t } = useTranslation();
     const pathname = useRouterState({ select: (state) => state.location.pathname });
-    const totalItems = useCartStore((state) => state.items.reduce((sum, item) => sum + item.quantity, 0));
+    const totalItems = useCartStore((state) =>
+        state.items.reduce((sum, item) => sum + item.quantity, 0),
+    );
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+        <div className="pointer-events-none fixed right-0 bottom-0 left-0 z-50">
             <div className="h-24 bg-linear-to-t from-black/40 to-stone-500/0 backdrop-blur-[2px]" />
-            <nav className="absolute bottom-4 left-4 right-4 flex h-14 items-center justify-between px-3 bg-accent rounded-2xl pointer-events-auto">
-                {navItems.map((item, index) => {
+            <nav className="bg-accent pointer-events-auto absolute right-4 bottom-4 left-4 flex h-14 items-center justify-between rounded-2xl px-3">
+                {navItems.map((item) => {
                     const Icon = item.icon;
                     const isActive =
-                        item.to === "/"
-                            ? pathname === "/"
-                            : pathname.startsWith(item.to);
+                        item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
 
                     return (
                         <Link
-                            key={index}
+                            key={item.to}
                             to={item.to}
                             aria-label={t(item.labelKey)}
                             className="flex flex-col items-center"
                         >
                             <motion.div
                                 className={cn(
-                                    "relative flex items-center justify-center size-11 rounded-full",
+                                    "relative flex size-11 items-center justify-center rounded-full",
                                     isActive && "bg-accent-muted",
                                 )}
                                 whileTap={{ scale: 0.85 }}
                                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
                             >
-                                <Icon className="size-6 text-accent-foreground" />
+                                <Icon className="text-accent-foreground size-6" />
                                 <AnimatePresence>
                                     {item.to === "/cart" && totalItems > 0 && (
                                         <motion.span
@@ -51,7 +54,7 @@ export function BottomNav() {
                                             animate={{ scale: 1, opacity: 1 }}
                                             exit={{ scale: 0, opacity: 0 }}
                                             transition={{ duration: 0.15 }}
-                                            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-surface text-[10px] font-bold text-accent"
+                                            className="bg-surface text-accent absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full text-[10px] font-bold"
                                         >
                                             {totalItems}
                                         </motion.span>

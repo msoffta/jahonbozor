@@ -1,6 +1,6 @@
 {
   "name": "@jahonbozor/bot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "bun --env-file=../../.env run --watch src/index.ts",
@@ -13,6 +13,7 @@
   "dependencies": {
     "grammy": "^1.35.0",
     "@jahonbozor/logger": "workspace:*",
+    "@jahonbozor/schemas": "workspace:*",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "pg": "^8.18.0"

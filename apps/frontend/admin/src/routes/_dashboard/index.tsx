@@ -1,18 +1,33 @@
-import { useState, useMemo, useCallback } from "react";
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Permission, hasPermission, hasAnyPermission } from "@jahonbozor/schemas";
-import { AnimatePresence, PageTransition, DataTable, DataTableSkeleton, motion, toast } from "@jahonbozor/ui";
-import { useAuthStore } from "@/stores/auth.store";
-import { useHasPermission, useHasAnyPermission } from "@/hooks/use-permissions";
-import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
-import { useDeferredReady } from "@/hooks/use-deferred-ready";
-import { ordersListQueryOptions, useDeleteOrder, useUpdateOrder, useCreateOrder } from "@/api/orders.api";
-import { productsListQueryOptions } from "@/api/products.api";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+
+import { hasAnyPermission, hasPermission, Permission } from "@jahonbozor/schemas";
+import {
+    AnimatePresence,
+    DataTable,
+    DataTableSkeleton,
+    motion,
+    PageTransition,
+    toast,
+} from "@jahonbozor/ui";
+
 import { clientsListQueryOptions } from "@/api/clients.api";
+import {
+    ordersListQueryOptions,
+    useCreateOrder,
+    useDeleteOrder,
+    useUpdateOrder,
+} from "@/api/orders.api";
+import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderColumns } from "@/components/orders/orders-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasAnyPermission, useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function OrdersPage() {
     const { t } = useTranslation("orders");
@@ -32,16 +47,19 @@ function OrdersPage() {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
-    const newRowDefaultValues = useMemo(() => ({
-        paymentType: "CASH",
-        quantity: 1,
-    }), []);
+    const newRowDefaultValues = useMemo(
+        () => ({
+            paymentType: "CASH",
+            quantity: 1,
+        }),
+        [],
+    );
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
-        ordersListQueryOptions({ 
-            page, 
-            limit: 20, 
-            itemsCount: 1 
+        ordersListQueryOptions({
+            page,
+            limit: 20,
+            itemsCount: 1,
         }),
     );
 
@@ -60,15 +78,18 @@ function OrdersPage() {
     const products = productsData?.products ?? [];
     const users = clientsData?.users ?? [];
 
-    const actions = useMemo(() => ({
-        onDelete: (id: number) => {
-            setDeleteTargetId(id);
-            setDeleteConfirmOpen(true);
-        },
-        onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => {
-            updateOrder.mutate({ id, status });
-        },
-    }), [updateOrder]);
+    const actions = useMemo(
+        () => ({
+            onDelete: (id: number) => {
+                setDeleteTargetId(id);
+                setDeleteConfirmOpen(true);
+            },
+            onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => {
+                updateOrder.mutate({ id, status });
+            },
+        }),
+        [updateOrder],
+    );
 
     const columns = useMemo(() => {
         if (!isReady) return [];
@@ -80,7 +101,7 @@ function OrdersPage() {
     const handleCellEdit = useCallback(
         async (rowIndex: number, columnId: string, value: unknown) => {
             if (columnId === "user" && value === "CREATE_NEW") {
-                navigate({ to: "/users", search: { new: true } });
+                void navigate({ to: "/users", search: { new: true } });
                 return;
             }
 
@@ -111,13 +132,9 @@ function OrdersPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (
-            data: Record<string, unknown>,
-            _rowId: string,
-            linkedId?: unknown,
-        ) => {
+        async (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
             if (data.user === "CREATE_NEW") {
-                navigate({ to: "/users", search: { new: true } });
+                void navigate({ to: "/users", search: { new: true } });
                 return;
             }
 
@@ -129,9 +146,11 @@ function OrdersPage() {
                 if (data.paymentType) body.paymentType = data.paymentType;
                 // Note: items update logic would go here if supported by backend
 
-                const existingOrder = orders.find(o => o.id === linkedId);
-                const isDebt = body.paymentType === "DEBT" || (existingOrder?.paymentType === "DEBT" && !body.paymentType);
-                const hasNoUser = (body.userId === null) || (!body.userId && !existingOrder?.userId);
+                const existingOrder = orders.find((o) => o.id === linkedId);
+                const isDebt =
+                    body.paymentType === "DEBT" ||
+                    (existingOrder?.paymentType === "DEBT" && !body.paymentType);
+                const hasNoUser = body.userId === null || (!body.userId && !existingOrder?.userId);
 
                 if (isDebt && hasNoUser) {
                     toast.error(t("error_debt_requires_user"));
@@ -207,20 +226,31 @@ function OrdersPage() {
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+            <div className="mb-6 flex items-center justify-between">
                 <h1 className="text-2xl font-bold">{t("title")}</h1>
             </div>
 
             <AnimatePresence mode="wait">
                 {isLoading ? (
-                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
                         <DataTableSkeleton columns={8} rows={10} className="flex-1" />
                     </motion.div>
                 ) : (
-                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
                         <DataTable
-                            className="flex-1 costprice-table"
+                            className="costprice-table flex-1"
                             columns={columns}
                             data={orders}
                             pagination

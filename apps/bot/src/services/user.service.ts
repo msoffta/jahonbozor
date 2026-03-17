@@ -1,7 +1,12 @@
 import { prisma } from "@bot/lib/prisma";
-import logger from "@bot/lib/logger";
 
-export async function getUserInfo(telegramId: string): Promise<{ language: "uz" | "ru"; phone: string | null }> {
+import type { Logger } from "@jahonbozor/logger";
+import type { Language } from "@jahonbozor/schemas";
+
+export async function getUserInfo(
+    telegramId: string,
+    logger: Logger,
+): Promise<{ language: Language; phone: string | null }> {
     try {
         const user = await prisma.users.findFirst({
             where: { telegramId, deletedAt: null },

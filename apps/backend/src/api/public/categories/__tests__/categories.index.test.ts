@@ -1,6 +1,8 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { createMockLogger } from "@backend/test/setup";
+
 import { PublicCategoriesService } from "../categories.service";
 
 const mockCategories = [
@@ -58,10 +60,12 @@ describe("PublicCategories Endpoints", () => {
     describe("GET /categories", () => {
         test("should return categories list", async () => {
             // Arrange
-            const spy = vi.spyOn(PublicCategoriesService, "getAllCategories").mockResolvedValueOnce({
-                success: true,
-                data: { categories: mockCategories },
-            });
+            const spy = vi
+                .spyOn(PublicCategoriesService, "getAllCategories")
+                .mockResolvedValueOnce({
+                    success: true,
+                    data: { categories: mockCategories },
+                });
 
             // Act
             const response = await app.handle(new Request("http://localhost/categories"));
@@ -77,10 +81,12 @@ describe("PublicCategories Endpoints", () => {
 
         test("should handle service error", async () => {
             // Arrange
-            const spy = vi.spyOn(PublicCategoriesService, "getAllCategories").mockResolvedValueOnce({
-                success: false,
-                error: "DB error",
-            });
+            const spy = vi
+                .spyOn(PublicCategoriesService, "getAllCategories")
+                .mockResolvedValueOnce({
+                    success: false,
+                    error: "DB error",
+                });
 
             // Act
             const response = await app.handle(new Request("http://localhost/categories"));
@@ -184,10 +190,12 @@ describe("PublicCategories Endpoints", () => {
     describe("GET /categories - edge cases", () => {
         test("should return empty categories list", async () => {
             // Arrange
-            const spy = vi.spyOn(PublicCategoriesService, "getAllCategories").mockResolvedValueOnce({
-                success: true,
-                data: { categories: [] },
-            });
+            const spy = vi
+                .spyOn(PublicCategoriesService, "getAllCategories")
+                .mockResolvedValueOnce({
+                    success: true,
+                    data: { categories: [] },
+                });
 
             // Act
             const response = await app.handle(new Request("http://localhost/categories"));

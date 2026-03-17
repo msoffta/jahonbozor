@@ -1,7 +1,8 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-import type { Mock } from "vitest";
-import { render, fireEvent, act } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import type { Mock } from "vitest";
 
 vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
 
@@ -19,13 +20,13 @@ const options = [
 describe("DataTableCombobox", () => {
     let onChange: Mock;
     let onSelect: Mock;
-    let onBlur: Mock;
+    let _onBlur: Mock;
     let onKeyDown: Mock;
 
     beforeEach(() => {
         onChange = vi.fn();
         onSelect = vi.fn();
-        onBlur = vi.fn();
+        _onBlur = vi.fn();
         onKeyDown = vi.fn();
     });
 
@@ -63,11 +64,7 @@ describe("DataTableCombobox", () => {
     test("should show dropdown on focus", async () => {
         const user = userEvent.setup();
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={options}
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox");
@@ -80,11 +77,7 @@ describe("DataTableCombobox", () => {
 
     test("should display selected option label when value matches option", () => {
         const { getByRole } = render(
-            <DataTableCombobox
-                value="apple"
-                onChange={onChange}
-                options={options}
-            />,
+            <DataTableCombobox value="apple" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox") as HTMLInputElement;
@@ -112,13 +105,7 @@ describe("DataTableCombobox", () => {
         await user.type(input, "an");
 
         // Re-render with updated value for filtering
-        rerender(
-            <DataTableCombobox
-                value="an"
-                onChange={trackingOnChange}
-                options={options}
-            />,
-        );
+        rerender(<DataTableCombobox value="an" onChange={trackingOnChange} options={options} />);
 
         // Should show Banana (contains "an") and potentially Date (no match)
         const dropdownOptions = document.querySelectorAll(".combobox-dropdown > div:not(.italic)");
@@ -215,11 +202,7 @@ describe("DataTableCombobox", () => {
     test("should close dropdown on Escape", async () => {
         const user = userEvent.setup();
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={options}
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox");
@@ -244,12 +227,7 @@ describe("DataTableCombobox", () => {
     // ── Auto-focus ─────────────────────────────────────────────
     test("should auto-focus input when autoFocus is true", () => {
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={options}
-                autoFocus
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={options} autoFocus />,
         );
 
         const input = getByRole("combobox");
@@ -260,12 +238,7 @@ describe("DataTableCombobox", () => {
     test("should handle empty options array", async () => {
         const user = userEvent.setup();
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={[]}
-                placeholder="No items"
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={[]} placeholder="No items" />,
         );
 
         const input = getByRole("combobox");
@@ -277,11 +250,7 @@ describe("DataTableCombobox", () => {
 
     test("should handle empty string value", () => {
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={options}
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox") as HTMLInputElement;
@@ -290,12 +259,7 @@ describe("DataTableCombobox", () => {
 
     test("should show error styling when error prop is true", () => {
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={options}
-                error
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={options} error />,
         );
 
         const input = getByRole("combobox");
@@ -305,11 +269,7 @@ describe("DataTableCombobox", () => {
 
     test("should handle value not matching any option", () => {
         const { getByRole } = render(
-            <DataTableCombobox
-                value="unknown"
-                onChange={onChange}
-                options={options}
-            />,
+            <DataTableCombobox value="unknown" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox") as HTMLInputElement;
@@ -326,11 +286,7 @@ describe("DataTableCombobox", () => {
         }));
 
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={manyOptions}
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={manyOptions} />,
         );
 
         const input = getByRole("combobox");
@@ -348,11 +304,7 @@ describe("DataTableCombobox", () => {
         ];
 
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={specialOptions}
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={specialOptions} />,
         );
 
         // Should render without crashing
@@ -362,11 +314,7 @@ describe("DataTableCombobox", () => {
     // ── ARIA attributes ───────────────────────────────────────
     test("should have correct ARIA attributes when closed", () => {
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={options}
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox");
@@ -379,11 +327,7 @@ describe("DataTableCombobox", () => {
     test("should have correct ARIA attributes when open", async () => {
         const user = userEvent.setup();
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={options}
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox");
@@ -409,11 +353,7 @@ describe("DataTableCombobox", () => {
     test("should update aria-activedescendant on ArrowDown", async () => {
         const user = userEvent.setup();
         const { getByRole } = render(
-            <DataTableCombobox
-                value=""
-                onChange={onChange}
-                options={options}
-            />,
+            <DataTableCombobox value="" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox");

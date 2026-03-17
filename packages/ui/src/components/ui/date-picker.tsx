@@ -1,11 +1,13 @@
 import * as React from "react";
-import { format, parse, isValid, addDays, subDays } from "date-fns";
+
+import { addDays, format, isValid, parse, subDays } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
+
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
-import { Input } from "./input";
-import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "./popover";
 import { Calendar } from "./calendar";
+import { Input } from "./input";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./popover";
 
 export interface DatePickerProps {
     value?: Date | string;
@@ -17,6 +19,8 @@ export interface DatePickerProps {
     disabled?: boolean;
     showTime?: boolean;
     inputRef?: (el: HTMLInputElement | null) => void;
+    /** Label for the confirm button in showTime mode */
+    confirmLabel?: string;
 }
 
 function DatePicker({
@@ -29,6 +33,7 @@ function DatePicker({
     disabled,
     showTime,
     inputRef: externalRef,
+    confirmLabel,
 }: DatePickerProps) {
     const [open, setOpen] = React.useState(false);
     const innerRef = React.useRef<HTMLInputElement>(null);
@@ -172,10 +177,7 @@ function DatePicker({
             const current = value ? toDate(value) : new Date();
             if (current && isValid(current)) {
                 e.preventDefault();
-                const next =
-                    e.key === "ArrowUp"
-                        ? addDays(current, 1)
-                        : subDays(current, 1);
+                const next = e.key === "ArrowUp" ? addDays(current, 1) : subDays(current, 1);
                 onChange(next);
             }
         } else if (e.key === "Escape") {
@@ -205,7 +207,7 @@ function DatePicker({
                         <button
                             type="button"
                             disabled={disabled}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
                             tabIndex={-1}
                         >
                             <CalendarIcon className="h-4 w-4" />
@@ -213,7 +215,11 @@ function DatePicker({
                     </PopoverTrigger>
                 </div>
             </PopoverAnchor>
-            <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <PopoverContent
+                className="w-auto p-0"
+                align="start"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <Calendar
                     mode="single"
                     selected={dateValue}
@@ -221,7 +227,7 @@ function DatePicker({
                     defaultMonth={dateValue}
                 />
                 {showTime && (
-                    <div className="border-t p-3 flex items-center gap-2">
+                    <div className="flex items-center gap-2 border-t p-3">
                         <Input
                             type="time"
                             value={time}
@@ -234,7 +240,7 @@ function DatePicker({
                             className="ml-auto h-8"
                             onClick={() => setOpen(false)}
                         >
-                            OK
+                            {confirmLabel ?? "OK"}
                         </Button>
                     </div>
                 )}

@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useCartStore } from "@/stores/cart.store";
 
 const mockOrder = {
@@ -36,16 +37,16 @@ vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
-                orders: Object.assign(
-                    (_params: { id: number }) => ({ get: mockDetailGet }),
-                    { get: mockGet, post: mockPost },
-                ),
+                orders: Object.assign((_params: { id: number }) => ({ get: mockDetailGet }), {
+                    get: mockGet,
+                    post: mockPost,
+                }),
             },
         },
     },
 }));
 
-import { orderKeys, ordersListOptions, orderDetailOptions } from "../orders.api";
+import { orderDetailOptions, orderKeys, ordersListOptions } from "../orders.api";
 
 describe("orders.api", () => {
     beforeEach(() => {

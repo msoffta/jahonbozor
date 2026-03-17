@@ -1,7 +1,11 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AdminCategoryItem } from "@jahonbozor/schemas/src/categories";
-import { api } from "@/api/client";
+
 import { toast } from "@jahonbozor/ui";
+
+import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
+import type { AdminCategoryItem } from "@jahonbozor/schemas/src/categories";
 
 export const categoryKeys = {
     all: ["categories"] as const,
@@ -42,7 +46,7 @@ export const useCreateCategory = () => {
             queryClient.invalidateQueries({ queryKey: categoryKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };

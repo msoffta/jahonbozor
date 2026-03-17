@@ -1,13 +1,14 @@
+import { format } from "date-fns";
+
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { HistoryEntryItem } from "@jahonbozor/schemas/src/products/product-history.dto";
 import type { ColumnDef } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import type { TFunction } from "i18next";
 
 export function getIncomeColumns(
     t: TFunction,
     products: AdminProductItem[],
-): ColumnDef<HistoryEntryItem, any>[] {
+): ColumnDef<HistoryEntryItem, unknown>[] {
     const selectOptions = products.map((p) => ({
         label: p.name,
         value: String(p.id),
@@ -25,8 +26,7 @@ export function getIncomeColumns(
             accessorFn: (row) => {
                 if (!row.product) return "—";
                 const isDeleted =
-                    row.product.deletedAt !== null &&
-                    row.product.deletedAt !== undefined;
+                    row.product.deletedAt !== null && row.product.deletedAt !== undefined;
                 return isDeleted
                     ? `${row.product.name} (${t("status_deleted")})`
                     : row.product.name;
@@ -44,8 +44,7 @@ export function getIncomeColumns(
             accessorKey: "quantity",
             header: t("income_quantity"),
             size: 120,
-            cell: ({ getValue }) =>
-                getValue<number | null>()?.toLocaleString() ?? "—",
+            cell: ({ getValue }) => getValue<number | null>()?.toLocaleString() ?? "—",
             meta: {
                 flex: 1,
                 align: "right" as const,
@@ -73,7 +72,7 @@ export function getIncomeColumns(
             size: 140,
             cell: ({ getValue }) => {
                 const val = getValue<Date | string>();
-                return val ? dayjs(val).format("DD.MM.YYYY HH:mm") : "—";
+                return val ? format(new Date(val), "dd.MM.yyyy HH:mm") : "—";
             },
             meta: {
                 flex: 1,

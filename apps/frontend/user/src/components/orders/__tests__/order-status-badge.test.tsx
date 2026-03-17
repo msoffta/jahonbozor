@@ -1,5 +1,5 @@
-import { describe, test, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
     useTranslation: () => ({
@@ -16,7 +16,7 @@ vi.mock("@jahonbozor/ui", async () => {
     return jahonbozorUIMock();
 });
 
-import { OrderStatusBadge, getPaymentTypeLabel } from "../order-status-badge";
+import { getPaymentTypeLabel, OrderStatusBadge } from "../order-status-badge";
 
 describe("OrderStatusBadge", () => {
     test("should render status_new for NEW status", () => {

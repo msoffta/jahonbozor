@@ -1,17 +1,22 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-import type { Mock } from "vitest";
-import { render, fireEvent, act } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import type { Mock } from "vitest";
 
 vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
 vi.mock("../../ui/button.tsx", async () => (await import("./test-helpers")).buttonMock);
 vi.mock("../../ui/checkbox.tsx", async () => (await import("./test-helpers")).checkboxMock);
 vi.mock("../../ui/select.tsx", async () => (await import("./test-helpers")).selectMock);
 vi.mock("../../ui/table.tsx", async () => (await import("./test-helpers")).tableMock);
-vi.mock("../../ui/dropdown-menu.tsx", async () => (await import("./test-helpers")).dropdownMenuMock);
+vi.mock(
+    "../../ui/dropdown-menu.tsx",
+    async () => (await import("./test-helpers")).dropdownMenuMock,
+);
+
+import { DataTable } from "../data-table";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "../data-table";
 
 // ── Test data ──────────────────────────────────────────────────
 interface TestRow {
@@ -49,7 +54,12 @@ describe("DataTableEditableCell", () => {
         test("should enter edit mode on double-click and show input", async () => {
             const user = userEvent.setup();
             const { getByText, getByDisplayValue } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("Alice"));
@@ -59,7 +69,12 @@ describe("DataTableEditableCell", () => {
         test("should save on Enter and call onCellEdit", async () => {
             const user = userEvent.setup();
             const { getByText, getByDisplayValue } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("Alice"));
@@ -74,7 +89,12 @@ describe("DataTableEditableCell", () => {
         test("should cancel on Escape and revert value", async () => {
             const user = userEvent.setup();
             const { getByText, getByDisplayValue, queryByDisplayValue } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("Alice"));
@@ -89,11 +109,16 @@ describe("DataTableEditableCell", () => {
         test("should not call onCellEdit when value is unchanged", async () => {
             const user = userEvent.setup();
             const { getByText, getByDisplayValue } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("Alice"));
-            const input = getByDisplayValue("Alice");
+            getByDisplayValue("Alice");
             await user.keyboard("{Enter}");
 
             expect(onCellEdit).not.toHaveBeenCalled();
@@ -114,7 +139,12 @@ describe("DataTableEditableCell", () => {
         test("should render number input in edit mode", async () => {
             const user = userEvent.setup();
             const { getByText, container } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("1500"));
@@ -125,11 +155,16 @@ describe("DataTableEditableCell", () => {
         test("should convert string to number on edit", async () => {
             const user = userEvent.setup();
             const { getByText, container } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("1500"));
-            const input = container.querySelector("input[type='number']") as HTMLInputElement;
+            const input = container.querySelector("input[type='number']")!;
 
             await user.clear(input);
             await user.type(input, "3000");
@@ -160,7 +195,12 @@ describe("DataTableEditableCell", () => {
         test("should render select options in edit mode", async () => {
             const user = userEvent.setup();
             const { getByText, container } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("active"));
@@ -174,11 +214,16 @@ describe("DataTableEditableCell", () => {
         test("should call onCellEdit when value changes via select", async () => {
             const user = userEvent.setup();
             const { getByText, container } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("active"));
-            const select = container.querySelector("select") as HTMLSelectElement;
+            const select = container.querySelector("select")!;
             await user.selectOptions(select, "inactive");
 
             expect(onCellEdit).toHaveBeenCalledWith(0, "status", "inactive");
@@ -187,11 +232,16 @@ describe("DataTableEditableCell", () => {
         test("should not call onCellEdit when same value is re-selected", async () => {
             const user = userEvent.setup();
             const { getByText, container } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("active"));
-            const select = container.querySelector("select") as HTMLSelectElement;
+            const select = container.querySelector("select")!;
             await user.selectOptions(select, "active");
 
             expect(onCellEdit).not.toHaveBeenCalled();
@@ -217,7 +267,12 @@ describe("DataTableEditableCell", () => {
             ];
 
             const { getByText, getByDisplayValue, queryByText } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("Alice"));
@@ -247,7 +302,12 @@ describe("DataTableEditableCell", () => {
             ];
 
             const { getByText, getByDisplayValue, queryByText } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             // Trigger error
@@ -277,7 +337,12 @@ describe("DataTableEditableCell", () => {
             ];
 
             const { getByText, queryByDisplayValue } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             fireEvent.doubleClick(getByText("Alice"));
@@ -306,7 +371,9 @@ describe("DataTableEditableCell", () => {
     // ── Edge cases ─────────────────────────────────────────────
     describe("edge cases", () => {
         test("should handle null/undefined cell values", () => {
-            const nullData = [{ id: 1, name: null as unknown as string, price: 0, status: "", category: "" }];
+            const nullData = [
+                { id: 1, name: null as unknown as string, price: 0, status: "", category: "" },
+            ];
             const columns: ColumnDef<TestRow, any>[] = [
                 { accessorKey: "id", header: "ID" },
                 {
@@ -317,15 +384,19 @@ describe("DataTableEditableCell", () => {
             ];
 
             const { container } = render(
-                <DataTable columns={columns} data={nullData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={nullData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             // Should render without crashing
             expect(container.querySelector("table")).toBeDefined();
         });
 
-        test("should handle empty string values", async () => {
-            const user = userEvent.setup();
+        test("should handle empty string values", () => {
             const emptyData = [{ id: 1, name: "", price: 0, status: "", category: "" }];
             const columns: ColumnDef<TestRow, any>[] = [
                 { accessorKey: "id", header: "ID" },
@@ -337,7 +408,12 @@ describe("DataTableEditableCell", () => {
             ];
 
             const { container } = render(
-                <DataTable columns={columns} data={emptyData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={emptyData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             // Double-click on empty cell - find the cell by its position
@@ -361,7 +437,12 @@ describe("DataTableEditableCell", () => {
             ];
 
             const { getByText } = render(
-                <DataTable columns={columns} data={zeroData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={zeroData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             // Zero should render as "0", not empty
@@ -378,7 +459,12 @@ describe("DataTableEditableCell", () => {
             ];
 
             const { container } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             // Cell content should have text-right class
@@ -401,7 +487,12 @@ describe("DataTableEditableCell", () => {
             ];
 
             const { getByText, getByDisplayValue } = render(
-                <DataTable columns={columns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+                <DataTable
+                    columns={columns}
+                    data={testData}
+                    enableEditing
+                    onCellEdit={onCellEdit}
+                />,
             );
 
             await user.dblClick(getByText("Alice"));

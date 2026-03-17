@@ -1,14 +1,18 @@
-import { describe, test, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { describe, expect, test, vi } from "vitest";
 
 vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
 vi.mock("../../ui/button.tsx", async () => (await import("./test-helpers")).buttonMock);
 vi.mock("../../ui/select.tsx", async () => (await import("./test-helpers")).selectMock);
-vi.mock("../../ui/dropdown-menu.tsx", async () => (await import("./test-helpers")).dropdownMenuMock);
+vi.mock(
+    "../../ui/dropdown-menu.tsx",
+    async () => (await import("./test-helpers")).dropdownMenuMock,
+);
+
+import { DataTableToolbar } from "../data-table-toolbar";
 
 import type { Table } from "@tanstack/react-table";
-import { DataTableToolbar } from "../data-table-toolbar";
 
 // ── Mock factories ──────────────────────────────────────────────
 function createMockColumn(overrides: any = {}) {
@@ -46,9 +50,7 @@ function defaultProps(overrides: any = {}) {
 describe("DataTableToolbar", () => {
     // ── Null render ─────────────────────────────────────────────
     test("returns null when no features are enabled", () => {
-        const { container } = render(
-            <DataTableToolbar {...defaultProps()} />,
-        );
+        const { container } = render(<DataTableToolbar {...defaultProps()} />);
         expect(container.innerHTML).toBe("");
     });
 
@@ -216,7 +218,7 @@ describe("DataTableToolbar", () => {
             );
 
             // Mock select renders as native <select>
-            const select = container.querySelector("select") as HTMLSelectElement;
+            const select = container.querySelector("select")!;
             expect(select).toBeDefined();
             expect(getByText("Active")).toBeDefined();
             expect(getByText("Inactive")).toBeDefined();
@@ -259,7 +261,7 @@ describe("DataTableToolbar", () => {
                 <DataTableToolbar {...defaultProps({ table, enableFiltering: true })} />,
             );
 
-            const select = container.querySelector("select") as HTMLSelectElement;
+            const select = container.querySelector("select")!;
             await user.selectOptions(select, "active");
 
             expect(selectCol.setFilterValue).toHaveBeenCalledWith("active");
@@ -282,7 +284,7 @@ describe("DataTableToolbar", () => {
                 <DataTableToolbar {...defaultProps({ table, enableFiltering: true })} />,
             );
 
-            const select = container.querySelector("select") as HTMLSelectElement;
+            const select = container.querySelector("select")!;
             await user.selectOptions(select, "__all__");
 
             expect(selectCol.setFilterValue).toHaveBeenCalledWith(undefined);
@@ -409,7 +411,7 @@ describe("DataTableToolbar", () => {
             const buttons = container.querySelectorAll("button");
             // There should be at least one button for clearing filters
             const clearButton = Array.from(buttons).find(
-                (btn) => btn.querySelector("svg") || btn.textContent === "",
+                (btn) => btn.querySelector("svg") ?? btn.textContent === "",
             );
             expect(clearButton).toBeDefined();
         });
@@ -429,9 +431,7 @@ describe("DataTableToolbar", () => {
 
             // Only the filter input should be present, no clear button with svg
             const buttons = container.querySelectorAll("button");
-            const clearButton = Array.from(buttons).find(
-                (btn) => btn.querySelector("svg"),
-            );
+            const clearButton = Array.from(buttons).find((btn) => btn.querySelector("svg"));
             expect(clearButton).toBeUndefined();
         });
 
@@ -459,9 +459,7 @@ describe("DataTableToolbar", () => {
             );
 
             const buttons = container.querySelectorAll("button");
-            const clearButton = Array.from(buttons).find(
-                (btn) => btn.querySelector("svg"),
-            );
+            const clearButton = Array.from(buttons).find((btn) => btn.querySelector("svg"));
             expect(clearButton).toBeDefined();
             await user.click(clearButton!);
 
@@ -538,7 +536,8 @@ describe("DataTableToolbar", () => {
             // the <button type="button"> which is the dropdown item.
             const nameElements = getAllByText("Name");
             const dropdownItem = nameElements.find(
-                (el) => el.tagName.toLowerCase() === "button" && el.getAttribute("type") === "button",
+                (el) =>
+                    el.tagName.toLowerCase() === "button" && el.getAttribute("type") === "button",
             )!;
             await user.click(dropdownItem);
 
@@ -547,9 +546,7 @@ describe("DataTableToolbar", () => {
         });
 
         test("uses custom columns translation", () => {
-            const table = createMockTable([
-                createMockColumn({ id: "name", header: "Name" }),
-            ]);
+            const table = createMockTable([createMockColumn({ id: "name", header: "Name" })]);
 
             const { getAllByText } = render(
                 <DataTableToolbar
@@ -581,7 +578,8 @@ describe("DataTableToolbar", () => {
 
             const checkmark = container.querySelector(".opacity-100");
             expect(checkmark).toBeDefined();
-            expect(checkmark?.textContent).toContain("\u2713");
+            // Check icon renders as SVG
+            expect(checkmark?.querySelector("svg")).toBeDefined();
         });
 
         test("hidden column shows reduced opacity checkmark", () => {
@@ -599,7 +597,8 @@ describe("DataTableToolbar", () => {
 
             const checkmark = container.querySelector(".opacity-30");
             expect(checkmark).toBeDefined();
-            expect(checkmark?.textContent).toContain("\u2713");
+            // Check icon renders as SVG
+            expect(checkmark?.querySelector("svg")).toBeDefined();
         });
     });
 

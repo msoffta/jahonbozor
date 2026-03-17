@@ -1,5 +1,6 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useCartStore } from "@/stores/cart.store";
 
 const mockOrder = {
@@ -16,21 +17,24 @@ const mockCancelledOrder = { ...mockOrder, status: "CANCELLED" };
 
 type EdenFn = (...args: unknown[]) => Promise<{ data: unknown; error: unknown }>;
 
-const { mockOrderPost, mockCancelPatch, mockInvalidateQueries } = vi.hoisted(() => ({
-    mockOrderPost: vi.fn<EdenFn>(() =>
-        Promise.resolve({
-            data: { success: true, data: mockOrder },
-            error: null,
-        }),
-    ),
-    mockCancelPatch: vi.fn<EdenFn>(() =>
-        Promise.resolve({
-            data: { success: true, data: mockCancelledOrder },
-            error: null,
-        }),
-    ),
-    mockInvalidateQueries: vi.fn(() => Promise.resolve()),
-}));
+const { mockOrderPost, mockCancelPatch, mockInvalidateQueries, mockToastError } = vi.hoisted(
+    () => ({
+        mockOrderPost: vi.fn<EdenFn>(() =>
+            Promise.resolve({
+                data: { success: true, data: mockOrder },
+                error: null,
+            }),
+        ),
+        mockCancelPatch: vi.fn<EdenFn>(() =>
+            Promise.resolve({
+                data: { success: true, data: mockCancelledOrder },
+                error: null,
+            }),
+        ),
+        mockInvalidateQueries: vi.fn(() => Promise.resolve()),
+        mockToastError: vi.fn(),
+    }),
+);
 
 vi.mock("@/lib/api-client", () => ({
     api: {
@@ -64,14 +68,23 @@ vi.mock("@/lib/api-client", () => ({
     },
 }));
 
+vi.mock("@jahonbozor/ui", () => ({
+    toast: { error: mockToastError },
+}));
+
+vi.mock("@/lib/i18n", () => ({
+    i18n: { t: (key: string) => key },
+}));
+
 vi.mock("@tanstack/react-query", () => ({
-    useMutation: ({ mutationFn, onSuccess, onSettled }: any) => ({
+    useMutation: ({ mutationFn, onSuccess, onError, onSettled }: any) => ({
         mutate: async (...args: any[]) => {
             try {
                 const result = await mutationFn(...args);
                 if (onSuccess) await onSuccess(result, ...args);
                 return result;
             } catch (e) {
+                if (onError) onError(e);
                 throw e;
             } finally {
                 if (onSettled) onSettled();
@@ -87,7 +100,7 @@ vi.mock("@tanstack/react-query", () => ({
     queryOptions: (opts: any) => opts,
 }));
 
-import { useCreateOrder, useCancelOrder } from "../orders.api";
+import { useCancelOrder, useCreateOrder } from "../orders.api";
 
 describe("useCreateOrder", () => {
     const orderBody = {
@@ -139,9 +152,7 @@ describe("useCreateOrder", () => {
         });
 
         const { result } = renderHook(() => useCreateOrder());
-        await expect(result.current.mutate(orderBody)).rejects.toThrow(
-            "Network error",
-        );
+        await expect(result.current.mutate(orderBody)).rejects.toThrow("Network error");
     });
 
     test("should throw on unsuccessful response", async () => {
@@ -151,9 +162,23 @@ describe("useCreateOrder", () => {
         });
 
         const { result } = renderHook(() => useCreateOrder());
-        await expect(result.current.mutate(orderBody)).rejects.toThrow(
-            "Request failed",
-        );
+        await expect(result.current.mutate(orderBody)).rejects.toThrow("Request failed");
+    });
+
+    test("should show error toast on API error", async () => {
+        mockOrderPost.mockResolvedValueOnce({
+            data: null,
+            error: new Error("Server error"),
+        });
+
+        const { result } = renderHook(() => useCreateOrder());
+        try {
+            await result.current.mutate(orderBody);
+        } catch {
+            // expected
+        }
+
+        expect(mockToastError).toHaveBeenCalledWith("error");
     });
 
     test("should not clear cart on API error", async () => {
@@ -272,9 +297,23 @@ describe("useCancelOrder", () => {
         });
 
         const { result } = renderHook(() => useCancelOrder());
-        await expect(result.current.mutate(1)).rejects.toThrow(
-            "Request failed",
-        );
+        await expect(result.current.mutate(1)).rejects.toThrow("Request failed");
+    });
+
+    test("should show error toast on cancel error", async () => {
+        mockCancelPatch.mockResolvedValueOnce({
+            data: null,
+            error: new Error("Forbidden"),
+        });
+
+        const { result } = renderHook(() => useCancelOrder());
+        try {
+            await result.current.mutate(1);
+        } catch {
+            // expected
+        }
+
+        expect(mockToastError).toHaveBeenCalledWith("error");
     });
 
     test("should not invalidate queries on error", async () => {

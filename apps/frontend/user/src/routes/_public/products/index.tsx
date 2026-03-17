@@ -1,14 +1,31 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useState, useCallback, useEffect, useRef } from "react";
-import { SearchBar } from "@/components/catalog/search-bar";
-import { ProductCard } from "@/components/catalog/product-card";
-import { productsInfiniteOptions } from "@/api/products.api";
-import { categoriesListOptions } from "@/api/categories.api";
-import { Skeleton, cn, Checkbox, Drawer, DrawerHeader, DrawerTitle, motion, PageTransition, AnimatePresence, AnimatedList, AnimatedListItem } from "@jahonbozor/ui";
+
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { Ellipsis, Loader2, X } from "lucide-react";
+
+import {
+    AnimatedList,
+    AnimatedListItem,
+    AnimatePresence,
+    Checkbox,
+    cn,
+    Drawer,
+    DrawerHeader,
+    DrawerTitle,
+    motion,
+    PageTransition,
+    Skeleton,
+} from "@jahonbozor/ui";
+
+import { categoriesListOptions } from "@/api/categories.api";
+import { productsInfiniteOptions } from "@/api/products.api";
+import { ProductCard } from "@/components/catalog/product-card";
+import { SearchBar } from "@/components/catalog/search-bar";
 import { PageHeader } from "@/components/layout/page-header";
+
+const VISIBLE_CATEGORY_COUNT = 3;
 
 interface ProductsSearch {
     categoryIds?: string;
@@ -19,26 +36,21 @@ function ProductsPage() {
     const { t } = useTranslation();
     const { categoryIds: initialCategoryIds } = Route.useSearch();
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(
-        () => {
-            if (!initialCategoryIds) return new Set();
-            const ids = initialCategoryIds.split(",").map(Number).filter((n) => !isNaN(n));
-            return new Set(ids);
-        },
-    );
-    const [pendingCategoryIds, setPendingCategoryIds] = useState<Set<number>>(new Set());
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(() => {
+        if (!initialCategoryIds) return new Set();
+        const ids = initialCategoryIds
+            .split(",")
+            .map(Number)
+            .filter((n) => !isNaN(n));
+        return new Set(ids);
+    });
+    const [pendingCategoryIds, setPendingCategoryIds] = useState<Set<number>>(() => new Set());
     const [drawerOpen, setDrawerOpen] = useState(false);
     const sentinelRef = useRef<HTMLDivElement>(null);
 
     const { data: categoriesData } = useQuery(categoriesListOptions());
     const categoryIdsArray = selectedCategoryIds.size > 0 ? [...selectedCategoryIds] : undefined;
-    const {
-        data,
-        isLoading,
-        isFetchingNextPage,
-        hasNextPage,
-        fetchNextPage,
-    } = useInfiniteQuery(
+    const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery(
         productsInfiniteOptions({ limit: 20, searchQuery, categoryIds: categoryIdsArray }),
     );
 
@@ -80,7 +92,7 @@ function ProductsPage() {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-                    fetchNextPage();
+                    void fetchNextPage();
                 }
             },
             { rootMargin: "200px" },
@@ -91,19 +103,18 @@ function ProductsPage() {
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const categories = categoriesData?.categories ?? [];
-    const VISIBLE_COUNT = 3;
-    const visibleCategories = categories.slice(0, VISIBLE_COUNT);
-    const hasMore = categories.length > VISIBLE_COUNT;
+    const visibleCategories = categories.slice(0, VISIBLE_CATEGORY_COUNT);
+    const hasMore = categories.length > VISIBLE_CATEGORY_COUNT;
     const products = data?.pages.flatMap((page) => page.products) ?? [];
 
     return (
         <PageTransition>
             <PageHeader crumbs={[{ label: t("home"), to: "/" }, { label: t("products") }]} />
-            <div className="sticky top-14 z-40 bg-background">
+            <div className="bg-background sticky top-14 z-40">
                 <SearchBar value={searchQuery} onChange={handleSearch} />
 
                 {categories.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide">
+                    <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-2">
                         <motion.button
                             type="button"
                             onClick={() => setSelectedCategoryIds(new Set())}
@@ -139,7 +150,7 @@ function ProductsPage() {
                             <motion.button
                                 type="button"
                                 onClick={handleOpenDrawer}
-                                className="shrink-0 flex items-center justify-center size-9 rounded-full bg-surface text-foreground"
+                                className="bg-surface text-foreground flex size-9 shrink-0 items-center justify-center rounded-full"
                                 aria-label={t("more")}
                                 whileTap={{ scale: 0.9 }}
                                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -157,7 +168,7 @@ function ProductsPage() {
                     <motion.button
                         type="button"
                         onClick={() => setDrawerOpen(false)}
-                        className="flex items-center justify-center size-8 rounded-full bg-surface text-muted-foreground active:opacity-70"
+                        className="bg-surface text-muted-foreground flex size-8 items-center justify-center rounded-full active:opacity-70"
                         whileTap={{ scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
@@ -170,7 +181,7 @@ function ProductsPage() {
                             <div
                                 role="button"
                                 onClick={() => handleTogglePending(cat.id)}
-                                className="flex items-center gap-3 py-3 text-base font-semibold text-foreground active:opacity-70"
+                                className="text-foreground flex items-center gap-3 py-3 text-base font-semibold active:opacity-70"
                             >
                                 <Checkbox
                                     checked={pendingCategoryIds.has(cat.id)}
@@ -184,7 +195,7 @@ function ProductsPage() {
                                     role="button"
                                     key={child.id}
                                     onClick={() => handleTogglePending(child.id)}
-                                    className="flex items-center gap-3 py-2.5 pl-4 text-sm text-foreground active:opacity-70"
+                                    className="text-foreground flex items-center gap-3 py-2.5 pl-4 text-sm active:opacity-70"
                                 >
                                     <Checkbox
                                         checked={pendingCategoryIds.has(child.id)}
@@ -197,10 +208,10 @@ function ProductsPage() {
                         </div>
                     ))}
                 </div>
-                <div className="flex gap-3 px-4 pb-6 pt-2 border-t border-border">
+                <div className="border-border flex gap-3 border-t px-4 pt-2 pb-6">
                     <motion.button
                         type="button"
-                        className="flex-1 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium"
+                        className="border-input bg-background flex-1 rounded-md border px-4 py-2 text-sm font-medium"
                         onClick={handleReset}
                         whileTap={{ scale: 0.95 }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -209,7 +220,7 @@ function ProductsPage() {
                     </motion.button>
                     <motion.button
                         type="button"
-                        className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                        className="bg-primary text-primary-foreground flex-1 rounded-md px-4 py-2 text-sm font-medium"
                         onClick={handleApply}
                         whileTap={{ scale: 0.95 }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -240,7 +251,7 @@ function ProductsPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="px-4 py-8 text-center text-muted-foreground"
+                        className="text-muted-foreground px-4 py-8 text-center"
                     >
                         {t("no_data")}
                     </motion.p>
@@ -267,7 +278,7 @@ function ProductsPage() {
 
             {isFetchingNextPage && (
                 <div className="flex justify-center py-4">
-                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                    <Loader2 className="text-muted-foreground size-5 animate-spin" />
                 </div>
             )}
 
@@ -279,7 +290,7 @@ function ProductsPage() {
 export const Route = createFileRoute("/_public/products/")({
     component: ProductsPage,
     validateSearch: (search: Record<string, unknown>): ProductsSearch => ({
-        categoryIds: search.categoryIds ? String(search.categoryIds) : undefined,
-        searchQuery: search.searchQuery ? String(search.searchQuery) : undefined,
+        categoryIds: typeof search.categoryIds === "string" ? search.categoryIds : undefined,
+        searchQuery: typeof search.searchQuery === "string" ? search.searchQuery : undefined,
     }),
 });

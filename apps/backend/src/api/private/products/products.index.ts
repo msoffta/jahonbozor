@@ -1,11 +1,6 @@
-import { authMiddleware } from "@backend/lib/middleware";
+import { Elysia, t } from "elysia";
+
 import { Permission } from "@jahonbozor/schemas";
-import type {
-    AdminProductDetailResponse,
-    AdminProductsListResponse,
-    HistoryListResponse,
-    InventoryAdjustmentResponse,
-} from "@jahonbozor/schemas/src/products";
 import {
     CreateInventoryAdjustmentBody,
     CreateProductBody,
@@ -13,10 +8,19 @@ import {
     ProductsPagination,
     UpdateProductBody,
 } from "@jahonbozor/schemas/src/products";
-import { Elysia, t } from "elysia";
+
+import { authMiddleware } from "@backend/lib/middleware";
+
 import { history } from "./history/history.index";
 import { HistoryService } from "./history/history.service";
 import { ProductsService } from "./products.service";
+
+import type {
+    AdminProductDetailResponse,
+    AdminProductsListResponse,
+    HistoryListResponse,
+    InventoryAdjustmentResponse,
+} from "@jahonbozor/schemas/src/products";
 
 const productIdParams = t.Object({
     id: t.Numeric(),
@@ -44,16 +48,9 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .get(
         "/:id",
-        async ({
-            params,
-            set,
-            logger,
-        }): Promise<AdminProductDetailResponse> => {
+        async ({ params, set, logger }): Promise<AdminProductDetailResponse> => {
             try {
-                const result = await ProductsService.getProduct(
-                    params.id,
-                    logger,
-                );
+                const result = await ProductsService.getProduct(params.id, logger);
 
                 if (!result.success) {
                     set.status = 404;
@@ -75,13 +72,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .post(
         "/",
-        async ({
-            body,
-            user,
-            set,
-            logger,
-            requestId,
-        }): Promise<AdminProductDetailResponse> => {
+        async ({ body, user, set, logger, requestId }): Promise<AdminProductDetailResponse> => {
             try {
                 const result = await ProductsService.createProduct(
                     body,
@@ -130,10 +121,10 @@ export const products = new Elysia({ prefix: "/products" })
 
                 return result;
             } catch (error) {
-                logger.error(
-                    "Products: Unhandled error in PATCH /products/:id",
-                    { id: params.id, error },
-                );
+                logger.error("Products: Unhandled error in PATCH /products/:id", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -145,13 +136,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .delete(
         "/:id",
-        async ({
-            params,
-            user,
-            set,
-            logger,
-            requestId,
-        }): Promise<AdminProductDetailResponse> => {
+        async ({ params, user, set, logger, requestId }): Promise<AdminProductDetailResponse> => {
             try {
                 const result = await ProductsService.deleteProduct(
                     params.id,
@@ -165,10 +150,10 @@ export const products = new Elysia({ prefix: "/products" })
 
                 return result;
             } catch (error) {
-                logger.error(
-                    "Products: Unhandled error in DELETE /products/:id",
-                    { id: params.id, error },
-                );
+                logger.error("Products: Unhandled error in DELETE /products/:id", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -179,13 +164,7 @@ export const products = new Elysia({ prefix: "/products" })
     )
     .post(
         "/:id/restore",
-        async ({
-            params,
-            user,
-            set,
-            logger,
-            requestId,
-        }): Promise<AdminProductDetailResponse> => {
+        async ({ params, user, set, logger, requestId }): Promise<AdminProductDetailResponse> => {
             try {
                 const result = await ProductsService.restoreProduct(
                     params.id,
@@ -199,10 +178,10 @@ export const products = new Elysia({ prefix: "/products" })
 
                 return result;
             } catch (error) {
-                logger.error(
-                    "Products: Unhandled error in POST /products/:id/restore",
-                    { id: params.id, error },
-                );
+                logger.error("Products: Unhandled error in POST /products/:id/restore", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -215,16 +194,12 @@ export const products = new Elysia({ prefix: "/products" })
         "/:id/history",
         async ({ params, query, logger }): Promise<HistoryListResponse> => {
             try {
-                return await HistoryService.getProductHistory(
-                    params.id,
-                    query,
-                    logger,
-                );
+                return await HistoryService.getProductHistory(params.id, query, logger);
             } catch (error) {
-                logger.error(
-                    "Products: Unhandled error in GET /products/:id/history",
-                    { id: params.id, error },
-                );
+                logger.error("Products: Unhandled error in GET /products/:id/history", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -258,10 +233,10 @@ export const products = new Elysia({ prefix: "/products" })
 
                 return result;
             } catch (error) {
-                logger.error(
-                    "Products: Unhandled error in POST /products/:id/inventory",
-                    { id: params.id, error },
-                );
+                logger.error("Products: Unhandled error in POST /products/:id/inventory", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },

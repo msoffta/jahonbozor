@@ -1,26 +1,29 @@
-import { clientDetailQueryOptions } from "@/api/clients.api";
-import { useCreateOrder } from "@/api/orders.api";
-import { productsListQueryOptions } from "@/api/products.api";
-import { getOrderItemColumns } from "@/components/orders/order-items-columns";
+import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Save } from "lucide-react";
+import z from "zod";
+
+import { hasPermission, Permission } from "@jahonbozor/schemas";
 import {
     AnimatePresence,
     Button,
     DataTable,
     DataTableSkeleton,
+    Input,
     motion,
     PageTransition,
     toast,
-    Input,
 } from "@jahonbozor/ui";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { ArrowLeft, Save } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import z from "zod";
-import { Permission, hasPermission } from "@jahonbozor/schemas";
-import { useAuthStore } from "@/stores/auth.store";
+
+import { clientDetailQueryOptions } from "@/api/clients.api";
+import { useCreateOrder } from "@/api/orders.api";
+import { productsListQueryOptions } from "@/api/products.api";
+import { getOrderItemColumns } from "@/components/orders/order-items-columns";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useAuthStore } from "@/stores/auth.store";
 
 const newOrderSearchSchema = z.object({
     userId: z.coerce.number().optional(),
@@ -41,14 +44,10 @@ function NewOrderPage() {
     const { userId } = Route.useSearch();
 
     const [items, setItems] = useState<LocalItem[]>([]);
-    const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD" | "DEBT">(
-        "CASH",
-    );
+    const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD" | "DEBT">("CASH");
     const [comment, setComment] = useState("");
 
-    const { data: clientData } = useQuery(
-        clientDetailQueryOptions(userId ?? 0),
-    );
+    const { data: clientData } = useQuery(clientDetailQueryOptions(userId ?? 0));
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
         productsListQueryOptions({ limit: 100, includeDeleted: false }),
@@ -128,7 +127,7 @@ function NewOrderPage() {
             }
 
             // Create new item in local list
-            const newId = Math.floor(Math.random() * 1_000_000_000) + Date.now();
+            const newId = Date.now() + Math.round(performance.now() * 1000);
             const newItem: LocalItem = {
                 id: newId,
                 productId,
@@ -173,7 +172,7 @@ function NewOrderPage() {
             },
             {
                 onSuccess: (order) => {
-                    navigate({
+                    void navigate({
                         to: "/orders/$orderId",
                         params: { orderId: String(order.id) },
                     });
@@ -182,31 +181,26 @@ function NewOrderPage() {
         );
     }
 
-    const totalSum = items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-    );
+    const totalSum = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <motion.button
                         type="button"
                         onClick={() => navigate({ to: "/orders" })}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
+                        className="border-border text-muted-foreground hover:text-foreground flex h-9 w-9 items-center justify-center rounded-lg border"
                         whileTap={{ scale: 0.9 }}
                         aria-label={t("common:back")}
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </motion.button>
                     <div>
-                        <h1 className="text-2xl font-bold">
-                            {t("lists_title")}
-                        </h1>
+                        <h1 className="text-2xl font-bold">{t("lists_title")}</h1>
                         {clientData && (
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-muted-foreground text-sm">
                                 {t("order_client")}: {clientData.fullname}
                             </p>
                         )}
@@ -218,11 +212,11 @@ function NewOrderPage() {
                         placeholder={t("order_comment")}
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        className="w-48 h-9 text-sm"
+                        className="h-9 w-48 text-sm"
                     />
 
                     {/* Payment type toggle */}
-                    <div className="flex rounded-lg border border-border overflow-hidden">
+                    <div className="border-border flex overflow-hidden rounded-lg border">
                         <motion.button
                             type="button"
                             className={`px-3 py-1.5 text-xs font-medium ${paymentType === "CASH" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
@@ -267,9 +261,7 @@ function NewOrderPage() {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                 >
-                    <span className="text-muted-foreground">
-                        {t("total_sum")}:
-                    </span>
+                    <span className="text-muted-foreground">{t("total_sum")}:</span>
                     <span>{totalSum.toLocaleString()}</span>
                 </motion.div>
             )}
@@ -277,13 +269,24 @@ function NewOrderPage() {
             {/* Items table */}
             <AnimatePresence mode="wait">
                 {isProductsLoading ? (
-                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
                         <DataTableSkeleton columns={6} rows={5} className="flex-1" />
                     </motion.div>
                 ) : (
-                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
                         <DataTable
-                            className="flex-1 costprice-table"
+                            className="costprice-table flex-1"
                             columns={columns}
                             data={items}
                             enableMultipleNewRows

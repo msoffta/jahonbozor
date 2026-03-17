@@ -76,14 +76,8 @@ export function filterDOMProps(props: Record<string, any>): Record<string, any> 
 const motionCache = new Map<string, any>();
 function getMotionComponent(prop: string) {
     if (!motionCache.has(prop)) {
-        motionCache.set(
-            prop,
-            ({ children, className, ...rest }: any) =>
-                createElement(
-                    prop,
-                    { className, ...filterDOMProps(rest) },
-                    children,
-                ),
+        motionCache.set(prop, ({ children, className, ...rest }: any) =>
+            createElement(prop, { className, ...filterDOMProps(rest) }, children),
         );
     }
     return motionCache.get(prop);
@@ -94,10 +88,7 @@ function getMotionComponent(prop: string) {
  * Use with vi.mock("motion/react", async () => { const { motionMocks } = await import("..."); return motionMocks; })
  */
 export const motionMocks = {
-    motion: new Proxy(
-        {},
-        { get: (_target: any, prop: string) => getMotionComponent(prop) },
-    ),
+    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
     AnimatePresence: ({ children }: any) => <>{children}</>,
     LayoutGroup: ({ children }: any) => <>{children}</>,
 };
@@ -111,52 +102,30 @@ export const uiMocks = {
     cn: (...args: any[]) => args.filter(Boolean).join(" "),
 
     // Input: Supports both controlled and uncontrolled modes
-    Input: React.forwardRef(
-        (
-            {
-                className,
-                value,
-                defaultValue,
-                onChange,
-                ...props
-            }: any,
-            ref: any,
-        ) => {
-            const [internalValue, setInternalValue] = React.useState(
-                defaultValue ?? "",
-            );
-            const isControlled = value !== undefined;
-            const currentValue = isControlled ? value : internalValue;
+    Input: ({ ref, className, value, defaultValue, onChange, ...props }: any) => {
+        const [internalValue, setInternalValue] = React.useState(defaultValue ?? "");
+        const isControlled = value !== undefined;
+        const currentValue = isControlled ? value : internalValue;
 
-            return (
-                <input
-                    ref={ref}
-                    className={className}
-                    value={currentValue}
-                    onChange={(e) => {
-                        if (!isControlled) setInternalValue(e.target.value);
-                        onChange?.(e);
-                    }}
-                    {...filterDOMProps(props)}
-                />
-            );
-        },
-    ),
-
-    // Button: Filters asChild prop
-    Button: React.forwardRef(
-        (
-            { children, className, asChild, ...props }: any,
-            ref: any,
-        ) => (
-            <button
+        return (
+            <input
                 ref={ref}
                 className={className}
+                value={currentValue}
+                onChange={(e) => {
+                    if (!isControlled) setInternalValue(e.target.value);
+                    onChange?.(e);
+                }}
                 {...filterDOMProps(props)}
-            >
-                {children}
-            </button>
-        ),
+            />
+        );
+    },
+
+    // Button: Filters asChild prop
+    Button: ({ ref, children, className, asChild: _asChild, ...props }: any) => (
+        <button ref={ref} className={className} {...filterDOMProps(props)}>
+            {children}
+        </button>
     ),
 
     // Checkbox
@@ -210,9 +179,7 @@ export const uiMocks = {
     TableHeader: ({ children, ...props }: any) => (
         <thead {...filterDOMProps(props)}>{children}</thead>
     ),
-    TableRow: ({ children, ...props }: any) => (
-        <tr {...filterDOMProps(props)}>{children}</tr>
-    ),
+    TableRow: ({ children, ...props }: any) => <tr {...filterDOMProps(props)}>{children}</tr>,
 
     // Tooltip components
     Tooltip: ({ children }: any) => <>{children}</>,
@@ -296,15 +263,14 @@ export const uiMocks = {
     ),
 
     // DataTable components
-    DataTable: ({ data, columns, ...props }: any) => (
+    DataTable: ({ data, columns: _columns, ...props }: any) => (
         <div data-testid="data-table" data-row-count={data?.length ?? 0} {...filterDOMProps(props)}>
             data-table
         </div>
     ),
-    DataTableSkeleton: ({ columns, rows, ...props }: any) => (
+    DataTableSkeleton: ({ columns: _columns, rows: _rows, ...props }: any) => (
         <div data-testid="data-table-skeleton" {...filterDOMProps(props)}>
             loading
         </div>
     ),
-
 };

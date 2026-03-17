@@ -1,32 +1,18 @@
-import type { AdminProductsListResponse, AdminProductDetailResponse } from "@jahonbozor/schemas/src/products";
-import {
-    CreateProductBody,
-    UpdateProductBody,
-    ProductsPagination,
-} from "@jahonbozor/schemas/src/products";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import type { Prisma } from "@backend/generated/prisma/client";
-import { prisma } from "@backend/lib/prisma";
 import { auditInTransaction } from "@backend/lib/audit";
 import { getCategoryWithDescendants } from "@backend/lib/categories";
-import type { ProductModel } from "@backend/generated/prisma/models/Product";
+import { prisma } from "@backend/lib/prisma";
+import { createProductSnapshot } from "@backend/lib/snapshots";
 
-interface AuditContext {
-    staffId: number;
-    user: Token;
-    requestId?: string;
-}
-
-function createProductSnapshot(product: ProductModel) {
-    return {
-        name: product.name,
-        price: Number(product.price),
-        costprice: Number(product.costprice),
-        categoryId: product.categoryId,
-        remaining: product.remaining,
-    };
-}
+import type { Prisma } from "@backend/generated/prisma/client";
+import type { ServiceContext } from "@backend/lib/audit";
+import type { Logger } from "@jahonbozor/logger";
+import type {
+    AdminProductDetailResponse,
+    AdminProductsListResponse,
+    CreateProductBody,
+    ProductsPagination,
+    UpdateProductBody,
+} from "@jahonbozor/schemas/src/products";
 
 export abstract class ProductsService {
     static async getAllProducts(
@@ -34,7 +20,15 @@ export abstract class ProductsService {
         logger: Logger,
     ): Promise<AdminProductsListResponse> {
         try {
-            const { page, limit, searchQuery, categoryIds: categoryIdsStr, minPrice, maxPrice, includeDeleted } = params;
+            const {
+                page,
+                limit,
+                searchQuery,
+                categoryIds: categoryIdsStr,
+                minPrice,
+                maxPrice,
+                includeDeleted,
+            } = params;
 
             // Build where clause with hierarchical category filter
             const whereClause: Prisma.ProductWhereInput = {};
@@ -49,7 +43,10 @@ export abstract class ProductsService {
 
             // Hierarchical category filter - include all descendants
             if (categoryIdsStr) {
-                const parsedIds = categoryIdsStr.split(",").map(Number).filter((n) => !isNaN(n));
+                const parsedIds = categoryIdsStr
+                    .split(",")
+                    .map(Number)
+                    .filter((n) => !isNaN(n));
                 const allIds: number[] = [];
                 for (const id of parsedIds) {
                     const descendants = await getCategoryWithDescendants(id);
@@ -82,16 +79,27 @@ export abstract class ProductsService {
                 }),
             ]);
 
-            const mapped = products.map(p => ({ ...p, price: Number(p.price), costprice: Number(p.costprice) }));
+            const mapped = products.map((p) => ({
+                ...p,
+                price: Number(p.price),
+                costprice: Number(p.costprice),
+            }));
 
             return { success: true, data: { count, products: mapped } };
         } catch (error) {
-            logger.error("Products: Error in getAllProducts", { page: params.page, limit: params.limit, error });
+            logger.error("Products: Error in getAllProducts", {
+                page: params.page,
+                limit: params.limit,
+                error,
+            });
             return { success: false, error };
         }
     }
 
-    static async getProduct(productId: number, logger: Logger): Promise<AdminProductDetailResponse> {
+    static async getProduct(
+        productId: number,
+        logger: Logger,
+    ): Promise<AdminProductDetailResponse> {
         try {
             const product = await prisma.product.findUnique({
                 where: { id: productId },
@@ -111,7 +119,11 @@ export abstract class ProductsService {
                 return { success: false, error: "Product not found" };
             }
 
-            const mapped = { ...product, price: Number(product.price), costprice: Number(product.costprice) };
+            const mapped = {
+                ...product,
+                price: Number(product.price),
+                costprice: Number(product.costprice),
+            };
 
             return { success: true, data: mapped };
         } catch (error) {
@@ -122,7 +134,7 @@ export abstract class ProductsService {
 
     static async createProduct(
         productData: CreateProductBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminProductDetailResponse> {
         try {
@@ -169,8 +181,16 @@ export abstract class ProductsService {
                 return [product];
             });
 
-            logger.info("Products: Product created", { productId: newProduct.id, name: productData.name, staffId: context.staffId });
-            const mapped = { ...newProduct, price: Number(newProduct.price), costprice: Number(newProduct.costprice) };
+            logger.info("Products: Product created", {
+                productId: newProduct.id,
+                name: productData.name,
+                staffId: context.staffId,
+            });
+            const mapped = {
+                ...newProduct,
+                price: Number(newProduct.price),
+                costprice: Number(newProduct.costprice),
+            };
             return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in createProduct", { name: productData.name, error });
@@ -181,7 +201,7 @@ export abstract class ProductsService {
     static async updateProduct(
         productId: number,
         productData: UpdateProductBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminProductDetailResponse> {
         try {
@@ -204,7 +224,9 @@ export abstract class ProductsService {
                     where: { id: productData.categoryId },
                 });
                 if (!categoryExists) {
-                    logger.warn("Products: Target category not found", { categoryId: productData.categoryId });
+                    logger.warn("Products: Target category not found", {
+                        categoryId: productData.categoryId,
+                    });
                     return { success: false, error: "Category not found" };
                 }
             }
@@ -241,7 +263,11 @@ export abstract class ProductsService {
             });
 
             logger.info("Products: Product updated", { productId, staffId: context.staffId });
-            const mapped = { ...updatedProduct, price: Number(updatedProduct.price), costprice: Number(updatedProduct.costprice) };
+            const mapped = {
+                ...updatedProduct,
+                price: Number(updatedProduct.price),
+                costprice: Number(updatedProduct.costprice),
+            };
             return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in updateProduct", { productId, error });
@@ -251,7 +277,7 @@ export abstract class ProductsService {
 
     static async deleteProduct(
         productId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminProductDetailResponse> {
         try {
@@ -298,8 +324,16 @@ export abstract class ProductsService {
                 return [product];
             });
 
-            logger.info("Products: Product deleted", { productId, name: existingProduct.name, staffId: context.staffId });
-            const mapped = { ...deletedProduct, price: Number(deletedProduct.price), costprice: Number(deletedProduct.costprice) };
+            logger.info("Products: Product deleted", {
+                productId,
+                name: existingProduct.name,
+                staffId: context.staffId,
+            });
+            const mapped = {
+                ...deletedProduct,
+                price: Number(deletedProduct.price),
+                costprice: Number(deletedProduct.costprice),
+            };
             return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in deleteProduct", { productId, error });
@@ -309,7 +343,7 @@ export abstract class ProductsService {
 
     static async restoreProduct(
         productId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminProductDetailResponse> {
         try {
@@ -358,8 +392,16 @@ export abstract class ProductsService {
                 return [product];
             });
 
-            logger.info("Products: Product restored", { productId, name: existingProduct.name, staffId: context.staffId });
-            const mapped = { ...restoredProduct, price: Number(restoredProduct.price), costprice: Number(restoredProduct.costprice) };
+            logger.info("Products: Product restored", {
+                productId,
+                name: existingProduct.name,
+                staffId: context.staffId,
+            });
+            const mapped = {
+                ...restoredProduct,
+                price: Number(restoredProduct.price),
+                costprice: Number(restoredProduct.costprice),
+            };
             return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in restoreProduct", { productId, error });

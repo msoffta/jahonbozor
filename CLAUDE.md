@@ -76,7 +76,23 @@ bun run format:check       # Check formatting (CI)
 - Единый `eslint.config.js` в корне — flat config для всего монорепо
 - `.prettierrc.json` в корне — Prettier для форматирования
 - Pre-commit hook (`simple-git-hooks` + `lint-staged`) — автоматически lint + format staged файлов
+- Commit-msg hook (`commitlint`) — валидация conventional commits
 - Подробности правил: [docs/rules.md](docs/rules.md#linting--formatting)
+
+### Versioning & Releases
+
+```bash
+bun run commit             # Interactive commit prompt (commitizen)
+bun run changeset          # Create changeset file for version bump
+bun run version-packages   # Bump versions + generate CHANGELOG (CI only)
+```
+
+- **Conventional Commits** — enforced via commitlint: `feat(backend):`, `fix(ui):`, `chore(deps):` и т.д.
+- **Scopes:** `backend`, `bot`, `admin`, `user`, `ui`, `schemas`, `logger`, `utils`, `ci`, `deps`
+- **Changesets** — PR с user/dev-facing изменениями должен содержать changeset файл (`.changeset/*.md`)
+- **Fixed versioning** — все workspace получают одинаковую версию
+- **Release flow:** merge PR → `release.yml` создаёт "Version Packages" PR → merge → deploy с semver тегами
+- Подробности: [docs/rules.md](docs/rules.md#versioning--commits)
 
 ### Testing
 

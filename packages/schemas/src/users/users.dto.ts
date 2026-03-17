@@ -1,6 +1,7 @@
 import z from "zod";
+
 import { PaginationQuery } from "../common/pagination.model";
-import { User, telegramIdSchema, LanguageSchema } from "./users.model";
+import { LanguageSchema, telegramIdSchema, User } from "./users.model";
 
 export const CreateUserBody = User.omit({
     id: true,
@@ -27,20 +28,14 @@ export const TelegramLoginBody = TelegramAuthBody.extend({
 
 export const UsersPagination = PaginationQuery.extend({
     searchQuery: z.string().optional(),
-    includeOrders: z.preprocess(
-        (val) => {
-            if (val === undefined || val === null || val === "") return undefined;
-            return val === "true" || val === true;
-        },
-        z.boolean().optional(),
-    ),
-    includeDeleted: z.preprocess(
-        (val) => {
-            if (val === undefined || val === null || val === "") return undefined;
-            return val === "true" || val === true;
-        },
-        z.boolean().optional(),
-    ),
+    includeOrders: z.preprocess((val) => {
+        if (val === undefined || val === null || val === "") return undefined;
+        return val === "true" || val === true;
+    }, z.boolean().optional()),
+    includeDeleted: z.preprocess((val) => {
+        if (val === undefined || val === null || val === "") return undefined;
+        return val === "true" || val === true;
+    }, z.boolean().optional()),
 });
 
 export type CreateUserBody = z.infer<typeof CreateUserBody>;

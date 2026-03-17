@@ -1,7 +1,11 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
-import { api } from "@/api/client";
+
 import { toast } from "@jahonbozor/ui";
+
+import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
+import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 
 export const productKeys = {
     all: ["products"] as const,
@@ -46,14 +50,33 @@ export const productDetailQueryOptions = (id: number) =>
 
 // --- Mutation functions (exported for testing) ---
 
-export const createProductFn = async (body: { name: string; price: number; costprice: number; categoryId: number; remaining?: number }) => {
-    const { data, error } = await api.api.private.products.post({ ...body, remaining: body.remaining ?? 0 });
+export const createProductFn = async (body: {
+    name: string;
+    price: number;
+    costprice: number;
+    categoryId: number;
+    remaining?: number;
+}) => {
+    const { data, error } = await api.api.private.products.post({
+        ...body,
+        remaining: body.remaining ?? 0,
+    });
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
     return data.data as AdminProductItem;
 };
 
-export const updateProductFn = async ({ id, ...body }: { id: number; name?: string; price?: number; costprice?: number; categoryId?: number; remaining?: number }) => {
+export const updateProductFn = async ({
+    id,
+    ...body
+}: {
+    id: number;
+    name?: string;
+    price?: number;
+    costprice?: number;
+    categoryId?: number;
+    remaining?: number;
+}) => {
     const { data, error } = await api.api.private.products({ id }).patch(body);
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
@@ -85,7 +108,7 @@ export const useCreateProduct = () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -99,7 +122,7 @@ export const useUpdateProduct = () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -113,7 +136,7 @@ export const useDeleteProduct = () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -127,7 +150,7 @@ export const useRestoreProduct = () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };

@@ -1,9 +1,13 @@
-import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
-import { Skeleton, motion, AnimatePresence, AnimatedList, AnimatedListItem } from "@jahonbozor/ui";
+
+import { AnimatedList, AnimatedListItem, AnimatePresence, motion, Skeleton } from "@jahonbozor/ui";
+
 import { productsListOptions } from "@/api/products.api";
+
 import { ProductCard } from "./product-card";
 
 interface CategorySectionProps {
@@ -12,7 +16,7 @@ interface CategorySectionProps {
 }
 
 export function CategorySection({ categoryId, categoryName }: CategorySectionProps) {
-    const { t } = useTranslation();
+    const { t } = useTranslation("catalog");
     const { data, isLoading } = useQuery(
         productsListOptions({ limit: 10, categoryIds: [categoryId] }),
     );
@@ -24,14 +28,17 @@ export function CategorySection({ categoryId, categoryName }: CategorySectionPro
 
     return (
         <section className="flex flex-col gap-3">
-            <motion.div whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+            <motion.div
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
                 <Link
                     to="/products"
                     search={{ categoryIds: String(categoryId) }}
                     className="flex items-center gap-2"
                 >
-                    <span className="text-lg font-medium text-foreground">{categoryName}</span>
-                    <ChevronRight className="size-6 text-muted-foreground" />
+                    <span className="text-foreground text-lg font-medium">{categoryName}</span>
+                    <ChevronRight className="text-muted-foreground size-6" />
                 </Link>
             </motion.div>
 
@@ -78,7 +85,7 @@ export function CategorySection({ categoryId, categoryName }: CategorySectionPro
                         <Link
                             to="/products"
                             search={{ categoryIds: String(categoryId) }}
-                            className="flex items-center justify-center gap-1 rounded-xl bg-surface py-3 text-sm font-semibold text-accent"
+                            className="bg-surface text-accent flex items-center justify-center gap-1 rounded-xl py-3 text-sm font-semibold"
                         >
                             {t("see_all")} ({totalCount})
                             <ChevronRight className="size-4" />

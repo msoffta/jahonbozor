@@ -38,6 +38,8 @@
     --color-sidebar-accent-foreground: hsl(240 5.9% 10%);
     --color-sidebar-border: hsl(220 13% 91%);
     --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --color-success: hsl(142 76% 36%);
+    --color-overlay: rgba(0, 0, 0, 0.6);
     --color-drag-sum: #e8f0fe;
     --color-drag-sum-border: #1a73e8;
     --radius: 0.625rem;
@@ -79,6 +81,8 @@
     --color-sidebar-accent-foreground: hsl(240 4.8% 95.9%);
     --color-sidebar-border: hsl(240 3.7% 15.9%);
     --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --color-success: hsl(142 69% 58%);
+    --color-overlay: rgba(0, 0, 0, 0.6);
     --color-drag-sum: rgba(232, 240, 254, 0.1);
     --color-drag-sum-border: #8ab4f8;
 }
@@ -91,7 +95,9 @@
 
     body {
         @apply bg-background text-foreground;
-        font-feature-settings: "rlig" 1, "calt" 1;
+        font-feature-settings:
+            "rlig" 1,
+            "calt" 1;
     }
 
     /* Interactive cursor types */

@@ -1,4 +1,5 @@
 import z from "zod";
+
 import { Operation } from "../common/enums";
 import { PaginationQuery } from "../common/pagination.model";
 import { ProductHistory } from "./product-history.model";
@@ -19,9 +20,7 @@ export const ProductHistoryPagination = PaginationQuery.extend({
     dateTo: z.string().datetime().optional(),
 });
 
-export type CreateInventoryAdjustmentBody = z.infer<
-    typeof CreateInventoryAdjustmentBody
->;
+export type CreateInventoryAdjustmentBody = z.infer<typeof CreateInventoryAdjustmentBody>;
 export type ProductHistoryPagination = z.infer<typeof ProductHistoryPagination>;
 
 // --- Response types ---

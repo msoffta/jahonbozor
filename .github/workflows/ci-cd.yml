@@ -277,6 +277,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get package version
+        id: pkg-version
+        run: echo "version=$(jq -r '.version' apps/backend/package.json)" >> $GITHUB_OUTPUT
+
       - name: Extract metadata for backend
         id: meta-backend
         uses: docker/metadata-action@v5
@@ -285,6 +289,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
+            type=raw,value=${{ steps.pkg-version.outputs.version }},enable={{is_default_branch}}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v5
@@ -305,6 +310,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
+            type=raw,value=${{ steps.pkg-version.outputs.version }},enable={{is_default_branch}}
 
       - name: Build and push bot image
         uses: docker/build-push-action@v5
@@ -325,6 +331,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
+            type=raw,value=${{ steps.pkg-version.outputs.version }},enable={{is_default_branch}}
 
       - name: Build and push nginx image
         uses: docker/build-push-action@v5

@@ -1,9 +1,11 @@
+import { format } from "date-fns";
+import { RotateCcw, Trash2 } from "lucide-react";
+
+import { Badge, Button, motion } from "@jahonbozor/ui";
+
+import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
-import dayjs from "dayjs";
-import { Badge, Button, motion } from "@jahonbozor/ui";
-import { Trash2, RotateCcw } from "lucide-react";
 
 export interface ExpenseActions {
     onDelete: (id: number) => void;
@@ -18,10 +20,10 @@ export function getExpenseColumns(
     t: TFunction,
     actions: ExpenseActions,
     options?: ExpenseColumnsOptions,
-): ColumnDef<ExpenseItem, any>[] {
+): ColumnDef<ExpenseItem, unknown>[] {
     const { canDelete = true } = options ?? {};
 
-    const columns: ColumnDef<ExpenseItem, any>[] = [
+    const columns: ColumnDef<ExpenseItem, unknown>[] = [
         {
             accessorKey: "id",
             header: t("expense_id"),
@@ -39,7 +41,12 @@ export function getExpenseColumns(
             header: t("expense_amount"),
             size: 120,
             cell: ({ getValue }) => getValue<number>().toLocaleString(),
-            meta: { flex: 1, align: "right" as const, editable: true, inputType: "currency" as const },
+            meta: {
+                flex: 1,
+                align: "right" as const,
+                editable: true,
+                inputType: "currency" as const,
+            },
         },
         {
             accessorKey: "description",
@@ -54,7 +61,7 @@ export function getExpenseColumns(
             size: 140,
             cell: ({ getValue }) => {
                 const val = getValue<Date | string>();
-                return val ? dayjs(val).format("DD.MM.YYYY HH:mm") : "—";
+                return val ? format(new Date(val), "dd.MM.yyyy HH:mm") : "—";
             },
             meta: { flex: 1, editable: true, inputType: "datepicker" as const, showTime: true },
         },
@@ -104,12 +111,15 @@ export function getExpenseColumns(
             cell: ({ row }) => {
                 const isDeleted = row.original.deletedAt !== null;
                 return (
-                    <motion.div whileTap={{ scale: 0.9 }} className="inline-flex justify-center w-full">
+                    <motion.div
+                        whileTap={{ scale: 0.9 }}
+                        className="inline-flex w-full justify-center"
+                    >
                         {isDeleted ? (
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                className="text-muted-foreground hover:text-primary h-8 w-8"
                                 onClick={() => actions.onRestore(row.original.id)}
                                 title={t("action_restore")}
                             >
@@ -119,7 +129,7 @@ export function getExpenseColumns(
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                className="text-muted-foreground hover:text-destructive h-8 w-8"
                                 onClick={() => actions.onDelete(row.original.id)}
                                 title={t("action_delete")}
                             >

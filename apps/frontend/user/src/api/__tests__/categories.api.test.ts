@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 const { mockGet } = vi.hoisted(() => ({
     mockGet: vi.fn(() =>
@@ -19,7 +19,7 @@ vi.mock("@/lib/api-client", () => ({
     },
 }));
 
-import { categoryKeys, categoriesListOptions } from "../categories.api";
+import { categoriesListOptions, categoryKeys } from "../categories.api";
 
 describe("categories.api", () => {
     describe("categoryKeys", () => {

@@ -1,6 +1,8 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { createMockLogger } from "@backend/test/setup";
+
 import { PublicProductsService } from "../products.service";
 
 const mockProducts = [

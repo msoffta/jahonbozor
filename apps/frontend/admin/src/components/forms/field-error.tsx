@@ -10,7 +10,7 @@ export function FieldError({ field }: FieldErrorProps) {
     }
 
     return (
-        <p className="text-xs text-destructive font-medium px-1">
+        <p className="text-destructive px-1 text-xs font-medium">
             {field.state.meta.errors
                 .map((err: unknown) =>
                     typeof err === "object" && err !== null && "message" in err

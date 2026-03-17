@@ -166,6 +166,29 @@ export default defineConfig([
         },
     },
 
+    // ── Frontend API files: Eden Treaty loses types ────────────
+    {
+        files: ["apps/frontend/**/api/**/*.ts"],
+        rules: {
+            "@typescript-eslint/no-unsafe-assignment": "off",
+            "@typescript-eslint/no-unsafe-call": "off",
+            "@typescript-eslint/no-unsafe-member-access": "off",
+            "@typescript-eslint/no-unsafe-return": "off",
+            "@typescript-eslint/no-unsafe-argument": "off",
+            "@typescript-eslint/only-throw-error": "off",
+            "@typescript-eslint/no-floating-promises": "off",
+        },
+    },
+
+    // ── Frontend route files: TanStack Router patterns ───────
+    {
+        files: ["apps/frontend/**/routes/**/*.{ts,tsx}"],
+        rules: {
+            "@typescript-eslint/only-throw-error": "off",
+            "@typescript-eslint/require-await": "off",
+        },
+    },
+
     // ── Allow default exports in config files ─────────────────────
     {
         files: ["**/vite.config.ts", "**/vitest.config.ts", "eslint.config.js"],
@@ -176,7 +199,12 @@ export default defineConfig([
 
     // ── Test files: relax strict rules ────────────────────────────
     {
-        files: ["**/__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}", "**/test/**/*.{ts,tsx}"],
+        files: [
+            "**/__tests__/**/*.{ts,tsx}",
+            "**/*.test.{ts,tsx}",
+            "**/test/**/*.{ts,tsx}",
+            "**/test-utils/**/*.{ts,tsx}",
+        ],
         rules: {
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-non-null-assertion": "off",
@@ -187,6 +215,13 @@ export default defineConfig([
             "@typescript-eslint/no-unsafe-argument": "off",
             "@typescript-eslint/ban-ts-comment": "off",
             "@typescript-eslint/require-await": "off",
+            "@typescript-eslint/await-thenable": "off",
+            "@typescript-eslint/only-throw-error": "off",
+            "@typescript-eslint/no-empty-function": "off",
+            "@typescript-eslint/no-unsafe-function-type": "off",
+            "@typescript-eslint/unbound-method": "off",
+            "@typescript-eslint/prefer-nullish-coalescing": "off",
+            "no-useless-catch": "off",
             "no-console": "off",
         },
     },

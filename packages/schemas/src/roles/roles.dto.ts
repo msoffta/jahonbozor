@@ -1,5 +1,6 @@
-import z from "zod";
 import { Role } from "./roles.model";
+
+import type z from "zod";
 
 export const CreateRoleBody = Role.omit({
     id: true,

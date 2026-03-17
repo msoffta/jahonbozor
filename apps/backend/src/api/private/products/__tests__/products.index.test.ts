@@ -1,9 +1,12 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
-import { ProductsService } from "../products.service";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { HistoryService } from "../history/history.service";
+import { ProductsService } from "../products.service";
 
 // Mock product data
 const mockProduct = {
@@ -83,7 +86,13 @@ const createTestApp = () => {
             return await ProductsService.getProduct(Number(params.id), logger);
         })
         .post("/products", async ({ body, logger, requestId }) => {
-            const productData = body as { name: string; price: number; costprice: number; categoryId: number; remaining?: number };
+            const productData = body as {
+                name: string;
+                price: number;
+                costprice: number;
+                categoryId: number;
+                remaining?: number;
+            };
             return await ProductsService.createProduct(
                 { ...productData, remaining: productData.remaining ?? 0 },
                 { staffId: mockUser.id, user: mockUser, requestId },
@@ -126,7 +135,11 @@ const createTestApp = () => {
         .post("/products/:id/inventory", async ({ params, body, logger, requestId }) => {
             return await HistoryService.createInventoryAdjustment(
                 Number(params.id),
-                body as { operation: "INVENTORY_ADD" | "INVENTORY_REMOVE"; quantity: number; changeReason: string | null },
+                body as {
+                    operation: "INVENTORY_ADD" | "INVENTORY_REMOVE";
+                    quantity: number;
+                    changeReason: string | null;
+                },
                 { staffId: mockUser.id, user: mockUser, requestId },
                 logger,
             );
@@ -170,9 +183,7 @@ describe("Products API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products?searchQuery=Test"),
-            );
+            await app.handle(new Request("http://localhost/products?searchQuery=Test"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -191,9 +202,7 @@ describe("Products API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products?categoryIds=1,2"),
-            );
+            await app.handle(new Request("http://localhost/products?categoryIds=1,2"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -212,9 +221,7 @@ describe("Products API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products?minPrice=50&maxPrice=150"),
-            );
+            await app.handle(new Request("http://localhost/products?minPrice=50&maxPrice=150"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -233,9 +240,7 @@ describe("Products API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products?includeDeleted=true"),
-            );
+            await app.handle(new Request("http://localhost/products?includeDeleted=true"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -256,9 +261,7 @@ describe("Products API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/products/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/products/1"));
             const body = await response.json();
 
             // Assert
@@ -277,9 +280,7 @@ describe("Products API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/products/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/products/999"));
             const body = await response.json();
 
             // Assert
@@ -593,9 +594,7 @@ describe("Products API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/products/1/history"),
-            );
+            const response = await app.handle(new Request("http://localhost/products/1/history"));
             const body = await response.json();
 
             // Assert
@@ -614,9 +613,7 @@ describe("Products API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products/1/history?page=2&limit=10"),
-            );
+            await app.handle(new Request("http://localhost/products/1/history?page=2&limit=10"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -636,7 +633,11 @@ describe("Products API Routes", () => {
                 success: true,
                 data: {
                     product: { ...mockProduct, remaining: 15 },
-                    historyEntry: { ...mockProductHistory, operation: "INVENTORY_ADD", quantity: 5 },
+                    historyEntry: {
+                        ...mockProductHistory,
+                        operation: "INVENTORY_ADD",
+                        quantity: 5,
+                    },
                 },
             });
 
@@ -668,7 +669,11 @@ describe("Products API Routes", () => {
                 success: true,
                 data: {
                     product: { ...mockProduct, remaining: 5 },
-                    historyEntry: { ...mockProductHistory, operation: "INVENTORY_REMOVE", quantity: 5 },
+                    historyEntry: {
+                        ...mockProductHistory,
+                        operation: "INVENTORY_REMOVE",
+                        quantity: 5,
+                    },
                 },
             });
 
@@ -764,9 +769,7 @@ describe("Products API Routes", () => {
                 data: { count: 0, products: [] },
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/products"),
-            );
+            const response = await app.handle(new Request("http://localhost/products"));
             const body = await response.json();
 
             expect(response.status).toBe(200);
@@ -783,9 +786,7 @@ describe("Products API Routes", () => {
                 data: { count: 0, products: [] },
             });
 
-            await app.handle(
-                new Request("http://localhost/products?categoryIds=abc"),
-            );
+            await app.handle(new Request("http://localhost/products?categoryIds=abc"));
 
             expect(spy).toHaveBeenCalledWith(
                 expect.objectContaining({ categoryIds: "abc" }),
@@ -801,9 +802,7 @@ describe("Products API Routes", () => {
                 error: "Product not found",
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/products/0"),
-            );
+            const response = await app.handle(new Request("http://localhost/products/0"));
             const body = await response.json();
 
             expect(body.success).toBe(false);

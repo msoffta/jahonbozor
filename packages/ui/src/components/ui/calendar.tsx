@@ -1,10 +1,13 @@
 import * as React from "react";
 import { DayPicker, type DropdownProps } from "react-day-picker";
-import type { Locale } from "date-fns";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import { cn } from "../../lib/utils";
 import { buttonVariants } from "./button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
+
+import type { Locale } from "date-fns";
 
 const CalendarLocaleContext = React.createContext<Locale | undefined>(undefined);
 const CalendarLocaleProvider = CalendarLocaleContext.Provider;
@@ -23,12 +26,19 @@ function CalendarDropdown({ options, onChange, value, "aria-label": ariaLabel }:
 
     return (
         <Select value={value?.toString()} onValueChange={handleValueChange}>
-            <SelectTrigger className="h-7 text-sm px-2 gap-1 font-medium focus:ring-0" aria-label={ariaLabel}>
+            <SelectTrigger
+                className="h-7 gap-1 px-2 text-sm font-medium focus:ring-0"
+                aria-label={ariaLabel}
+            >
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>
                 {options?.map((option) => (
-                    <SelectItem key={option.value} value={option.value.toString()} disabled={option.disabled}>
+                    <SelectItem
+                        key={option.value}
+                        value={option.value.toString()}
+                        disabled={option.disabled}
+                    >
                         {option.label}
                     </SelectItem>
                 ))}
@@ -37,13 +47,16 @@ function CalendarDropdown({ options, onChange, value, "aria-label": ariaLabel }:
     );
 }
 
-function Calendar({
-    className,
-    classNames,
-    showOutsideDays = true,
-    ...props
-}: CalendarProps) {
-    const contextLocale = React.useContext(CalendarLocaleContext);
+/** Number of years to show before/after current year in calendar dropdown */
+const CALENDAR_YEAR_RANGE = 10;
+
+function CalendarChevron({ orientation }: { orientation?: "left" | "right" | "up" | "down" }) {
+    const Icon = orientation === "left" ? ChevronLeft : ChevronRight;
+    return <Icon className="h-4 w-4" />;
+}
+
+function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+    const contextLocale = React.use(CalendarLocaleContext);
 
     return (
         <DayPicker
@@ -51,8 +64,12 @@ function Calendar({
             locale={props.locale ?? contextLocale}
             weekStartsOn={props.weekStartsOn ?? 1}
             captionLayout={props.captionLayout ?? "dropdown"}
-            startMonth={props.startMonth ?? new Date(new Date().getFullYear() - 10, 0)}
-            endMonth={props.endMonth ?? new Date(new Date().getFullYear() + 10, 11)}
+            startMonth={
+                props.startMonth ?? new Date(new Date().getFullYear() - CALENDAR_YEAR_RANGE, 0)
+            }
+            endMonth={
+                props.endMonth ?? new Date(new Date().getFullYear() + CALENDAR_YEAR_RANGE, 11)
+            }
             className={cn("p-3", className)}
             classNames={{
                 months: "relative flex flex-col sm:flex-row gap-2",
@@ -88,11 +105,9 @@ function Calendar({
                 selected:
                     "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
                 today: "bg-accent text-accent-foreground",
-                outside:
-                    "day-outside text-muted-foreground aria-selected:text-muted-foreground",
+                outside: "day-outside text-muted-foreground aria-selected:text-muted-foreground",
                 disabled: "text-muted-foreground opacity-50",
-                range_middle:
-                    "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
                 hidden: "invisible",
                 ...classNames,
             }}
@@ -101,14 +116,11 @@ function Calendar({
                 ...props.modifiers,
             }}
             modifiersClassNames={{
-                weekend: "text-red-500",
+                weekend: "text-destructive",
                 ...props.modifiersClassNames,
             }}
             components={{
-                Chevron: ({ orientation }) => {
-                    const Icon = orientation === "left" ? ChevronLeft : ChevronRight;
-                    return <Icon className="h-4 w-4" />;
-                },
+                Chevron: CalendarChevron,
                 Dropdown: CalendarDropdown,
                 ...props.components,
             }}

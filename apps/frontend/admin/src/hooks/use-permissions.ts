@@ -1,9 +1,10 @@
 import {
-    type Permission,
-    hasPermission,
-    hasAnyPermission,
     hasAllPermissions,
+    hasAnyPermission,
+    hasPermission,
+    type Permission,
 } from "@jahonbozor/schemas";
+
 import { useAuthStore } from "@/stores/auth.store";
 
 export function useHasPermission(required: Permission): boolean {

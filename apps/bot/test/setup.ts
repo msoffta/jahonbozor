@@ -1,6 +1,7 @@
-import { vi, beforeEach } from "vitest";
+import { beforeEach, vi } from "vitest";
 import { mockDeep, mockReset } from "vitest-mock-extended";
-import type { PrismaClient, Users, AuditLog } from "@backend/generated/prisma/client";
+
+import type { AuditLog, PrismaClient, Users } from "@backend/generated/prisma/client";
 import type { Logger } from "@jahonbozor/logger";
 
 // Set env vars before any module imports

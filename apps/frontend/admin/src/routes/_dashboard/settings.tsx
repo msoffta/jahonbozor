@@ -1,85 +1,94 @@
 import { useMemo } from "react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
-import { PageTransition, Tabs, TabsList, TabsTrigger, TabsContent } from "@jahonbozor/ui";
-import { Users, ShieldCheck } from "lucide-react";
-import { useAuthStore } from "@/stores/auth.store";
-import { useHasPermission } from "@/hooks/use-permissions";
-import { StaffTab } from "@/components/settings/staff-tab";
+
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { ShieldCheck, Users } from "lucide-react";
+
+import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
+import { PageTransition, Tabs, TabsContent, TabsList, TabsTrigger } from "@jahonbozor/ui";
+
 import { RolesTab } from "@/components/settings/roles-tab";
+import { StaffTab } from "@/components/settings/staff-tab";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function SettingsPage() {
-	const { t } = useTranslation("settings");
-	const hasStaffPermission = useHasPermission(Permission.STAFF_LIST);
-	const hasRolesPermission = useHasPermission(Permission.ROLES_LIST);
+    const { t } = useTranslation("settings");
+    const hasStaffPermission = useHasPermission(Permission.STAFF_LIST);
+    const hasRolesPermission = useHasPermission(Permission.ROLES_LIST);
 
-	const defaultTab = useMemo(() => {
-		if (hasStaffPermission) return "staff";
-		if (hasRolesPermission) return "roles";
-		return null;
-	}, [hasStaffPermission, hasRolesPermission]);
+    const defaultTab = useMemo(() => {
+        if (hasStaffPermission) return "staff";
+        if (hasRolesPermission) return "roles";
+        return null;
+    }, [hasStaffPermission, hasRolesPermission]);
 
-	if (!defaultTab) {
-		return (
-			<PageTransition className="p-6">
-				<div className="text-center text-muted-foreground">{t("no_permissions")}</div>
-			</PageTransition>
-		);
-	}
+    if (!defaultTab) {
+        return (
+            <PageTransition className="p-6">
+                <div className="text-muted-foreground text-center">{t("no_permissions")}</div>
+            </PageTransition>
+        );
+    }
 
-	return (
-		<PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-			<h1 className="text-2xl font-bold mb-6">{t("title")}</h1>
+    return (
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+            <h1 className="mb-6 text-2xl font-bold">{t("title")}</h1>
 
-			<Tabs defaultValue={defaultTab} className="flex-1 flex flex-col min-h-0">
-				<TabsList className="mb-6 w-full sm:w-auto inline-grid grid-cols-2 h-auto p-1 bg-muted/50 rounded-lg sm:max-w-100">
-					{hasStaffPermission && (
-						<TabsTrigger 
-							value="staff" 
-							className="flex items-center justify-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all font-medium"
-						>
-							<Users className="h-4 w-4" />
-							{t("tab_staff")}
-						</TabsTrigger>
-					)}
-					{hasRolesPermission && (
-						<TabsTrigger 
-							value="roles" 
-							className="flex items-center justify-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all font-medium"
-						>
-							<ShieldCheck className="h-4 w-4" />
-							{t("tab_roles")}
-						</TabsTrigger>
-					)}
-				</TabsList>
+            <Tabs defaultValue={defaultTab} className="flex min-h-0 flex-1 flex-col">
+                <TabsList className="bg-muted/50 mb-6 inline-grid h-auto w-full grid-cols-2 rounded-lg p-1 sm:w-auto sm:max-w-100">
+                    {hasStaffPermission && (
+                        <TabsTrigger
+                            value="staff"
+                            className="data-[state=active]:bg-background flex items-center justify-center gap-2 rounded-md py-2.5 font-medium transition-all data-[state=active]:shadow-sm"
+                        >
+                            <Users className="h-4 w-4" />
+                            {t("tab_staff")}
+                        </TabsTrigger>
+                    )}
+                    {hasRolesPermission && (
+                        <TabsTrigger
+                            value="roles"
+                            className="data-[state=active]:bg-background flex items-center justify-center gap-2 rounded-md py-2.5 font-medium transition-all data-[state=active]:shadow-sm"
+                        >
+                            <ShieldCheck className="h-4 w-4" />
+                            {t("tab_roles")}
+                        </TabsTrigger>
+                    )}
+                </TabsList>
 
-				{hasStaffPermission && (
-					<TabsContent value="staff" className="flex-1 flex flex-col min-h-0 border rounded-xl bg-card text-card-foreground shadow-sm p-4 overflow-hidden">
-						<StaffTab />
-					</TabsContent>
-				)}
+                {hasStaffPermission && (
+                    <TabsContent
+                        value="staff"
+                        className="bg-card text-card-foreground flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border p-4 shadow-sm"
+                    >
+                        <StaffTab />
+                    </TabsContent>
+                )}
 
-				{hasRolesPermission && (
-					<TabsContent value="roles" className="flex-1 flex flex-col min-h-0 border rounded-xl bg-card text-card-foreground shadow-sm p-4 overflow-hidden">
-						<RolesTab />
-					</TabsContent>
-				)}
-			</Tabs>
-		</PageTransition>
-	);
+                {hasRolesPermission && (
+                    <TabsContent
+                        value="roles"
+                        className="bg-card text-card-foreground flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border p-4 shadow-sm"
+                    >
+                        <RolesTab />
+                    </TabsContent>
+                )}
+            </Tabs>
+        </PageTransition>
+    );
 }
 
 export const Route = createFileRoute("/_dashboard/settings")({
-	beforeLoad: async () => {
-		const { permissions } = useAuthStore.getState();
-		const canAccessSettings = hasAnyPermission(permissions, [
-			Permission.STAFF_LIST,
-			Permission.ROLES_LIST,
-		]);
-		if (!canAccessSettings) {
-			throw redirect({ to: "/" });
-		}
-	},
-	component: SettingsPage,
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        const canAccessSettings = hasAnyPermission(permissions, [
+            Permission.STAFF_LIST,
+            Permission.ROLES_LIST,
+        ]);
+        if (!canAccessSettings) {
+            throw redirect({ to: "/" });
+        }
+    },
+    component: SettingsPage,
 });

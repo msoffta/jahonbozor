@@ -1,13 +1,24 @@
 import * as React from "react";
-import type { CellContext } from "@tanstack/react-table";
+import { NumericFormat } from "react-number-format";
+
 import { flexRender } from "@tanstack/react-table";
 import { motion } from "motion/react";
-import { NumericFormat } from "react-number-format";
+
 import { cn } from "../../lib/utils";
+import { DatePicker } from "../ui/date-picker";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { DatePicker } from "../ui/date-picker";
 import { DataTableCombobox } from "./data-table-combobox";
+
+import type { CellContext } from "@tanstack/react-table";
+
+/** Safely convert unknown cell value to display string */
+function toDisplayString(value: unknown): string {
+    if (value == null || value === "") return "";
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+        return String(value);
+    return JSON.stringify(value);
+}
 
 /** Auto-save debounce delay for editable cells */
 const AUTO_SAVE_DEBOUNCE_MS = 500;
@@ -38,24 +49,27 @@ export function DataTableEditableCell<TData>({
         }
     }, [initialValue, isEditing]);
 
-    const handleSave = React.useCallback((currentValue: unknown = value, closeEdit = true) => {
-        if (meta?.validationSchema) {
-            const result = meta.validationSchema.safeParse(currentValue);
-            if (!result.success) {
-                setError(result.error.issues[0]?.message ?? "Invalid value");
-                return;
+    const handleSave = React.useCallback(
+        (currentValue: unknown = value, closeEdit = true) => {
+            if (meta?.validationSchema) {
+                const result = meta.validationSchema.safeParse(currentValue);
+                if (!result.success) {
+                    setError(result.error.issues[0]?.message ?? "Invalid value");
+                    return;
+                }
             }
-        }
-        setError(null);
-        if (closeEdit) {
-            setIsEditing(false);
-        }
-        
-        if (currentValue !== initialValue) {
-            cell.table.options.meta?.updateData(cell.row.index, cell.column.id, currentValue);
-            onCellEdit?.(cell.row.index, cell.column.id, currentValue);
-        }
-    }, [value, initialValue, meta, cell, onCellEdit]);
+            setError(null);
+            if (closeEdit) {
+                setIsEditing(false);
+            }
+
+            if (currentValue !== initialValue) {
+                cell.table.options.meta?.updateData(cell.row.index, cell.column.id, currentValue);
+                onCellEdit?.(cell.row.index, cell.column.id, currentValue);
+            }
+        },
+        [value, initialValue, meta, cell, onCellEdit],
+    );
 
     // Auto-save effect
     React.useEffect(() => {
@@ -87,8 +101,15 @@ export function DataTableEditableCell<TData>({
     if (!isEditable) {
         const align = meta?.align ?? "left";
         return (
-            <div className={cn("truncate", align === "center" && "text-center", align === "right" && "text-right", meta?.className)}>
-                {String(initialValue ?? "")}
+            <div
+                className={cn(
+                    "truncate",
+                    align === "center" && "text-center",
+                    align === "right" && "text-right",
+                    meta?.className,
+                )}
+            >
+                {toDisplayString(initialValue)}
             </div>
         );
     }
@@ -98,13 +119,17 @@ export function DataTableEditableCell<TData>({
             <div className="relative">
                 {meta?.inputType === "select" && meta.selectOptions ? (
                     <Select
-                        value={String(value ?? "")}
+                        value={toDisplayString(value)}
                         onValueChange={(newValue) => {
                             setValue(newValue);
                             setError(null);
                             setIsEditing(false);
-                            if (newValue !== String(initialValue)) {
-                                cell.table.options.meta?.updateData(cell.row.index, cell.column.id, newValue);
+                            if (newValue !== toDisplayString(initialValue)) {
+                                cell.table.options.meta?.updateData(
+                                    cell.row.index,
+                                    cell.column.id,
+                                    newValue,
+                                );
                                 onCellEdit?.(cell.row.index, cell.column.id, newValue);
                             }
                         }}
@@ -122,7 +147,7 @@ export function DataTableEditableCell<TData>({
                     </Select>
                 ) : meta?.inputType === "combobox" && meta.selectOptions ? (
                     <DataTableCombobox
-                        value={String(value ?? "")}
+                        value={toDisplayString(value)}
                         options={meta.selectOptions}
                         onChange={(newValue) => {
                             setValue(newValue);
@@ -130,8 +155,12 @@ export function DataTableEditableCell<TData>({
                         }}
                         onSelect={(newValue) => {
                             setIsEditing(false);
-                            if (newValue !== String(initialValue)) {
-                                cell.table.options.meta?.updateData(cell.row.index, cell.column.id, newValue);
+                            if (newValue !== toDisplayString(initialValue)) {
+                                cell.table.options.meta?.updateData(
+                                    cell.row.index,
+                                    cell.column.id,
+                                    newValue,
+                                );
                                 onCellEdit?.(cell.row.index, cell.column.id, newValue);
                             }
                         }}
@@ -140,7 +169,11 @@ export function DataTableEditableCell<TData>({
                             setIsEditing(false);
                             const v = value;
                             if (v !== initialValue) {
-                                cell.table.options.meta?.updateData(cell.row.index, cell.column.id, v);
+                                cell.table.options.meta?.updateData(
+                                    cell.row.index,
+                                    cell.column.id,
+                                    v,
+                                );
                                 onCellEdit?.(cell.row.index, cell.column.id, v);
                             }
                         }}
@@ -150,7 +183,11 @@ export function DataTableEditableCell<TData>({
                                 setIsEditing(false);
                                 const v = value;
                                 if (v !== initialValue) {
-                                    cell.table.options.meta?.updateData(cell.row.index, cell.column.id, v);
+                                    cell.table.options.meta?.updateData(
+                                        cell.row.index,
+                                        cell.column.id,
+                                        v,
+                                    );
                                     onCellEdit?.(cell.row.index, cell.column.id, v);
                                 }
                             } else if (e.key === "Escape") {
@@ -167,7 +204,9 @@ export function DataTableEditableCell<TData>({
                         showTime={meta?.showTime}
                         onChange={(date) => {
                             const val = date
-                                ? meta?.showTime ? date.toISOString() : date.toISOString().split("T")[0]
+                                ? meta?.showTime
+                                    ? date.toISOString()
+                                    : date.toISOString().split("T")[0]
                                 : "";
                             setValue(val);
                             setError(null);
@@ -177,10 +216,11 @@ export function DataTableEditableCell<TData>({
                         }}
                         onKeyDown={handleKeyDown}
                         inputRef={(el) => {
-                            (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                            (inputRef as React.MutableRefObject<HTMLInputElement | null>).current =
+                                el;
                         }}
                         placeholder={meta?.placeholder}
-                        className="h-8 text-sm w-full"
+                        className="h-8 w-full text-sm"
                     />
                 ) : meta?.inputType === "currency" ? (
                     <NumericFormat
@@ -202,10 +242,19 @@ export function DataTableEditableCell<TData>({
                 ) : (
                     <Input
                         ref={inputRef}
-                        type={meta?.inputType === "number" ? "number" : meta?.inputType === "date" ? "date" : "text"}
-                        value={String(value ?? "")}
+                        type={
+                            meta?.inputType === "number"
+                                ? "number"
+                                : meta?.inputType === "date"
+                                  ? "date"
+                                  : "text"
+                        }
+                        value={toDisplayString(value)}
                         onChange={(e) => {
-                            const newValue = meta?.inputType === "number" ? Number(e.target.value) : e.target.value;
+                            const newValue =
+                                meta?.inputType === "number"
+                                    ? Number(e.target.value)
+                                    : e.target.value;
                             setValue(newValue);
                             setError(null);
                         }}
@@ -220,7 +269,7 @@ export function DataTableEditableCell<TData>({
                         initial={{ opacity: 0, x: 0 }}
                         animate={{ opacity: 1, x: [0, -4, 4, -4, 0] }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                        className="absolute -bottom-5 left-0 text-xs text-destructive"
+                        className="text-destructive absolute -bottom-5 left-0 text-xs"
                     >
                         {error}
                     </motion.p>
@@ -233,7 +282,7 @@ export function DataTableEditableCell<TData>({
         <div
             onDoubleClick={() => setIsEditing(true)}
             className={cn(
-                "truncate cursor-text",
+                "cursor-text truncate",
                 meta?.align === "center" && "text-center",
                 meta?.align === "right" && "text-right",
                 meta?.className,
@@ -241,7 +290,7 @@ export function DataTableEditableCell<TData>({
         >
             {cell.column.columnDef.cell
                 ? flexRender(cell.column.columnDef.cell, cell)
-                : String(initialValue ?? "")}
+                : toDisplayString(initialValue)}
         </div>
     );
 }

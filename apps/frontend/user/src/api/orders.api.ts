@@ -1,7 +1,13 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { UserOrderItem } from "@jahonbozor/schemas/src/orders";
+
+import { toast } from "@jahonbozor/ui";
+
 import { api } from "@/lib/api-client";
+import { unwrap } from "@/lib/eden-utils";
+import { i18n } from "@/lib/i18n";
 import { useCartStore } from "@/stores/cart.store";
+
+import type { UserOrderItem } from "@jahonbozor/schemas/src/orders";
 
 export const orderKeys = {
     all: ["orders"] as const,
@@ -18,30 +24,24 @@ export const ordersListOptions = (params: {
 }) =>
     queryOptions({
         queryKey: orderKeys.list(params),
-        queryFn: async (): Promise<{ count: number; orders: UserOrderItem[] }> => {
-            const { data, error } = await api.api.public.orders.get({
-                query: {
-                    page: params.page ?? 1,
-                    limit: params.limit ?? 20,
-                    searchQuery: "",
-                    status: params.status,
-                },
-            });
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data;
-        },
+        queryFn: async (): Promise<{ count: number; orders: UserOrderItem[] }> =>
+            unwrap(
+                await api.api.public.orders.get({
+                    query: {
+                        page: params.page ?? 1,
+                        limit: params.limit ?? 20,
+                        searchQuery: "",
+                        status: params.status,
+                    },
+                }),
+            ),
     });
 
 export const orderDetailOptions = (id: number) =>
     queryOptions({
         queryKey: orderKeys.detail(id),
-        queryFn: async (): Promise<UserOrderItem> => {
-            const { data, error } = await api.api.public.orders({ id }).get();
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data;
-        },
+        queryFn: async (): Promise<UserOrderItem> =>
+            unwrap(await api.api.public.orders({ id }).get()),
     });
 
 export function useCreateOrder() {
@@ -51,16 +51,14 @@ export function useCreateOrder() {
         mutationFn: async (body: {
             paymentType: "CASH" | "CREDIT_CARD" | "DEBT";
             comment?: string | null;
-            items: Array<{ productId: number; quantity: number; price: number }>;
-        }): Promise<UserOrderItem> => {
-            const { data, error } = await api.api.public.orders.post(body);
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data;
-        },
+            items: { productId: number; quantity: number; price: number }[];
+        }): Promise<UserOrderItem> => unwrap(await api.api.public.orders.post(body)),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+            void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
             useCartStore.getState().clearCart();
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 }
@@ -69,15 +67,14 @@ export function useCancelOrder() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (orderId: number): Promise<UserOrderItem> => {
-            const { data, error } = await api.api.public.orders({ id: orderId }).cancel.patch();
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data;
-        },
+        mutationFn: async (orderId: number): Promise<UserOrderItem> =>
+            unwrap(await api.api.public.orders({ id: orderId }).cancel.patch()),
         onSuccess: (_data, orderId) => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
-            queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
+            void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+            void queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 }

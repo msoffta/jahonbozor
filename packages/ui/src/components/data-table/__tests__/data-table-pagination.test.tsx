@@ -1,6 +1,7 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import type { Table } from "@tanstack/react-table";
 
 vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
@@ -77,7 +78,7 @@ describe("DataTablePagination", () => {
                 />,
             );
 
-            const select = container.querySelector("select") as HTMLSelectElement;
+            const select = container.querySelector("select")!;
             await user.selectOptions(select, "20");
 
             expect(onShowAllChange).toHaveBeenCalledWith(false);
@@ -292,7 +293,7 @@ describe("DataTablePagination", () => {
                 />,
             );
 
-            const select = container.querySelector("select") as HTMLSelectElement;
+            const select = container.querySelector("select")!;
             await user.selectOptions(select, "all");
 
             expect(onShowAllChange).toHaveBeenCalledWith(true);
@@ -364,11 +365,16 @@ describe("DataTablePagination", () => {
 
             expect(getByText(/Sum \(5\):/)).toBeDefined();
             // toLocaleString() output depends on environment; match the sum value in font-semibold span
-            expect(getByText((content, element) => {
-                return element?.tagName === "SPAN" &&
-                    element?.className.includes("font-semibold") &&
-                    content.includes("1") && content.includes("500");
-            })).toBeDefined();
+            expect(
+                getByText((content, element) => {
+                    return (
+                        element?.tagName === "SPAN" &&
+                        element?.className.includes("font-semibold") &&
+                        content.includes("1") &&
+                        content.includes("500")
+                    );
+                }),
+            ).toBeDefined();
         });
 
         test("hides drag sum info when dragSumInfo is null", () => {
@@ -527,7 +533,7 @@ describe("DataTablePagination", () => {
             });
 
             const mockTable = createMockTable();
-            const { getAllByRole, container } = render(
+            const { getAllByRole } = render(
                 <DataTablePagination
                     table={mockTable}
                     isShowAll={false}
@@ -642,11 +648,15 @@ describe("DataTablePagination", () => {
 
             expect(getByText(/Sum \(0\):/)).toBeDefined();
             // The sum value "0" is in its own span
-            expect(getByText((content, element) => {
-                return element?.tagName === "SPAN" &&
-                    element?.className.includes("font-semibold") &&
-                    content === "0";
-            })).toBeDefined();
+            expect(
+                getByText((content, element) => {
+                    return (
+                        element?.tagName === "SPAN" &&
+                        element?.className.includes("font-semibold") &&
+                        content === "0"
+                    );
+                }),
+            ).toBeDefined();
         });
 
         test("switching from 'all' back to a numeric page size calls onShowAllChange(false)", async () => {
@@ -662,7 +672,7 @@ describe("DataTablePagination", () => {
                 />,
             );
 
-            const select = container.querySelector("select") as HTMLSelectElement;
+            const select = container.querySelector("select")!;
             await user.selectOptions(select, "20");
 
             expect(onShowAllChange).toHaveBeenCalledWith(false);

@@ -1,5 +1,5 @@
-import { describe, test, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, ...props }: any) => (
@@ -26,10 +26,7 @@ describe("PageHeader", () => {
     });
 
     test("should render crumbs with links for items with 'to' prop", () => {
-        const crumbs = [
-            { label: "Home", to: "/" },
-            { label: "Products" },
-        ];
+        const crumbs = [{ label: "Home", to: "/" }, { label: "Products" }];
         const { getByText } = render(<PageHeader crumbs={crumbs} />);
 
         const homeLink = getByText("Home").closest("a");
@@ -40,10 +37,7 @@ describe("PageHeader", () => {
     });
 
     test("should render last crumb as bold text (no link)", () => {
-        const crumbs = [
-            { label: "Home", to: "/" },
-            { label: "Current Page" },
-        ];
+        const crumbs = [{ label: "Home", to: "/" }, { label: "Current Page" }];
         const { getByText } = render(<PageHeader crumbs={crumbs} />);
 
         const current = getByText("Current Page");
@@ -51,10 +45,7 @@ describe("PageHeader", () => {
     });
 
     test("should render back arrow linking to first crumb with 'to'", () => {
-        const crumbs = [
-            { label: "Home", to: "/" },
-            { label: "Detail" },
-        ];
+        const crumbs = [{ label: "Home", to: "/" }, { label: "Detail" }];
         const { container } = render(<PageHeader crumbs={crumbs} />);
 
         const links = container.querySelectorAll("a");
@@ -72,11 +63,7 @@ describe("PageHeader", () => {
     });
 
     test("should render chevron separators between crumbs", () => {
-        const crumbs = [
-            { label: "A", to: "/" },
-            { label: "B", to: "/b" },
-            { label: "C" },
-        ];
+        const crumbs = [{ label: "A", to: "/" }, { label: "B", to: "/b" }, { label: "C" }];
         const { container } = render(<PageHeader crumbs={crumbs} />);
 
         const svgs = container.querySelectorAll("svg");

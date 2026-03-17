@@ -1,17 +1,11 @@
-import {
-    clientsListQueryOptions,
-    useCreateClient,
-    useDeleteClient,
-    useRestoreClient,
-    useUpdateClient,
-} from "@/api/clients.api";
-import { getClientColumns } from "@/components/clients/clients-columns";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 import z from "zod";
-import { Permission, hasPermission } from "@jahonbozor/schemas";
+
+import { hasPermission, Permission } from "@jahonbozor/schemas";
 import {
     AnimatePresence,
     Checkbox,
@@ -20,10 +14,19 @@ import {
     motion,
     PageTransition,
 } from "@jahonbozor/ui";
-import { useAuthStore } from "@/stores/auth.store";
-import { useHasPermission } from "@/hooks/use-permissions";
+
+import {
+    clientsListQueryOptions,
+    useCreateClient,
+    useDeleteClient,
+    useRestoreClient,
+    useUpdateClient,
+} from "@/api/clients.api";
+import { getClientColumns } from "@/components/clients/clients-columns";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 const usersSearchSchema = z.object({
     new: z.boolean().optional(),
@@ -61,7 +64,7 @@ function UsersPage() {
                     newRow.scrollIntoView({ behavior: "smooth", block: "center" });
                     // Optional: find first input and focus it
                     const firstInput = newRow.querySelector("input");
-                    if (firstInput) (firstInput as HTMLInputElement).focus();
+                    if (firstInput) firstInput.focus();
                 }
             }, 100);
         }
@@ -75,7 +78,10 @@ function UsersPage() {
         [deleteClient, restoreClient],
     );
 
-    const columns = useMemo(() => getClientColumns(t, actions, { canDelete }), [t, actions, canDelete]);
+    const columns = useMemo(
+        () => getClientColumns(t, actions, { canDelete }),
+        [t, actions, canDelete],
+    );
 
     const clients = clientsData?.users ?? [];
 
@@ -93,17 +99,13 @@ function UsersPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (
-            data: Record<string, unknown>,
-            _rowId: string,
-            linkedId?: unknown,
-        ) => {
+        async (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
             // If already linked, update any field
             if (linkedId) {
                 const body: Record<string, unknown> = {};
-                if (data.fullname) body.fullname = String(data.fullname);
-                if (data.username) body.username = String(data.username);
-                if (data.phone !== undefined) body.phone = String(data.phone) || null;
+                if (data.fullname != null) body.fullname = String(data.fullname as string);
+                if (data.username != null) body.username = String(data.username as string);
+                if (data.phone !== undefined) body.phone = String(data.phone as string) || null;
                 if (data.language) body.language = data.language;
 
                 const result = await updateClient.mutateAsync({
@@ -119,29 +121,26 @@ function UsersPage() {
             }
 
             const result = await createClient.mutateAsync({
-                fullname: String(data.fullname),
-                username: String(data.username),
-                phone: data.phone ? String(data.phone) : null,
+                fullname: String(data.fullname as string),
+                username: String(data.username as string),
+                phone: data.phone != null ? String(data.phone as string) : null,
                 telegramId: null,
                 photo: null,
-                language: (data.language === "ru" ? "ru" : "uz") as "uz" | "ru",
+                language: data.language === "ru" ? "ru" : "uz",
             });
             return result?.id;
         },
         [createClient, updateClient],
     );
 
-
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+            <div className="mb-6 flex items-center justify-between">
                 <h1 className="text-2xl font-bold">{t("title")}</h1>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <Checkbox
                         checked={includeDeleted}
-                        onCheckedChange={(checked) =>
-                            setIncludeDeleted(checked === true)
-                        }
+                        onCheckedChange={(checked) => setIncludeDeleted(checked === true)}
                     />
                     {t("common:show_deleted")}
                 </label>
@@ -149,11 +148,22 @@ function UsersPage() {
 
             <AnimatePresence mode="wait">
                 {isLoading ? (
-                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
                         <DataTableSkeleton columns={8} rows={10} className="flex-1" />
                     </motion.div>
                 ) : (
-                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
                         <DataTable
                             className="flex-1"
                             columns={columns}

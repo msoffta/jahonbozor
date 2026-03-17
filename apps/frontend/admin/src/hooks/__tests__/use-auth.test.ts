@@ -1,5 +1,6 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useAuthStore } from "@/stores/auth.store";
 
 interface MockEdenResponse {
@@ -7,17 +8,18 @@ interface MockEdenResponse {
     error: Record<string, unknown> | null;
 }
 
-const { mockLoginPost, mockLogoutPost, mockNavigate, mockQueryClientClear, mockSentrySetUser } = vi.hoisted(() => ({
-    mockLoginPost: vi.fn(
-        (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
-    ),
-    mockLogoutPost: vi.fn(
-        (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
-    ),
-    mockNavigate: vi.fn(() => {}),
-    mockQueryClientClear: vi.fn(() => {}),
-    mockSentrySetUser: vi.fn(() => {}),
-}));
+const { mockLoginPost, mockLogoutPost, mockNavigate, mockQueryClientClear, mockSentrySetUser } =
+    vi.hoisted(() => ({
+        mockLoginPost: vi.fn(
+            (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
+        ),
+        mockLogoutPost: vi.fn(
+            (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
+        ),
+        mockNavigate: vi.fn(() => {}),
+        mockQueryClientClear: vi.fn(() => {}),
+        mockSentrySetUser: vi.fn(() => {}),
+    }));
 
 vi.mock("@/api/client", () => ({
     api: {
@@ -139,10 +141,10 @@ describe("use-auth hooks", () => {
             });
 
             const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-                new Response(
-                    JSON.stringify({ success: true, data: { role: null } }),
-                    { status: 200, headers: { "Content-Type": "application/json" } },
-                ),
+                new Response(JSON.stringify({ success: true, data: { role: null } }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                }),
             );
 
             const { result } = renderHook(() => useLogin());
@@ -283,11 +285,13 @@ describe("use-auth hooks", () => {
 
     describe("useLogout", () => {
         test("should clear auth store on logout", async () => {
-            useAuthStore.getState().setAuth(
-                "token",
-                { id: 1, fullname: "User", username: "user", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "token",
+                    { id: 1, fullname: "User", username: "user", roleId: 1, type: "staff" },
+                    [],
+                );
 
             const { result } = renderHook(() => useLogout());
             await act(async () => {
@@ -336,11 +340,13 @@ describe("use-auth hooks", () => {
         });
 
         test("should still clear auth even if logout API fails", async () => {
-            useAuthStore.getState().setAuth(
-                "token",
-                { id: 1, fullname: "User", username: "user", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "token",
+                    { id: 1, fullname: "User", username: "user", roleId: 1, type: "staff" },
+                    [],
+                );
 
             mockLogoutPost.mockRejectedValueOnce(new Error("Network error"));
 

@@ -1,6 +1,8 @@
-import { describe, test, expect } from "vitest";
-import { prismaMock, createMockLogger, mockUser, mockAuditLog } from "../setup";
+import { describe, expect, test } from "vitest";
+
 import { savePhone } from "@bot/services/phone.service";
+
+import { createMockLogger, mockAuditLog, mockUser, prismaMock } from "../setup";
 
 describe("savePhone", () => {
     const logger = createMockLogger();
@@ -32,9 +34,7 @@ describe("savePhone", () => {
     });
 
     test("checks phone availability excluding deleted users", async () => {
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
         prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
 
@@ -101,9 +101,7 @@ describe("savePhone", () => {
     });
 
     test("creates audit log entry on successful phone save", async () => {
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
         prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
 
@@ -139,9 +137,7 @@ describe("savePhone", () => {
     });
 
     test("returns DB_ERROR when update throws generic error", async () => {
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockRejectedValueOnce(new Error("Connection timeout"));
 
         const result = await savePhone("123456", "+998901234567", logger);
@@ -150,9 +146,7 @@ describe("savePhone", () => {
     });
 
     test("returns PHONE_TAKEN when update throws unique constraint violation", async () => {
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockRejectedValueOnce(
             new Error("Unique constraint failed on the fields: (`phone`)"),
         );
@@ -163,9 +157,7 @@ describe("savePhone", () => {
     });
 
     test("uses $transaction for atomic operations", async () => {
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
+        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser()).mockResolvedValueOnce(null);
         prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
         prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
 
@@ -191,18 +183,17 @@ describe("savePhone", () => {
         expect(result).toEqual({ success: false, error: "USER_NOT_FOUND" });
     });
 
-    test("passes empty phone string to prisma when given empty phone", async () => {
-        prismaMock.users.findFirst
-            .mockResolvedValueOnce(mockUser())
-            .mockResolvedValueOnce(null);
-        prismaMock.users.update.mockResolvedValueOnce(mockUser({ phone: "" }));
-        prismaMock.auditLog.create.mockResolvedValueOnce(mockAuditLog());
-
+    test("returns INVALID_PHONE for empty phone string", async () => {
         const result = await savePhone("123456", "", logger);
 
-        expect(result).toEqual({ success: true });
-        expect(prismaMock.users.update).toHaveBeenCalledWith(
-            expect.objectContaining({ data: { phone: "" } }),
-        );
+        expect(result).toEqual({ success: false, error: "INVALID_PHONE" });
+        expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    });
+
+    test("returns INVALID_PHONE for short phone (less than 10 digits)", async () => {
+        const result = await savePhone("123456", "12345", logger);
+
+        expect(result).toEqual({ success: false, error: "INVALID_PHONE" });
+        expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
 });

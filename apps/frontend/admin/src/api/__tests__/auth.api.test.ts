@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import type { QueryFunctionContext } from "@tanstack/react-query";
 
 interface MockEdenResponse {
@@ -96,9 +97,7 @@ describe("auth.api", () => {
             });
 
             const options = meQueryOptions();
-            await expect(
-                options.queryFn!({} as MeQueryFnContext),
-            ).rejects.toBeDefined();
+            await expect(options.queryFn!({} as MeQueryFnContext)).rejects.toBeDefined();
         });
 
         test("queryFn should throw when data.success is false", async () => {
@@ -108,9 +107,9 @@ describe("auth.api", () => {
             });
 
             const options = meQueryOptions();
-            await expect(
-                options.queryFn!({} as MeQueryFnContext),
-            ).rejects.toThrow("Request failed");
+            await expect(options.queryFn!({} as MeQueryFnContext)).rejects.toThrow(
+                "Request failed",
+            );
         });
     });
 });

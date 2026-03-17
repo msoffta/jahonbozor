@@ -1,17 +1,16 @@
-import { api } from "@/api/client";
-import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
-import {
-    queryOptions,
-    useMutation,
-    useQueryClient,
-} from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { toast } from "@jahonbozor/ui";
+
+import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
+import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
 
 export const clientKeys = {
     all: ["clients"] as const,
     lists: () => [...clientKeys.all, "list"] as const,
-    list: (params?: Record<string, unknown>) =>
-        [...clientKeys.lists(), params] as const,
+    list: (params?: Record<string, unknown>) => [...clientKeys.lists(), params] as const,
     details: () => [...clientKeys.all, "detail"] as const,
     detail: (id: number) => [...clientKeys.details(), id] as const,
 };
@@ -115,7 +114,7 @@ export const useCreateClient = () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -129,7 +128,7 @@ export const useUpdateClient = () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -143,7 +142,7 @@ export const useDeleteClient = () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -157,7 +156,7 @@ export const useRestoreClient = () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };

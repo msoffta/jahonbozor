@@ -1,6 +1,6 @@
+import * as Sentry from "@sentry/bun";
 import winston from "winston";
 import Transport from "winston-transport";
-import * as Sentry from "@sentry/bun";
 
 const { combine, timestamp, printf, colorize, json, errors } = winston.format;
 
@@ -8,33 +8,38 @@ const devFormat = combine(
     colorize(),
     timestamp({ format: "HH:mm:ss" }),
     errors({ stack: true }),
+    /* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/restrict-template-expressions */
     printf(({ level, message, timestamp, service, requestId, stack, ...meta }) => {
-        const stackTrace = stack ? `\n${stack}` : "";
+        const stackTrace = stack ? `\n${String(stack)}` : "";
         const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
-        const requestIdPart = requestId ? ` [${requestId}]` : "";
+        const requestIdPart = requestId ? ` [${String(requestId)}]` : "";
 
-        return `${timestamp} [${service}]${requestIdPart} ${level}: ${message} ${metaString}${stackTrace}`;
+        return `${String(timestamp)} [${String(service)}]${requestIdPart} ${level}: ${message} ${metaString}${stackTrace}`;
     }),
+    /* eslint-enable @typescript-eslint/no-base-to-string, @typescript-eslint/restrict-template-expressions */
 );
 
 const prodFormat = combine(timestamp(), errors({ stack: true }), json());
 
 class SentryTransport extends Transport {
-    override log(info: { level: string; message: string; [key: string]: unknown }, callback: () => void) {
+    override log(
+        info: { level: string; message: string; [key: string]: unknown },
+        callback: () => void,
+    ) {
         setImmediate(() => this.emit("logged", info));
 
         const { level, message, stack, requestId, service, ...extra } = info;
 
         if (level === "error") {
             if (stack) {
-                const err = new Error(message as string);
+                const err = new Error(message);
                 err.stack = stack as string;
                 Sentry.captureException(err, {
                     tags: { service: service as string, requestId: requestId as string },
                     extra,
                 });
             } else {
-                Sentry.captureMessage(message as string, {
+                Sentry.captureMessage(message, {
                     level: "error",
                     tags: { service: service as string, requestId: requestId as string },
                     extra,
@@ -43,7 +48,7 @@ class SentryTransport extends Transport {
         } else if (level === "warn") {
             Sentry.addBreadcrumb({
                 category: service as string,
-                message: message as string,
+                message: message,
                 level: "warning",
                 data: extra,
             });
@@ -63,7 +68,7 @@ export const createLogger = (serviceName: string): Logger => {
     }
 
     return winston.createLogger({
-        level: process.env.LOG_LEVEL || "info",
+        level: process.env.LOG_LEVEL ?? "info",
         defaultMeta: { service: serviceName },
         format: process.env.NODE_ENV === "production" ? prodFormat : devFormat,
         transports,
@@ -72,7 +77,7 @@ export const createLogger = (serviceName: string): Logger => {
 
 export const createChildLogger = (
     parentLogger: Logger,
-    context: Record<string, unknown>
+    context: Record<string, unknown>,
 ): Logger => {
     return parentLogger.child(context);
 };

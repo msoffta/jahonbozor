@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import type { QueryFunctionContext } from "@tanstack/react-query";
 
 interface MockEdenResponse {
@@ -6,77 +7,109 @@ interface MockEdenResponse {
     error: Record<string, unknown> | null;
 }
 
-type ListQueryFnContext = QueryFunctionContext<readonly ["products", "list", Record<string, unknown> | undefined]>;
+type ListQueryFnContext = QueryFunctionContext<
+    readonly ["products", "list", Record<string, unknown> | undefined]
+>;
 type DetailQueryFnContext = QueryFunctionContext<readonly ["products", "detail", number]>;
 
-const { mockGet, mockGetById, mockPost, mockPatch, mockDelete, mockRestorePost } = vi.hoisted(() => ({
-    mockGet: vi.fn(
-        (): Promise<MockEdenResponse> =>
-            Promise.resolve({
-                data: {
-                    success: true,
+const { mockGet, mockGetById, mockPost, mockPatch, mockDelete, mockRestorePost } = vi.hoisted(
+    () => ({
+        mockGet: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
                     data: {
-                        count: 2,
-                        products: [
-                            { id: 1, name: "Product A", price: 1000, costprice: 500, categoryId: 1, remaining: 10 },
-                            { id: 2, name: "Product B", price: 2000, costprice: 800, categoryId: 2, remaining: 5 },
-                        ],
+                        success: true,
+                        data: {
+                            count: 2,
+                            products: [
+                                {
+                                    id: 1,
+                                    name: "Product A",
+                                    price: 1000,
+                                    costprice: 500,
+                                    categoryId: 1,
+                                    remaining: 10,
+                                },
+                                {
+                                    id: 2,
+                                    name: "Product B",
+                                    price: 2000,
+                                    costprice: 800,
+                                    categoryId: 2,
+                                    remaining: 5,
+                                },
+                            ],
+                        },
                     },
-                },
-                error: null,
-            }),
-    ),
-    mockGetById: vi.fn(
-        (): Promise<MockEdenResponse> =>
-            Promise.resolve({
-                data: {
-                    success: true,
-                    data: { id: 1, name: "Product A", price: 1000, costprice: 500, categoryId: 1, remaining: 10 },
-                },
-                error: null,
-            }),
-    ),
-    mockPost: vi.fn(
-        (): Promise<MockEdenResponse> =>
-            Promise.resolve({
-                data: {
-                    success: true,
-                    data: { id: 3, name: "New Product", price: 1500, costprice: 700, categoryId: 1, remaining: 0 },
-                },
-                error: null,
-            }),
-    ),
-    mockPatch: vi.fn(
-        (): Promise<MockEdenResponse> =>
-            Promise.resolve({
-                data: {
-                    success: true,
-                    data: { id: 1, name: "Updated Product", price: 1200 },
-                },
-                error: null,
-            }),
-    ),
-    mockDelete: vi.fn(
-        (): Promise<MockEdenResponse> =>
-            Promise.resolve({
-                data: {
-                    success: true,
-                    data: { id: 1, name: "Product A", deletedAt: "2026-01-01" },
-                },
-                error: null,
-            }),
-    ),
-    mockRestorePost: vi.fn(
-        (): Promise<MockEdenResponse> =>
-            Promise.resolve({
-                data: {
-                    success: true,
-                    data: { id: 1, name: "Product A", deletedAt: null },
-                },
-                error: null,
-            }),
-    ),
-}));
+                    error: null,
+                }),
+        ),
+        mockGetById: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: {
+                            id: 1,
+                            name: "Product A",
+                            price: 1000,
+                            costprice: 500,
+                            categoryId: 1,
+                            remaining: 10,
+                        },
+                    },
+                    error: null,
+                }),
+        ),
+        mockPost: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: {
+                            id: 3,
+                            name: "New Product",
+                            price: 1500,
+                            costprice: 700,
+                            categoryId: 1,
+                            remaining: 0,
+                        },
+                    },
+                    error: null,
+                }),
+        ),
+        mockPatch: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: { id: 1, name: "Updated Product", price: 1200 },
+                    },
+                    error: null,
+                }),
+        ),
+        mockDelete: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: { id: 1, name: "Product A", deletedAt: "2026-01-01" },
+                    },
+                    error: null,
+                }),
+        ),
+        mockRestorePost: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: { id: 1, name: "Product A", deletedAt: null },
+                    },
+                    error: null,
+                }),
+        ),
+    }),
+);
 
 vi.mock("@/api/client", () => ({
     api: {
@@ -98,13 +131,13 @@ vi.mock("@/api/client", () => ({
 
 // --- Imports AFTER mocks ---
 import {
+    createProductFn,
+    deleteProductFn,
+    productDetailQueryOptions,
     productKeys,
     productsListQueryOptions,
-    productDetailQueryOptions,
-    createProductFn,
-    updateProductFn,
-    deleteProductFn,
     restoreProductFn,
+    updateProductFn,
 } from "../products.api";
 
 describe("products.api", () => {
@@ -180,7 +213,13 @@ describe("products.api", () => {
             const options = productsListQueryOptions({ page: 3, limit: 50, categoryIds: "1,2" });
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 3, limit: 50, searchQuery: "", includeDeleted: false, categoryIds: "1,2" },
+                query: {
+                    page: 3,
+                    limit: 50,
+                    searchQuery: "",
+                    includeDeleted: false,
+                    categoryIds: "1,2",
+                },
             });
         });
 
@@ -218,7 +257,9 @@ describe("products.api", () => {
             });
 
             const options = productsListQueryOptions();
-            await expect(options.queryFn!({} as ListQueryFnContext)).rejects.toThrow("Request failed");
+            await expect(options.queryFn!({} as ListQueryFnContext)).rejects.toThrow(
+                "Request failed",
+            );
         });
     });
 
@@ -276,7 +317,9 @@ describe("products.api", () => {
             });
 
             const options = productDetailQueryOptions(999);
-            await expect(options.queryFn!({} as DetailQueryFnContext)).rejects.toThrow("Request failed");
+            await expect(options.queryFn!({} as DetailQueryFnContext)).rejects.toThrow(
+                "Request failed",
+            );
         });
     });
 
@@ -295,7 +338,12 @@ describe("products.api", () => {
                 error: null,
             });
 
-            const result = await createProductFn({ name: "Created", price: 100, costprice: 50, categoryId: 1 });
+            const result = await createProductFn({
+                name: "Created",
+                price: 100,
+                costprice: 50,
+                categoryId: 1,
+            });
             expect(result).toMatchObject({ id: 10, name: "Created" });
         });
 

@@ -1,0 +1,9 @@
+{
+  "add_to_cart": "Добавить в корзину",
+  "remove_from_cart": "Удалить из корзины",
+  "in_stock": "В наличии",
+  "remaining": "Остаток",
+  "ordered": "Заказано",
+  "see_all": "Смотреть все",
+  "product_fallback": "Товар #{{id}}"
+}

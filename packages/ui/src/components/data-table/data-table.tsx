@@ -1,3 +1,5 @@
+import * as React from "react";
+
 import {
     type ColumnDef,
     type ColumnFiltersState,
@@ -13,7 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import * as React from "react";
+
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -22,11 +24,15 @@ import { DataTableBody } from "./data-table-body";
 import { DataTableColumnHeader } from "./data-table-header";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
-import type { DataTableProps } from "./types";
 import { useMultiRowState } from "./use-multi-row-state";
 
+import type { DataTableProps } from "./types";
 
 const VIRTUALIZATION_THRESHOLD = 200;
+/** Default column width when no explicit size is provided */
+const DEFAULT_COLUMN_SIZE_PX = 150;
+/** Minimum scrollable distance before showing scroll-to-edge button */
+const SCROLL_BUTTON_THRESHOLD_PX = 50;
 
 export function DataTable<TData>({
     columns,
@@ -67,23 +73,19 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
     const [data, setData] = React.useState(externalData);
     const [sorting, setSorting] = React.useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] =
-        React.useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] =
-        React.useState<VisibilityState>({});
-    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
-        {},
-    );
+    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
     const [globalFilter, setGlobalFilter] = React.useState("");
     const [paginationState, setPaginationState] = React.useState({
         pageIndex: 0,
         pageSize: defaultPageSize,
     });
     const [isShowAll, setIsShowAll] = React.useState(false);
-    const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(
-        {},
+    const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({});
+    const [dragSumInfo, setDragSumInfo] = React.useState<{ sum: number; count: number } | null>(
+        null,
     );
-    const [dragSumInfo, setDragSumInfo] = React.useState<{ sum: number; count: number } | null>(null);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -93,7 +95,10 @@ export function DataTable<TData>({
         initialCount: multiRowCount,
         increment: multiRowIncrement,
         maxCount: multiRowMaxCount,
-        defaultValues: multiRowDefaultValues as Record<string, unknown> | ((index: number) => Record<string, unknown>) | undefined,
+        defaultValues: multiRowDefaultValues as
+            | Record<string, unknown>
+            | ((index: number) => Record<string, unknown>)
+            | undefined,
         validate: multiRowValidate,
         onSave: onMultiRowSave,
         onChange: onMultiRowChange,
@@ -110,17 +115,17 @@ export function DataTable<TData>({
     }, [rowSelection, onRowSelectionChange]);
 
     // Add selection column if enabled
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TanStack Table ColumnDef requires `any` for heterogeneous column value types
     const allColumns = React.useMemo<ColumnDef<TData, any>[]>(() => {
         if (!enableRowSelection) return columns;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TanStack Table ColumnDef requires `any`
         const selectionColumn: ColumnDef<TData, any> = {
             id: "select",
             header: ({ table }) => (
                 <Checkbox
                     checked={table.getIsAllPageRowsSelected()}
-                    onCheckedChange={(value) =>
-                        table.toggleAllPageRowsSelected(!!value)
-                    }
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
                     aria-label="Select all"
                 />
             ),
@@ -149,9 +154,7 @@ export function DataTable<TData>({
             rowSelection,
             globalFilter,
             columnSizing,
-            ...(pagination && !isShowAll
-                ? { pagination: paginationState }
-                : {}),
+            ...(pagination && !isShowAll ? { pagination: paginationState } : {}),
         },
         enableColumnResizing,
         columnResizeMode: "onChange",
@@ -163,23 +166,17 @@ export function DataTable<TData>({
         onRowSelectionChange: setRowSelection,
         onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
-        ...(pagination
-            ? { getPaginationRowModel: getPaginationRowModel() }
-            : {}),
+        ...(pagination ? { getPaginationRowModel: getPaginationRowModel() } : {}),
         ...(enableSorting ? { getSortedRowModel: getSortedRowModel() } : {}),
         ...(enableFiltering || enableGlobalSearch
             ? { getFilteredRowModel: getFilteredRowModel() }
             : {}),
         meta: {
-            updateData: (
-                rowIndex: number,
-                columnId: string,
-                value: unknown,
-            ) => {
+            updateData: (rowIndex: number, columnId: string, value: unknown) => {
                 setData((old) =>
                     old.map((row, index) => {
                         if (index === rowIndex) {
-                            return { ...old[rowIndex]!, [columnId]: value };
+                            return { ...old[rowIndex], [columnId]: value };
                         }
                         return row;
                     }),
@@ -202,10 +199,10 @@ export function DataTable<TData>({
         for (const col of cols) {
             const flex = col.columnDef.meta?.flex;
             if (flex) {
-                fixedTotal += col.columnDef.size ?? 150;
+                fixedTotal += col.columnDef.size ?? DEFAULT_COLUMN_SIZE_PX;
                 flexTotal += flex;
             } else {
-                fixedTotal += col.columnDef.size ?? 150;
+                fixedTotal += col.columnDef.size ?? DEFAULT_COLUMN_SIZE_PX;
             }
         }
 
@@ -216,7 +213,7 @@ export function DataTable<TData>({
         for (const col of cols) {
             const flex = col.columnDef.meta?.flex;
             if (flex) {
-                const baseSize = col.columnDef.size ?? 150;
+                const baseSize = col.columnDef.size ?? DEFAULT_COLUMN_SIZE_PX;
                 newSizing[col.id] = baseSize + (flex / flexTotal) * extraSpace;
             }
         }
@@ -228,19 +225,16 @@ export function DataTable<TData>({
     const [isNearBottom, setIsNearBottom] = React.useState(false);
     const [showScrollBtn, setShowScrollBtn] = React.useState(false);
 
-    const handleScroll = React.useCallback(
-        (e: React.UIEvent<HTMLDivElement>) => {
-            const el = e.currentTarget;
-            const scrollable = el.scrollHeight - el.clientHeight;
-            if (scrollable < 50) {
-                setShowScrollBtn(false);
-                return;
-            }
-            setShowScrollBtn(true);
-            setIsNearBottom(el.scrollTop > scrollable / 2);
-        },
-        [],
-    );
+    const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const el = e.currentTarget;
+        const scrollable = el.scrollHeight - el.clientHeight;
+        if (scrollable < SCROLL_BUTTON_THRESHOLD_PX) {
+            setShowScrollBtn(false);
+            return;
+        }
+        setShowScrollBtn(true);
+        setIsNearBottom(el.scrollTop > scrollable / 2);
+    }, []);
 
     const scrollToEdge = React.useCallback(() => {
         const el = containerRef.current;
@@ -256,7 +250,7 @@ export function DataTable<TData>({
     const isVirtualActive = isShowAll && rows.length > VIRTUALIZATION_THRESHOLD;
 
     return (
-        <div className={cn("w-full flex flex-col min-h-0", className)}>
+        <div className={cn("flex min-h-0 w-full flex-col", className)}>
             <DataTableToolbar
                 table={table}
                 globalFilter={globalFilter}
@@ -267,14 +261,14 @@ export function DataTable<TData>({
                 translations={translations}
             />
 
-            <div className="relative flex-1 min-h-0">
+            <div className="relative min-h-0 flex-1">
                 <div
                     ref={(el) => {
                         containerRef.current = el;
                         if (isVirtualActive) scrollContainerRef.current = el;
                     }}
                     onScroll={handleScroll}
-                    className="rounded-md border h-full overflow-auto"
+                    className="h-full overflow-auto rounded-md border"
                     style={
                         isVirtualActive
                             ? {
@@ -295,9 +289,7 @@ export function DataTable<TData>({
                         }}
                     >
                         <TableHeader
-                            className={
-                                isVirtualActive ? "bg-background" : undefined
-                            }
+                            className={isVirtualActive ? "bg-background" : undefined}
                             style={
                                 isVirtualActive
                                     ? {
@@ -323,9 +315,7 @@ export function DataTable<TData>({
                                             key={header.id}
                                             header={header}
                                             enableSorting={enableSorting}
-                                            enableColumnResizing={
-                                                enableColumnResizing
-                                            }
+                                            enableColumnResizing={enableColumnResizing}
                                             isVirtualActive={isVirtualActive}
                                         />
                                     ))}
@@ -348,7 +338,6 @@ export function DataTable<TData>({
                             enableRowSelection={enableRowSelection}
                             onRowClick={onRowClick}
                             translations={translations}
-
                             // Multi-row props
                             enableMultipleNewRows={enableMultipleNewRows}
                             multiRowStates={multiRow.rowStates}
@@ -376,12 +365,12 @@ export function DataTable<TData>({
                                 stiffness: 500,
                                 damping: 30,
                             }}
-                            className="absolute bottom-3 right-3 z-10"
+                            className="absolute right-3 bottom-3 z-10"
                         >
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-full shadow-md bg-background/90 backdrop-blur-sm"
+                                className="bg-background/90 h-8 w-8 rounded-full shadow-md backdrop-blur-sm"
                                 onClick={scrollToEdge}
                             >
                                 {isNearBottom ? (

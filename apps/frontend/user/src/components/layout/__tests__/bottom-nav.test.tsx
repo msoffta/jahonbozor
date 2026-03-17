@@ -1,5 +1,6 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useCartStore } from "@/stores/cart.store";
 
 vi.mock("react-i18next", () => ({
@@ -63,7 +64,7 @@ describe("BottomNav", () => {
 
         const spans = nav?.querySelectorAll("span");
         const visibleTextSpans = Array.from(spans || []).filter(
-            (span) => !span.textContent?.match(/^\d+$/),
+            (span) => !/^\d+$/.exec(span.textContent),
         );
         expect(visibleTextSpans.length).toBe(0);
     });

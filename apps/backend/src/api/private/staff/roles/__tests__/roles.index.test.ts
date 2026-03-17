@@ -1,15 +1,20 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger } from "@backend/test/setup";
-import type { Role } from "@backend/generated/prisma/client";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger, prismaMock } from "@backend/test/setup";
+
 import { RolesService } from "../roles.service";
+
+import type { Role } from "@backend/generated/prisma/client";
 
 // Mock role data
 const mockRole: Role = {
     id: 1,
     name: "Admin",
     permissions: [Permission.USERS_CREATE, Permission.USERS_READ_ALL],
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -125,9 +130,7 @@ describe("Roles API Routes", () => {
             prismaMock.$transaction.mockResolvedValue([0, []]);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/roles"),
-            );
+            const response = await app.handle(new Request("http://localhost/roles"));
             const body = await response.json();
 
             // Assert
@@ -141,12 +144,10 @@ describe("Roles API Routes", () => {
     describe("GET /roles/:id", () => {
         test("should return role by id", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRole);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/roles/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/roles/1"));
             const body = await response.json();
 
             // Assert
@@ -158,7 +159,7 @@ describe("Roles API Routes", () => {
 
         test("should include staff count when requested", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRoleWithCount as unknown as Role);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRoleWithCount as unknown as Role);
 
             // Act
             const response = await app.handle(
@@ -174,12 +175,10 @@ describe("Roles API Routes", () => {
 
         test("should return error when role not found", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+            prismaMock.role.findFirst.mockResolvedValueOnce(null);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/roles/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/roles/999"));
             const body = await response.json();
 
             // Assert

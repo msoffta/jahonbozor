@@ -1,6 +1,10 @@
-import type { PublicCategoriesListResponse, PublicCategoryDetailResponse } from "@jahonbozor/schemas/src/categories";
-import type { Logger } from "@jahonbozor/logger";
 import { prisma } from "@backend/lib/prisma";
+
+import type { Logger } from "@jahonbozor/logger";
+import type {
+    PublicCategoriesListResponse,
+    PublicCategoryDetailResponse,
+} from "@jahonbozor/schemas/src/categories";
 
 export abstract class PublicCategoriesService {
     static async getAllCategories(logger: Logger): Promise<PublicCategoriesListResponse> {
@@ -27,7 +31,10 @@ export abstract class PublicCategoriesService {
         }
     }
 
-    static async getCategory(categoryId: number, logger: Logger): Promise<PublicCategoryDetailResponse> {
+    static async getCategory(
+        categoryId: number,
+        logger: Logger,
+    ): Promise<PublicCategoryDetailResponse> {
         try {
             const category = await prisma.category.findFirst({
                 where: { id: categoryId },

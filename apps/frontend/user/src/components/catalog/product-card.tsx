@@ -1,10 +1,13 @@
-import { ShoppingCart } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence, Checkbox } from "@jahonbozor/ui";
-import { useCartStore } from "@/stores/cart.store";
-import { useUIStore } from "@/stores/ui.store";
+
+import { ShoppingCart } from "lucide-react";
+
+import { AnimatePresence, Checkbox, motion } from "@jahonbozor/ui";
+
 import { QuantityControl } from "@/components/catalog/quantity-control";
 import { formatPrice, getLocaleCode } from "@/lib/format";
+import { useCartStore } from "@/stores/cart.store";
+import { useUIStore } from "@/stores/ui.store";
 
 interface CatalogProps {
     variant?: "catalog";
@@ -40,10 +43,12 @@ export function ProductCard(props: ProductCardProps) {
 }
 
 function CatalogVariant({ productId, name, price, remaining }: CatalogProps) {
-    const { t } = useTranslation();
+    const { t } = useTranslation("catalog");
     const addItem = useCartStore((state) => state.addItem);
     const updateQuantity = useCartStore((state) => state.updateQuantity);
-    const cartItem = useCartStore((state) => state.items.find((item) => item.productId === productId));
+    const cartItem = useCartStore((state) =>
+        state.items.find((item) => item.productId === productId),
+    );
 
     const handleAddToCart = () => {
         addItem({ productId, name, price });
@@ -51,22 +56,22 @@ function CatalogVariant({ productId, name, price, remaining }: CatalogProps) {
 
     return (
         <motion.div
-            className="bg-surface rounded-xl px-3 py-3.5 flex flex-col gap-3"
+            className="bg-surface flex flex-col gap-3 rounded-xl px-3 py-3.5"
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
         >
-            <p className="text-lg font-bold text-foreground">{name}</p>
+            <p className="text-foreground text-lg font-bold">{name}</p>
             <div className="flex items-end justify-between">
-                <div className="flex-1 grid grid-cols-2 gap-4">
+                <div className="grid flex-1 grid-cols-2 gap-4">
                     <PriceField price={price} />
                     <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="text-muted-foreground text-sm font-medium">
                             {t("in_stock")}:
                         </span>
                         <ValueWithUnit value={remaining} unit={t("pieces")} />
                     </div>
                 </div>
-                <div className="shrink-0 flex justify-end min-w-28">
+                <div className="flex min-w-28 shrink-0 justify-end">
                     <AnimatePresence mode="wait" initial={false}>
                         {cartItem ? (
                             <motion.div
@@ -78,8 +83,12 @@ function CatalogVariant({ productId, name, price, remaining }: CatalogProps) {
                             >
                                 <QuantityControl
                                     quantity={cartItem.quantity}
-                                    onIncrement={() => updateQuantity(productId, cartItem.quantity + 1)}
-                                    onDecrement={() => updateQuantity(productId, cartItem.quantity - 1)}
+                                    onIncrement={() =>
+                                        updateQuantity(productId, cartItem.quantity + 1)
+                                    }
+                                    onDecrement={() =>
+                                        updateQuantity(productId, cartItem.quantity - 1)
+                                    }
                                 />
                             </motion.div>
                         ) : (
@@ -87,7 +96,7 @@ function CatalogVariant({ productId, name, price, remaining }: CatalogProps) {
                                 key="cart"
                                 type="button"
                                 onClick={handleAddToCart}
-                                className="flex size-11 items-center justify-center rounded-full bg-accent"
+                                className="bg-accent flex size-11 items-center justify-center rounded-full"
                                 aria-label={t("add_to_cart")}
                                 initial={{ scale: 0.8, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
@@ -95,7 +104,7 @@ function CatalogVariant({ productId, name, price, remaining }: CatalogProps) {
                                 whileTap={{ scale: 0.85 }}
                                 transition={{ duration: 0.12 }}
                             >
-                                <ShoppingCart className="size-5 text-accent-foreground" />
+                                <ShoppingCart className="text-accent-foreground size-5" />
                             </motion.button>
                         )}
                     </AnimatePresence>
@@ -110,17 +119,17 @@ function CartVariant({ productId, name, price, quantity, selected, onSelect }: C
 
     return (
         <motion.div
-            className="bg-surface rounded-xl px-2 py-3.5 flex items-center gap-3"
+            className="bg-surface flex items-center gap-3 rounded-xl px-2 py-3.5"
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
         >
             <Checkbox
                 checked={selected}
                 onCheckedChange={(checked) => onSelect(checked === true)}
-                className="size-5 rounded-sm border-foreground"
+                className="border-foreground size-5 rounded-sm"
             />
-            <div className="flex-1 flex flex-col gap-3">
-                <p className="text-lg font-bold text-foreground">{name}</p>
+            <div className="flex flex-1 flex-col gap-3">
+                <p className="text-foreground text-lg font-bold">{name}</p>
                 <div className="flex items-end justify-between">
                     <PriceField price={price} />
                     <QuantityControl
@@ -135,15 +144,15 @@ function CartVariant({ productId, name, price, quantity, selected, onSelect }: C
 }
 
 function OrderVariant({ name, price, quantity }: OrderProps) {
-    const { t } = useTranslation();
+    const { t } = useTranslation("catalog");
 
     return (
-        <div className="bg-surface rounded-xl px-3 py-3.5 flex flex-col gap-3">
-            <p className="text-lg font-bold text-foreground">{name}</p>
+        <div className="bg-surface flex flex-col gap-3 rounded-xl px-3 py-3.5">
+            <p className="text-foreground text-lg font-bold">{name}</p>
             <div className="flex items-center gap-4">
                 <PriceField price={price} />
                 <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="text-muted-foreground text-sm font-medium">
                         {t("ordered")}:
                     </span>
                     <ValueWithUnit value={quantity} unit={t("pieces")} />
@@ -154,15 +163,13 @@ function OrderVariant({ name, price, quantity }: OrderProps) {
 }
 
 function PriceField({ price }: { price: number }) {
-    const { t } = useTranslation();
+    const { t } = useTranslation("catalog");
     const locale = useUIStore((state) => state.locale);
-    const loc = getLocaleCode(locale);
+    const localeCode = getLocaleCode(locale);
     return (
         <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-muted-foreground">
-                {t("price")}:
-            </span>
-            <ValueWithUnit value={formatPrice(price, loc)} unit={t("sum")} />
+            <span className="text-muted-foreground text-sm font-medium">{t("price")}:</span>
+            <ValueWithUnit value={formatPrice(price, localeCode)} unit={t("sum")} />
         </div>
     );
 }
@@ -170,12 +177,8 @@ function PriceField({ price }: { price: number }) {
 function ValueWithUnit({ value, unit }: { value: string | number; unit: string }) {
     return (
         <span>
-            <span className="text-base font-bold text-foreground">
-                {value}{" "}
-            </span>
-            <span className="text-base font-medium text-muted-foreground">
-                {unit}
-            </span>
+            <span className="text-foreground text-base font-bold">{value} </span>
+            <span className="text-muted-foreground text-base font-medium">{unit}</span>
         </span>
     );
 }

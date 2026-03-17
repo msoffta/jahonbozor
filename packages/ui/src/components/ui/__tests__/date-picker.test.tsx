@@ -1,6 +1,6 @@
-import { describe, test, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { format } from "date-fns";
+import { describe, expect, test, vi } from "vitest";
 
 // ── Mocks ────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ function changeInput(input: HTMLInputElement, value: string) {
 
 /** Get the main date input (the first textbox, which is always the date input). */
 function getInput() {
-    return screen.getByPlaceholderText(/dd\.MM\.yyyy/) as HTMLInputElement;
+    return screen.getByPlaceholderText<HTMLInputElement>(/dd\.MM\.yyyy/);
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ describe("DatePicker", () => {
 
         test("renders with custom placeholder", () => {
             render(<DatePicker onChange={vi.fn()} placeholder="Pick a date" />);
-            const input = screen.getByPlaceholderText("Pick a date") as HTMLInputElement;
+            const input = screen.getByPlaceholderText<HTMLInputElement>("Pick a date");
             expect(input.placeholder).toBe("Pick a date");
         });
 
@@ -512,7 +512,9 @@ describe("DatePicker", () => {
         test("disabled icon button when disabled prop is true", () => {
             render(<DatePicker onChange={vi.fn()} disabled />);
             const buttons = screen.getAllByRole("button");
-            const iconButton = buttons.find((b) => b.tabIndex === -1) as HTMLButtonElement | undefined;
+            const iconButton = buttons.find((b) => b.tabIndex === -1) as
+                | HTMLButtonElement
+                | undefined;
             expect(iconButton?.disabled).toBe(true);
         });
     });

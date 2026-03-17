@@ -1,9 +1,12 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+
 import { useForm } from "@tanstack/react-form";
-import { SignInBody } from "@jahonbozor/schemas";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { Button, Input, cn, motion, AnimatePresence } from "@jahonbozor/ui";
+
+import { SignInBody } from "@jahonbozor/schemas";
+import { AnimatePresence, Button, cn, Input, motion } from "@jahonbozor/ui";
+
 import { useLogin } from "@/hooks/use-auth";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
@@ -48,7 +51,7 @@ function LoginPage() {
             onSubmit={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                form.handleSubmit();
+                void form.handleSubmit();
             }}
             className="w-full max-w-sm space-y-4 p-6"
             variants={formVariants}
@@ -56,9 +59,7 @@ function LoginPage() {
             animate="visible"
         >
             <motion.div variants={fieldVariants}>
-                <h1 className="text-center text-2xl font-bold">
-                    {t("app_name")}
-                </h1>
+                <h1 className="text-center text-2xl font-bold">{t("app_name")}</h1>
             </motion.div>
 
             <motion.div variants={fieldVariants} className="flex gap-3">
@@ -106,18 +107,17 @@ function LoginPage() {
                             onChange={(e) => field.handleChange(e.target.value)}
                             autoComplete="username"
                         />
-                        {field.state.meta.isTouched &&
-                            field.state.meta.errors?.length > 0 && (
-                                <p className="text-xs text-destructive font-medium px-1 mt-1">
-                                    {field.state.meta.errors
-                                        .map((err: unknown) =>
-                                            typeof err === "object" && err !== null && "message" in err
-                                                ? (err as { message: string }).message
-                                                : String(err),
-                                        )
-                                        .join(", ")}
-                                </p>
-                            )}
+                        {field.state.meta.isTouched && field.state.meta.errors?.length > 0 && (
+                            <p className="text-destructive mt-1 px-1 text-xs font-medium">
+                                {field.state.meta.errors
+                                    .map((err: unknown) =>
+                                        typeof err === "object" && err !== null && "message" in err
+                                            ? (err as { message: string }).message
+                                            : String(err),
+                                    )
+                                    .join(", ")}
+                            </p>
+                        )}
                     </motion.div>
                 )}
             />
@@ -137,18 +137,17 @@ function LoginPage() {
                             onChange={(e) => field.handleChange(e.target.value)}
                             autoComplete="current-password"
                         />
-                        {field.state.meta.isTouched &&
-                            field.state.meta.errors?.length > 0 && (
-                                <p className="text-xs text-destructive font-medium px-1 mt-1">
-                                    {field.state.meta.errors
-                                        .map((err: unknown) =>
-                                            typeof err === "object" && err !== null && "message" in err
-                                                ? (err as { message: string }).message
-                                                : String(err),
-                                        )
-                                        .join(", ")}
-                                </p>
-                            )}
+                        {field.state.meta.isTouched && field.state.meta.errors?.length > 0 && (
+                            <p className="text-destructive mt-1 px-1 text-xs font-medium">
+                                {field.state.meta.errors
+                                    .map((err: unknown) =>
+                                        typeof err === "object" && err !== null && "message" in err
+                                            ? (err as { message: string }).message
+                                            : String(err),
+                                    )
+                                    .join(", ")}
+                            </p>
+                        )}
                     </motion.div>
                 )}
             />
@@ -160,7 +159,7 @@ function LoginPage() {
                         animate={{ opacity: 1, x: [0, -3, 3, -3, 0] }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="text-sm text-destructive text-center"
+                        className="text-destructive text-center text-sm"
                     >
                         {t("login_error")}
                     </motion.p>

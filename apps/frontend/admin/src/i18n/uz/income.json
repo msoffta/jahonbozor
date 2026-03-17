@@ -1,15 +1,15 @@
 {
-    "title": "Kirimlar",
-    "income_id": "ID",
-    "income_product": "Mahsulot",
-    "income_quantity": "Miqdori",
-    "income_reason": "Sabab",
-    "income_staff": "Xodim",
-    "income_date": "Sana",
-    "income_empty": "Kirimlar topilmadi",
-    "status_deleted": "o'chirilgan",
-    "table_columns": "Ustunlar",
-    "table_show_all": "Hammasi",
-    "table_previous": "Oldingi",
-    "table_next": "Keyingi"
+  "title": "Kirimlar",
+  "income_id": "ID",
+  "income_product": "Mahsulot",
+  "income_quantity": "Miqdori",
+  "income_reason": "Sabab",
+  "income_staff": "Xodim",
+  "income_date": "Sana",
+  "income_empty": "Kirimlar topilmadi",
+  "status_deleted": "o'chirilgan",
+  "table_columns": "Ustunlar",
+  "table_show_all": "Hammasi",
+  "table_previous": "Oldingi",
+  "table_next": "Keyingi"
 }

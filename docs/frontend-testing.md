@@ -65,6 +65,7 @@ packages/ui/
 UI package тестирует shared компоненты (DataTable, motion, shadcn/ui) изолированно от приложений.
 
 **Current Coverage:**
+
 - DataTable components (45 tests covering all scenarios)
 
 ### Key Points
@@ -102,13 +103,16 @@ test("should update value on input change", async () => {
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vite.config";
 
-export default mergeConfig(viteConfig, defineConfig({
-    test: {
-        environment: "happy-dom",
-        setupFiles: ["./test/setup.ts"],
-        mockReset: true,
-    },
-}));
+export default mergeConfig(
+    viteConfig,
+    defineConfig({
+        test: {
+            environment: "happy-dom",
+            setupFiles: ["./test/setup.ts"],
+            mockReset: true,
+        },
+    }),
+);
 ```
 
 ### test/setup.ts
@@ -169,11 +173,11 @@ describe("totalItems", () => {
 
 ### DO / DON'T
 
-| DO | DON'T |
-|----|-------|
-| Reset state in `beforeEach` with `setState()` | Rely on state from previous tests |
+| DO                                              | DON'T                                         |
+| ----------------------------------------------- | --------------------------------------------- |
+| Reset state in `beforeEach` with `setState()`   | Rely on state from previous tests             |
 | Test all actions + derived getters + edge cases | Mock Zustand's `create` — test the real store |
-| Test boundary values (quantity=0, negative) | Skip edge cases for "simple" stores |
+| Test boundary values (quantity=0, negative)     | Skip edge cases for "simple" stores           |
 
 ## Hook Testing with renderHook
 
@@ -189,7 +193,10 @@ import { Permission } from "@jahonbozor/schemas";
 
 beforeEach(() => {
     useAuthStore.setState({
-        token: null, user: null, permissions: [], isAuthenticated: false,
+        token: null,
+        user: null,
+        permissions: [],
+        isAuthenticated: false,
     });
 });
 
@@ -277,11 +284,11 @@ test("should show quantity control after adding to cart", () => {
 
 ### fireEvent vs userEvent
 
-| `fireEvent` | `userEvent.setup()` |
-|-------------|---------------------|
-| Simpler, synchronous | More realistic, async |
+| `fireEvent`                  | `userEvent.setup()`                               |
+| ---------------------------- | ------------------------------------------------- |
+| Simpler, synchronous         | More realistic, async                             |
 | Good for simple click/change | Better for typing, focus, sequential interactions |
-| | Recommended for new tests |
+|                              | Recommended for new tests                         |
 
 ```typescript
 // fireEvent (simple)
@@ -348,7 +355,9 @@ vi.mock("@tanstack/react-query", () => ({
 ### Eden Treaty API client
 
 ```typescript
-const mockGet = vi.fn(() => Promise.resolve({ data: { success: true, data: { id: 1 } }, error: null }));
+const mockGet = vi.fn(() =>
+    Promise.resolve({ data: { success: true, data: { id: 1 } }, error: null }),
+);
 const mockPost = vi.fn(() => Promise.resolve({ data: { success: true, data: {} }, error: null }));
 
 vi.mock("@/api/client", () => ({
@@ -485,7 +494,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/api/client", () => ({
-    api: { api: { public: { auth: { login: { post: mocks.mockPost } } } } }
+    api: { api: { public: { auth: { login: { post: mocks.mockPost } } } } },
 }));
 
 test("calls login", () => {
@@ -498,24 +507,24 @@ test("calls login", () => {
 
 Prefer semantic queries that reflect how users interact with the UI:
 
-| Priority | Query | When to use |
-|----------|-------|-------------|
-| 1 | `getByRole("button", { name: "..." })` | Buttons, links, headings, checkboxes |
-| 2 | `getByLabelText("...")` | Form fields with labels |
-| 3 | `getByPlaceholderText("...")` | Inputs without labels (fallback) |
-| 4 | `getByText("...")` | Non-interactive text content |
-| 5 | `getByAltText("...")` | Images with alt text |
-| 6 | `getByDisplayValue("...")` | Pre-filled form inputs |
-| Last resort | `container.querySelector("...")` | No semantic alternative |
+| Priority    | Query                                  | When to use                          |
+| ----------- | -------------------------------------- | ------------------------------------ |
+| 1           | `getByRole("button", { name: "..." })` | Buttons, links, headings, checkboxes |
+| 2           | `getByLabelText("...")`                | Form fields with labels              |
+| 3           | `getByPlaceholderText("...")`          | Inputs without labels (fallback)     |
+| 4           | `getByText("...")`                     | Non-interactive text content         |
+| 5           | `getByAltText("...")`                  | Images with alt text                 |
+| 6           | `getByDisplayValue("...")`             | Pre-filled form inputs               |
+| Last resort | `container.querySelector("...")`       | No semantic alternative              |
 
 ```typescript
 // Prefer semantic queries
-getByRole("button", { name: "add_to_cart" })
-getByAltText("Jahon Bozor")
-getByText("Test Product")
+getByRole("button", { name: "add_to_cart" });
+getByAltText("Jahon Bozor");
+getByText("Test Product");
 
 // Avoid when a semantic query is available
-container.querySelector(".add-button")
+container.querySelector(".add-button");
 ```
 
 ## API Layer Testing
@@ -547,24 +556,28 @@ describe("profileOptions", () => {
 ## Test Coverage Requirements
 
 ### Store Tests
+
 - All actions (addItem, removeItem, updateQuantity, clearCart, etc.)
 - All derived/computed values (totalItems, totalPrice)
 - Edge cases: empty state, duplicate items, non-existent items
 - Boundary values: quantity=0, negative quantity
 
 ### Hook Tests
+
 - Return values for different store states (permissions present/absent/empty)
 - Side effects: store mutations, navigation, API calls, Sentry user tracking
 - Error scenarios: API failure, network error, missing data
 - Edge cases: empty permissions array, null role
 
 ### Component Tests
+
 - Rendering with different props
 - User interactions -> store mutations
 - Conditional rendering based on store state
 - Formatted values (prices, counts)
 
 ### API Tests
+
 - Query keys and options correctness
 - `enabled` conditions based on auth state
 - Token refresh flow (success, failure, network error)
@@ -573,6 +586,7 @@ describe("profileOptions", () => {
 ## Best Practices
 
 ### DO
+
 - Reset Zustand stores in `beforeEach` via `setState()`
 - Use `vi.mock()` for module mocking (hoisted automatically)
 - Use `afterEach(() => { vi.restoreAllMocks() })` with `vi.spyOn`
@@ -582,6 +596,7 @@ describe("profileOptions", () => {
 - Use `waitFor()` for async state updates
 
 ### DON'T
+
 - Don't rely on state from previous tests
 - Don't mock Zustand's `create` function — test the real store
 - Don't leave `.only` in committed tests

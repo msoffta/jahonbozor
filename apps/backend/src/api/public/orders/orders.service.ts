@@ -1,11 +1,17 @@
-import type { UserOrderCreateResponse, UserOrdersListResponse, UserOrderDetailResponse, UserOrderCancelResponse } from "@jahonbozor/schemas/src/orders";
-import { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@backend/lib/prisma";
 import { auditInTransaction } from "@backend/lib/audit";
+import { prisma } from "@backend/lib/prisma";
 import { createOrderSnapshot } from "@backend/lib/snapshots";
+
 import type { Prisma } from "@backend/generated/prisma/client";
+import type { Logger } from "@jahonbozor/logger";
+import type { Token } from "@jahonbozor/schemas";
+import type { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
+import type {
+    UserOrderCancelResponse,
+    UserOrderCreateResponse,
+    UserOrderDetailResponse,
+    UserOrdersListResponse,
+} from "@jahonbozor/schemas/src/orders";
 
 interface ServiceContext {
     userId: number;
@@ -21,7 +27,7 @@ export abstract class PublicOrdersService {
     ): Promise<UserOrderCreateResponse> {
         try {
             const { userId, user, requestId } = context;
-            const productIds = orderData.items.map(item => item.productId);
+            const productIds = orderData.items.map((item) => item.productId);
 
             const products = await prisma.product.findMany({
                 where: {
@@ -32,16 +38,21 @@ export abstract class PublicOrdersService {
             });
 
             if (products.length !== productIds.length) {
-                const foundIds = products.map(product => product.id);
-                const missingIds = productIds.filter(id => !foundIds.includes(id));
+                const foundIds = products.map((product) => product.id);
+                const missingIds = productIds.filter((id) => !foundIds.includes(id));
                 logger.warn("PublicOrders: Products not found or deleted", { missingIds, userId });
                 return { success: false, error: `Products not found: ${missingIds.join(", ")}` };
             }
 
             // All productIds are guaranteed to exist in the map (validated by length check above)
-            const productMap = new Map(products.map(product => [product.id, product]));
+            const productMap = new Map(products.map((product) => [product.id, product]));
 
-            const insufficientStock: Array<{ productId: number; productName: string; requested: number; available: number }> = [];
+            const insufficientStock: {
+                productId: number;
+                productName: string;
+                requested: number;
+                available: number;
+            }[] = [];
             for (const item of orderData.items) {
                 const product = productMap.get(item.productId)!;
                 if (product.remaining < item.quantity) {
@@ -76,7 +87,7 @@ export abstract class PublicOrdersService {
                         comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
-                            create: orderData.items.map(item => {
+                            create: orderData.items.map((item) => {
                                 const product = productMap.get(item.productId)!;
                                 return {
                                     productId: item.productId,
@@ -139,7 +150,7 @@ export abstract class PublicOrdersService {
                 itemCount: order.items.length,
             });
 
-            const mappedItems = order.items.map(item => ({
+            const mappedItems = order.items.map((item) => ({
                 ...item,
                 price: Number(item.price),
             }));
@@ -163,7 +174,7 @@ export abstract class PublicOrdersService {
                 userId,
                 ...(paymentType && { paymentType }),
                 ...(status && { status }),
-                ...((dateFrom || dateTo) && {
+                ...((dateFrom ?? dateTo) && {
                     createdAt: {
                         ...(dateFrom && { gte: dateFrom }),
                         ...(dateTo && { lte: dateTo }),
@@ -188,9 +199,9 @@ export abstract class PublicOrdersService {
                 }),
             ]);
 
-            const mappedOrders = orders.map(order => ({
+            const mappedOrders = orders.map((order) => ({
                 ...order,
-                items: order.items.map(item => ({
+                items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
                     product: { ...item.product, price: Number(item.product.price) },
@@ -235,7 +246,7 @@ export abstract class PublicOrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
-            const mappedItems = order.items.map(item => ({
+            const mappedItems = order.items.map((item) => ({
                 ...item,
                 price: Number(item.price),
                 product: { ...item.product, price: Number(item.product.price) },
@@ -348,7 +359,7 @@ export abstract class PublicOrdersService {
                 itemsRestored: existingOrder.items.length,
             });
 
-            const mappedItems = updatedOrder.items.map(item => ({
+            const mappedItems = updatedOrder.items.map((item) => ({
                 ...item,
                 price: Number(item.price),
                 product: { ...item.product, price: Number(item.product.price) },
@@ -356,7 +367,11 @@ export abstract class PublicOrdersService {
 
             return { success: true, data: { ...updatedOrder, items: mappedItems } };
         } catch (error) {
-            logger.error("PublicOrders: Error in cancelOrder", { orderId, userId: context.userId, error });
+            logger.error("PublicOrders: Error in cancelOrder", {
+                orderId,
+                userId: context.userId,
+                error,
+            });
             return { success: false, error };
         }
     }

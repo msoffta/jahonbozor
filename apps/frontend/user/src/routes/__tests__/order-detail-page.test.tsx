@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const { mockCancelMutate, mocks } = vi.hoisted(() => ({
     mockCancelMutate: vi.fn(),
@@ -21,7 +21,18 @@ const mockOrder = {
 };
 
 vi.mock("@/lib/api-client", () => ({
-    api: { api: { public: { orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), { get: vi.fn(), post: vi.fn() }), auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } }, users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } } } } },
+    api: {
+        api: {
+            public: {
+                orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), {
+                    get: vi.fn(),
+                    post: vi.fn(),
+                }),
+                auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } },
+                users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } },
+            },
+        },
+    },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -40,14 +51,22 @@ vi.mock("@tanstack/react-router", () => ({
     }),
     lazyRouteComponent: (component: any) => component,
     Link: ({ children, to, ...props }: any) => (
-        <a href={to} {...props}>{children}</a>
+        <a href={to} {...props}>
+            {children}
+        </a>
     ),
     useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
     useQuery: () => mocks.queryReturn,
-    useInfiniteQuery: () => ({ data: undefined, isLoading: false, isFetchingNextPage: false, hasNextPage: false, fetchNextPage: vi.fn() }),
+    useInfiniteQuery: () => ({
+        data: undefined,
+        isLoading: false,
+        isFetchingNextPage: false,
+        hasNextPage: false,
+        fetchNextPage: vi.fn(),
+    }),
     useMutation: () => ({ mutate: mockCancelMutate, isPending: false }),
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
     queryOptions: (opts: any) => opts,
@@ -55,7 +74,12 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/api/orders.api", () => ({
-    orderKeys: { all: ["orders"], lists: () => ["orders", "list"], details: () => ["orders", "detail"], detail: (id: number) => ["orders", "detail", id] },
+    orderKeys: {
+        all: ["orders"],
+        lists: () => ["orders", "list"],
+        details: () => ["orders", "detail"],
+        detail: (id: number) => ["orders", "detail", id],
+    },
     ordersListOptions: (params: any) => ({ queryKey: ["orders", "list", params] }),
     orderDetailOptions: (id: number) => ({ queryKey: ["orders", "detail", id] }),
     useCreateOrder: () => ({ mutate: vi.fn(), isPending: false }),
@@ -83,6 +107,27 @@ vi.mock("@/components/layout/page-header", () => ({
     ),
 }));
 
+vi.mock("@/components/shared/confirm-drawer", () => ({
+    ConfirmDrawer: ({ open, onOpenChange, onConfirm, isLoading }: any) =>
+        open ? (
+            <div data-testid="confirm-drawer">
+                <button
+                    type="button"
+                    onClick={() => {
+                        onConfirm();
+                        onOpenChange(false);
+                    }}
+                    disabled={isLoading}
+                >
+                    confirm
+                </button>
+                <button type="button" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                    dismiss
+                </button>
+            </div>
+        ) : null,
+}));
+
 vi.mock("@/components/orders/order-status-badge", () => ({
     OrderStatusBadge: ({ status }: any) => <span data-testid="order-status-badge">{status}</span>,
     getPaymentTypeLabel: (paymentType: string, t: any) => {
@@ -107,8 +152,11 @@ vi.mock("@jahonbozor/ui", async () => {
     return jahonbozorUIMock();
 });
 
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
 import { useUIStore } from "@/stores/ui.store";
+
 import { Route } from "../_user/orders/$orderId";
 
 const OrderDetailPage = (Route as any).component ?? (Route as any).options?.component;
@@ -237,5 +285,23 @@ describe("OrderDetailPage", () => {
     test("should render page header with breadcrumbs", () => {
         const { getByTestId } = render(<OrderDetailPage />);
         expect(getByTestId("page-header")).toBeDefined();
+    });
+
+    test("should open confirm drawer and call cancel on confirm", async () => {
+        const user = userEvent.setup();
+        render(<OrderDetailPage />);
+
+        // Click the cancel order button — should open the drawer
+        await user.click(screen.getByText("cancel_order"));
+        expect(screen.getByTestId("confirm-drawer")).toBeDefined();
+
+        // Click confirm in the drawer — should call cancelOrder.mutate
+        await user.click(screen.getByText("confirm"));
+        expect(mockCancelMutate).toHaveBeenCalledWith(42);
+    });
+
+    test("should not show confirm drawer initially", () => {
+        render(<OrderDetailPage />);
+        expect(screen.queryByTestId("confirm-drawer")).toBeNull();
     });
 });

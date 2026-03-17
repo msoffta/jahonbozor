@@ -72,10 +72,7 @@ export const Permission = {
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
 // Tuple type for Zod enum (preserves literal types)
-export const ALL_PERMISSIONS = Object.values(Permission) as [
-    Permission,
-    ...Permission[],
-];
+export const ALL_PERMISSIONS = Object.values(Permission) as [Permission, ...Permission[]];
 
 // Permission groups for convenience
 export const PermissionGroups = {
@@ -133,9 +130,6 @@ export const PermissionGroups = {
         Permission.PRODUCT_HISTORY_READ,
         Permission.PRODUCT_HISTORY_LIST,
     ],
-    AUDIT_LOGS_ALL: [
-        Permission.AUDIT_LOGS_LIST,
-        Permission.AUDIT_LOGS_READ,
-    ],
+    AUDIT_LOGS_ALL: [Permission.AUDIT_LOGS_LIST, Permission.AUDIT_LOGS_READ],
     ANALYTICS_ALL: [Permission.ANALYTICS_VIEW],
 } as const;

@@ -1,5 +1,5 @@
-import { describe, test, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
 
 vi.mock("motion/react", async () => {
     const { motionReactMock } = await import("@/test-utils/ui-mocks");
@@ -55,9 +55,7 @@ describe("QuantityControl", () => {
         );
         expect(getByText("1")).toBeDefined();
 
-        rerender(
-            <QuantityControl quantity={99} onIncrement={() => {}} onDecrement={() => {}} />,
-        );
+        rerender(<QuantityControl quantity={99} onIncrement={() => {}} onDecrement={() => {}} />);
         expect(getByText("99")).toBeDefined();
     });
 });

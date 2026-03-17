@@ -5,6 +5,7 @@
 ## Frontend Architecture
 
 ### Admin App Structure (`apps/frontend/admin/src/`)
+
 ```
 src/
 ├── main.tsx                          # App entry with providers
@@ -82,6 +83,7 @@ src/
 ```
 
 ### User App Structure (`apps/frontend/user/src/`)
+
 ```
 src/
 ├── main.tsx
@@ -127,34 +129,37 @@ src/
 ```
 
 ### Domain File Pattern (Frontend)
+
 Each domain in `components/` contains:
+
 - `{domain}-form.tsx` — Create/edit form (TanStack Form + Zod)
 - `{domain}-table.tsx` — Data table (TanStack Table)
 - `{domain}-columns.tsx` — Column definitions for table
 
 Each domain in `api/` contains:
+
 - `{domain}.api.ts` — Query key factory + `queryOptions` + `useMutation` hooks
 
 ## Frontend Tech Stack
 
-| Library | Purpose | Version |
-|---------|---------|---------|
-| React | UI framework | 19.2 |
-| Vite | Build tool | 7.3 |
-| SWC | Transpiler (via @vitejs/plugin-react-swc) | - |
-| TanStack Router | File-based routing with type safety | v1 |
-| TanStack Query | Server state management | v5 |
-| TanStack Table | Data tables | v8 |
-| TanStack Virtual | Virtual scrolling | v3 |
-| Zustand | Client state management | v5 |
-| Tailwind CSS | Utility-first CSS | v4 |
-| shadcn/ui | Headless UI components (via @jahonbozor/ui) | - |
-| TanStack Form | Form management with Zod validation | v1 |
-| react-i18next | Internationalization (uz/ru) | - |
-| lucide-react | Icons | - |
-| Motion | Animations (via @jahonbozor/ui) | v12 |
-| Elysia Eden | Type-safe API client (treaty) | v1 |
-| vite-tsconfig-paths | Path alias resolution from tsconfig | - |
+| Library             | Purpose                                     | Version |
+| ------------------- | ------------------------------------------- | ------- |
+| React               | UI framework                                | 19.2    |
+| Vite                | Build tool                                  | 7.3     |
+| SWC                 | Transpiler (via @vitejs/plugin-react-swc)   | -       |
+| TanStack Router     | File-based routing with type safety         | v1      |
+| TanStack Query      | Server state management                     | v5      |
+| TanStack Table      | Data tables                                 | v8      |
+| TanStack Virtual    | Virtual scrolling                           | v3      |
+| Zustand             | Client state management                     | v5      |
+| Tailwind CSS        | Utility-first CSS                           | v4      |
+| shadcn/ui           | Headless UI components (via @jahonbozor/ui) | -       |
+| TanStack Form       | Form management with Zod validation         | v1      |
+| react-i18next       | Internationalization (uz/ru)                | -       |
+| lucide-react        | Icons                                       | -       |
+| Motion              | Animations (via @jahonbozor/ui)             | v12     |
+| Elysia Eden         | Type-safe API client (treaty)               | v1      |
+| vite-tsconfig-paths | Path alias resolution from tsconfig         | -       |
 
 ## Frontend Routing
 
@@ -245,7 +250,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
-            staleTime: 5 * 60 * 1000,    // 5 minutes
+            staleTime: 5 * 60 * 1000, // 5 minutes
             retry: 1,
         },
     },
@@ -264,6 +269,7 @@ const router = createRouter({
 Zustand stores hold **client-only** state. Server data lives in TanStack Query.
 
 **Auth Store:**
+
 ```typescript
 // stores/auth.store.ts
 import { create } from "zustand";
@@ -271,7 +277,7 @@ import type { Permission } from "@jahonbozor/schemas";
 
 interface AuthState {
     token: string | null;
-    user: TokenStaff | null;       // or TokenUser for user app
+    user: TokenStaff | null; // or TokenUser for user app
     permissions: Permission[];
     isAuthenticated: boolean;
 
@@ -285,15 +291,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     permissions: [],
     isAuthenticated: false,
 
-    setAuth: (token, user, permissions) =>
-        set({ token, user, permissions, isAuthenticated: true }),
+    setAuth: (token, user, permissions) => set({ token, user, permissions, isAuthenticated: true }),
 
-    clearAuth: () =>
-        set({ token: null, user: null, permissions: [], isAuthenticated: false }),
+    clearAuth: () => set({ token: null, user: null, permissions: [], isAuthenticated: false }),
 }));
 ```
 
 **UI Store (persisted):**
+
 ```typescript
 // stores/ui.store.ts
 import { create } from "zustand";
@@ -320,6 +325,7 @@ export const useUIStore = create<UIState>()(
 ```
 
 **Cart Store (user app only, persisted):**
+
 ```typescript
 // stores/cart.store.ts — uses persist middleware
 interface CartItem {
@@ -333,6 +339,7 @@ interface CartItem {
 ### TanStack Query: Server State
 
 **Query Key Factory** (one per domain):
+
 ```typescript
 // api/products.api.ts
 export const productKeys = {
@@ -346,6 +353,7 @@ export const productKeys = {
 ```
 
 **Query Options:**
+
 ```typescript
 export const productsListOptions = (params: ProductsPagination) =>
     queryOptions({
@@ -355,12 +363,12 @@ export const productsListOptions = (params: ProductsPagination) =>
 ```
 
 **Mutations with Cache Invalidation:**
+
 ```typescript
 export function useCreateProduct() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: CreateProductBody) =>
-            apiClient.post("/api/private/products", data),
+        mutationFn: (data: CreateProductBody) => apiClient.post("/api/private/products", data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.lists() });
         },
@@ -369,6 +377,7 @@ export function useCreateProduct() {
 ```
 
 ### State Management Rules
+
 - **Zustand** = client state (auth, UI preferences, cart)
 - **TanStack Query** = server state (products, orders, categories, etc.)
 - **Never** store server data in Zustand
@@ -419,7 +428,7 @@ Development proxy to avoid CORS:
 // vite.config.ts
 export default defineConfig({
     server: {
-        port: 5173,  // admin: 5173, user: 5174
+        port: 5173, // admin: 5173, user: 5174
         proxy: {
             "/api": {
                 target: "http://localhost:3000",
@@ -456,14 +465,14 @@ queryFn: async () => {
     const { data, error } = await api.api.public.orders.get({ query });
     if (error) throw error;
     return data.data;
-}
+};
 
 // GOOD — explicit return type preserves nested array types
 queryFn: async (): Promise<{ count: number; orders: UserOrderItem[] }> => {
     const { data, error } = await api.api.public.orders.get({ query });
     if (error) throw error;
     return data.data;
-}
+};
 ```
 
 > This is NOT an `as` cast — the return type annotation is type-safe. If the actual data doesn't match, TS will error.
@@ -554,6 +563,7 @@ export function ProductForm({ defaultValues, onSubmit, isLoading }: ProductFormP
 ### Form Component Contract
 
 Every form component follows this interface:
+
 - `defaultValues` — optional, for edit mode
 - `onSubmit` — callback with validated data
 - `isLoading` — disables submit button during mutation
@@ -603,6 +613,7 @@ i18n/
 ```
 
 ### Usage
+
 ```typescript
 import { useTranslation } from "react-i18next";
 
@@ -628,6 +639,7 @@ useEffect(() => {
 ```
 
 ### Languages
+
 - **uz** — Uzbek (default / fallback)
 - **ru** — Russian
 
@@ -810,8 +822,7 @@ export function useLogin() {
     const navigate = useNavigate();
 
     return useMutation({
-        mutationFn: (body: SignInBody) =>
-            apiClient.post("/api/public/auth/login", body),
+        mutationFn: (body: SignInBody) => apiClient.post("/api/public/auth/login", body),
         onSuccess: async (result) => {
             if (result.success) {
                 const { staff, token } = result.data;
@@ -835,11 +846,9 @@ if (!isAuthenticated) {
     if (result.success && result.data?.token) {
         const meResult = await apiClient.get("/api/public/auth/me");
         if (meResult.success) {
-            useAuthStore.getState().setAuth(
-                result.data.token,
-                meResult.data,
-                meResult.data.role?.permissions ?? [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(result.data.token, meResult.data, meResult.data.role?.permissions ?? []);
         }
     }
 }
@@ -848,6 +857,7 @@ if (!isAuthenticated) {
 ### 3. Token Refresh on 401
 
 Handled transparently in `api/client.ts`:
+
 1. Any API call returns 401 → attempt `POST /api/public/auth/refresh`
 2. If successful → update auth store, retry original request
 3. If failed → clear auth, redirect to `/login`
@@ -890,15 +900,15 @@ const canCreate = useHasPermission(Permission.PRODUCTS_CREATE);
 
 ### File Naming
 
-| Type | Convention | Example |
-|------|-----------|---------|
-| Components | `kebab-case.tsx` | `product-form.tsx` |
-| Stores | `{domain}.store.ts` | `auth.store.ts` |
-| API files | `{domain}.api.ts` | `products.api.ts` |
+| Type        | Convention          | Example                            |
+| ----------- | ------------------- | ---------------------------------- |
+| Components  | `kebab-case.tsx`    | `product-form.tsx`                 |
+| Stores      | `{domain}.store.ts` | `auth.store.ts`                    |
+| API files   | `{domain}.api.ts`   | `products.api.ts`                  |
 | Route files | TanStack convention | `$productId.tsx`, `_dashboard.tsx` |
-| Tests | `{name}.test.ts(x)` | `product-form.test.tsx` |
-| i18n | `{namespace}.json` | `products.json` |
-| Hooks | `use-{name}.ts` | `use-permissions.ts` |
+| Tests       | `{name}.test.ts(x)` | `product-form.test.tsx`            |
+| i18n        | `{namespace}.json`  | `products.json`                    |
+| Hooks       | `use-{name}.ts`     | `use-permissions.ts`               |
 
 ### Component Pattern
 
@@ -960,16 +970,24 @@ import type { ProductFormProps } from "./types";
 Все фронтенд-приложения должны быть **интерактивными и приятными** в использовании. Для анимаций используем **Motion** (ранее framer-motion). Пакет установлен в `@jahonbozor/ui` и реэкспортирован оттуда.
 
 ```typescript
-import { motion, AnimatePresence, LayoutGroup, PageTransition, AnimatedList, AnimatedListItem, FadeIn } from "@jahonbozor/ui";
+import {
+    motion,
+    AnimatePresence,
+    LayoutGroup,
+    PageTransition,
+    AnimatedList,
+    AnimatedListItem,
+    FadeIn,
+} from "@jahonbozor/ui";
 ```
 
 #### Reusable Motion Components
 
-| Component | Import | Purpose |
-|-----------|--------|---------|
-| `PageTransition` | `@jahonbozor/ui` | Обёртка для контента страницы (fade-in + slide-up spring). Обязательно на каждой странице |
-| `AnimatedList` + `AnimatedListItem` | `@jahonbozor/ui` | Контейнер со stagger-анимацией детей (40ms между элементами) |
-| `FadeIn` | `@jahonbozor/ui` | Простой fade-in (opacity, optional `delay` prop) |
+| Component                           | Import           | Purpose                                                                                   |
+| ----------------------------------- | ---------------- | ----------------------------------------------------------------------------------------- |
+| `PageTransition`                    | `@jahonbozor/ui` | Обёртка для контента страницы (fade-in + slide-up spring). Обязательно на каждой странице |
+| `AnimatedList` + `AnimatedListItem` | `@jahonbozor/ui` | Контейнер со stagger-анимацией детей (40ms между элементами)                              |
+| `FadeIn`                            | `@jahonbozor/ui` | Простой fade-in (opacity, optional `delay` prop)                                          |
 
 ```typescript
 // Каждая страница оборачивается в PageTransition
@@ -999,11 +1017,11 @@ function ProductsPage() {
 
 #### Spring Config Reference
 
-| Name | Config | Use |
-|------|--------|-----|
-| Snappy | `{ type: "spring", stiffness: 400, damping: 17 }` | `whileTap` на кнопках, быстрый press feedback |
-| Smooth | `{ type: "spring", stiffness: 300, damping: 25 }` | Page transitions, form stagger, entrance animations |
-| Balanced | `{ type: "spring", stiffness: 400, damping: 30 }` | Layout animations (nav pill slide, drawer) |
+| Name     | Config                                            | Use                                                 |
+| -------- | ------------------------------------------------- | --------------------------------------------------- |
+| Snappy   | `{ type: "spring", stiffness: 400, damping: 17 }` | `whileTap` на кнопках, быстрый press feedback       |
+| Smooth   | `{ type: "spring", stiffness: 300, damping: 25 }` | Page transitions, form stagger, entrance animations |
+| Balanced | `{ type: "spring", stiffness: 400, damping: 30 }` | Layout animations (nav pill slide, drawer)          |
 
 #### Gesture Animations
 
@@ -1055,6 +1073,7 @@ function ProductsPage() {
 ```
 
 **Правила:**
+
 - Импорт только из `@jahonbozor/ui` — **не** напрямую из `motion/react`
 - **PageTransition** обязательна на каждой странице
 - **whileTap** обязателен на всех кнопках и интерактивных элементах
@@ -1066,11 +1085,11 @@ function ProductsPage() {
 
 Глобальные правила курсора определены в `packages/ui/globals.css` и применяются автоматически:
 
-| Cursor | Elements |
-|--------|----------|
-| `pointer` | `a`, `button`, `[role="button"]`, `[role="link"]`, `[role="tab"]`, `[role="menuitem"]`, `select`, `summary`, `label[for]`, `[role="checkbox"]`, `[role="radio"]`, `[role="switch"]`, `[role="option"]` |
-| `text` | `input[type="text"]`, `input[type="password"]`, `textarea`, `input:not([type])` |
-| `not-allowed` | `[disabled]`, `[aria-disabled="true"]` |
+| Cursor        | Elements                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pointer`     | `a`, `button`, `[role="button"]`, `[role="link"]`, `[role="tab"]`, `[role="menuitem"]`, `select`, `summary`, `label[for]`, `[role="checkbox"]`, `[role="radio"]`, `[role="switch"]`, `[role="option"]` |
+| `text`        | `input[type="text"]`, `input[type="password"]`, `textarea`, `input:not([type])`                                                                                                                        |
+| `not-allowed` | `[disabled]`, `[aria-disabled="true"]`                                                                                                                                                                 |
 
 Не нужно добавлять `cursor-pointer` вручную — CSS применяет правильный курсор автоматически ко всем интерактивным элементам.
 
@@ -1115,12 +1134,12 @@ bunx tsc --noEmit -p tsconfig.app.json
 
 ### Quick Overview
 
-| Tool | Purpose |
-|------|---------|
-| `bun:test` | Test runner (matches backend) |
-| `@testing-library/react` | Component rendering + queries |
-| `@testing-library/user-event` | User interactions |
-| `happy-dom` | DOM implementation |
+| Tool                          | Purpose                       |
+| ----------------------------- | ----------------------------- |
+| `bun:test`                    | Test runner (matches backend) |
+| `@testing-library/react`      | Component rendering + queries |
+| `@testing-library/user-event` | User interactions             |
+| `happy-dom`                   | DOM implementation            |
 
 ### Test Priority
 

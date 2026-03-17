@@ -1,8 +1,11 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import { UsersService } from "../users.service";
-import type { Token } from "@jahonbozor/schemas";
 import crypto from "crypto";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
+import { UsersService } from "../users.service";
+
+import type { Token } from "@jahonbozor/schemas";
 
 // Helper to create transaction mock with callback support
 const mockTransaction = (mockTx: unknown) => {
@@ -206,7 +209,13 @@ describe("Users Service", () => {
                 telegramId: null,
                 language: "uz" as const,
             };
-            const createdUser = { id: 2, ...userData, createdAt: new Date(), updatedAt: new Date(), deletedAt: null };
+            const createdUser = {
+                id: 2,
+                ...userData,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+            };
 
             mockTransaction({
                 users: { create: vi.fn(() => Promise.resolve(createdUser)) },
@@ -261,7 +270,12 @@ describe("Users Service", () => {
             });
 
             // Act
-            const result = await UsersService.updateUser(1, updateData, mockAuditContext, mockLogger);
+            const result = await UsersService.updateUser(
+                1,
+                updateData,
+                mockAuditContext,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -277,7 +291,12 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
             // Act
-            const result = await UsersService.updateUser(999, { fullname: "Test" }, mockAuditContext, mockLogger);
+            const result = await UsersService.updateUser(
+                999,
+                { fullname: "Test" },
+                mockAuditContext,
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -289,12 +308,19 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(mockDeletedUser);
 
             // Act
-            const result = await UsersService.updateUser(1, { fullname: "Test" }, mockAuditContext, mockLogger);
+            const result = await UsersService.updateUser(
+                1,
+                { fullname: "Test" },
+                mockAuditContext,
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("Cannot update deleted user");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Users: Cannot update deleted user", { userId: 1 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Users: Cannot update deleted user", {
+                userId: 1,
+            });
         });
     });
 
@@ -331,7 +357,9 @@ describe("Users Service", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("User not found");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User not found for delete", { userId: 999 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User not found for delete", {
+                userId: 999,
+            });
         });
 
         test("should return error when user already deleted", async () => {
@@ -344,7 +372,9 @@ describe("Users Service", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("User already deleted");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User already deleted", { userId: 1 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User already deleted", {
+                userId: 1,
+            });
         });
     });
 
@@ -393,7 +423,9 @@ describe("Users Service", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("User is not deleted");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User is not deleted", { userId: 1 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User is not deleted", {
+                userId: 1,
+            });
         });
     });
 
@@ -420,7 +452,10 @@ describe("Users Service", () => {
                 .join("\n");
 
             const secretKey = crypto.createHash("sha256").update(botToken).digest();
-            const validHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+            const validHash = crypto
+                .createHmac("sha256", secretKey)
+                .update(dataCheckString)
+                .digest("hex");
 
             telegramData.hash = validHash;
 
@@ -465,7 +500,11 @@ describe("Users Service", () => {
         test("should update existing user by telegramId with audit log", async () => {
             // Arrange
             const existingUser = { ...mockUser, telegramId: "123456789" };
-            const updatedUser = { ...existingUser, fullname: "John Doe", photo: "https://photo.url/avatar.jpg" };
+            const updatedUser = {
+                ...existingUser,
+                fullname: "John Doe",
+                photo: "https://photo.url/avatar.jpg",
+            };
 
             prismaMock.users.findUnique.mockResolvedValue(existingUser);
             mockTransaction({
@@ -499,15 +538,22 @@ describe("Users Service", () => {
             });
 
             // Act
-            const result = await UsersService.createOrUpdateFromTelegram(telegramData, mockLogger, "+998901234567");
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramData,
+                mockLogger,
+                "+998901234567",
+            );
 
             // Assert
             const success = expectSuccess(result);
             expect(success.data).toEqual(linkedUser);
-            expect(mockLogger.info).toHaveBeenCalledWith("Users: Linked Telegram to existing user", {
-                userId: linkedUser.id,
-                telegramId: "123456789",
-            });
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                "Users: Linked Telegram to existing user",
+                {
+                    userId: linkedUser.id,
+                    telegramId: "123456789",
+                },
+            );
         });
 
         test("should create new user when not found with audit log", async () => {
@@ -569,7 +615,10 @@ describe("Users Service", () => {
             });
 
             // Act
-            const result = await UsersService.createOrUpdateFromTelegram(telegramDataWithLastName, mockLogger);
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramDataWithLastName,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -602,7 +651,10 @@ describe("Users Service", () => {
             });
 
             // Act
-            const result = await UsersService.createOrUpdateFromTelegram(telegramDataNoUsername, mockLogger);
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramDataNoUsername,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -632,7 +684,13 @@ describe("Users Service", () => {
             });
 
             // Act
-            const result = await UsersService.createOrUpdateFromTelegram(telegramData, mockLogger, undefined, "req-1", "ru");
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramData,
+                mockLogger,
+                undefined,
+                "req-1",
+                "ru",
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -657,7 +715,13 @@ describe("Users Service", () => {
             });
 
             // Act
-            const result = await UsersService.createOrUpdateFromTelegram(telegramData, mockLogger, undefined, "req-1", "ru");
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramData,
+                mockLogger,
+                undefined,
+                "req-1",
+                "ru",
+            );
 
             // Assert
             const success = expectSuccess(result);

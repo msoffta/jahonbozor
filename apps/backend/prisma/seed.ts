@@ -1,7 +1,10 @@
+/* eslint-disable no-console */
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../src/generated/prisma/client";
 import { password } from "bun";
+
 import { ALL_PERMISSIONS } from "@jahonbozor/schemas/src/permissions";
+
+import { PrismaClient } from "../src/generated/prisma/client";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -17,7 +20,9 @@ async function main() {
         },
     });
 
-    console.log(`✅ Role "${rootRole.name}" (id=${rootRole.id}) — ${rootRole.permissions.length} permissions`);
+    console.log(
+        `✅ Role "${rootRole.name}" (id=${rootRole.id}) — ${rootRole.permissions.length} permissions`,
+    );
 
     // 2. Staff: root admin account
     const rootPassword = process.env.ROOT_PASSWORD ?? "root1234";
@@ -27,13 +32,13 @@ async function main() {
         where: { username: "root" },
         update: { roleId: rootRole.id },
         create: {
-        fullname: "Root Admin",
-        username: "root",
-        passwordHash: rootHash,
-        telegramId: BigInt(0),
-        roleId: rootRole.id,
-    },
-});
+            fullname: "Root Admin",
+            username: "root",
+            passwordHash: rootHash,
+            telegramId: BigInt(0),
+            roleId: rootRole.id,
+        },
+    });
 
     console.log(`✅ Staff "${rootStaff.username}" (id=${rootStaff.id}) — role: ${rootRole.name}`);
 }

@@ -1,31 +1,10 @@
-import type { Context } from "grammy";
+import { logger } from "@bot/lib/logger";
+import { contactMessages } from "@bot/lib/messages";
+import { normalizePhone, validatePhone } from "@bot/lib/phone-validation";
 import { savePhone } from "@bot/services/phone.service";
-import { validatePhone, normalizePhone } from "@bot/lib/phone-validation";
 import { getUserInfo } from "@bot/services/user.service";
-import logger from "@bot/lib/logger";
 
-const messages = {
-    uz: {
-        processingError: "Kontaktni qayta ishlashda xatolik. Qayta urinib ko'ring.",
-        wrongContact: "Iltimos, o'zingizning kontaktingizni ulashing.",
-        invalidPhone: "Telefon raqam formati noto'g'ri. Qayta urinib ko'ring.",
-        success: "Rahmat! Telefon raqamingiz saqlandi.",
-        phoneTaken: "Bu raqam boshqa akkauntga biriktirilgan. Qo'llab-quvvatlash xizmatiga murojaat qiling.",
-        userNotFound: "Akkauntingiz topilmadi. Avval saytga kiring.",
-        alreadyHasPhone: "Telefon raqamingiz allaqachon saqlangan!",
-        genericError: "Xatolik yuz berdi. Keyinroq qayta urinib ko'ring.",
-    },
-    ru: {
-        processingError: "Ошибка обработки контакта. Попробуйте ещё раз.",
-        wrongContact: "Пожалуйста, поделитесь своим контактом, а не чужим.",
-        invalidPhone: "Неверный формат номера. Попробуйте ещё раз.",
-        success: "Спасибо! Ваш номер телефона сохранён.",
-        phoneTaken: "Этот номер уже привязан к другому аккаунту. Обратитесь в поддержку.",
-        userNotFound: "Аккаунт не найден. Сначала войдите на сайт.",
-        alreadyHasPhone: "Ваш номер телефона уже сохранён!",
-        genericError: "Произошла ошибка. Попробуйте позже.",
-    },
-};
+import type { Context } from "grammy";
 
 export async function handleContact(ctx: Context): Promise<void> {
     try {
@@ -34,14 +13,14 @@ export async function handleContact(ctx: Context): Promise<void> {
 
         if (!contact || !fromUser) {
             await ctx.reply(
-                messages.uz.processingError + "\n\n" + messages.ru.processingError,
+                contactMessages.uz.processingError + "\n\n" + contactMessages.ru.processingError,
             );
             return;
         }
 
         const telegramId = String(fromUser.id);
-        const { language } = await getUserInfo(telegramId);
-        const msg = messages[language];
+        const { language } = await getUserInfo(telegramId, logger);
+        const msg = contactMessages[language];
 
         if (contact.user_id !== fromUser.id) {
             logger.warn("Bot: User shared someone else's contact", {
@@ -88,5 +67,12 @@ export async function handleContact(ctx: Context): Promise<void> {
         }
     } catch (error) {
         logger.error("Bot: Failed to handle contact", { error });
+        try {
+            await ctx.reply(
+                contactMessages.uz.genericError + "\n\n" + contactMessages.ru.genericError,
+            );
+        } catch (replyError) {
+            logger.error("Bot: Failed to send error reply", { error: replyError });
+        }
     }
 }

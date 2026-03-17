@@ -1,11 +1,12 @@
-import { defineConfig, type PluginOption } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import tailwindcss from "@tailwindcss/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import { devtools } from "@tanstack/devtools-vite";
-import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { resolve } from "node:path";
+
+import { sentryVitePlugin } from "@sentry/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
+import { devtools } from "@tanstack/devtools-vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import react from "@vitejs/plugin-react-swc";
+import { defineConfig, type PluginOption } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
     base: "/admin/",
@@ -18,10 +19,7 @@ export default defineConfig({
                     if (!id.includes("node_modules")) return;
                     if (id.includes("react-dom")) return "vendor-react-dom";
                     if (id.includes("/react/")) return "vendor-react";
-                    if (
-                        id.includes("@tanstack/react-router") ||
-                        id.includes("@tanstack/router")
-                    )
+                    if (id.includes("@tanstack/react-router") || id.includes("@tanstack/router"))
                         return "vendor-tanstack-router";
                     if (id.includes("@tanstack")) return "vendor-tanstack";
                     if (id.includes("@radix-ui")) return "vendor-radix";

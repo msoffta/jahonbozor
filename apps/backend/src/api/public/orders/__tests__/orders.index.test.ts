@@ -1,6 +1,8 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
+import { describe, expect, test, vi } from "vitest";
+
 import { createMockLogger } from "@backend/test/setup";
+
 import { PublicOrdersService } from "../orders.service";
 
 const mockOrderWithRelations = {
@@ -60,7 +62,10 @@ const createTestApp = (userType: "user" | "staff" = "user") => {
                 return { success: false, error: "Only users can create orders via public API" };
             }
             return await PublicOrdersService.createOrder(
-                body as { paymentType: "CASH" | "CREDIT_CARD"; items: Array<{ productId: number; quantity: number; price: number }> },
+                body as {
+                    paymentType: "CASH" | "CREDIT_CARD";
+                    items: { productId: number; quantity: number; price: number }[];
+                },
                 { userId: user.id, user, requestId },
                 logger,
             );
@@ -211,9 +216,7 @@ describe("Public Orders API Routes", () => {
             const app = createTestApp("staff");
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders"));
             const body = await response.json();
 
             // Assert
@@ -258,9 +261,7 @@ describe("Public Orders API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -276,9 +277,7 @@ describe("Public Orders API Routes", () => {
             const app = createTestApp("staff");
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -295,9 +294,7 @@ describe("Public Orders API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/999"));
             const body = await response.json();
 
             // Assert
@@ -316,9 +313,7 @@ describe("Public Orders API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -441,9 +436,7 @@ describe("Public Orders API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/orders/42/cancel", { method: "PATCH" }),
-            );
+            await app.handle(new Request("http://localhost/orders/42/cancel", { method: "PATCH" }));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(

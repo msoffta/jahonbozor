@@ -1,4 +1,5 @@
 import z from "zod";
+
 import { OrderStatus, PaymentType } from "../common/enums";
 import { PaginationQuery } from "../common/pagination.model";
 import { Order, OrderItem } from "./orders.model";
@@ -103,5 +104,5 @@ export type AdminOrdersListResponse = ReturnSchema<{
 export type AdminOrderDetailResponse = ReturnSchema<AdminOrderItem>;
 export type AdminOrderDeleteResponse = ReturnSchema<{
     orderId: number;
-    deleted: true;
+    deleted: boolean;
 }>;

@@ -37,41 +37,29 @@ export const motionMock = {
                     children?: React.ReactNode;
                     className?: string;
                     [key: string]: unknown;
-                }) =>
-                    createElement(
-                        prop,
-                        { className, ...filterDOMProps(rest) },
-                        children,
-                    );
+                }) => createElement(prop, { className, ...filterDOMProps(rest) }, children);
             },
         },
     ),
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) => (
-        <>{children}</>
-    ),
-    LayoutGroup: ({ children }: { children?: React.ReactNode }) => (
-        <>{children}</>
-    ),
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    LayoutGroup: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 };
 
 export const buttonMock = {
-    Button: React.forwardRef(
-        (
-            {
-                children,
-                className,
-                ...props
-            }: {
-                children?: React.ReactNode;
-                className?: string;
-                [key: string]: unknown;
-            },
-            ref: React.Ref<HTMLButtonElement>,
-        ) => (
-            <button ref={ref} className={className} {...filterDOMProps(props)}>
-                {children}
-            </button>
-        ),
+    Button: ({
+        ref,
+        children,
+        className,
+        ...props
+    }: {
+        ref?: React.Ref<HTMLButtonElement>;
+        children?: React.ReactNode;
+        className?: string;
+        [key: string]: unknown;
+    }) => (
+        <button ref={ref} className={className} {...filterDOMProps(props)}>
+            {children}
+        </button>
     ),
 };
 
@@ -104,23 +92,14 @@ export const selectMock = {
         onValueChange?: (value: string) => void;
         value?: string;
     }) => (
-        <select
-            value={value}
-            onChange={(e) => onValueChange?.(e.target.value)}
-        >
+        <select value={value} onChange={(e) => onValueChange?.(e.target.value)}>
             {children}
         </select>
     ),
-    SelectContent: ({ children }: { children?: React.ReactNode }) => (
-        <>{children}</>
+    SelectContent: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    SelectItem: ({ children, value }: { children?: React.ReactNode; value: string }) => (
+        <option value={value}>{children}</option>
     ),
-    SelectItem: ({
-        children,
-        value,
-    }: {
-        children?: React.ReactNode;
-        value: string;
-    }) => <option value={value}>{children}</option>,
     SelectTrigger: () => null,
     SelectValue: () => null,
 };
@@ -195,15 +174,9 @@ export const tableMock = {
 };
 
 export const dropdownMenuMock = {
-    DropdownMenu: ({ children }: { children?: React.ReactNode }) => (
-        <div>{children}</div>
-    ),
-    DropdownMenuTrigger: ({ children }: { children?: React.ReactNode }) => (
-        <>{children}</>
-    ),
-    DropdownMenuContent: ({ children }: { children?: React.ReactNode }) => (
-        <div>{children}</div>
-    ),
+    DropdownMenu: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    DropdownMenuTrigger: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    DropdownMenuContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
     DropdownMenuItem: ({
         children,
         onClick,
@@ -215,8 +188,6 @@ export const dropdownMenuMock = {
             {children}
         </button>
     ),
-    DropdownMenuLabel: ({ children }: { children?: React.ReactNode }) => (
-        <span>{children}</span>
-    ),
+    DropdownMenuLabel: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
     DropdownMenuSeparator: () => <hr />,
 };

@@ -1,7 +1,10 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { HistoryService } from "../history.service";
 
 // Mock history data
@@ -43,10 +46,7 @@ const createTestApp = () => {
     return new Elysia()
         .derive(() => ({
             user: mockUser,
-            permissions: [
-                Permission.PRODUCT_HISTORY_LIST,
-                Permission.PRODUCT_HISTORY_READ,
-            ],
+            permissions: [Permission.PRODUCT_HISTORY_LIST, Permission.PRODUCT_HISTORY_READ],
             logger: mockLogger,
             requestId: "test-request-id",
         }))
@@ -57,7 +57,14 @@ const createTestApp = () => {
                     limit: Number(query.limit) || 20,
                     searchQuery: query.searchQuery,
                     productId: query.productId ? Number(query.productId) : undefined,
-                    operation: query.operation as "CREATE" | "UPDATE" | "DELETE" | "RESTORE" | "INVENTORY_ADD" | "INVENTORY_REMOVE" | undefined,
+                    operation: query.operation as
+                        | "CREATE"
+                        | "UPDATE"
+                        | "DELETE"
+                        | "RESTORE"
+                        | "INVENTORY_ADD"
+                        | "INVENTORY_REMOVE"
+                        | undefined,
                     staffId: query.staffId ? Number(query.staffId) : undefined,
                 },
                 logger,
@@ -105,9 +112,7 @@ describe("History API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/history?productId=1"),
-            );
+            await app.handle(new Request("http://localhost/history?productId=1"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -126,9 +131,7 @@ describe("History API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/history?operation=CREATE"),
-            );
+            await app.handle(new Request("http://localhost/history?operation=CREATE"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -147,9 +150,7 @@ describe("History API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/history?staffId=1"),
-            );
+            await app.handle(new Request("http://localhost/history?staffId=1"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -168,9 +169,7 @@ describe("History API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/history"),
-            );
+            const response = await app.handle(new Request("http://localhost/history"));
             const body = await response.json();
 
             // Assert
@@ -190,9 +189,7 @@ describe("History API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/history?page=3&limit=15"),
-            );
+            await app.handle(new Request("http://localhost/history?page=3&limit=15"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -213,9 +210,7 @@ describe("History API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/history/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/history/1"));
             const body = await response.json();
 
             // Assert
@@ -234,9 +229,7 @@ describe("History API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/history/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/history/999"));
             const body = await response.json();
 
             // Assert
@@ -270,9 +263,7 @@ describe("History API Routes", () => {
                 data: { count: 0, history: [] },
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/history"),
-            );
+            const response = await app.handle(new Request("http://localhost/history"));
             const body = await response.json();
 
             expect(response.status).toBe(200);
@@ -289,9 +280,7 @@ describe("History API Routes", () => {
                 error: "History entry not found",
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/history/0"),
-            );
+            const response = await app.handle(new Request("http://localhost/history/0"));
             const body = await response.json();
 
             expect(body.success).toBe(false);
@@ -306,9 +295,7 @@ describe("History API Routes", () => {
                 error: "History entry not found",
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/history/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/history/999"));
             const body = await response.json();
 
             expect(body.success).toBe(false);

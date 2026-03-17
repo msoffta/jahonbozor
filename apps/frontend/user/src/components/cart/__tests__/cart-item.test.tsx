@@ -1,5 +1,6 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useCartStore } from "@/stores/cart.store";
 
 vi.mock("react-i18next", () => ({
@@ -18,9 +19,13 @@ vi.mock("@jahonbozor/ui", async () => {
 vi.mock("@/components/catalog/quantity-control", () => ({
     QuantityControl: ({ quantity, onIncrement, onDecrement }: any) => (
         <div data-testid="quantity-control">
-            <button data-testid="decrement" onClick={onDecrement}>-</button>
+            <button data-testid="decrement" onClick={onDecrement}>
+                -
+            </button>
             <span data-testid="quantity">{quantity}</span>
-            <button data-testid="increment" onClick={onIncrement}>+</button>
+            <button data-testid="increment" onClick={onIncrement}>
+                +
+            </button>
         </div>
     ),
 }));

@@ -1,24 +1,43 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
-import { prismaMock, mockUser } from "../setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { mockUser, prismaMock } from "../setup";
 
 // Capture handler callbacks registered via bot.command() and bot.on()
 const handlers = vi.hoisted(() => ({
-    commands: {} as Record<string, Function>,
-    events: {} as Record<string, Function>,
+    commands: {} as Record<string, (ctx: unknown) => Promise<void>>,
+    events: {} as Record<string, (ctx: unknown) => Promise<void>>,
+    errorHandler: undefined as ((err: unknown) => void) | undefined,
+}));
+
+// Hoist mock Grammy classes so they're accessible in both the mock factory and tests
+const { MockGrammyError, MockHttpError } = vi.hoisted(() => ({
+    MockGrammyError: class MockGrammyError extends Error {
+        description: string;
+        constructor(message: string) {
+            super(message);
+            this.description = message;
+        }
+    },
+    MockHttpError: class MockHttpError extends Error {},
 }));
 
 // Mock grammy Bot to capture registered handlers
 vi.mock("grammy", () => ({
     Bot: class MockBot {
         constructor() {}
-        on(event: string, handler: Function) {
+        on(event: string, handler: (ctx: unknown) => Promise<void>) {
             handlers.events[event] = handler;
         }
-        command(name: string, handler: Function) {
+        command(name: string, handler: (ctx: unknown) => Promise<void>) {
             handlers.commands[name] = handler;
+        }
+        catch(handler: (err: unknown) => void) {
+            handlers.errorHandler = handler;
         }
         api = { setWebhook: vi.fn(() => Promise.resolve()) };
     },
+    GrammyError: MockGrammyError,
+    HttpError: MockHttpError,
 }));
 
 // Mock logger before importing bot — vi.hoisted so it's available in hoisted vi.mock factory
@@ -28,12 +47,12 @@ const mockLogger = vi.hoisted(() => ({
     error: vi.fn(),
     debug: vi.fn(),
 }));
-vi.mock("@bot/lib/logger", () => ({ default: mockLogger }));
+vi.mock("@bot/lib/logger", () => ({ logger: mockLogger }));
 
 // Set token before bot.ts import
 process.env.TELEGRAM_BOT_TOKEN = "test-token";
 
-import { bot, getUserInfo } from "@bot/bot";
+import { bot } from "@bot/bot";
 
 // Helper to create a mock grammy command context
 function createCommandContext(fromId: number) {
@@ -59,111 +78,36 @@ describe("bot instance", () => {
     test("registers generic message handler", () => {
         expect(handlers.events.message).toBeDefined();
     });
-});
 
-describe("getUserInfo", () => {
-    beforeEach(() => {
-        prismaMock.users.findFirst.mockReset();
-        prismaMock.users.findFirst.mockResolvedValue(null);
-        vi.mocked(mockLogger.error).mockReset();
+    test("registers error handler via bot.catch()", () => {
+        expect(handlers.errorHandler).toBeDefined();
     });
 
-    test("calls prisma.users.findFirst with correct telegramId and deletedAt filter", async () => {
-        await getUserInfo("123456");
+    test("error handler logs GrammyError with description", () => {
+        const grammyErr = new MockGrammyError("Bad Request: message is too long");
+        const err = { error: grammyErr, ctx: { update: { update_id: 42 } } };
 
-        expect(prismaMock.users.findFirst).toHaveBeenCalledWith({
-            where: { telegramId: "123456", deletedAt: null },
-            select: { language: true, phone: true },
-        });
-    });
+        vi.mocked(mockLogger.error).mockClear();
+        handlers.errorHandler!(err);
 
-    test("returns user with phone when user exists and has phone", async () => {
-        prismaMock.users.findFirst.mockResolvedValueOnce(
-            mockUser({ language: "uz", phone: "+998901234567" }),
-        );
-
-        const result = await getUserInfo("123");
-
-        expect(result).toEqual({ language: "uz", phone: "+998901234567" });
-    });
-
-    test("returns language ru when user.language is ru", async () => {
-        prismaMock.users.findFirst.mockResolvedValueOnce(
-            mockUser({ language: "ru", phone: "+998901234567" }),
-        );
-
-        const result = await getUserInfo("123");
-
-        expect(result).toEqual({ language: "ru", phone: "+998901234567" });
-    });
-
-    test("defaults language to uz when user.language is unknown", async () => {
-        prismaMock.users.findFirst.mockResolvedValueOnce(
-            mockUser({ language: "en" }),
-        );
-
-        const result = await getUserInfo("123");
-
-        expect(result).toEqual({ language: "uz", phone: null });
-    });
-
-    test("returns phone null when user has no phone", async () => {
-        prismaMock.users.findFirst.mockResolvedValueOnce(mockUser());
-
-        const result = await getUserInfo("123");
-
-        expect(result).toEqual({ language: "uz", phone: null });
-    });
-
-    test("returns defaults when user not found", async () => {
-        prismaMock.users.findFirst.mockResolvedValueOnce(null);
-
-        const result = await getUserInfo("999");
-
-        expect(result).toEqual({ language: "uz", phone: null });
-    });
-
-    test("returns defaults when user is soft-deleted (deletedAt filter excludes them)", async () => {
-        prismaMock.users.findFirst.mockResolvedValueOnce(null);
-
-        const result = await getUserInfo("deleted-user-id");
-
-        expect(result).toEqual({ language: "uz", phone: null });
-    });
-
-    test("returns defaults and logs error on DB failure", async () => {
-        prismaMock.users.findFirst.mockRejectedValueOnce(new Error("Connection lost"));
-
-        const result = await getUserInfo("123");
-
-        expect(result).toEqual({ language: "uz", phone: null });
         expect(mockLogger.error).toHaveBeenCalledWith(
-            "Bot: Failed to get user info",
-            expect.objectContaining({ telegramId: "123" }),
+            "Bot: Grammy API error",
+            expect.objectContaining({
+                description: "Bad Request: message is too long",
+                updateId: 42,
+            }),
         );
     });
 
-    // Edge cases
-    test("returns defaults for empty telegramId", async () => {
-        prismaMock.users.findFirst.mockResolvedValueOnce(null);
+    test("error handler logs unknown errors", () => {
+        const err = { error: new Error("something broke"), ctx: { update: { update_id: 99 } } };
 
-        const result = await getUserInfo("");
+        vi.mocked(mockLogger.error).mockClear();
+        handlers.errorHandler!(err);
 
-        expect(result).toEqual({ language: "uz", phone: null });
-        expect(prismaMock.users.findFirst).toHaveBeenCalledWith(
-            expect.objectContaining({ where: { telegramId: "", deletedAt: null } }),
-        );
-    });
-
-    test("handles very long telegramId", async () => {
-        const longId = "9".repeat(100);
-        prismaMock.users.findFirst.mockResolvedValueOnce(null);
-
-        const result = await getUserInfo(longId);
-
-        expect(result).toEqual({ language: "uz", phone: null });
-        expect(prismaMock.users.findFirst).toHaveBeenCalledWith(
-            expect.objectContaining({ where: { telegramId: longId, deletedAt: null } }),
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            "Bot: Unhandled error",
+            expect.objectContaining({ updateId: 99 }),
         );
     });
 });
@@ -227,6 +171,13 @@ describe("/start command handler", () => {
             expect.objectContaining({ reply_markup: expect.anything() }),
         );
     });
+
+    test("returns early when ctx.from is undefined", async () => {
+        const ctx = { from: undefined, reply: vi.fn() };
+        await handlers.commands.start(ctx);
+
+        expect(ctx.reply).not.toHaveBeenCalled();
+    });
 });
 
 describe("generic message handler", () => {
@@ -262,10 +213,9 @@ describe("generic message handler", () => {
         await handlers.events.message(ctx);
 
         expect(ctx.reply).toHaveBeenCalledTimes(1);
-        expect(ctx.reply).toHaveBeenCalledWith(
-            expect.stringContaining("allaqachon saqlangan"),
-            { reply_markup: { remove_keyboard: true } },
-        );
+        expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining("allaqachon saqlangan"), {
+            reply_markup: { remove_keyboard: true },
+        });
     });
 
     test("uses Russian messages for ru-language user", async () => {
@@ -290,5 +240,12 @@ describe("generic message handler", () => {
             expect.stringContaining("tugma orqali"),
             expect.objectContaining({ reply_markup: expect.anything() }),
         );
+    });
+
+    test("returns early when ctx.from is undefined", async () => {
+        const ctx = { from: undefined, reply: vi.fn() };
+        await handlers.events.message(ctx);
+
+        expect(ctx.reply).not.toHaveBeenCalled();
     });
 });

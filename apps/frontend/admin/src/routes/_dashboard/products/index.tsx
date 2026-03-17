@@ -1,20 +1,10 @@
-import {
-    categoriesListQueryOptions,
-    useCreateCategory,
-} from "@/api/categories.api";
-import {
-    productsListQueryOptions,
-    useCreateProduct,
-    useDeleteProduct,
-    useRestoreProduct,
-    useUpdateProduct,
-} from "@/api/products.api";
-import { getProductColumns } from "@/components/products/products-columns";
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { Permission, hasPermission } from "@jahonbozor/schemas";
+
+import { hasPermission, Permission } from "@jahonbozor/schemas";
 import {
     AnimatePresence,
     Checkbox,
@@ -23,10 +13,20 @@ import {
     motion,
     PageTransition,
 } from "@jahonbozor/ui";
-import { useAuthStore } from "@/stores/auth.store";
-import { useHasPermission } from "@/hooks/use-permissions";
+
+import { categoriesListQueryOptions, useCreateCategory } from "@/api/categories.api";
+import {
+    productsListQueryOptions,
+    useCreateProduct,
+    useDeleteProduct,
+    useRestoreProduct,
+    useUpdateProduct,
+} from "@/api/products.api";
+import { getProductColumns } from "@/components/products/products-columns";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function ProductsPage() {
     const { t } = useTranslation("products");
@@ -43,9 +43,7 @@ function ProductsPage() {
         productsListQueryOptions({ limit: 100, includeDeleted }),
     );
 
-    const { data: categoriesData } = useQuery(
-        categoriesListQueryOptions({ limit: 100 }),
-    );
+    const { data: categoriesData } = useQuery(categoriesListQueryOptions({ limit: 100 }));
 
     const createProduct = useCreateProduct();
     const updateProduct = useUpdateProduct();
@@ -107,22 +105,15 @@ function ProductsPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (
-            data: Record<string, unknown>,
-            _rowId: string,
-            linkedId?: unknown,
-        ) => {
+        async (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
             // If already created, we can update any field individually
             if (linkedId) {
                 const body: Record<string, unknown> = {};
-                if (data.name) body.name = String(data.name);
+                if (data.name != null) body.name = String(data.name as string);
                 if (data.price !== undefined) body.price = Number(data.price);
-                if (data.costprice !== undefined)
-                    body.costprice = Number(data.costprice);
-                if (data.remaining !== undefined)
-                    body.remaining = Number(data.remaining);
-                if (data.category)
-                    body.categoryId = await resolveCategoryId(data.category);
+                if (data.costprice !== undefined) body.costprice = Number(data.costprice);
+                if (data.remaining !== undefined) body.remaining = Number(data.remaining);
+                if (data.category) body.categoryId = await resolveCategoryId(data.category);
 
                 const result = await updateProduct.mutateAsync({
                     id: linkedId as number,
@@ -138,7 +129,7 @@ function ProductsPage() {
 
             const categoryId = await resolveCategoryId(data.category);
             const result = await createProduct.mutateAsync({
-                name: String(data.name),
+                name: String(data.name as string),
                 price: Number(data.price),
                 costprice: Number(data.costprice) || 0,
                 categoryId,
@@ -152,15 +143,13 @@ function ProductsPage() {
     const isLoading = isProductsLoading || !isReady;
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+            <div className="mb-6 flex items-center justify-between">
                 <h1 className="text-2xl font-bold">{t("common:products")}</h1>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <Checkbox
                         checked={includeDeleted}
-                        onCheckedChange={(checked) =>
-                            setIncludeDeleted(checked === true)
-                        }
+                        onCheckedChange={(checked) => setIncludeDeleted(checked === true)}
                     />
                     {t("common:show_deleted")}
                 </label>
@@ -168,13 +157,24 @@ function ProductsPage() {
 
             <AnimatePresence mode="wait">
                 {isLoading ? (
-                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
                         <DataTableSkeleton columns={9} rows={10} className="flex-1" />
                     </motion.div>
                 ) : (
-                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
                         <DataTable
-                            className="flex-1 costprice-table"
+                            className="costprice-table flex-1"
                             columns={columns}
                             data={products}
                             pagination

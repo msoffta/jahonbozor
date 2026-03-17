@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const { mockMutate, mockNavigate } = vi.hoisted(() => ({
     mockMutate: vi.fn(),
@@ -6,7 +6,18 @@ const { mockMutate, mockNavigate } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-client", () => ({
-    api: { api: { public: { orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), { get: vi.fn(), post: vi.fn() }), auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } }, users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } } } } },
+    api: {
+        api: {
+            public: {
+                orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), {
+                    get: vi.fn(),
+                    post: vi.fn(),
+                }),
+                auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } },
+                users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } },
+            },
+        },
+    },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -31,7 +42,12 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@/api/orders.api", () => ({
-    orderKeys: { all: ["orders"], lists: () => ["orders", "list"], details: () => ["orders", "detail"], detail: (id: number) => ["orders", "detail", id] },
+    orderKeys: {
+        all: ["orders"],
+        lists: () => ["orders", "list"],
+        details: () => ["orders", "detail"],
+        detail: (id: number) => ["orders", "detail", id],
+    },
     ordersListOptions: (params: any) => ({ queryKey: ["orders", "list", params] }),
     orderDetailOptions: (id: number) => ({ queryKey: ["orders", "detail", id] }),
     useCreateOrder: () => ({ mutate: mockMutate, isPending: false }),
@@ -65,9 +81,11 @@ vi.mock("@jahonbozor/ui", async () => {
     return jahonbozorUIMock();
 });
 
-import { render, fireEvent } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
+
 import { useCartStore } from "@/stores/cart.store";
 import { useUIStore } from "@/stores/ui.store";
+
 import { Route } from "../_user/cart";
 
 const CartPage = (Route as any).component ?? (Route as any).options?.component;
@@ -173,7 +191,7 @@ describe("CartPage", () => {
         });
 
         const { container } = render(<CartPage />);
-        const input = container.querySelector("input[type='text'], input:not([type])") as HTMLInputElement;
+        const input = container.querySelector("input[type='text'], input:not([type])")!;
         expect(input).toBeDefined();
     });
 
@@ -197,7 +215,7 @@ describe("CartPage", () => {
         const { getByText } = render(<CartPage />);
         fireEvent.click(getByText("buy").closest("button")!);
 
-        const callArgs = mockMutate.mock.calls[0][0] as any;
+        const callArgs = mockMutate.mock.calls[0][0];
         expect(callArgs.paymentType).toBe("CREDIT_CARD");
         expect(callArgs.items).toHaveLength(1);
         expect(callArgs.items[0].productId).toBe(1);
@@ -214,7 +232,7 @@ describe("CartPage", () => {
         fireEvent.click(getByText("payment_cash"));
         fireEvent.click(getByText("buy").closest("button")!);
 
-        const callArgs = mockMutate.mock.calls[0][0] as any;
+        const callArgs = mockMutate.mock.calls[0][0];
         expect(callArgs.paymentType).toBe("CASH");
     });
 

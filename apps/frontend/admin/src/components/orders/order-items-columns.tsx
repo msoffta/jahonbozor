@@ -1,8 +1,10 @@
-import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
+import { Trash2 } from "lucide-react";
+
 import { Button, motion } from "@jahonbozor/ui";
+
+import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { Trash2 } from "lucide-react";
 
 export interface OrderItemRow {
     id: number;
@@ -64,11 +66,7 @@ export function getOrderItemColumns(
             size: 100,
             cell: ({ getValue }) => {
                 const price = getValue<number>();
-                return (
-                    <span className="font-medium">
-                        {price ? price.toLocaleString() : "—"}
-                    </span>
-                );
+                return <span className="font-medium">{price ? price.toLocaleString() : "—"}</span>;
             },
             meta: {
                 flex: 1,
@@ -127,14 +125,11 @@ export function getOrderItemColumns(
             size: 70,
             meta: { align: "center" as const },
             cell: ({ row }) => (
-                <motion.div
-                    whileTap={{ scale: 0.9 }}
-                    className="inline-flex justify-center w-full"
-                >
+                <motion.div whileTap={{ scale: 0.9 }} className="inline-flex w-full justify-center">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="text-muted-foreground hover:text-destructive h-8 w-8"
                         onClick={() => actions.onDelete!(row.index)}
                         title={t("action_delete")}
                     >

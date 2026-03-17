@@ -1,7 +1,10 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { ExpensesService } from "../expenses.service";
 
 // Mock expense data
@@ -66,7 +69,12 @@ const createTestApp = () => {
             return await ExpensesService.getExpense(Number(params.id), logger);
         })
         .post("/expenses", async ({ body, logger, requestId }) => {
-            const expenseData = body as { name: string; amount: number; description: string | null; expenseDate: string };
+            const expenseData = body as {
+                name: string;
+                amount: number;
+                description: string | null;
+                expenseDate: string;
+            };
             return await ExpensesService.createExpense(
                 { ...expenseData, expenseDate: new Date(expenseData.expenseDate) },
                 { staffId: mockUser.id, user: mockUser, requestId },
@@ -76,7 +84,12 @@ const createTestApp = () => {
         .patch("/expenses/:id", async ({ params, body, logger, requestId }) => {
             return await ExpensesService.updateExpense(
                 Number(params.id),
-                body as { name?: string; amount?: number; description?: string | null; expenseDate?: Date },
+                body as {
+                    name?: string;
+                    amount?: number;
+                    description?: string | null;
+                    expenseDate?: Date;
+                },
                 { staffId: mockUser.id, user: mockUser, requestId },
                 logger,
             );
@@ -134,9 +147,7 @@ describe("Expenses API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/expenses?searchQuery=Rent"),
-            );
+            await app.handle(new Request("http://localhost/expenses?searchQuery=Rent"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -155,9 +166,7 @@ describe("Expenses API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/expenses?staffId=2"),
-            );
+            await app.handle(new Request("http://localhost/expenses?staffId=2"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -197,9 +206,7 @@ describe("Expenses API Routes", () => {
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/expenses?includeDeleted=true"),
-            );
+            await app.handle(new Request("http://localhost/expenses?includeDeleted=true"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -218,9 +225,7 @@ describe("Expenses API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/expenses"),
-            );
+            const response = await app.handle(new Request("http://localhost/expenses"));
             const body = await response.json();
 
             // Assert
@@ -242,9 +247,7 @@ describe("Expenses API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/expenses/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/expenses/1"));
             const body = await response.json();
 
             // Assert
@@ -263,9 +266,7 @@ describe("Expenses API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/expenses/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/expenses/999"));
             const body = await response.json();
 
             // Assert
@@ -283,9 +284,7 @@ describe("Expenses API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/expenses/0"),
-            );
+            const response = await app.handle(new Request("http://localhost/expenses/0"));
             const body = await response.json();
 
             // Assert

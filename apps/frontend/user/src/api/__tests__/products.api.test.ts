@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 const mockProduct = {
     id: 1,
@@ -29,16 +29,20 @@ vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
-                products: Object.assign(
-                    (_params: { id: number }) => ({ get: mockDetailGet }),
-                    { get: mockGet },
-                ),
+                products: Object.assign((_params: { id: number }) => ({ get: mockDetailGet }), {
+                    get: mockGet,
+                }),
             },
         },
     },
 }));
 
-import { productKeys, productsListOptions, productsInfiniteOptions, productDetailOptions } from "../products.api";
+import {
+    productDetailOptions,
+    productKeys,
+    productsInfiniteOptions,
+    productsListOptions,
+} from "../products.api";
 
 describe("products.api", () => {
     describe("productKeys", () => {
@@ -115,7 +119,11 @@ describe("products.api", () => {
         test("should have correct queryKey with infinite flag", () => {
             const params = { limit: 20, searchQuery: "test" };
             const options = productsInfiniteOptions(params);
-            expect([...options.queryKey]).toEqual(["products", "list", { ...params, infinite: true }]);
+            expect([...options.queryKey]).toEqual([
+                "products",
+                "list",
+                { ...params, infinite: true },
+            ]);
         });
 
         test("should have initialPageParam of 1", () => {
@@ -141,21 +149,21 @@ describe("products.api", () => {
         test("getNextPageParam should return next page when more data exists", () => {
             const options = productsInfiniteOptions({ limit: 10 });
             const lastPage = { count: 30, products: [] };
-            const result = options.getNextPageParam!(lastPage as never, [] as never, 1, [] as never);
+            const result = options.getNextPageParam(lastPage as never, [] as never, 1, [] as never);
             expect(result).toBe(2);
         });
 
         test("getNextPageParam should return undefined on last page", () => {
             const options = productsInfiniteOptions({ limit: 10 });
             const lastPage = { count: 20, products: [] };
-            const result = options.getNextPageParam!(lastPage as never, [] as never, 2, [] as never);
+            const result = options.getNextPageParam(lastPage as never, [] as never, 2, [] as never);
             expect(result).toBeUndefined();
         });
 
         test("getNextPageParam should return undefined when exactly at boundary", () => {
             const options = productsInfiniteOptions({ limit: 20 });
             const lastPage = { count: 20, products: [] };
-            const result = options.getNextPageParam!(lastPage as never, [] as never, 1, [] as never);
+            const result = options.getNextPageParam(lastPage as never, [] as never, 1, [] as never);
             expect(result).toBeUndefined();
         });
 

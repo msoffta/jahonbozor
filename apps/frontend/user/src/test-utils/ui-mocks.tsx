@@ -75,14 +75,8 @@ export function filterDOMProps(props: Record<string, any>): Record<string, any> 
 const motionCache = new Map<string, any>();
 function getMotionComponent(prop: string) {
     if (!motionCache.has(prop)) {
-        motionCache.set(
-            prop,
-            ({ children, className, ...rest }: any) =>
-                createElement(
-                    prop,
-                    { className, ...filterDOMProps(rest) },
-                    children,
-                ),
+        motionCache.set(prop, ({ children, className, ...rest }: any) =>
+            createElement(prop, { className, ...filterDOMProps(rest) }, children),
         );
     }
     return motionCache.get(prop);
@@ -114,12 +108,20 @@ export const uiMocks = {
 
     // Badge
     Badge: ({ children, className, ...props }: any) => (
-        <span className={className} data-testid="badge" {...filterDOMProps(props)}>{children}</span>
+        <span className={className} data-testid="badge" {...filterDOMProps(props)}>
+            {children}
+        </span>
     ),
 
     // Button
     Button: ({ children, className, disabled, onClick, type, ...props }: any) => (
-        <button className={className} disabled={disabled} onClick={onClick} type={type || "button"} {...filterDOMProps(props)}>
+        <button
+            className={className}
+            disabled={disabled}
+            onClick={onClick}
+            type={type ?? "button"}
+            {...filterDOMProps(props)}
+        >
             {children}
         </button>
     ),
@@ -136,13 +138,17 @@ export const uiMocks = {
 
     // Avatar
     Avatar: ({ children, className, ...props }: any) => (
-        <div className={className} data-testid="avatar" {...filterDOMProps(props)}>{children}</div>
+        <div className={className} data-testid="avatar" {...filterDOMProps(props)}>
+            {children}
+        </div>
     ),
     AvatarImage: ({ src, alt, ...props }: any) => (
         <img src={src} alt={alt} data-testid="avatar-image" {...filterDOMProps(props)} />
     ),
     AvatarFallback: ({ children, className, ...props }: any) => (
-        <span className={className} data-testid="avatar-fallback" {...filterDOMProps(props)}>{children}</span>
+        <span className={className} data-testid="avatar-fallback" {...filterDOMProps(props)}>
+            {children}
+        </span>
     ),
 
     // Toaster
@@ -150,25 +156,38 @@ export const uiMocks = {
 
     // Drawer
     Drawer: ({ children, open }: any) => (open ? <div data-testid="drawer">{children}</div> : null),
+    DrawerContent: ({ children, className }: any) => (
+        <div className={className} data-testid="drawer-content">
+            {children}
+        </div>
+    ),
     DrawerHeader: ({ children, className }: any) => <div className={className}>{children}</div>,
     DrawerTitle: ({ children }: any) => <h2>{children}</h2>,
+    DrawerFooter: ({ children, className }: any) => (
+        <div className={className} data-testid="drawer-footer">
+            {children}
+        </div>
+    ),
 
     // Page-level motion components
     PageTransition: ({ children, className }: any) => (
-        <div className={className} data-testid="page-transition">{children}</div>
+        <div className={className} data-testid="page-transition">
+            {children}
+        </div>
     ),
     AnimatedList: ({ children, className }: any) => (
-        <div className={className} data-testid="animated-list">{children}</div>
+        <div className={className} data-testid="animated-list">
+            {children}
+        </div>
     ),
     AnimatedListItem: ({ children, className }: any) => (
-        <div className={className} data-testid="animated-list-item">{children}</div>
+        <div className={className} data-testid="animated-list-item">
+            {children}
+        </div>
     ),
 
     // Motion components
-    motion: new Proxy(
-        {},
-        { get: (_target: any, prop: string) => getMotionComponent(prop) },
-    ),
+    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
     AnimatePresence: ({ children }: any) => <>{children}</>,
 };
 

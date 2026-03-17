@@ -1,4 +1,5 @@
 import * as React from "react";
+
 import type { NewRowState } from "./types";
 
 /** Delay before triggering blur save — allows dropdowns/navigation to complete */
@@ -15,11 +16,9 @@ interface UseMultiRowStateOptions {
         values: Record<string, unknown>,
         rowId: string,
         linkedId?: unknown,
+        // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- intentional: documents sync or async return
     ) => unknown | Promise<unknown>;
-    onChange?: (
-        values: Record<string, unknown>,
-        rowId: string,
-    ) => Record<string, unknown> | void;
+    onChange?: (values: Record<string, unknown>, rowId: string) => Record<string, unknown> | void;
     onError?: (error: unknown, rowId: string) => void;
 }
 
@@ -71,9 +70,7 @@ export function useMultiRowState({
             }
 
             setRowStates((prev) =>
-                prev.map((row) =>
-                    row.id === rowId ? { ...row, values: updatedValues } : row,
-                ),
+                prev.map((row) => (row.id === rowId ? { ...row, values: updatedValues } : row)),
             );
         },
         [onChange],
@@ -134,9 +131,7 @@ export function useMultiRowState({
 
             savingRowsRef.current.add(rowId);
             setRowStates((prev) =>
-                prev.map((row) =>
-                    row.id === rowId ? { ...row, isSaving: true } : row,
-                ),
+                prev.map((row) => (row.id === rowId ? { ...row, isSaving: true } : row)),
             );
 
             const valuesToSave = { ...rowState.values };
@@ -179,9 +174,7 @@ export function useMultiRowState({
             } catch (error) {
                 onError?.(error, rowId);
                 setRowStates((prev) =>
-                    prev.map((row) =>
-                        row.id === rowId ? { ...row, isSaving: false } : row,
-                    ),
+                    prev.map((row) => (row.id === rowId ? { ...row, isSaving: false } : row)),
                 );
             } finally {
                 savingRowsRef.current.delete(rowId);
@@ -205,7 +198,7 @@ export function useMultiRowState({
 
                 const isNavigating = navigatingFromRowRef.current === rowId;
                 if (focusedRowIdRef.current !== rowId && !isNavigating) {
-                    handleSave(rowId);
+                    void handleSave(rowId);
                 }
 
                 if (navigatingFromRowRef.current === rowId) {
@@ -223,13 +216,12 @@ export function useMultiRowState({
                 const nextRow = rowStates[index + 1];
 
                 navigatingFromRowRef.current = rowId;
-                handleSave(rowId);
+                void handleSave(rowId);
 
                 setTimeout(() => {
                     const nextRowEl = document.getElementById(nextRow.id);
-                    const firstInput = nextRowEl?.querySelector(
-                        "input, button, select",
-                    ) as HTMLElement;
+                    const firstInput =
+                        nextRowEl?.querySelector<HTMLElement>("input, button, select");
                     firstInput?.focus();
                 }, 0);
             }
@@ -242,17 +234,14 @@ export function useMultiRowState({
             if (prev.length >= maxCount) return prev;
 
             const currentCount = prev.length;
-            const moreRows: NewRowState[] = Array.from(
-                { length: increment },
-                (_, index) => ({
-                    id: `__new_row_${Date.now()}_${currentCount + index}`,
-                    values:
-                        typeof defaultValues === "function"
-                            ? defaultValues(currentCount + index)
-                            : { ...defaultValues },
-                    errors: {},
-                }),
-            );
+            const moreRows: NewRowState[] = Array.from({ length: increment }, (_, index) => ({
+                id: `__new_row_${Date.now()}_${currentCount + index}`,
+                values:
+                    typeof defaultValues === "function"
+                        ? defaultValues(currentCount + index)
+                        : { ...defaultValues },
+                errors: {},
+            }));
             return [...prev, ...moreRows];
         });
     }, [maxCount, increment, defaultValues]);

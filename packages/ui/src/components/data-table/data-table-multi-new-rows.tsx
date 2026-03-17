@@ -1,9 +1,12 @@
-import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
-import type { NewRowState } from "./types";
+
 import { DataTableNewRow } from "./data-table-new-row";
 
+import type { NewRowState } from "./types";
+import type { ColumnDef } from "@tanstack/react-table";
+
 interface DataTableMultiNewRowsProps<TData> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TanStack Table ColumnDef requires `any` for heterogeneous column value types
     columns: ColumnDef<TData, any>[];
     rowStates: NewRowState[];
     onRowChange: (rowId: string, values: Record<string, unknown>) => void;
@@ -30,7 +33,7 @@ export function DataTableMultiNewRows<TData>({
 }: DataTableMultiNewRowsProps<TData>) {
     const sentinelRef = React.useRef<HTMLTableRowElement>(null);
 
-    // IntersectionObserver для lazy loading новых строк
+    // IntersectionObserver for lazy loading new rows
     React.useEffect(() => {
         if (!onNeedMoreRows) return;
 
@@ -69,12 +72,8 @@ export function DataTableMultiNewRows<TData>({
                 />
             ))}
 
-            {/* Sentinel элемент для IntersectionObserver */}
-            <tr
-                ref={sentinelRef}
-                style={{ height: 1, visibility: "hidden" }}
-                aria-hidden="true"
-            >
+            {/* Sentinel element for IntersectionObserver */}
+            <tr ref={sentinelRef} style={{ height: 1, visibility: "hidden" }} aria-hidden="true">
                 <td />
             </tr>
         </>

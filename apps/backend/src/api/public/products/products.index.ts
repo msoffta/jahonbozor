@@ -1,8 +1,15 @@
-import type { PublicProductsListResponse, PublicProductDetailResponse } from "@jahonbozor/schemas/src/products";
-import { ProductsPagination } from "@jahonbozor/schemas/src/products";
-import { requestContext } from "@backend/lib/request-context";
 import { Elysia, t } from "elysia";
+
+import { ProductsPagination } from "@jahonbozor/schemas/src/products";
+
+import { requestContext } from "@backend/lib/request-context";
+
 import { PublicProductsService } from "./products.service";
+
+import type {
+    PublicProductDetailResponse,
+    PublicProductsListResponse,
+} from "@jahonbozor/schemas/src/products";
 
 const productIdParams = t.Object({
     id: t.Numeric(),
@@ -12,12 +19,13 @@ export const publicProducts = new Elysia({ prefix: "/products" })
     .use(requestContext)
     .get(
         "/",
-        async ({ query, logger }): Promise<PublicProductsListResponse> => {
+        async ({ query, set, logger }): Promise<PublicProductsListResponse> => {
             try {
                 return await PublicProductsService.getAllProducts(query, logger);
             } catch (error) {
                 logger.error("Products: Unhandled error in GET /products", { error });
-                return { success: false, error };
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
             }
         },
         { query: ProductsPagination },
@@ -34,8 +42,12 @@ export const publicProducts = new Elysia({ prefix: "/products" })
 
                 return result;
             } catch (error) {
-                logger.error("Products: Unhandled error in GET /products/:id", { id: params.id, error });
-                return { success: false, error };
+                logger.error("Products: Unhandled error in GET /products/:id", {
+                    id: params.id,
+                    error,
+                });
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
             }
         },
         { params: productIdParams },

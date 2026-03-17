@@ -3,6 +3,7 @@
 > See [CLAUDE.md](../CLAUDE.md) for core project rules and quick reference.
 
 ## Quick Commands
+
 ```bash
 bun run test:backend                 # Run all backend tests
 bun run test:backend -- --watch      # Watch mode
@@ -10,6 +11,7 @@ bun run test:backend -- --coverage   # With coverage report
 ```
 
 ## Test Structure
+
 ```
 apps/backend/
 ├── test/
@@ -42,13 +44,13 @@ vi.mock("@backend/lib/prisma", () => ({ prisma: prismaMock }));
 
 ### Key Differences from Bun test
 
-| Bun test | Vitest | Benefit |
-|----------|--------|---------|
-| `mock()` | `vi.fn()` | Same API |
-| `mock.module()` | `vi.mock()` | **Hoisted automatically** — no import ordering |
-| `spyOn()` | `vi.spyOn()` | Same API |
-| `mock.restore()` | `vi.restoreAllMocks()` | Configurable in vitest.config.ts |
-| Global module cache | Per-file isolation | **Mocks don't leak between files** |
+| Bun test            | Vitest                 | Benefit                                        |
+| ------------------- | ---------------------- | ---------------------------------------------- |
+| `mock()`            | `vi.fn()`              | Same API                                       |
+| `mock.module()`     | `vi.mock()`            | **Hoisted automatically** — no import ordering |
+| `spyOn()`           | `vi.spyOn()`           | Same API                                       |
+| `mock.restore()`    | `vi.restoreAllMocks()` | Configurable in vitest.config.ts               |
+| Global module cache | Per-file isolation     | **Mocks don't leak between files**             |
 
 ## Prisma Mocking with mockDeep
 
@@ -146,9 +148,7 @@ describe("Users API", () => {
 
     test("GET /users", async () => {
         // URL must be fully qualified!
-        const response = await app.handle(
-            new Request("http://localhost/users")
-        );
+        const response = await app.handle(new Request("http://localhost/users"));
 
         expect(response.status).toBe(200);
         const body = await response.json();
@@ -175,12 +175,12 @@ test("should calculate total correctly", () => {
 ## Test Modifiers
 
 ```typescript
-test.skip("incomplete", () => {});        // Skip test
-test.todo("implement later");             // Mark as TODO
-test.only("debug this", () => {});        // Run only this test
+test.skip("incomplete", () => {}); // Skip test
+test.todo("implement later"); // Mark as TODO
+test.only("debug this", () => {}); // Run only this test
 
 test("timeout", () => {}, { timeout: 10000 }); // 10s timeout
-test("retry", () => {}, { retry: 3 });    // Retry up to 3 times
+test("retry", () => {}, { retry: 3 }); // Retry up to 3 times
 ```
 
 ## Parameterized Tests
@@ -202,12 +202,14 @@ test.each(cases)("add(%i, %i) = %i", (a, b, expected) => {
 Каждый тест должен покрывать **все** сценарии:
 
 **1. Happy Path (основной сценарий)**
+
 ```typescript
 test("should create user with valid data", async () => { ... });
 test("should return product by id", async () => { ... });
 ```
 
 **2. Edge Cases (граничные случаи)**
+
 ```typescript
 test("should handle empty array", async () => { ... });
 test("should handle maximum allowed value", async () => { ... });
@@ -217,6 +219,7 @@ test("should handle whitespace-only strings", async () => { ... });
 ```
 
 **3. Error Cases (ошибки)**
+
 ```typescript
 test("should return error when user not found", async () => { ... });
 test("should return error when database fails", async () => { ... });
@@ -226,6 +229,7 @@ test("should return 403 when permission denied", async () => { ... });
 ```
 
 **4. Boundary Conditions (пограничные значения)**
+
 ```typescript
 test("should handle id = 0", async () => { ... });
 test("should handle negative id", async () => { ... });
@@ -234,6 +238,7 @@ test("should handle special characters in input", async () => { ... });
 ```
 
 **5. State Transitions (изменения состояния)**
+
 ```typescript
 test("should handle already deleted record", async () => { ... });
 test("should handle concurrent updates", async () => { ... });
@@ -243,6 +248,7 @@ test("should handle restore of active record", async () => { ... });
 ## Checklist для каждого метода
 
 При написании тестов проверь:
+
 - [ ] Успешный сценарий работает
 - [ ] Возвращает ошибку при невалидных данных
 - [ ] Обрабатывает отсутствующие записи (404)
@@ -254,6 +260,7 @@ test("should handle restore of active record", async () => { ... });
 ## Best Practices
 
 **DO:**
+
 - Test behavior, not implementation
 - Use AAA pattern (Arrange-Act-Assert)
 - Group related tests with `describe`
@@ -263,6 +270,7 @@ test("should handle restore of active record", async () => { ... });
 - Use `mockDeep` for type-safe mocks
 
 **DON'T:**
+
 - Don't rely on test execution order
 - Don't leave `.only` in commits
 - Don't test internal implementation details
@@ -273,6 +281,7 @@ test("should handle restore of active record", async () => { ... });
 ## Note: $transaction Mock
 
 `prismaMock.$transaction` supports both modes:
+
 - **Callback**: `prisma.$transaction(async (tx) => { ... })`
 - **Array**: `prisma.$transaction([promise1, promise2])`
 
@@ -287,11 +296,11 @@ import { expectSuccess, expectFailure } from "@backend/test/setup";
 
 // Success case
 const success = expectSuccess(result);
-expect(success.data).toEqual(expected);  // TS knows data exists
+expect(success.data).toEqual(expected); // TS knows data exists
 
 // Failure case
 const failure = expectFailure(result);
-expect(failure.error).toBe("Error");     // TS knows error exists
+expect(failure.error).toBe("Error"); // TS knows error exists
 ```
 
 ## Testing Elysia Error Responses
@@ -309,8 +318,8 @@ test("should return 422 for invalid body", async () => {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${validToken}`,
             },
-            body: JSON.stringify({ name: "" }),  // fails min length
-        })
+            body: JSON.stringify({ name: "" }), // fails min length
+        }),
     );
     expect(response.status).toBe(422);
 });
@@ -322,9 +331,7 @@ When `authMiddleware` returns `status(401)` or `status(403)`, test the response 
 
 ```typescript
 test("should return 401 without bearer token", async () => {
-    const response = await app.handle(
-        new Request("http://localhost/api/private/products")
-    );
+    const response = await app.handle(new Request("http://localhost/api/private/products"));
     expect(response.status).toBe(401);
 });
 
@@ -334,7 +341,7 @@ test("should return 403 with insufficient permissions", async () => {
             headers: {
                 Authorization: `Bearer ${tokenWithoutPermissions}`,
             },
-        })
+        }),
     );
     expect(response.status).toBe(403);
 });
@@ -343,6 +350,7 @@ test("should return 403 with insufficient permissions", async () => {
 ### Testing onError Hook Behavior
 
 The global `onError` hook in `index.ts` handles uncaught exceptions. In endpoint tests, verify that:
+
 - `VALIDATION` errors (422) are returned to the client properly
 - `NOT_FOUND` (404) is silently ignored in logs
 - Unhandled errors are caught and logged as `error` level

@@ -1,0 +1,21 @@
+{
+  "order_history": "История",
+  "active_orders": "Активные",
+  "order_number": "Заказ #{{id}}",
+  "creation_date": "Дата создания",
+  "update_date": "Дата обновления",
+  "status": "Статус",
+  "status_new": "Новый",
+  "status_accepted": "Принят",
+  "status_cancelled": "Отменён",
+  "payment_method": "Способ оплаты",
+  "payment_cash": "Наличные",
+  "payment_card": "Карта",
+  "payment_debt": "Долг",
+  "cancel_order": "Отменить заказ",
+  "order_items": "Товары",
+  "order_comment": "Комментарий к заказу",
+  "confirm_cancel": "Подтвердить отмену",
+  "confirm_cancel_description": "Вы уверены, что хотите отменить этот заказ? Это действие нельзя отменить.",
+  "items_count": "{{count}} товар(ов)"
+}

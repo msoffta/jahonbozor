@@ -1,5 +1,5 @@
-import { describe, test, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
     useTranslation: () => ({
@@ -26,7 +26,11 @@ vi.mock("@jahonbozor/ui", async () => {
     const { uiMocks } = await import("@/test-utils/ui-mocks");
     return {
         ...uiMocks,
-        Badge: ({ children, ...props }: any) => <span data-testid="badge" {...props}>{children}</span>,
+        Badge: ({ children, ...props }: any) => (
+            <span data-testid="badge" {...props}>
+                {children}
+            </span>
+        ),
     };
 });
 
@@ -70,7 +74,9 @@ describe("OrderCard", () => {
     });
 
     test("should render credit card payment method", () => {
-        const { getByText } = render(<OrderCard {...{ ...defaultProps, paymentType: "CREDIT_CARD" }} />);
+        const { getByText } = render(
+            <OrderCard {...{ ...defaultProps, paymentType: "CREDIT_CARD" }} />,
+        );
         expect(getByText(/payment_card/)).toBeDefined();
     });
 
@@ -86,7 +92,9 @@ describe("OrderCard", () => {
     });
 
     test("should handle Date object for createdAt", () => {
-        const { getByText } = render(<OrderCard {...{ ...defaultProps, createdAt: new Date("2025-01-15T10:30:00.000Z") }} />);
+        const { getByText } = render(
+            <OrderCard {...{ ...defaultProps, createdAt: new Date("2025-01-15T10:30:00.000Z") }} />,
+        );
         expect(getByText(/2025/)).toBeDefined();
     });
 });

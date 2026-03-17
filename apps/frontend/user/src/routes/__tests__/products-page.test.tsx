@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const { mockProducts, mockCategories, mocks } = vi.hoisted(() => {
     const mockProducts = [
@@ -53,7 +53,9 @@ vi.mock("@tanstack/react-router", () => ({
     }),
     lazyRouteComponent: (component: any) => component,
     Link: ({ children, to, ...props }: any) => (
-        <a href={to} {...props}>{children}</a>
+        <a href={to} {...props}>
+            {children}
+        </a>
     ),
     useNavigate: () => vi.fn(),
 }));
@@ -66,14 +68,23 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/api/products.api", () => ({
-    productKeys: { all: ["products"], lists: () => ["products", "list"], details: () => ["products", "detail"], detail: (id: number) => ["products", "detail", id] },
+    productKeys: {
+        all: ["products"],
+        lists: () => ["products", "list"],
+        details: () => ["products", "detail"],
+        detail: (id: number) => ["products", "detail", id],
+    },
     productsListOptions: (params: any) => ({ queryKey: ["products", "list", params] }),
     productsInfiniteOptions: (params: any) => ({ queryKey: ["products", "list", params] }),
     productDetailOptions: (id: number) => ({ queryKey: ["products", "detail", id] }),
 }));
 
 vi.mock("@/api/categories.api", () => ({
-    categoryKeys: { all: ["categories"], list: () => ["categories", "list"], detail: (id: number) => ["categories", "detail", id] },
+    categoryKeys: {
+        all: ["categories"],
+        list: () => ["categories", "list"],
+        detail: (id: number) => ["categories", "detail", id],
+    },
     categoriesListOptions: () => ({ queryKey: ["categories", "list"] }),
 }));
 
@@ -118,6 +129,7 @@ vi.mock("@jahonbozor/ui", async () => {
 });
 
 import { render } from "@testing-library/react";
+
 import { Route } from "../_public/products/index";
 
 const ProductsPage = (Route as any).component ?? (Route as any).options?.component;

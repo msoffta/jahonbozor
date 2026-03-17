@@ -1,9 +1,16 @@
-import type { AuditLogsListResponse, AuditLogDetailResponse } from "@jahonbozor/schemas/src/audit-logs";
+import { Elysia, t } from "elysia";
+
 import { Permission } from "@jahonbozor/schemas";
 import { AuditLogPagination } from "@jahonbozor/schemas/src/audit-logs";
+
 import { authMiddleware } from "@backend/lib/middleware";
-import { Elysia, t } from "elysia";
+
 import { AuditLogService } from "./audit-logs.service";
+
+import type {
+    AuditLogDetailResponse,
+    AuditLogsListResponse,
+} from "@jahonbozor/schemas/src/audit-logs";
 
 const auditLogIdParams = t.Object({
     id: t.Numeric(),
@@ -50,10 +57,10 @@ export const auditLogs = new Elysia({ prefix: "/audit-logs" })
 
                 return result;
             } catch (error) {
-                logger.error(
-                    "AuditLog: Unhandled error in GET /audit-logs/:id",
-                    { id: params.id, error },
-                );
+                logger.error("AuditLog: Unhandled error in GET /audit-logs/:id", {
+                    id: params.id,
+                    error,
+                });
                 set.status = 500;
                 return { success: false, error };
             }
@@ -67,15 +74,12 @@ export const auditLogs = new Elysia({ prefix: "/audit-logs" })
         "/by-request/:requestId",
         async ({ params, set, logger }): Promise<AuditLogsListResponse> => {
             try {
-                return await AuditLogService.getByRequestId(
-                    params.requestId,
-                    logger,
-                );
+                return await AuditLogService.getByRequestId(params.requestId, logger);
             } catch (error) {
-                logger.error(
-                    "AuditLog: Unhandled error in GET /audit-logs/by-request/:requestId",
-                    { requestId: params.requestId, error },
-                );
+                logger.error("AuditLog: Unhandled error in GET /audit-logs/by-request/:requestId", {
+                    requestId: params.requestId,
+                    error,
+                });
                 set.status = 500;
                 return { success: false, error };
             }

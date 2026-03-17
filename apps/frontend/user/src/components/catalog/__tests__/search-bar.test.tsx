@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, act } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -75,13 +75,19 @@ describe("SearchBar", () => {
 
         const input = getByPlaceholderText("search");
         fireEvent.change(input, { target: { value: "t" } });
-        act(() => { vi.advanceTimersByTime(200); });
+        act(() => {
+            vi.advanceTimersByTime(200);
+        });
         fireEvent.change(input, { target: { value: "te" } });
-        act(() => { vi.advanceTimersByTime(200); });
+        act(() => {
+            vi.advanceTimersByTime(200);
+        });
         fireEvent.change(input, { target: { value: "tes" } });
 
         // Only the last value should be called after full 300ms
-        act(() => { vi.advanceTimersByTime(300); });
+        act(() => {
+            vi.advanceTimersByTime(300);
+        });
         expect(onChange).toHaveBeenLastCalledWith("tes");
     });
 
@@ -89,7 +95,9 @@ describe("SearchBar", () => {
         const onChange = vi.fn();
         render(<SearchBar onChange={onChange} />);
 
-        act(() => { vi.advanceTimersByTime(300); });
+        act(() => {
+            vi.advanceTimersByTime(300);
+        });
         expect(onChange).toHaveBeenCalledWith("");
     });
 });

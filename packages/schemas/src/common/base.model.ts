@@ -19,6 +19,7 @@ export const ReturnSchema = z.discriminatedUnion("success", [
     }),
 ]);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ReturnSchema<T = Record<string, any> | null> =
     | { success: true; data: T }
     | { success: false; error: unknown };

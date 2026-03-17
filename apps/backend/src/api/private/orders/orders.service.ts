@@ -1,25 +1,20 @@
-import type { Prisma } from "@backend/generated/prisma/client";
+import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
+
 import { auditInTransaction } from "@backend/lib/audit";
 import { prisma } from "@backend/lib/prisma";
 import { createOrderSnapshot } from "@backend/lib/snapshots";
+
+import type { Prisma } from "@backend/generated/prisma/client";
+import type { ServiceContext } from "@backend/lib/audit";
 import type { Logger } from "@jahonbozor/logger";
-import { Permission, hasAnyPermission, type Token } from "@jahonbozor/schemas";
 import type {
     AdminOrderDeleteResponse,
     AdminOrderDetailResponse,
     AdminOrdersListResponse,
-} from "@jahonbozor/schemas/src/orders";
-import {
     CreateOrderBody,
     OrdersPagination,
     UpdateOrderBody,
 } from "@jahonbozor/schemas/src/orders";
-
-interface ServiceContext {
-    staffId: number;
-    user: Token;
-    requestId?: string;
-}
 
 export abstract class OrdersService {
     static async getAllOrders(
@@ -42,14 +37,13 @@ export abstract class OrdersService {
                 minItemsCount,
             } = query;
 
-            const canListAll = hasAnyPermission(permissions, [
-                Permission.ORDERS_LIST_ALL,
-            ]);
+            const canListAll = hasAnyPermission(permissions, [Permission.ORDERS_LIST_ALL]);
 
             const whereClause: Prisma.OrderWhereInput = {
+                deletedAt: null,
                 ...(paymentType && { paymentType }),
                 ...(status && { status }),
-                ...((dateFrom || dateTo) && {
+                ...((dateFrom ?? dateTo) && {
                     createdAt: {
                         ...(dateFrom && { gte: dateFrom }),
                         ...(dateTo && { lte: dateTo }),
@@ -93,7 +87,11 @@ export abstract class OrdersService {
                 });
                 const orderIds = orderGroups.map((g) => g.orderId);
                 // Merge with existing id filter if present
-                if (whereClause.id && typeof whereClause.id !== "number" && "in" in whereClause.id) {
+                if (
+                    whereClause.id &&
+                    typeof whereClause.id !== "number" &&
+                    "in" in whereClause.id
+                ) {
                     const existingIds = whereClause.id.in as number[];
                     whereClause.id = {
                         in: existingIds.filter((id) => orderIds.includes(id)),
@@ -167,7 +165,7 @@ export abstract class OrdersService {
     ): Promise<AdminOrderDetailResponse> {
         try {
             const order = await prisma.order.findUnique({
-                where: { id: orderId },
+                where: { id: orderId, deletedAt: null },
                 include: {
                     items: {
                         include: {
@@ -192,9 +190,7 @@ export abstract class OrdersService {
                 return { success: false, error: "Order not found" };
             }
 
-            const canReadAll = hasAnyPermission(permissions, [
-                Permission.ORDERS_READ_ALL,
-            ]);
+            const canReadAll = hasAnyPermission(permissions, [Permission.ORDERS_READ_ALL]);
             if (!canReadAll && order.staffId !== staffId) {
                 logger.warn("Orders: Insufficient permissions to read order", {
                     orderId,
@@ -243,9 +239,7 @@ export abstract class OrdersService {
 
             if (products.length !== productIds.length) {
                 const foundIds = products.map((product) => product.id);
-                const missingIds = productIds.filter(
-                    (id) => !foundIds.includes(id),
-                );
+                const missingIds = productIds.filter((id) => !foundIds.includes(id));
                 logger.warn("Orders: Products not found or deleted", {
                     missingIds,
                 });
@@ -256,16 +250,14 @@ export abstract class OrdersService {
             }
 
             // All productIds are guaranteed to exist in the map (validated by length check above)
-            const productMap = new Map(
-                products.map((product) => [product.id, product]),
-            );
+            const productMap = new Map(products.map((product) => [product.id, product]));
 
-            const insufficientStock: Array<{
+            const insufficientStock: {
                 productId: number;
                 productName: string;
                 requested: number;
                 available: number;
-            }> = [];
+            }[] = [];
             for (const item of orderData.items) {
                 const product = productMap.get(item.productId)!;
                 if (product.remaining < item.quantity) {
@@ -308,9 +300,7 @@ export abstract class OrdersService {
                                     productId: item.productId,
                                     quantity: item.quantity,
                                     price: product.price,
-                                    data:
-                                        (item.data as Prisma.JsonObject) ??
-                                        null,
+                                    data: (item.data as Prisma.JsonObject) ?? null,
                                 };
                             }),
                         },
@@ -418,85 +408,75 @@ export abstract class OrdersService {
                 return { success: false, error: "Order not found" };
             }
 
-            const canUpdateAll = hasAnyPermission(permissions, [
-                Permission.ORDERS_UPDATE_ALL,
-            ]);
+            const canUpdateAll = hasAnyPermission(permissions, [Permission.ORDERS_UPDATE_ALL]);
             if (!canUpdateAll && existingOrder.staffId !== staffId) {
-                logger.warn(
-                    "Orders: Insufficient permissions to update order",
-                    {
-                        orderId,
-                        staffId,
-                        orderStaffId: existingOrder.staffId,
-                    },
-                );
+                logger.warn("Orders: Insufficient permissions to update order", {
+                    orderId,
+                    staffId,
+                    orderStaffId: existingOrder.staffId,
+                });
                 return { success: false, error: "Forbidden" };
             }
 
-            const isStatusChange =
-                orderData.status && orderData.status !== existingOrder.status;
-            const auditAction = isStatusChange
-                ? "ORDER_STATUS_CHANGE"
-                : "UPDATE";
+            const isStatusChange = orderData.status && orderData.status !== existingOrder.status;
+            const auditAction = isStatusChange ? "ORDER_STATUS_CHANGE" : "UPDATE";
 
-            const [updatedOrder] = await prisma.$transaction(
-                async (transaction) => {
-                    const order = await transaction.order.update({
-                        where: { id: orderId },
-                        data: {
-                            ...(orderData.paymentType && {
-                                paymentType: orderData.paymentType,
-                            }),
-                            ...(orderData.status && {
-                                status: orderData.status,
-                            }),
-                            ...(orderData.comment !== undefined && {
-                                comment: orderData.comment,
-                            }),
-                            ...(orderData.data && {
-                                data: orderData.data as Prisma.JsonObject,
-                            }),
-                        },
-                        include: {
-                            items: {
-                                include: {
-                                    product: {
-                                        select: {
-                                            id: true,
-                                            name: true,
-                                            price: true,
-                                            remaining: true,
-                                            costprice: true,
-                                        },
+            const [updatedOrder] = await prisma.$transaction(async (transaction) => {
+                const order = await transaction.order.update({
+                    where: { id: orderId },
+                    data: {
+                        ...(orderData.paymentType && {
+                            paymentType: orderData.paymentType,
+                        }),
+                        ...(orderData.status && {
+                            status: orderData.status,
+                        }),
+                        ...(orderData.comment !== undefined && {
+                            comment: orderData.comment,
+                        }),
+                        ...(orderData.data && {
+                            data: orderData.data as Prisma.JsonObject,
+                        }),
+                    },
+                    include: {
+                        items: {
+                            include: {
+                                product: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        price: true,
+                                        remaining: true,
+                                        costprice: true,
                                     },
                                 },
                             },
-                            user: {
-                                select: {
-                                    id: true,
-                                    fullname: true,
-                                    phone: true,
-                                },
+                        },
+                        user: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                phone: true,
                             },
-                            staff: { select: { id: true, fullname: true } },
                         },
-                    });
+                        staff: { select: { id: true, fullname: true } },
+                    },
+                });
 
-                    await auditInTransaction(
-                        transaction,
-                        { requestId, user, logger },
-                        {
-                            entityType: "order",
-                            entityId: orderId,
-                            action: auditAction,
-                            previousData: createOrderSnapshot(existingOrder),
-                            newData: createOrderSnapshot(order),
-                        },
-                    );
+                await auditInTransaction(
+                    transaction,
+                    { requestId, user, logger },
+                    {
+                        entityType: "order",
+                        entityId: orderId,
+                        action: auditAction,
+                        previousData: createOrderSnapshot(existingOrder),
+                        newData: createOrderSnapshot(order),
+                    },
+                );
 
-                    return [order];
-                },
-            );
+                return [order];
+            });
 
             logger.info("Orders: Order updated", { orderId, staffId });
             const mapped = {
@@ -527,7 +507,7 @@ export abstract class OrdersService {
             const { staffId, user, requestId } = context;
 
             const existingOrder = await prisma.order.findUnique({
-                where: { id: orderId },
+                where: { id: orderId, deletedAt: null },
                 include: {
                     items: {
                         include: {
@@ -573,12 +553,9 @@ export abstract class OrdersService {
                     }
                 }
 
-                await transaction.orderItem.deleteMany({
-                    where: { orderId },
-                });
-
-                await transaction.order.delete({
+                await transaction.order.update({
                     where: { id: orderId },
+                    data: { deletedAt: new Date() },
                 });
 
                 await auditInTransaction(
@@ -602,6 +579,91 @@ export abstract class OrdersService {
             return { success: true, data: { orderId, deleted: true } };
         } catch (error) {
             logger.error("Orders: Error in deleteOrder", { orderId, error });
+            return { success: false, error };
+        }
+    }
+
+    static async restoreOrder(
+        orderId: number,
+        context: ServiceContext,
+        logger: Logger,
+    ): Promise<AdminOrderDeleteResponse> {
+        try {
+            const { staffId, user, requestId } = context;
+
+            const existingOrder = await prisma.order.findFirst({
+                where: { id: orderId, deletedAt: { not: null } },
+                include: {
+                    items: {
+                        include: {
+                            product: {
+                                select: {
+                                    id: true,
+                                    remaining: true,
+                                    deletedAt: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            if (!existingOrder) {
+                logger.warn("Orders: Order not found for restore", { orderId });
+                return { success: false, error: "Order not found" };
+            }
+
+            await prisma.$transaction(async (transaction) => {
+                for (const item of existingOrder.items) {
+                    if (!item.product.deletedAt) {
+                        const previousRemaining = item.product.remaining;
+                        const newRemaining = previousRemaining - item.quantity;
+
+                        await transaction.product.update({
+                            where: { id: item.productId },
+                            data: { remaining: { decrement: item.quantity } },
+                        });
+
+                        await transaction.productHistory.create({
+                            data: {
+                                productId: item.productId,
+                                staffId,
+                                operation: "INVENTORY_REMOVE",
+                                quantity: item.quantity,
+                                previousData: { remaining: previousRemaining },
+                                newData: { remaining: newRemaining },
+                                changeReason: `Order #${orderId} restored`,
+                            },
+                        });
+                    }
+                }
+
+                await transaction.order.update({
+                    where: { id: orderId },
+                    data: { deletedAt: null },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId, user, logger },
+                    {
+                        entityType: "order",
+                        entityId: orderId,
+                        action: "RESTORE",
+                        newData: createOrderSnapshot(existingOrder),
+                    },
+                );
+            });
+
+            logger.info("Orders: Order restored and stock deducted", {
+                orderId,
+                itemsDeducted: existingOrder.items.length,
+                staffId,
+            });
+
+            return { success: true, data: { orderId, deleted: false } };
+        } catch (error) {
+            logger.error("Orders: Error in restoreOrder", { orderId, error });
             return { success: false, error };
         }
     }

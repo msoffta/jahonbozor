@@ -1,38 +1,55 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { ClipboardList } from "lucide-react";
+
+import {
+    AnimatedList,
+    AnimatedListItem,
+    AnimatePresence,
+    cn,
+    motion,
+    PageTransition,
+    Skeleton,
+} from "@jahonbozor/ui";
+
 import { ordersListOptions } from "@/api/orders.api";
 import { OrderCard } from "@/components/orders/order-card";
-import { Skeleton, cn, PageTransition, motion, AnimatePresence, AnimatedList, AnimatedListItem } from "@jahonbozor/ui";
 
 interface OrdersSearch {
     tab?: "active" | "history";
 }
 
 function OrdersPage() {
-    const { t } = useTranslation();
+    const { t } = useTranslation("orders");
     const { tab: initialTab } = Route.useSearch();
     const [activeTab, setActiveTab] = useState<"active" | "history">(initialTab ?? "active");
 
-    const status = activeTab === "active" ? "NEW" as const : undefined;
-    const { data, isLoading } = useQuery(ordersListOptions({ status }));
+    const { data: activeData, isLoading: activeLoading } = useQuery(
+        ordersListOptions({ status: "NEW" }),
+    );
+    const { data: historyData, isLoading: historyLoading } = useQuery(ordersListOptions({}));
 
-    const orders = activeTab === "active"
-        ? (data?.orders ?? [])
-        : (data?.orders ?? []).filter((order) => order.status !== "NEW");
+    const orders =
+        activeTab === "active"
+            ? (activeData?.orders ?? [])
+            : (historyData?.orders ?? []).filter((order) => order.status !== "NEW");
+    const isLoading = activeTab === "active" ? activeLoading : historyLoading;
 
     return (
         <PageTransition>
-            <div className="flex border-b">
+            <div className="flex border-b" role="tablist">
                 <motion.button
                     type="button"
+                    role="tab"
+                    aria-selected={activeTab === "active"}
                     onClick={() => setActiveTab("active")}
                     className={cn(
                         "flex-1 py-3 text-center text-sm font-medium transition-colors",
                         activeTab === "active"
-                            ? "border-b-2 border-primary text-primary"
+                            ? "border-primary text-primary border-b-2"
                             : "text-muted-foreground",
                     )}
                     whileTap={{ scale: 0.97 }}
@@ -42,11 +59,13 @@ function OrdersPage() {
                 </motion.button>
                 <motion.button
                     type="button"
+                    role="tab"
+                    aria-selected={activeTab === "history"}
                     onClick={() => setActiveTab("history")}
                     className={cn(
                         "flex-1 py-3 text-center text-sm font-medium transition-colors",
                         activeTab === "history"
-                            ? "border-b-2 border-primary text-primary"
+                            ? "border-primary text-primary border-b-2"
                             : "text-muted-foreground",
                     )}
                     whileTap={{ scale: 0.97 }}
@@ -79,8 +98,8 @@ function OrdersPage() {
                         exit={{ opacity: 0, y: -10 }}
                         className="flex flex-col items-center justify-center px-4 py-16"
                     >
-                        <ClipboardList className="h-16 w-16 text-muted-foreground" />
-                        <p className="mt-4 text-muted-foreground">{t("no_data")}</p>
+                        <ClipboardList className="text-muted-foreground h-16 w-16" />
+                        <p className="text-muted-foreground mt-4">{t("no_data")}</p>
                     </motion.div>
                 )}
 
@@ -109,4 +128,7 @@ export const Route = createFileRoute("/_user/orders/")({
     validateSearch: (search: Record<string, unknown>): OrdersSearch => ({
         tab: search.tab === "history" ? "history" : "active",
     }),
+    loader: ({ context }) => {
+        void context.queryClient.ensureQueryData(ordersListOptions({ status: "NEW" }));
+    },
 });

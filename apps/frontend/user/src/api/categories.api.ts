@@ -1,6 +1,9 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { PublicCategoryItem } from "@jahonbozor/schemas/src/categories";
+
 import { api } from "@/lib/api-client";
+import { unwrap } from "@/lib/eden-utils";
+
+import type { PublicCategoryItem } from "@jahonbozor/schemas/src/categories";
 
 export const categoryKeys = {
     all: ["categories"] as const,
@@ -11,11 +14,7 @@ export const categoryKeys = {
 export const categoriesListOptions = () =>
     queryOptions({
         queryKey: categoryKeys.list(),
-        queryFn: async (): Promise<{ categories: PublicCategoryItem[] }> => {
-            const { data, error } = await api.api.public.categories.get();
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data;
-        },
+        queryFn: async (): Promise<{ categories: PublicCategoryItem[] }> =>
+            unwrap(await api.api.public.categories.get()),
         staleTime: 1000 * 60 * 30,
     });

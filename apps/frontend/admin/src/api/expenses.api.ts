@@ -1,7 +1,11 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
-import { api } from "@/api/client";
+
 import { toast } from "@jahonbozor/ui";
+
+import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
+import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
 
 export const expenseKeys = {
     all: ["expenses"] as const,
@@ -46,14 +50,28 @@ export const expenseDetailQueryOptions = (id: number) =>
 
 // --- Mutation functions (exported for testing) ---
 
-export const createExpenseFn = async (body: { name: string; amount: number; description: string | null; expenseDate: string }) => {
+export const createExpenseFn = async (body: {
+    name: string;
+    amount: number;
+    description: string | null;
+    expenseDate: string;
+}) => {
     const { data, error } = await api.api.private.expenses.post(body);
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
     return data.data as ExpenseItem;
 };
 
-export const updateExpenseFn = async ({ id, ...body }: { id: number; name?: string; amount?: number; description?: string | null; expenseDate?: string }) => {
+export const updateExpenseFn = async ({
+    id,
+    ...body
+}: {
+    id: number;
+    name?: string;
+    amount?: number;
+    description?: string | null;
+    expenseDate?: string;
+}) => {
     const { data, error } = await api.api.private.expenses({ id }).patch(body);
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
@@ -85,7 +103,7 @@ export const useCreateExpense = () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -99,7 +117,7 @@ export const useUpdateExpense = () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -113,7 +131,7 @@ export const useDeleteExpense = () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -127,7 +145,7 @@ export const useRestoreExpense = () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };

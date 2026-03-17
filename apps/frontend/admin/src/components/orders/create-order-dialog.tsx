@@ -1,21 +1,21 @@
-import { clientsListQueryOptions } from "@/api/clients.api";
-import { AnimatePresence, Input, motion } from "@jahonbozor/ui";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { createPortal } from "react-dom";
+
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, User, UserPlus, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { useTranslation } from "react-i18next";
+
+import { AnimatePresence, Input, motion } from "@jahonbozor/ui";
+
+import { clientsListQueryOptions } from "@/api/clients.api";
 
 interface CreateOrderDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
-export function CreateOrderDialog({
-    open,
-    onOpenChange,
-}: CreateOrderDialogProps) {
+export function CreateOrderDialog({ open, onOpenChange }: CreateOrderDialogProps) {
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState("");
@@ -31,8 +31,7 @@ export function CreateOrderDialog({
         const query = searchQuery.toLowerCase();
         return clients.filter(
             (client) =>
-                client.fullname.toLowerCase().includes(query) ||
-                (client.phone && client.phone.includes(query)),
+                client.fullname.toLowerCase().includes(query) || client.phone?.includes(query),
         );
     }, [clients, searchQuery]);
 
@@ -53,12 +52,12 @@ export function CreateOrderDialog({
 
     function handleCreateNewClient() {
         handleClose();
-        navigate({ to: "/users", search: { new: true } });
+        void navigate({ to: "/users", search: { new: true } });
     }
 
     function handleSelectClient(userId: number) {
         handleClose();
-        navigate({ to: "/orders/new", search: { userId } });
+        void navigate({ to: "/orders/new", search: { userId } });
     }
 
     return createPortal(
@@ -75,7 +74,7 @@ export function CreateOrderDialog({
                         onClick={handleClose}
                     >
                         <motion.div
-                            className="relative w-full max-w-md rounded-2xl bg-background shadow-xl"
+                            className="bg-background relative w-full max-w-md rounded-2xl shadow-xl"
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
@@ -89,17 +88,15 @@ export function CreateOrderDialog({
                             {/* Header */}
                             <div className="flex items-center justify-between px-5 pt-5 pb-2">
                                 <div>
-                                    <h2 className="text-lg font-semibold">
-                                        {t("select_client")}
-                                    </h2>
-                                    <p className="text-sm text-muted-foreground">
+                                    <h2 className="text-lg font-semibold">{t("select_client")}</h2>
+                                    <p className="text-muted-foreground text-sm">
                                         {t("select_client_description")}
                                     </p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={handleClose}
-                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                    className="text-muted-foreground hover:text-foreground hover:bg-accent flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
                                 >
                                     <X className="h-4 w-4" />
                                 </button>
@@ -108,13 +105,11 @@ export function CreateOrderDialog({
                             {/* Search */}
                             <div className="px-5 pb-3">
                                 <div className="relative">
-                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                                     <Input
                                         placeholder={t("search_client")}
                                         value={searchQuery}
-                                        onChange={(event) =>
-                                            setSearchQuery(event.target.value)
-                                        }
+                                        onChange={(event) => setSearchQuery(event.target.value)}
                                         className="pl-9"
                                         autoFocus
                                     />
@@ -122,13 +117,11 @@ export function CreateOrderDialog({
                             </div>
 
                             {/* Client list */}
-                            <div
-                                className="flex flex-col gap-1 overflow-y-auto px-5 pb-5 max-h-[50vh]"
-                            >
+                            <div className="flex max-h-[50vh] flex-col gap-1 overflow-y-auto px-5 pb-5">
                                 {/* Create new client */}
                                 <motion.button
                                     type="button"
-                                    className="flex items-center gap-3 rounded-lg border-2 border-dashed border-primary/30 px-4 py-3 text-left transition-colors hover:border-primary hover:bg-primary/5"
+                                    className="border-primary/30 hover:border-primary hover:bg-primary/5 flex items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3 text-left transition-colors"
                                     onClick={handleCreateNewClient}
                                     whileTap={{ scale: 0.98 }}
                                     transition={{
@@ -137,10 +130,10 @@ export function CreateOrderDialog({
                                         damping: 17,
                                     }}
                                 >
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                    <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full">
                                         <UserPlus className="h-4 w-4" />
                                     </div>
-                                    <span className="font-medium text-primary">
+                                    <span className="text-primary font-medium">
                                         {t("create_new_client")}
                                     </span>
                                 </motion.button>
@@ -148,7 +141,7 @@ export function CreateOrderDialog({
                                 {/* Loading */}
                                 {isLoading ? (
                                     <div className="flex items-center justify-center py-8">
-                                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                        <div className="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
                                     </div>
                                 ) : (
                                     <AnimatePresence mode="popLayout">
@@ -156,12 +149,8 @@ export function CreateOrderDialog({
                                             <motion.button
                                                 key={client.id}
                                                 type="button"
-                                                className="flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors hover:bg-accent"
-                                                onClick={() =>
-                                                    handleSelectClient(
-                                                        client.id,
-                                                    )
-                                                }
+                                                className="hover:bg-accent flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors"
+                                                onClick={() => handleSelectClient(client.id)}
                                                 initial={{ opacity: 0, y: 8 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: -8 }}
@@ -173,7 +162,7 @@ export function CreateOrderDialog({
                                                 }}
                                                 layout
                                             >
-                                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                                                <div className="bg-muted text-muted-foreground flex h-9 w-9 items-center justify-center rounded-full">
                                                     <User className="h-4 w-4" />
                                                 </div>
                                                 <div className="flex flex-col">
@@ -181,19 +170,18 @@ export function CreateOrderDialog({
                                                         {client.fullname}
                                                     </span>
                                                     {client.phone && (
-                                                        <span className="text-xs text-muted-foreground">
+                                                        <span className="text-muted-foreground text-xs">
                                                             {client.phone}
                                                         </span>
                                                     )}
                                                 </div>
                                             </motion.button>
                                         ))}
-                                        {filtered.length === 0 &&
-                                            !isLoading && (
-                                                <p className="py-6 text-center text-sm text-muted-foreground">
-                                                    {t("lists_empty")}
-                                                </p>
-                                            )}
+                                        {filtered.length === 0 && !isLoading && (
+                                            <p className="text-muted-foreground py-6 text-center text-sm">
+                                                {t("lists_empty")}
+                                            </p>
+                                        )}
                                     </AnimatePresence>
                                 )}
                             </div>

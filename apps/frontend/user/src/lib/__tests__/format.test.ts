@@ -1,5 +1,6 @@
-import { describe, test, expect } from "vitest";
-import { formatPrice, formatDate, getLocaleCode } from "../format";
+import { describe, expect, test } from "vitest";
+
+import { formatDate, formatPrice, getLocaleCode } from "../format";
 
 describe("getLocaleCode", () => {
     test("should return uz-UZ for uz locale", () => {

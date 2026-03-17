@@ -1,17 +1,16 @@
-import { api } from "@/api/client";
-import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
-import {
-    queryOptions,
-    useMutation,
-    useQueryClient,
-} from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { toast } from "@jahonbozor/ui";
+
+import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
+import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 
 export const orderKeys = {
     all: ["orders"] as const,
     lists: () => [...orderKeys.all, "list"] as const,
-    list: (params?: Record<string, unknown>) =>
-        [...orderKeys.lists(), params] as const,
+    list: (params?: Record<string, unknown>) => [...orderKeys.lists(), params] as const,
     details: () => [...orderKeys.all, "detail"] as const,
     detail: (id: number) => [...orderKeys.details(), id] as const,
 };
@@ -99,7 +98,7 @@ export function useCreateOrder() {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 }
@@ -112,7 +111,7 @@ export function useUpdateOrder() {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 }
@@ -125,7 +124,7 @@ export function useDeleteOrder() {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 }

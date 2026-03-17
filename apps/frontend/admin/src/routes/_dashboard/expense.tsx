@@ -1,16 +1,31 @@
-import { useState, useMemo, useCallback } from "react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import dayjs from "dayjs";
-import { Permission, hasPermission } from "@jahonbozor/schemas";
-import { AnimatePresence, PageTransition, DataTable, DataTableSkeleton, Checkbox, motion } from "@jahonbozor/ui";
-import { expensesListQueryOptions, useCreateExpense, useUpdateExpense, useDeleteExpense, useRestoreExpense } from "@/api/expenses.api";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
+import { hasPermission, Permission } from "@jahonbozor/schemas";
+import {
+    AnimatePresence,
+    Checkbox,
+    DataTable,
+    DataTableSkeleton,
+    motion,
+    PageTransition,
+} from "@jahonbozor/ui";
+
+import {
+    expensesListQueryOptions,
+    useCreateExpense,
+    useDeleteExpense,
+    useRestoreExpense,
+    useUpdateExpense,
+} from "@/api/expenses.api";
 import { getExpenseColumns } from "@/components/expenses/expenses-columns";
-import { useAuthStore } from "@/stores/auth.store";
-import { useHasPermission } from "@/hooks/use-permissions";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function ExpensePage() {
     const { t } = useTranslation("expenses");
@@ -34,10 +49,13 @@ function ExpensePage() {
 
     const isLoading = isExpensesLoading || !isReady;
 
-    const actions = useMemo(() => ({
-        onDelete: (id: number) => deleteExpense.mutate(id),
-        onRestore: (id: number) => restoreExpense.mutate(id),
-    }), [deleteExpense, restoreExpense]);
+    const actions = useMemo(
+        () => ({
+            onDelete: (id: number) => deleteExpense.mutate(id),
+            onRestore: (id: number) => restoreExpense.mutate(id),
+        }),
+        [deleteExpense, restoreExpense],
+    );
 
     const columns = useMemo(
         () => getExpenseColumns(t, actions, { canDelete }),
@@ -60,23 +78,17 @@ function ExpensePage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (
-            data: Record<string, unknown>,
-            _rowId: string,
-            linkedId?: unknown,
-        ) => {
+        async (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
             // If already linked, update any field
             if (linkedId) {
                 const result = await updateExpense.mutateAsync({
                     id: linkedId as number,
-                    name: data.name ? String(data.name) : undefined,
+                    name: data.name != null ? String(data.name as string) : undefined,
                     amount: data.amount ? Number(data.amount) : undefined,
-                    description: data.description
-                        ? String(data.description)
-                        : undefined,
-                    expenseDate: data.expenseDate
-                        ? String(data.expenseDate)
-                        : undefined,
+                    description:
+                        data.description != null ? String(data.description as string) : undefined,
+                    expenseDate:
+                        data.expenseDate != null ? String(data.expenseDate as string) : undefined,
                 });
                 return result?.id;
             }
@@ -87,26 +99,31 @@ function ExpensePage() {
             }
 
             const result = await createExpense.mutateAsync({
-                name: String(data.name),
+                name: String(data.name as string),
                 amount: Number(data.amount),
-                description: data.description ? String(data.description) : null,
-                expenseDate: String(data.expenseDate) || dayjs().toISOString(),
+                description: data.description != null ? String(data.description as string) : null,
+                expenseDate:
+                    data.expenseDate != null
+                        ? String(data.expenseDate as string)
+                        : new Date().toISOString(),
             });
             return result?.id;
         },
         [createExpense, updateExpense],
     );
 
-
-    const multiRowDefaultValues = useMemo(() => ({
-        expenseDate: dayjs().toISOString()
-    }), []);
+    const multiRowDefaultValues = useMemo(
+        () => ({
+            expenseDate: new Date().toISOString(),
+        }),
+        [],
+    );
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+            <div className="mb-6 flex items-center justify-between">
                 <h1 className="text-2xl font-bold">{t("title")}</h1>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <Checkbox
                         checked={includeDeleted}
                         onCheckedChange={(checked) => setIncludeDeleted(checked === true)}
@@ -117,11 +134,22 @@ function ExpensePage() {
 
             <AnimatePresence mode="wait">
                 {isLoading ? (
-                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
                         <DataTableSkeleton columns={9} rows={10} className="flex-1" />
                     </motion.div>
                 ) : (
-                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
                         <DataTable
                             className="flex-1"
                             columns={columns}

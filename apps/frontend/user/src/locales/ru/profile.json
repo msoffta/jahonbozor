@@ -1,0 +1,12 @@
+{
+  "edit_profile": "Редактировать профиль",
+  "change_language": "Сменить язык",
+  "registered": "Дата регистрации",
+  "notification": "Уведомления",
+  "logout": "Выйти",
+  "uzbek": "Узбекский",
+  "russian": "Русский",
+  "login": "Войти",
+  "login_telegram": "Войти через Telegram",
+  "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME не настроен"
+}

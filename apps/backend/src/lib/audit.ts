@@ -1,11 +1,12 @@
+import { prisma } from "@backend/lib/prisma";
+
+import type { Prisma } from "@backend/generated/prisma/client";
+import type {
+    ActorType as ActorTypeEnum,
+    AuditAction as AuditActionType,
+} from "@backend/generated/prisma/enums";
 import type { Logger } from "@jahonbozor/logger";
 import type { Token } from "@jahonbozor/schemas";
-import type {
-    AuditAction as AuditActionType,
-    ActorType as ActorTypeEnum,
-} from "@backend/generated/prisma/enums";
-import type { Prisma } from "@backend/generated/prisma/client";
-import { prisma } from "@backend/lib/prisma";
 
 type TransactionClient = Prisma.TransactionClient;
 type InputJsonValue = Prisma.InputJsonValue;
@@ -16,6 +17,12 @@ export interface AuditContext {
     logger: Logger;
     ipAddress?: string;
     userAgent?: string;
+}
+
+export interface ServiceContext {
+    staffId: number;
+    user: Token;
+    requestId?: string;
 }
 
 interface AuditParams {
@@ -71,10 +78,7 @@ export async function auditInTransaction(
     }
 }
 
-export async function audit(
-    context: AuditContext,
-    params: AuditParams,
-): Promise<void> {
+export async function audit(context: AuditContext, params: AuditParams): Promise<void> {
     const { requestId, user, logger, ipAddress, userAgent } = context;
 
     try {

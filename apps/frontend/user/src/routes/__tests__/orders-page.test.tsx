@@ -1,21 +1,39 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-    ordersData: undefined as {
-        count: number;
-        orders: Array<{
-            id: number;
-            status: string;
-            paymentType: string;
-            createdAt: string;
-            items: Array<{ id: number; quantity: number; price: number; product: { name: string } }>;
-        }>;
-    } | undefined,
+    ordersData: undefined as
+        | {
+              count: number;
+              orders: {
+                  id: number;
+                  status: string;
+                  paymentType: string;
+                  createdAt: string;
+                  items: {
+                      id: number;
+                      quantity: number;
+                      price: number;
+                      product: { name: string };
+                  }[];
+              }[];
+          }
+        | undefined,
     isLoading: false,
 }));
 
 vi.mock("@/lib/api-client", () => ({
-    api: { api: { public: { orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), { get: vi.fn(), post: vi.fn() }), auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } }, users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } } } } },
+    api: {
+        api: {
+            public: {
+                orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), {
+                    get: vi.fn(),
+                    post: vi.fn(),
+                }),
+                auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } },
+                users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } },
+            },
+        },
+    },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -40,7 +58,13 @@ vi.mock("@tanstack/react-query", () => ({
         data: mocks.ordersData,
         isLoading: mocks.isLoading,
     }),
-    useInfiniteQuery: () => ({ data: undefined, isLoading: false, isFetchingNextPage: false, hasNextPage: false, fetchNextPage: vi.fn() }),
+    useInfiniteQuery: () => ({
+        data: undefined,
+        isLoading: false,
+        isFetchingNextPage: false,
+        hasNextPage: false,
+        fetchNextPage: vi.fn(),
+    }),
     useMutation: () => ({ mutate: vi.fn(), isPending: false }),
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
     queryOptions: (opts: any) => opts,
@@ -57,7 +81,12 @@ vi.mock("@jahonbozor/ui", async () => {
 });
 
 vi.mock("@/api/orders.api", () => ({
-    orderKeys: { all: ["orders"], lists: () => ["orders", "list"], details: () => ["orders", "detail"], detail: (id: number) => ["orders", "detail", id] },
+    orderKeys: {
+        all: ["orders"],
+        lists: () => ["orders", "list"],
+        details: () => ["orders", "detail"],
+        detail: (id: number) => ["orders", "detail", id],
+    },
     ordersListOptions: (params: any) => ({ queryKey: ["orders", params] }),
     orderDetailOptions: (id: number) => ({ queryKey: ["orders", "detail", id] }),
     useCreateOrder: () => ({ mutate: vi.fn(), isPending: false }),
@@ -66,11 +95,14 @@ vi.mock("@/api/orders.api", () => ({
 
 vi.mock("@/components/orders/order-card", () => ({
     OrderCard: ({ id, status }: any) => (
-        <div data-testid={`order-card-${id}`}>Order #{id} - {status}</div>
+        <div data-testid={`order-card-${id}`}>
+            Order #{id} - {status}
+        </div>
     ),
 }));
 
 import { render } from "@testing-library/react";
+
 import { Route } from "../_user/orders/index";
 
 const OrdersPage = (Route as any).component ?? (Route as any).options?.component;

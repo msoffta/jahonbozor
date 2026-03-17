@@ -1,8 +1,12 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import { beforeEach, describe, expect, test } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { AuditLogService } from "../audit-logs.service";
+
 import type { AuditLog } from "@backend/generated/prisma/client";
 
 // Mock audit log data
@@ -51,10 +55,7 @@ const createTestApp = () => {
     return new Elysia()
         .derive(() => ({
             user: mockStaffToken,
-            permissions: [
-                Permission.AUDIT_LOGS_LIST,
-                Permission.AUDIT_LOGS_READ,
-            ],
+            permissions: [Permission.AUDIT_LOGS_LIST, Permission.AUDIT_LOGS_READ],
             logger: mockLogger,
             requestId: "test-request-id",
         }))
@@ -68,7 +69,18 @@ const createTestApp = () => {
                     entityId: query.entityId ? Number(query.entityId) : undefined,
                     actorId: query.actorId ? Number(query.actorId) : undefined,
                     actorType: query.actorType as "STAFF" | "USER" | "SYSTEM" | undefined,
-                    action: query.action as "CREATE" | "UPDATE" | "DELETE" | "RESTORE" | "LOGIN" | "LOGOUT" | "PASSWORD_CHANGE" | "PERMISSION_CHANGE" | "ORDER_STATUS_CHANGE" | "INVENTORY_ADJUST" | undefined,
+                    action: query.action as
+                        | "CREATE"
+                        | "UPDATE"
+                        | "DELETE"
+                        | "RESTORE"
+                        | "LOGIN"
+                        | "LOGOUT"
+                        | "PASSWORD_CHANGE"
+                        | "PERMISSION_CHANGE"
+                        | "ORDER_STATUS_CHANGE"
+                        | "INVENTORY_ADJUST"
+                        | undefined,
                     requestId: query.requestId as string | undefined,
                     dateFrom: query.dateFrom as string | undefined,
                     dateTo: query.dateTo as string | undefined,
@@ -215,9 +227,7 @@ describe("AuditLogs API Endpoints", () => {
             prismaMock.auditLog.findUnique.mockResolvedValue(mockAuditLog);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/audit-logs/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/audit-logs/1"));
 
             // Assert
             expect(response.status).toBe(200);
@@ -232,9 +242,7 @@ describe("AuditLogs API Endpoints", () => {
             prismaMock.auditLog.findUnique.mockResolvedValue(null);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/audit-logs/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/audit-logs/999"));
 
             // Assert
             expect(response.status).toBe(404);
@@ -316,9 +324,7 @@ describe("AuditLogs API Endpoints", () => {
         test("GET /audit-logs/:id with id=0 should return 404", async () => {
             prismaMock.auditLog.findUnique.mockResolvedValue(null);
 
-            const response = await app.handle(
-                new Request("http://localhost/audit-logs/0"),
-            );
+            const response = await app.handle(new Request("http://localhost/audit-logs/0"));
 
             expect(response.status).toBe(404);
             const body = await response.json();
@@ -343,7 +349,9 @@ describe("AuditLogs API Endpoints", () => {
             prismaMock.$transaction.mockResolvedValue([1, [mockAuditLog]]);
 
             const response = await app.handle(
-                new Request("http://localhost/audit-logs?entityType=product&entityId=100&actorId=10&actorType=STAFF&action=CREATE&requestId=req-123&dateFrom=2024-01-01&dateTo=2024-12-31"),
+                new Request(
+                    "http://localhost/audit-logs?entityType=product&entityId=100&actorId=10&actorType=STAFF&action=CREATE&requestId=req-123&dateFrom=2024-01-01&dateTo=2024-12-31",
+                ),
             );
 
             expect(response.status).toBe(200);
@@ -355,9 +363,7 @@ describe("AuditLogs API Endpoints", () => {
         test("GET /audit-logs with empty results should return empty list", async () => {
             prismaMock.$transaction.mockResolvedValue([0, []]);
 
-            const response = await app.handle(
-                new Request("http://localhost/audit-logs"),
-            );
+            const response = await app.handle(new Request("http://localhost/audit-logs"));
 
             expect(response.status).toBe(200);
             const body = await response.json();

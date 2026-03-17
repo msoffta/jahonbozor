@@ -1,22 +1,31 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const { mockNavigate, mockLogoutMutate, mockUpdateLanguageMutate, mocks } = vi.hoisted(() => ({
     mockNavigate: vi.fn(),
     mockLogoutMutate: vi.fn(),
     mockUpdateLanguageMutate: vi.fn(),
     mocks: {
-        profileData: undefined as {
-            fullname: string;
-            username?: string;
-            photo?: string | null;
-            createdAt?: string;
-            telegramId?: string | number;
-        } | undefined,
+        profileData: undefined as
+            | {
+                  fullname: string;
+                  username?: string;
+                  photo?: string | null;
+                  createdAt?: string;
+                  telegramId?: string | number;
+              }
+            | undefined,
     },
 }));
 
 vi.mock("@/lib/api-client", () => ({
-    api: { api: { public: { auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } }, users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } } } } },
+    api: {
+        api: {
+            public: {
+                auth: { me: { get: vi.fn() }, logout: { post: vi.fn() } },
+                users: { telegram: { post: vi.fn() }, language: { put: vi.fn() } },
+            },
+        },
+    },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -39,7 +48,13 @@ vi.mock("@tanstack/react-query", () => ({
         data: mocks.profileData,
         isLoading: false,
     }),
-    useInfiniteQuery: () => ({ data: undefined, isLoading: false, isFetchingNextPage: false, hasNextPage: false, fetchNextPage: vi.fn() }),
+    useInfiniteQuery: () => ({
+        data: undefined,
+        isLoading: false,
+        isFetchingNextPage: false,
+        hasNextPage: false,
+        fetchNextPage: vi.fn(),
+    }),
     useMutation: () => ({ mutate: vi.fn(), isPending: false }),
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
     queryOptions: (opts: any) => opts,
@@ -58,6 +73,9 @@ vi.mock("@jahonbozor/ui", async () => {
 vi.mock("@/api/auth.api", () => ({
     authKeys: { me: ["auth", "me"] },
     profileOptions: () => ({ queryKey: ["auth", "me"] }),
+}));
+
+vi.mock("@/hooks/use-auth", () => ({
     useTelegramLogin: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
     useLogout: () => ({
         mutate: mockLogoutMutate,
@@ -73,9 +91,11 @@ vi.mock("@/lib/format", () => ({
     formatDate: (date: string, locale: string) => new Date(date).toLocaleDateString(locale),
 }));
 
-import { render, fireEvent } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
+
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
+
 import { Route } from "../_user/profile";
 
 const ProfilePage = (Route as any).component ?? (Route as any).options?.component;

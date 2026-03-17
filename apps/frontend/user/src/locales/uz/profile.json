@@ -1,0 +1,12 @@
+{
+  "edit_profile": "Profilni tahrirlash",
+  "change_language": "Tilni o'zgartirish",
+  "registered": "Ro'yxatdan o'tgan",
+  "notification": "Bildirishnomalar",
+  "logout": "Chiqish",
+  "uzbek": "O'zbekcha",
+  "russian": "Ruscha",
+  "login": "Kirish",
+  "login_telegram": "Telegram orqali kirish",
+  "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME sozlanmagan"
+}

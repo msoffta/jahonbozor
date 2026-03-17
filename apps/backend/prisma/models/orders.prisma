@@ -19,6 +19,7 @@ model Order {
   status      OrderStatus @default(NEW)
   comment     String?
   data        Json
+  deletedAt   DateTime?
 
   user  Users? @relation(fields: [userId], references: [id], onDelete: SetNull)
   staff Staff? @relation(fields: [staffId], references: [id], onDelete: SetNull)
@@ -29,6 +30,7 @@ model Order {
   @@index([userId])
   @@index([staffId])
   @@index([status])
+  @@index([deletedAt])
 }
 
 model OrderItem {

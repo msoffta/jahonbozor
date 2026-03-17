@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
+
 import { useAuthStore } from "../auth.store";
 
 describe("Auth Store", () => {
@@ -8,7 +9,14 @@ describe("Auth Store", () => {
 
     describe("login", () => {
         test("should set token, user, and isAuthenticated", () => {
-            const user = { id: 1, name: "Test", telegramId: "123", phone: null, language: "uz" as const, type: "user" as const };
+            const user = {
+                id: 1,
+                name: "Test",
+                telegramId: "123",
+                phone: null,
+                language: "uz" as const,
+                type: "user" as const,
+            };
             useAuthStore.getState().login("jwt-token", user);
 
             const state = useAuthStore.getState();
@@ -20,7 +28,14 @@ describe("Auth Store", () => {
 
     describe("logout", () => {
         test("should clear all auth state", () => {
-            const user = { id: 1, name: "Test", telegramId: "123", phone: null, language: "uz" as const, type: "user" as const };
+            const user = {
+                id: 1,
+                name: "Test",
+                telegramId: "123",
+                phone: null,
+                language: "uz" as const,
+                type: "user" as const,
+            };
             useAuthStore.getState().login("jwt-token", user);
             useAuthStore.getState().logout();
 
@@ -42,7 +57,14 @@ describe("Auth Store", () => {
 
     describe("setUser", () => {
         test("should update user only", () => {
-            const user = { id: 1, name: "Test", telegramId: "123", phone: null, language: "uz" as const, type: "user" as const };
+            const user = {
+                id: 1,
+                name: "Test",
+                telegramId: "123",
+                phone: null,
+                language: "uz" as const,
+                type: "user" as const,
+            };
             useAuthStore.getState().setUser(user);
 
             expect(useAuthStore.getState().user).toEqual(user);

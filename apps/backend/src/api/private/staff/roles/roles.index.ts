@@ -1,9 +1,13 @@
-import type { RolesListResponse, RoleDetailResponse } from "@jahonbozor/schemas/src/roles";
+import { Elysia, t } from "elysia";
+
 import { Permission } from "@jahonbozor/schemas";
 import { CreateRoleBody, UpdateRoleBody } from "@jahonbozor/schemas/src/roles";
+
 import { authMiddleware } from "@backend/lib/middleware";
-import { Elysia, t } from "elysia";
+
 import { RolesService } from "./roles.service";
+
+import type { RoleDetailResponse, RolesListResponse } from "@jahonbozor/schemas/src/roles";
 
 const roleIdParams = t.Object({
     id: t.Numeric(),
@@ -105,7 +109,10 @@ export const roles = new Elysia()
 
                 return result;
             } catch (error) {
-                logger.error("Roles: Unhandled error in PATCH /roles/:id", { id: params.id, error });
+                logger.error("Roles: Unhandled error in PATCH /roles/:id", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -131,7 +138,46 @@ export const roles = new Elysia()
 
                 return result;
             } catch (error) {
-                logger.error("Roles: Unhandled error in DELETE /roles/:id", { id: params.id, error });
+                logger.error("Roles: Unhandled error in DELETE /roles/:id", {
+                    id: params.id,
+                    error,
+                });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.ROLES_DELETE],
+            params: roleIdParams,
+        },
+    )
+    .post(
+        "/roles/:id/restore",
+        async ({ params, user, set, logger, requestId }): Promise<RoleDetailResponse> => {
+            try {
+                const result = await RolesService.restoreRole(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    const error = typeof result.error === "string" ? result.error : "";
+                    if (error.includes("not found")) {
+                        set.status = 404;
+                    } else if (error.includes("not deleted")) {
+                        set.status = 400;
+                    } else {
+                        set.status = 500;
+                    }
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Roles: Unhandled error in POST /roles/:id/restore", {
+                    id: params.id,
+                    error,
+                });
+                set.status = 500;
                 return { success: false, error };
             }
         },

@@ -1,10 +1,13 @@
-import type { Table } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, Check } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import * as React from "react";
+
+import { Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+
 import { Button } from "../ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+
 import type { DataTableTranslations } from "./types";
-import * as React from "react";
+import type { Table } from "@tanstack/react-table";
 
 /** Duration to show "copied" checkmark after clipboard copy */
 const COPIED_FEEDBACK_MS = 2000;
@@ -46,14 +49,15 @@ export function DataTablePagination<TData>({
 
     return (
         <div className="flex items-center justify-between px-2 py-4">
-            <div className="flex items-center gap-4 flex-1">
+            <div className="flex flex-1 items-center gap-4">
                 {enableRowSelection && (
-                    <div className="text-sm text-muted-foreground">
-                        {table.getFilteredSelectedRowModel().rows.length} / {table.getFilteredRowModel().rows.length}{" "}
+                    <div className="text-muted-foreground text-sm">
+                        {table.getFilteredSelectedRowModel().rows.length} /{" "}
+                        {table.getFilteredRowModel().rows.length}{" "}
                         {translations?.rowsSelected ?? "selected"}
                     </div>
                 )}
-                
+
                 <AnimatePresence>
                     {dragSumInfo && (
                         <motion.div
@@ -61,24 +65,24 @@ export function DataTablePagination<TData>({
                             animate={{ opacity: 1, scale: 1, x: 0 }}
                             exit={{ opacity: 0, scale: 0.95, x: -10 }}
                             transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-1.5 text-sm"
+                            className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
                         >
                             <span className="text-muted-foreground">
                                 {translations?.sumLabel ?? "Sum"} ({dragSumInfo.count}):
                             </span>
-                            <span className="font-semibold text-foreground">
+                            <span className="text-foreground font-semibold">
                                 {dragSumInfo.sum.toLocaleString()}
                             </span>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 ml-1 hover:bg-muted"
-                                onClick={handleCopySum}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hover:bg-muted ml-1 h-6 w-6"
+                                onClick={() => void handleCopySum()}
                             >
                                 {copied ? (
-                                    <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-500" />
+                                    <Check className="text-success h-3.5 w-3.5" />
                                 ) : (
-                                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <Copy className="text-muted-foreground h-3.5 w-3.5" />
                                 )}
                             </Button>
                         </motion.div>
@@ -86,10 +90,12 @@ export function DataTablePagination<TData>({
                 </AnimatePresence>
             </div>
 
-            <div className="flex items-center gap-6 lg:gap-8 ml-auto">
+            <div className="ml-auto flex items-center gap-6 lg:gap-8">
                 {/* Page size selector */}
                 <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{translations?.rowsPerPage ?? "Rows per page"}</p>
+                    <p className="text-sm font-medium">
+                        {translations?.rowsPerPage ?? "Rows per page"}
+                    </p>
                     <Select
                         value={isShowAll ? "all" : String(table.getState().pagination.pageSize)}
                         onValueChange={(value) => {
@@ -102,7 +108,9 @@ export function DataTablePagination<TData>({
                         }}
                     >
                         <SelectTrigger className="h-8 w-17.5">
-                            <SelectValue placeholder={String(table.getState().pagination.pageSize)} />
+                            <SelectValue
+                                placeholder={String(table.getState().pagination.pageSize)}
+                            />
                         </SelectTrigger>
                         <SelectContent side="top">
                             {pageSizeOptions.map((pageSize) => (
@@ -111,7 +119,9 @@ export function DataTablePagination<TData>({
                                 </SelectItem>
                             ))}
                             {enableShowAll && (
-                                <SelectItem value="all">{translations?.showAll ?? "All"}</SelectItem>
+                                <SelectItem value="all">
+                                    {translations?.showAll ?? "All"}
+                                </SelectItem>
                             )}
                         </SelectContent>
                     </Select>

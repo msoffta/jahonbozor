@@ -1,12 +1,13 @@
-import { describe, test, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
 
-vi.mock("motion/react", async () =>
-    (await import("../../data-table/__tests__/test-helpers")).motionMock,
+vi.mock(
+    "motion/react",
+    async () => (await import("../../data-table/__tests__/test-helpers")).motionMock,
 );
 
-import { FadeIn } from "../fade-in";
 import { AnimatedList, AnimatedListItem } from "../animated-list";
+import { FadeIn } from "../fade-in";
 import { PageTransition } from "../page-transition";
 
 // ── FadeIn ──────────────────────────────────────────────────────

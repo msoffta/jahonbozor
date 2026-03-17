@@ -1,23 +1,27 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useForm } from "@tanstack/react-form";
+
+import { CreateStaffBody, CreateStaffForm } from "@jahonbozor/schemas";
 import {
+    Button,
     Drawer,
     DrawerContent,
+    DrawerFooter,
     DrawerHeader,
     DrawerTitle,
-    DrawerFooter,
-    Button,
     Input,
     Select,
-    SelectTrigger,
-    SelectValue,
     SelectContent,
     SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@jahonbozor/ui";
-import { useForm } from "@tanstack/react-form";
-import { CreateStaffBody, CreateStaffForm } from "@jahonbozor/schemas";
-import { useTranslation } from "react-i18next";
+
 import { FieldError } from "@/components/forms/field-error";
+
 import type { RoleItem } from "@jahonbozor/schemas/src/roles";
-import { useState } from "react";
 
 interface CreateStaffDialogProps {
     open: boolean;
@@ -72,7 +76,7 @@ export function CreateStaffDialog({
                     onSubmit={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        form.handleSubmit();
+                        void form.handleSubmit();
                     }}
                     className="space-y-5 px-6 py-4"
                 >
@@ -83,15 +87,13 @@ export function CreateStaffDialog({
                         }}
                         children={(field) => (
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-foreground/70 px-0.5 block">
+                                <label className="text-foreground/70 block px-0.5 text-sm font-semibold">
                                     {t("staff_fullname")}
                                 </label>
                                 <Input
                                     value={field.state.value}
                                     onBlur={field.handleBlur}
-                                    onChange={(e) =>
-                                        field.handleChange(e.target.value)
-                                    }
+                                    onChange={(e) => field.handleChange(e.target.value)}
                                     placeholder={t("staff_fullname_placeholder")}
                                 />
                                 <FieldError field={field} />
@@ -106,15 +108,13 @@ export function CreateStaffDialog({
                         }}
                         children={(field) => (
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-foreground/70 px-0.5 block">
+                                <label className="text-foreground/70 block px-0.5 text-sm font-semibold">
                                     {t("staff_username")}
                                 </label>
                                 <Input
                                     value={field.state.value}
                                     onBlur={field.handleBlur}
-                                    onChange={(e) =>
-                                        field.handleChange(e.target.value)
-                                    }
+                                    onChange={(e) => field.handleChange(e.target.value)}
                                     placeholder="ivan_v"
                                 />
                                 <FieldError field={field} />
@@ -129,16 +129,14 @@ export function CreateStaffDialog({
                         }}
                         children={(field) => (
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-foreground/70 px-0.5 block">
+                                <label className="text-foreground/70 block px-0.5 text-sm font-semibold">
                                     {t("staff_password")}
                                 </label>
                                 <Input
                                     type="password"
                                     value={field.state.value}
                                     onBlur={field.handleBlur}
-                                    onChange={(e) =>
-                                        field.handleChange(e.target.value)
-                                    }
+                                    onChange={(e) => field.handleChange(e.target.value)}
                                     placeholder="••••••••"
                                 />
                                 <FieldError field={field} />
@@ -153,20 +151,16 @@ export function CreateStaffDialog({
                         }}
                         children={(field) => (
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-foreground/70 px-0.5 block">
+                                <label className="text-foreground/70 block px-0.5 text-sm font-semibold">
                                     {t("staff_role")}
                                 </label>
                                 <Select
                                     value={String(field.state.value || "")}
-                                    onValueChange={(val) =>
-                                        field.handleChange(Number(val))
-                                    }
+                                    onValueChange={(val) => field.handleChange(Number(val))}
                                 >
                                     <SelectTrigger>
                                         <SelectValue
-                                            placeholder={t(
-                                                "settings:select_role",
-                                            )}
+                                            placeholder={t("settings:select_role")}
                                         ></SelectValue>
                                     </SelectTrigger>
 
@@ -176,8 +170,7 @@ export function CreateStaffDialog({
                                                 key={role.id}
                                                 value={String(role.id)}
                                                 disabled={
-                                                    getRoleWeight(role.id) >
-                                                    currentUserRoleWeight
+                                                    getRoleWeight(role.id) > currentUserRoleWeight
                                                 }
                                             >
                                                 {role.name}
@@ -191,7 +184,7 @@ export function CreateStaffDialog({
                     />
 
                     <DrawerFooter className="px-0 pt-6">
-                        <div className="flex gap-3 w-full">
+                        <div className="flex w-full gap-3">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -202,10 +195,7 @@ export function CreateStaffDialog({
                                 {t("common:cancel")}
                             </Button>
                             <form.Subscribe
-                                selector={(state) => [
-                                    state.canSubmit,
-                                    state.isSubmitting,
-                                ]}
+                                selector={(state) => [state.canSubmit, state.isSubmitting]}
                                 children={([_canSubmit, isSubmitting]) => (
                                     <Button
                                         type="submit"

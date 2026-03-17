@@ -1,35 +1,20 @@
-import type { AdminUsersListResponse, AdminUserDetailResponse } from "@jahonbozor/schemas/src/users";
-import {
-    CreateUserBody,
-    UpdateUserBody,
-    TelegramAuthBody,
-    UsersPagination,
-} from "@jahonbozor/schemas/src/users";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import type { Prisma } from "@backend/generated/prisma/client";
-import { prisma } from "@backend/lib/prisma";
-import { auditInTransaction } from "@backend/lib/audit";
-import type { UsersModel } from "@backend/generated/prisma/models/Users";
 import crypto from "crypto";
 
-interface AuditContext {
-    staffId: number;
-    user: Token;
-    requestId?: string;
-}
+import { auditInTransaction } from "@backend/lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import { createUserSnapshot } from "@backend/lib/snapshots";
 
-function createUserSnapshot(user: UsersModel) {
-    return {
-        id: user.id,
-        fullname: user.fullname,
-        username: user.username,
-        phone: user.phone,
-        photo: user.photo,
-        telegramId: user.telegramId,
-        language: user.language,
-    };
-}
+import type { Prisma } from "@backend/generated/prisma/client";
+import type { ServiceContext } from "@backend/lib/audit";
+import type { Logger } from "@jahonbozor/logger";
+import type {
+    AdminUserDetailResponse,
+    AdminUsersListResponse,
+    CreateUserBody,
+    TelegramAuthBody,
+    UpdateUserBody,
+    UsersPagination,
+} from "@jahonbozor/schemas/src/users";
 
 export abstract class UsersService {
     static async getAllUsers(
@@ -95,7 +80,7 @@ export abstract class UsersService {
 
     static async createUser(
         userData: CreateUserBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminUserDetailResponse> {
         try {
@@ -129,7 +114,7 @@ export abstract class UsersService {
     static async updateUser(
         userId: number,
         userData: UpdateUserBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminUserDetailResponse> {
         try {
@@ -178,7 +163,7 @@ export abstract class UsersService {
 
     static async deleteUser(
         userId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminUserDetailResponse> {
         try {
@@ -226,7 +211,7 @@ export abstract class UsersService {
 
     static async restoreUser(
         userId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminUserDetailResponse> {
         try {
@@ -283,17 +268,16 @@ export abstract class UsersService {
             .map(([key, value]) => `${key}=${value}`)
             .join("\n");
 
-        const secretKey = crypto
-            .createHash("sha256")
-            .update(botToken)
-            .digest();
+        const secretKey = crypto.createHash("sha256").update(botToken).digest();
 
         const computedHash = crypto
             .createHmac("sha256", secretKey)
             .update(dataCheckString)
             .digest("hex");
 
-        return computedHash === hash;
+        if (computedHash.length !== hash.length) return false;
+
+        return crypto.timingSafeEqual(Buffer.from(computedHash, "hex"), Buffer.from(hash, "hex"));
     }
 
     // Public method for Telegram authentication вЂ” creates or updates user without staff context
@@ -321,7 +305,7 @@ export abstract class UsersService {
                         where: { id: existingUserByTelegram.id },
                         data: {
                             fullname,
-                            username: telegramData.username || existingUserByTelegram.username,
+                            username: telegramData.username ?? existingUserByTelegram.username,
                             photo: telegramData.photo_url,
                             ...(language ? { language } : {}),
                             deletedAt: null, // Restore if was deleted
@@ -361,7 +345,7 @@ export abstract class UsersService {
                             data: {
                                 telegramId: telegramData.id,
                                 fullname,
-                                username: telegramData.username || existingUserByPhone.username,
+                                username: telegramData.username ?? existingUserByPhone.username,
                                 photo: telegramData.photo_url,
                                 ...(language ? { language } : {}),
                                 deletedAt: null, // Restore if was deleted
@@ -396,10 +380,10 @@ export abstract class UsersService {
                     data: {
                         telegramId: telegramData.id,
                         fullname,
-                        username: telegramData.username || telegramData.id,
-                        phone: phone || null,
+                        username: telegramData.username ?? telegramData.id,
+                        phone: phone ?? null,
                         photo: telegramData.photo_url,
-                        language: language || "uz",
+                        language: language ?? "uz",
                     },
                 });
 
@@ -423,7 +407,10 @@ export abstract class UsersService {
             });
             return { success: true, data: newUser };
         } catch (error) {
-            logger.error("Users: Error in createOrUpdateFromTelegram", { telegramId: telegramData.id, error });
+            logger.error("Users: Error in createOrUpdateFromTelegram", {
+                telegramId: telegramData.id,
+                error,
+            });
             return { success: false, error };
         }
     }

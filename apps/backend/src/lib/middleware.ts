@@ -1,16 +1,16 @@
 import bearer from "@elysiajs/bearer";
 import jwt from "@elysiajs/jwt";
-import {
-    prettifyError,
-    Token,
-    Permission,
-    hasPermission,
-} from "@jahonbozor/schemas";
-import { createChildLogger } from "@jahonbozor/logger";
-import { prisma } from "@backend/lib/prisma";
 import { Elysia } from "elysia";
-import baseLogger from "./logger";
+
+import { createChildLogger } from "@jahonbozor/logger";
+import { hasPermission, prettifyError, Token } from "@jahonbozor/schemas";
+
+import { prisma } from "@backend/lib/prisma";
+
+import { baseLogger } from "./logger";
 import { requestContext } from "./request-context";
+
+import type { Permission } from "@jahonbozor/schemas";
 
 if (!process.env.JWT_SECRET) {
     baseLogger.error("Auth: JWT_SECRET is not configured");
@@ -31,7 +31,7 @@ export const authMiddleware = new Elysia({
     .macro({
         auth: {
             resolve: async ({ jwt, bearer, status, set }) => {
-                const requestId = set.headers["x-request-id"] as string | undefined;
+                const requestId = set.headers["x-request-id"];
                 const logger = requestId
                     ? createChildLogger(baseLogger, { requestId })
                     : baseLogger;
@@ -85,7 +85,7 @@ export const authMiddleware = new Elysia({
 
         permissions: (requiredPermissions: Permission[]) => ({
             resolve: async ({ jwt, bearer, status, set }) => {
-                const requestId = set.headers["x-request-id"] as string | undefined;
+                const requestId = set.headers["x-request-id"];
                 const logger = requestId
                     ? createChildLogger(baseLogger, { requestId })
                     : baseLogger;
@@ -138,6 +138,7 @@ export const authMiddleware = new Elysia({
                     return status(401, "Unauthorized");
                 }
 
+                // Prisma JSON field — cast needed, validated by role assignment
                 const userPermissions = staff.role.permissions as Permission[];
                 const hasAllRequired = requiredPermissions.every((p) =>
                     hasPermission(userPermissions, p),

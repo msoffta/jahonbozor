@@ -1,13 +1,16 @@
-import type { AdminUsersListResponse, AdminUserDetailResponse } from "@jahonbozor/schemas/src/users";
-import { Permission } from "@jahonbozor/schemas";
-import {
-    CreateUserBody,
-    UpdateUserBody,
-    UsersPagination,
-} from "@jahonbozor/schemas/src/users";
-import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
+
+import { Permission } from "@jahonbozor/schemas";
+import { CreateUserBody, UpdateUserBody, UsersPagination } from "@jahonbozor/schemas/src/users";
+
+import { authMiddleware } from "@backend/lib/middleware";
+
 import { UsersService } from "./users.service";
+
+import type {
+    AdminUserDetailResponse,
+    AdminUsersListResponse,
+} from "@jahonbozor/schemas/src/users";
 
 const userIdParams = t.Object({
     id: t.Numeric(),
@@ -77,7 +80,14 @@ export const users = new Elysia({ prefix: "/users" })
     )
     .put(
         "/:id",
-        async ({ params, body, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
+        async ({
+            params,
+            body,
+            user,
+            set,
+            logger,
+            requestId,
+        }): Promise<AdminUserDetailResponse> => {
             try {
                 const result = await UsersService.updateUser(
                     params.id,

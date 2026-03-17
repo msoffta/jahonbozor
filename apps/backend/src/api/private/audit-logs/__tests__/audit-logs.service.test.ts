@@ -1,6 +1,9 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { AuditLogService } from "../audit-logs.service";
+
 import type { AuditLog } from "@backend/generated/prisma/client";
 
 // Mock audit log data
@@ -56,10 +59,16 @@ describe("AuditLogService", () => {
     describe("getAll", () => {
         test("should return paginated audit logs", async () => {
             // Arrange
-            prismaMock.$transaction.mockResolvedValue([3, [mockAuditLog, mockAuditLog2, mockAuditLog3]]);
+            prismaMock.$transaction.mockResolvedValue([
+                3,
+                [mockAuditLog, mockAuditLog2, mockAuditLog3],
+            ]);
 
             // Act
-            const result = await AuditLogService.getAll({ page: 1, limit: 20, searchQuery: "" }, mockLogger);
+            const result = await AuditLogService.getAll(
+                { page: 1, limit: 20, searchQuery: "" },
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -196,7 +205,10 @@ describe("AuditLogService", () => {
             prismaMock.$transaction.mockRejectedValue(dbError);
 
             // Act
-            const result = await AuditLogService.getAll({ page: 1, limit: 20, searchQuery: "" }, mockLogger);
+            const result = await AuditLogService.getAll(
+                { page: 1, limit: 20, searchQuery: "" },
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);

@@ -1,7 +1,10 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { OrdersService } from "../orders.service";
 
 const mockOrderWithRelations = {
@@ -78,7 +81,10 @@ const createTestApp = () => {
         })
         .post("/orders", async ({ body, user, logger, requestId }) => {
             return await OrdersService.createOrder(
-                body as { paymentType: "CASH" | "CREDIT_CARD"; items: Array<{ productId: number; quantity: number; price: number }> },
+                body as {
+                    paymentType: "CASH" | "CREDIT_CARD";
+                    items: { productId: number; quantity: number; price: number }[];
+                },
                 { staffId: user.id, user, requestId },
                 logger,
             );
@@ -165,9 +171,7 @@ describe("Orders API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders?status=NEW"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders?status=NEW"));
             const body = await response.json();
 
             // Assert
@@ -191,9 +195,7 @@ describe("Orders API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders"));
             const body = await response.json();
 
             // Assert
@@ -215,9 +217,7 @@ describe("Orders API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -236,9 +236,7 @@ describe("Orders API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/999"));
             const body = await response.json();
 
             // Assert
@@ -256,9 +254,7 @@ describe("Orders API Routes", () => {
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -481,7 +477,12 @@ describe("Orders Service Integration", () => {
         await app.handle(new Request("http://localhost/orders/42"));
 
         // Assert
-        expect(spy).toHaveBeenCalledWith(42, expect.any(Number), expect.any(Array), expect.anything());
+        expect(spy).toHaveBeenCalledWith(
+            42,
+            expect.any(Number),
+            expect.any(Array),
+            expect.anything(),
+        );
 
         spy.mockRestore();
     });

@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -30,7 +30,8 @@ vi.mock("@jahonbozor/ui", async () => {
 });
 
 vi.mock("@tanstack/react-query", () => ({
-    useQuery: () => ({ data: { orders: [] } }),
+    useQuery: ({ enabled }: { enabled?: boolean } = {}) =>
+        enabled === false ? { data: undefined } : { data: { orders: [] } },
 }));
 
 vi.mock("@/api/orders.api", () => ({
@@ -48,7 +49,7 @@ let permissionMocks: Record<string, boolean> = {};
 vi.mock("@/hooks/use-permissions", () => ({
     useHasPermission: (permission: string) => permissionMocks[permission] || false,
     useHasAnyPermission: (permissions: string[]) =>
-        permissions.some(p => permissionMocks[p]) || false,
+        permissions.some((p) => permissionMocks[p]) || false,
 }));
 
 import { BottomNav } from "../bottom-nav";
@@ -62,7 +63,7 @@ describe("BottomNav", () => {
     test("should render only home when user has no permissions", () => {
         const { getAllByRole, queryByText } = render(<BottomNav />);
         const links = getAllByRole("link");
-        const hrefs = links.map(l => l.getAttribute("href"));
+        const hrefs = links.map((l) => l.getAttribute("href"));
 
         // Home should be present
         expect(hrefs).toContain("/");
@@ -90,7 +91,7 @@ describe("BottomNav", () => {
 
         const { getAllByRole, getByText } = render(<BottomNav />);
         const links = getAllByRole("link");
-        const hrefs = links.map(l => l.getAttribute("href"));
+        const hrefs = links.map((l) => l.getAttribute("href"));
 
         // All nav items should be present
         expect(hrefs).toContain("/");

@@ -1,16 +1,20 @@
-import { describe, test, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { describe, expect, test, vi } from "vitest";
 
 vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
 vi.mock("../../ui/button.tsx", async () => (await import("./test-helpers")).buttonMock);
 vi.mock("../../ui/checkbox.tsx", async () => (await import("./test-helpers")).checkboxMock);
 vi.mock("../../ui/select.tsx", async () => (await import("./test-helpers")).selectMock);
 vi.mock("../../ui/table.tsx", async () => (await import("./test-helpers")).tableMock);
-vi.mock("../../ui/dropdown-menu.tsx", async () => (await import("./test-helpers")).dropdownMenuMock);
+vi.mock(
+    "../../ui/dropdown-menu.tsx",
+    async () => (await import("./test-helpers")).dropdownMenuMock,
+);
+
+import { DataTable } from "../data-table";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "../data-table";
 
 // ── Test data ──────────────────────────────────────────────────
 interface TestRow {
@@ -53,7 +57,11 @@ describe("DataTable", () => {
 
     test("should show noResults translation when data is empty", () => {
         const { getByText } = render(
-            <DataTable columns={baseColumns} data={[]} translations={{ noResults: "No data found" }} />,
+            <DataTable
+                columns={baseColumns}
+                data={[]}
+                translations={{ noResults: "No data found" }}
+            />,
         );
         expect(getByText("No data found")).toBeDefined();
     });
@@ -129,7 +137,7 @@ describe("DataTable", () => {
         );
 
         // Find the column filter select (native <select> in the toolbar)
-        const filterSelect = container.querySelector("select") as HTMLSelectElement;
+        const filterSelect = container.querySelector("select")!;
         expect(filterSelect).toBeDefined();
 
         await user.selectOptions(filterSelect, "inactive");
@@ -221,7 +229,12 @@ describe("DataTable", () => {
         ];
 
         const { getByText, getByDisplayValue } = render(
-            <DataTable columns={editableColumns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+            <DataTable
+                columns={editableColumns}
+                data={testData}
+                enableEditing
+                onCellEdit={onCellEdit}
+            />,
         );
 
         await user.dblClick(getByText("Alice"));
@@ -238,10 +251,26 @@ describe("DataTable", () => {
         const user = userEvent.setup();
         const onNewRowSave = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
-            { accessorKey: "id", header: "ID", meta: { editable: true, inputType: "text" as const } },
-            { accessorKey: "name", header: "Name", meta: { editable: true, inputType: "text" as const } },
-            { accessorKey: "age", header: "Age", meta: { editable: true, inputType: "text" as const } },
-            { accessorKey: "status", header: "Status", meta: { editable: true, inputType: "text" as const } },
+            {
+                accessorKey: "id",
+                header: "ID",
+                meta: { editable: true, inputType: "text" as const },
+            },
+            {
+                accessorKey: "name",
+                header: "Name",
+                meta: { editable: true, inputType: "text" as const },
+            },
+            {
+                accessorKey: "age",
+                header: "Age",
+                meta: { editable: true, inputType: "text" as const },
+            },
+            {
+                accessorKey: "status",
+                header: "Status",
+                meta: { editable: true, inputType: "text" as const },
+            },
         ];
 
         const { getAllByRole } = render(
@@ -290,7 +319,7 @@ describe("DataTable", () => {
         expect(queryByText("User 11")).toBeNull();
 
         // Find the page size <select> and change to "all"
-        const pageSizeSelect = container.querySelector("select") as HTMLSelectElement;
+        const pageSizeSelect = container.querySelector("select")!;
         await user.selectOptions(pageSizeSelect, "all");
 
         // Now all rows should be visible
@@ -336,7 +365,12 @@ describe("DataTable", () => {
     test("should not enter edit mode on double-click if column is not editable", () => {
         const onCellEdit = vi.fn();
         const { getByText, queryByDisplayValue } = render(
-            <DataTable columns={baseColumns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+            <DataTable
+                columns={baseColumns}
+                data={testData}
+                enableEditing
+                onCellEdit={onCellEdit}
+            />,
         );
 
         fireEvent.doubleClick(getByText("Alice"));
@@ -346,8 +380,16 @@ describe("DataTable", () => {
 
     test("should render new row at start when newRowPosition='start'", () => {
         const editableColumns: ColumnDef<TestRow, any>[] = [
-            { accessorKey: "id", header: "ID", meta: { editable: true, inputType: "text" as const } },
-            { accessorKey: "name", header: "Name", meta: { editable: true, inputType: "text" as const } },
+            {
+                accessorKey: "id",
+                header: "ID",
+                meta: { editable: true, inputType: "text" as const },
+            },
+            {
+                accessorKey: "name",
+                header: "Name",
+                meta: { editable: true, inputType: "text" as const },
+            },
             { accessorKey: "age", header: "Age" },
             { accessorKey: "status", header: "Status" },
         ];
@@ -398,7 +440,12 @@ describe("DataTable", () => {
         ];
 
         const { getByText, getByDisplayValue, queryByText } = render(
-            <DataTable columns={editableColumns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+            <DataTable
+                columns={editableColumns}
+                data={testData}
+                enableEditing
+                onCellEdit={onCellEdit}
+            />,
         );
 
         await user.dblClick(getByText("Alice"));
@@ -473,7 +520,12 @@ describe("DataTable", () => {
         ];
 
         const { getByText, getByDisplayValue, queryByDisplayValue } = render(
-            <DataTable columns={editableColumns} data={testData} enableEditing onCellEdit={onCellEdit} />,
+            <DataTable
+                columns={editableColumns}
+                data={testData}
+                enableEditing
+                onCellEdit={onCellEdit}
+            />,
         );
 
         await user.dblClick(getByText("Alice"));
@@ -517,9 +569,7 @@ describe("DataTable", () => {
     });
 
     test("should not call onRowClick when onRowClick is not provided", () => {
-        const { getByText } = render(
-            <DataTable columns={baseColumns} data={testData} />,
-        );
+        const { getByText } = render(<DataTable columns={baseColumns} data={testData} />);
 
         // Clicking should not throw
         fireEvent.click(getByText("Alice"));
@@ -530,7 +580,11 @@ describe("DataTable", () => {
         test("should render multiple new rows with enableMultipleNewRows", () => {
             const onMultiRowSave = vi.fn();
             const editableColumns: ColumnDef<TestRow, any>[] = [
-                { accessorKey: "name", header: "Name", meta: { editable: true, inputType: "text" as const } },
+                {
+                    accessorKey: "name",
+                    header: "Name",
+                    meta: { editable: true, inputType: "text" as const },
+                },
             ];
 
             const { getAllByRole } = render(
@@ -549,5 +603,5 @@ describe("DataTable", () => {
             const inputs = getAllByRole("textbox");
             expect(inputs.length).toBe(3);
         });
-});
+    });
 });

@@ -1,0 +1,21 @@
+{
+  "order_history": "Tarix",
+  "active_orders": "Faol",
+  "order_number": "Buyurtma #{{id}}",
+  "creation_date": "Yaratilgan sana",
+  "update_date": "Yangilangan sana",
+  "status": "Holat",
+  "status_new": "Yangi",
+  "status_accepted": "Qabul qilingan",
+  "status_cancelled": "Bekor qilingan",
+  "payment_method": "To'lov usuli",
+  "payment_cash": "Naqd",
+  "payment_card": "Karta",
+  "payment_debt": "Qarz",
+  "cancel_order": "Buyurtmani bekor qilish",
+  "order_items": "Mahsulotlar",
+  "order_comment": "Buyurtmaga izoh",
+  "confirm_cancel": "Bekor qilishni tasdiqlash",
+  "confirm_cancel_description": "Ushbu buyurtmani bekor qilmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.",
+  "items_count": "{{count}} ta mahsulot"
+}

@@ -1,18 +1,17 @@
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { toast } from "@jahonbozor/ui";
+
 import { api } from "@/api/client";
 import { productKeys } from "@/api/products.api";
+import { i18n } from "@/i18n/config";
+
 import type { HistoryEntryItem } from "@jahonbozor/schemas/src/products/product-history.dto";
-import {
-    queryOptions,
-    useMutation,
-    useQueryClient,
-} from "@tanstack/react-query";
-import { toast } from "@jahonbozor/ui";
 
 export const incomeKeys = {
     all: ["income"] as const,
     lists: () => [...incomeKeys.all, "list"] as const,
-    list: (params?: Record<string, unknown>) =>
-        [...incomeKeys.lists(), params] as const,
+    list: (params?: Record<string, unknown>) => [...incomeKeys.lists(), params] as const,
 };
 
 export const incomeListQueryOptions = (params?: {
@@ -54,14 +53,12 @@ export const createIncomeFn = async (body: {
     changeReason?: string | null;
     createdAt?: string;
 }) => {
-    const { data, error } = await api.api.private
-        .products({ id: body.productId })
-        .inventory.post({
-            operation: "INVENTORY_ADD",
-            quantity: body.quantity,
-            changeReason: body.changeReason ?? null,
-            createdAt: body.createdAt,
-        });
+    const { data, error } = await api.api.private.products({ id: body.productId }).inventory.post({
+        operation: "INVENTORY_ADD",
+        quantity: body.quantity,
+        changeReason: body.changeReason ?? null,
+        createdAt: body.createdAt,
+    });
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
     return data.data;
@@ -77,7 +74,7 @@ export const useCreateIncome = () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
         onError: () => {
-            toast.error("Xatolik yuz berdi");
+            toast.error(i18n.t("error"));
         },
     });
 };

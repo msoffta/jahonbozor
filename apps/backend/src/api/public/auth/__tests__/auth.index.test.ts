@@ -1,13 +1,14 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { createMockLogger } from "@backend/test/setup";
-import Auth from "../auth.service";
+
+import { AuthService } from "../auth.service";
 
 const mockStaffData = {
     id: 1,
     fullname: "John Doe",
     username: "johndoe",
-    passwordHash: "$argon2id$v=19$hash",
     roleId: 1,
     type: "staff" as const,
 };
@@ -25,7 +26,7 @@ const mockStaffWithRole = {
     },
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
-} as unknown as Awaited<ReturnType<typeof Auth.getStaffById>>;
+} as unknown as Awaited<ReturnType<typeof AuthService.getStaffById>>;
 
 const mockUserData = {
     id: 1,
@@ -36,15 +37,7 @@ const mockUserData = {
     photo: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
-} as unknown as Awaited<ReturnType<typeof Auth.getUserById>>;
-
-const mockTokenRecord = {
-    id: 1,
-    staffId: 1,
-    userId: null,
-    revoked: false,
-    expiredAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-};
+} as unknown as Awaited<ReturnType<typeof AuthService.getUserById>>;
 
 describe("Auth API Routes", () => {
     let mockLogger: ReturnType<typeof createMockLogger>;
@@ -62,42 +55,38 @@ describe("Auth API Routes", () => {
                 }))
                 .post("/login", async ({ body, set }) => {
                     const { username, password } = body as { username: string; password: string };
+                    const mockJwt = { sign: vi.fn().mockResolvedValue("mock-token") };
 
-                    const staff = await Auth.checkIfStaffExists({ username, password }, mockLogger);
-
-                    if (!staff) {
-                        set.status = 401;
-                        return { success: false, error: "Unauthorized" };
-                    }
-
-                    const isRefreshTokenSaved = await Auth.saveRefreshToken(
-                        {
-                            token: "mock-refresh-token",
-                            exp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                            staffId: staff.id,
-                        },
+                    const result = await AuthService.login(
+                        { username, password },
+                        mockJwt,
                         mockLogger,
                     );
 
-                    if (!isRefreshTokenSaved) {
-                        set.status = 500;
-                        return { success: false, error: "Internal Server Error" };
+                    if (!result.success) {
+                        set.status = result.error === "Unauthorized" ? 401 : 500;
+                        return { success: false, error: result.error };
                     }
 
                     return {
                         success: true,
-                        data: { staff, token: "mock-access-token" },
+                        data: { staff: result.data.staff, token: result.data.accessToken },
                     };
                 });
         };
 
         test("should return 200 with staff and token on valid credentials", async () => {
-            // Arrange
-            const checkIfStaffExistsSpy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
-            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+            const loginSpy = vi.spyOn(AuthService, "login").mockResolvedValue({
+                success: true,
+                data: {
+                    staff: mockStaffData,
+                    accessToken: "mock-access-token",
+                    refreshToken: "mock-refresh-token",
+                    refreshTokenExp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                },
+            });
             const app = createLoginApp();
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/login", {
                     method: "POST",
@@ -107,22 +96,21 @@ describe("Auth API Routes", () => {
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
             expect(body.data.staff.username).toBe("johndoe");
             expect(body.data.token).toBe("mock-access-token");
 
-            checkIfStaffExistsSpy.mockRestore();
-            saveRefreshTokenSpy.mockRestore();
+            loginSpy.mockRestore();
         });
 
         test("should return 401 when credentials are invalid", async () => {
-            // Arrange
-            const checkIfStaffExistsSpy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(null);
+            const loginSpy = vi.spyOn(AuthService, "login").mockResolvedValue({
+                success: false,
+                error: "Unauthorized",
+            });
             const app = createLoginApp();
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/login", {
                     method: "POST",
@@ -132,21 +120,20 @@ describe("Auth API Routes", () => {
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(401);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Unauthorized");
 
-            checkIfStaffExistsSpy.mockRestore();
+            loginSpy.mockRestore();
         });
 
         test("should return 500 when refresh token save fails", async () => {
-            // Arrange
-            const checkIfStaffExistsSpy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
-            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(null);
+            const loginSpy = vi.spyOn(AuthService, "login").mockResolvedValue({
+                success: false,
+                error: "Internal Server Error",
+            });
             const app = createLoginApp();
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/login", {
                     method: "POST",
@@ -156,22 +143,25 @@ describe("Auth API Routes", () => {
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(500);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Internal Server Error");
 
-            checkIfStaffExistsSpy.mockRestore();
-            saveRefreshTokenSpy.mockRestore();
+            loginSpy.mockRestore();
         });
 
-        test("should call checkIfStaffExists with correct credentials", async () => {
-            // Arrange
-            const checkIfStaffExistsSpy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
-            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+        test("should call AuthService.login with correct credentials", async () => {
+            const loginSpy = vi.spyOn(AuthService, "login").mockResolvedValue({
+                success: true,
+                data: {
+                    staff: mockStaffData,
+                    accessToken: "mock-access-token",
+                    refreshToken: "mock-refresh-token",
+                    refreshTokenExp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                },
+            });
             const app = createLoginApp();
 
-            // Act
             await app.handle(
                 new Request("http://localhost/login", {
                     method: "POST",
@@ -180,14 +170,13 @@ describe("Auth API Routes", () => {
                 }),
             );
 
-            // Assert
-            expect(checkIfStaffExistsSpy).toHaveBeenCalledWith(
+            expect(loginSpy).toHaveBeenCalledWith(
                 { username: "testuser", password: "testpass" },
+                expect.anything(),
                 expect.anything(),
             );
 
-            checkIfStaffExistsSpy.mockRestore();
-            saveRefreshTokenSpy.mockRestore();
+            loginSpy.mockRestore();
         });
     });
 
@@ -200,259 +189,207 @@ describe("Auth API Routes", () => {
                     cookie: {
                         auth: {
                             value: cookieValue,
-                            remove: vi.fn(() => {}),
-                            set: vi.fn(() => {}),
+                            remove: vi.fn(),
+                            set: vi.fn(),
                         },
                     },
                 }))
                 .post("/refresh", async ({ cookie, set }) => {
-                    const authCookie = (cookie as { auth: { value?: string; remove: () => void } }).auth;
+                    const authCookie = (
+                        cookie as {
+                            auth: { value?: string; remove: () => void; set: (v: unknown) => void };
+                        }
+                    ).auth;
 
                     if (!authCookie.value) {
                         set.status = 401;
                         return { success: false, error: "Unauthorized" };
                     }
 
-                    const tokenRecord = await Auth.validateRefreshToken(authCookie.value, mockLogger);
-                    if (!tokenRecord || (!tokenRecord.staffId && !tokenRecord.userId)) {
-                        authCookie.remove();
-                        set.status = 401;
-                        return { success: false, error: "Unauthorized" };
-                    }
+                    const mockJwt = { sign: vi.fn().mockResolvedValue("new-token") };
+                    const result = await AuthService.refresh(authCookie.value, mockJwt, mockLogger);
 
-                    await Auth.revokeRefreshToken(authCookie.value, mockLogger);
-
-                    if (tokenRecord.staffId) {
-                        const staffData = await Auth.getStaffById(tokenRecord.staffId, mockLogger);
-                        if (!staffData) {
+                    if (!result.success) {
+                        if (result.error === "Unauthorized") {
                             authCookie.remove();
                             set.status = 401;
-                            return { success: false, error: "Unauthorized" };
-                        }
-
-                        const isRefreshTokenSaved = await Auth.saveRefreshToken(
-                            {
-                                token: "new-refresh-token",
-                                exp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                                staffId: staffData.id,
-                            },
-                            mockLogger,
-                        );
-
-                        if (!isRefreshTokenSaved) {
+                        } else {
                             set.status = 500;
-                            return { success: false, error: "Internal Server Error" };
                         }
-                    } else {
-                        const userData = await Auth.getUserById(tokenRecord.userId!, mockLogger);
-                        if (!userData) {
-                            authCookie.remove();
-                            set.status = 401;
-                            return { success: false, error: "Unauthorized" };
-                        }
-
-                        const isRefreshTokenSaved = await Auth.saveRefreshToken(
-                            {
-                                token: "new-refresh-token",
-                                exp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                                userId: userData.id,
-                            },
-                            mockLogger,
-                        );
-
-                        if (!isRefreshTokenSaved) {
-                            set.status = 500;
-                            return { success: false, error: "Internal Server Error" };
-                        }
+                        return { success: false, error: result.error };
                     }
 
-                    return { success: true, data: { token: "new-access-token" } };
+                    return { success: true, data: { token: result.data.accessToken } };
                 });
         };
 
         test("should return 200 with new token on valid staff refresh", async () => {
-            // Arrange
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
-            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+            const refreshSpy = vi.spyOn(AuthService, "refresh").mockResolvedValue({
+                success: true,
+                data: {
+                    accessToken: "new-access-token",
+                    refreshToken: "new-refresh-token",
+                    refreshTokenExp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    entityId: 1,
+                    entityType: "staff",
+                },
+            });
             const app = createRefreshApp("valid-refresh-token");
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/refresh", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
             expect(body.data.token).toBe("new-access-token");
 
-            validateRefreshTokenSpy.mockRestore();
-            getStaffByIdSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
-            saveRefreshTokenSpy.mockRestore();
+            refreshSpy.mockRestore();
         });
 
         test("should return 200 with new token on valid user refresh", async () => {
-            // Arrange
-            const userTokenRecord = { id: 2, staffId: null, userId: 1, revoked: false, expiredAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) };
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(userTokenRecord);
-            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
-            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+            const refreshSpy = vi.spyOn(AuthService, "refresh").mockResolvedValue({
+                success: true,
+                data: {
+                    accessToken: "new-access-token",
+                    refreshToken: "new-refresh-token",
+                    refreshTokenExp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    entityId: 1,
+                    entityType: "user",
+                },
+            });
             const app = createRefreshApp("valid-user-refresh-token");
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/refresh", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
             expect(body.data.token).toBe("new-access-token");
-            expect(getUserByIdSpy).toHaveBeenCalledWith(1, expect.anything());
 
-            validateRefreshTokenSpy.mockRestore();
-            getUserByIdSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
-            saveRefreshTokenSpy.mockRestore();
+            refreshSpy.mockRestore();
         });
 
         test("should return 401 when cookie is missing", async () => {
-            // Arrange
             const app = createRefreshApp(undefined);
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/refresh", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(401);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Unauthorized");
         });
 
         test("should return 401 when token is invalid", async () => {
-            // Arrange
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(null);
+            const refreshSpy = vi.spyOn(AuthService, "refresh").mockResolvedValue({
+                success: false,
+                error: "Unauthorized",
+            });
             const app = createRefreshApp("invalid-token");
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/refresh", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(401);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Unauthorized");
 
-            validateRefreshTokenSpy.mockRestore();
+            refreshSpy.mockRestore();
         });
 
         test("should return 401 when staff not found", async () => {
-            // Arrange
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(null);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const refreshSpy = vi.spyOn(AuthService, "refresh").mockResolvedValue({
+                success: false,
+                error: "Unauthorized",
+            });
             const app = createRefreshApp("valid-token");
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/refresh", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(401);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Unauthorized");
 
-            validateRefreshTokenSpy.mockRestore();
-            getStaffByIdSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
+            refreshSpy.mockRestore();
         });
 
         test("should return 401 when user not found for user token", async () => {
-            // Arrange
-            const userTokenRecord = { id: 2, staffId: null, userId: 999, revoked: false, expiredAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) };
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(userTokenRecord);
-            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(null);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const refreshSpy = vi.spyOn(AuthService, "refresh").mockResolvedValue({
+                success: false,
+                error: "Unauthorized",
+            });
             const app = createRefreshApp("valid-token");
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/refresh", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(401);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Unauthorized");
 
-            validateRefreshTokenSpy.mockRestore();
-            getUserByIdSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
+            refreshSpy.mockRestore();
         });
 
         test("should return 500 when saving new token fails", async () => {
-            // Arrange
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
-            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(null);
+            const refreshSpy = vi.spyOn(AuthService, "refresh").mockResolvedValue({
+                success: false,
+                error: "Internal Server Error",
+            });
             const app = createRefreshApp("valid-token");
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/refresh", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(500);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Internal Server Error");
 
-            validateRefreshTokenSpy.mockRestore();
-            getStaffByIdSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
-            saveRefreshTokenSpy.mockRestore();
+            refreshSpy.mockRestore();
         });
 
-        test("should revoke old token before issuing new one", async () => {
-            // Arrange
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
-            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+        test("should call AuthService.refresh with correct token", async () => {
+            const refreshSpy = vi.spyOn(AuthService, "refresh").mockResolvedValue({
+                success: true,
+                data: {
+                    accessToken: "new-access-token",
+                    refreshToken: "new-refresh-token",
+                    refreshTokenExp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    entityId: 1,
+                    entityType: "staff",
+                },
+            });
             const app = createRefreshApp("old-token");
 
-            // Act
             await app.handle(new Request("http://localhost/refresh", { method: "POST" }));
 
-            // Assert
-            expect(revokeRefreshTokenSpy).toHaveBeenCalledWith("old-token", expect.anything());
+            expect(refreshSpy).toHaveBeenCalledWith(
+                "old-token",
+                expect.anything(),
+                expect.anything(),
+            );
 
-            validateRefreshTokenSpy.mockRestore();
-            getStaffByIdSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
-            saveRefreshTokenSpy.mockRestore();
+            refreshSpy.mockRestore();
         });
     });
 
     describe("POST /logout", () => {
         const createLogoutApp = (cookieValue?: string) => {
-            const removeMock = vi.fn(() => {});
+            const removeMock = vi.fn();
             return {
                 app: new Elysia()
                     .derive(() => ({
@@ -466,23 +403,23 @@ describe("Auth API Routes", () => {
                         },
                     }))
                     .post("/logout", async ({ cookie, set }) => {
-                        const authCookie = (cookie as { auth: { value?: string; remove: () => void } }).auth;
+                        const authCookie = (
+                            cookie as { auth: { value?: string; remove: () => void } }
+                        ).auth;
 
                         if (!authCookie.value) {
                             set.status = 401;
                             return { success: false, error: "Unauthorized" };
                         }
 
-                        const tokenRecord = await Auth.validateRefreshToken(authCookie.value, mockLogger);
-
-                        await Auth.revokeRefreshToken(authCookie.value, mockLogger);
-
+                        const result = await AuthService.logout(authCookie.value, mockLogger);
                         authCookie.remove();
 
-                        if (tokenRecord?.staffId) {
-                            mockLogger.info("Auth: Staff logged out", { staffId: tokenRecord.staffId });
-                        } else if (tokenRecord?.userId) {
-                            mockLogger.info("Auth: User logged out", { userId: tokenRecord.userId });
+                        if (result.success && result.data.entityId) {
+                            mockLogger.info("Auth: Logged out", {
+                                entityId: result.data.entityId,
+                                entityType: result.data.entityType,
+                            });
                         }
 
                         return { success: true, data: null };
@@ -492,79 +429,69 @@ describe("Auth API Routes", () => {
         };
 
         test("should return 200 and revoke token on valid logout", async () => {
-            // Arrange
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const logoutSpy = vi.spyOn(AuthService, "logout").mockResolvedValue({
+                success: true,
+                data: { entityId: 1, entityType: "staff" },
+            });
             const { app, removeMock } = createLogoutApp("valid-token");
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/logout", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
             expect(body.data).toBeNull();
-            expect(revokeRefreshTokenSpy).toHaveBeenCalledWith("valid-token", expect.anything());
             expect(removeMock).toHaveBeenCalled();
 
-            validateRefreshTokenSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
+            logoutSpy.mockRestore();
         });
 
         test("should return 401 when no cookie present", async () => {
-            // Arrange
             const { app } = createLogoutApp(undefined);
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/logout", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(401);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Unauthorized");
         });
 
         test("should still succeed even if token is invalid", async () => {
-            // Arrange
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(null);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const logoutSpy = vi.spyOn(AuthService, "logout").mockResolvedValue({
+                success: true,
+                data: {},
+            });
             const { app, removeMock } = createLogoutApp("invalid-token");
 
-            // Act
             const response = await app.handle(
                 new Request("http://localhost/logout", { method: "POST" }),
             );
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
             expect(removeMock).toHaveBeenCalled();
 
-            validateRefreshTokenSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
+            logoutSpy.mockRestore();
         });
 
-        test("should call revokeRefreshToken with correct token", async () => {
-            // Arrange
-            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+        test("should call AuthService.logout with correct token", async () => {
+            const logoutSpy = vi.spyOn(AuthService, "logout").mockResolvedValue({
+                success: true,
+                data: { entityId: 1, entityType: "staff" },
+            });
             const { app } = createLogoutApp("my-refresh-token");
 
-            // Act
             await app.handle(new Request("http://localhost/logout", { method: "POST" }));
 
-            // Assert
-            expect(revokeRefreshTokenSpy).toHaveBeenCalledWith("my-refresh-token", expect.anything());
+            expect(logoutSpy).toHaveBeenCalledWith("my-refresh-token", expect.anything());
 
-            validateRefreshTokenSpy.mockRestore();
-            revokeRefreshTokenSpy.mockRestore();
+            logoutSpy.mockRestore();
         });
     });
 
@@ -579,8 +506,8 @@ describe("Auth API Routes", () => {
                 .get("/me", async ({ user, type, set }) => {
                     const profileData =
                         type === "staff"
-                            ? await Auth.getStaffById(user.id, mockLogger)
-                            : await Auth.getUserById(user.id, mockLogger);
+                            ? await AuthService.getStaffById(user.id, mockLogger)
+                            : await AuthService.getUserById(user.id, mockLogger);
 
                     if (!profileData) {
                         set.status = 404;
@@ -592,15 +519,14 @@ describe("Auth API Routes", () => {
         };
 
         test("should return staff profile for staff user", async () => {
-            // Arrange
-            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
+            const getStaffByIdSpy = vi
+                .spyOn(AuthService, "getStaffById")
+                .mockResolvedValue(mockStaffWithRole);
             const app = createMeApp("staff", 1);
 
-            // Act
             const response = await app.handle(new Request("http://localhost/me"));
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
             expect(body.data.type).toBe("staff");
@@ -610,15 +536,14 @@ describe("Auth API Routes", () => {
         });
 
         test("should return user profile for regular user", async () => {
-            // Arrange
-            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
+            const getUserByIdSpy = vi
+                .spyOn(AuthService, "getUserById")
+                .mockResolvedValue(mockUserData);
             const app = createMeApp("user", 1);
 
-            // Act
             const response = await app.handle(new Request("http://localhost/me"));
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
             expect(body.data.type).toBe("user");
@@ -628,15 +553,12 @@ describe("Auth API Routes", () => {
         });
 
         test("should return 404 when staff profile not found", async () => {
-            // Arrange
-            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(null);
+            const getStaffByIdSpy = vi.spyOn(AuthService, "getStaffById").mockResolvedValue(null);
             const app = createMeApp("staff", 999);
 
-            // Act
             const response = await app.handle(new Request("http://localhost/me"));
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(404);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Not Found");
@@ -645,15 +567,12 @@ describe("Auth API Routes", () => {
         });
 
         test("should return 404 when user profile not found", async () => {
-            // Arrange
-            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(null);
+            const getUserByIdSpy = vi.spyOn(AuthService, "getUserById").mockResolvedValue(null);
             const app = createMeApp("user", 999);
 
-            // Act
             const response = await app.handle(new Request("http://localhost/me"));
             const body = await response.json();
 
-            // Assert
             expect(response.status).toBe(404);
             expect(body.success).toBe(false);
             expect(body.error).toBe("Not Found");
@@ -662,28 +581,26 @@ describe("Auth API Routes", () => {
         });
 
         test("should call getStaffById for staff type", async () => {
-            // Arrange
-            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
+            const getStaffByIdSpy = vi
+                .spyOn(AuthService, "getStaffById")
+                .mockResolvedValue(mockStaffWithRole);
             const app = createMeApp("staff", 42);
 
-            // Act
             await app.handle(new Request("http://localhost/me"));
 
-            // Assert
             expect(getStaffByIdSpy).toHaveBeenCalledWith(42, expect.anything());
 
             getStaffByIdSpy.mockRestore();
         });
 
         test("should call getUserById for user type", async () => {
-            // Arrange
-            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
+            const getUserByIdSpy = vi
+                .spyOn(AuthService, "getUserById")
+                .mockResolvedValue(mockUserData);
             const app = createMeApp("user", 42);
 
-            // Act
             await app.handle(new Request("http://localhost/me"));
 
-            // Assert
             expect(getUserByIdSpy).toHaveBeenCalledWith(42, expect.anything());
 
             getUserByIdSpy.mockRestore();
@@ -693,15 +610,19 @@ describe("Auth API Routes", () => {
 
 describe("Auth API edge cases", () => {
     test("POST /login should return 401 when credentials are invalid", async () => {
-        const spy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(null);
+        const loginSpy = vi.spyOn(AuthService, "login").mockResolvedValue({
+            success: false,
+            error: "Unauthorized",
+        });
         const mockLogger = createMockLogger();
 
         const app = new Elysia()
             .derive(() => ({ logger: mockLogger, requestId: "test-request-id" }))
             .post("/login", async ({ body, set }) => {
                 const { username, password } = body as { username: string; password: string };
-                const staff = await Auth.checkIfStaffExists({ username, password }, mockLogger);
-                if (!staff) {
+                const mockJwt = { sign: vi.fn().mockResolvedValue("mock-token") };
+                const result = await AuthService.login({ username, password }, mockJwt, mockLogger);
+                if (!result.success) {
                     set.status = 401;
                     return { success: false, error: "Unauthorized" };
                 }
@@ -720,17 +641,17 @@ describe("Auth API edge cases", () => {
         expect(response.status).toBe(401);
         expect(body.error).toBe("Unauthorized");
 
-        spy.mockRestore();
+        loginSpy.mockRestore();
     });
 
     test("GET /me should return 404 when staff not found", async () => {
-        const spy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(null);
+        const spy = vi.spyOn(AuthService, "getStaffById").mockResolvedValue(null);
         const mockLogger = createMockLogger();
 
         const app = new Elysia()
             .derive(() => ({ logger: mockLogger }))
             .get("/me", async ({ set }) => {
-                const staff = await Auth.getStaffById(999, mockLogger);
+                const staff = await AuthService.getStaffById(999, mockLogger);
                 if (!staff) {
                     set.status = 404;
                     return { success: false, error: "Not found" };
@@ -748,13 +669,13 @@ describe("Auth API edge cases", () => {
     });
 
     test("GET /me should return 404 when user not found", async () => {
-        const spy = vi.spyOn(Auth, "getUserById").mockResolvedValue(null);
+        const spy = vi.spyOn(AuthService, "getUserById").mockResolvedValue(null);
         const mockLogger = createMockLogger();
 
         const app = new Elysia()
             .derive(() => ({ logger: mockLogger }))
             .get("/me", async ({ set }) => {
-                const user = await Auth.getUserById(999, mockLogger);
+                const user = await AuthService.getUserById(999, mockLogger);
                 if (!user) {
                     set.status = 404;
                     return { success: false, error: "Not found" };
