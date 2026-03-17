@@ -9,6 +9,7 @@ model Users {
   deletedAt  DateTime?
 
   orders       Order[]
+  debtPayments DebtPayment[]
   refreshToken RefreshToken[]
 
   createdAt DateTime @default(now())

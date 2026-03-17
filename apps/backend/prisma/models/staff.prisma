@@ -9,6 +9,7 @@ model Staff {
   role   Role @relation(fields: [roleId], references: [id])
 
   orders           Order[]
+  debtPayments     DebtPayment[]
   refreshTokens    RefreshToken[]
   productHistories ProductHistory[]
   expenses         Expense[]

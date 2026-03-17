@@ -65,6 +65,11 @@ export const Permission = {
     AUDIT_LOGS_LIST: "audit-logs:list",
     AUDIT_LOGS_READ: "audit-logs:read",
 
+    // === DEBTS ===
+    DEBTS_LIST: "debts:list",
+    DEBTS_READ: "debts:read",
+    DEBTS_CREATE_PAYMENT: "debts:create:payment",
+
     // === ANALYTICS ===
     ANALYTICS_VIEW: "analytics:view",
 } as const;
@@ -131,5 +136,6 @@ export const PermissionGroups = {
         Permission.PRODUCT_HISTORY_LIST,
     ],
     AUDIT_LOGS_ALL: [Permission.AUDIT_LOGS_LIST, Permission.AUDIT_LOGS_READ],
+    DEBTS_ALL: [Permission.DEBTS_LIST, Permission.DEBTS_READ, Permission.DEBTS_CREATE_PAYMENT],
     ANALYTICS_ALL: [Permission.ANALYTICS_VIEW],
 } as const;

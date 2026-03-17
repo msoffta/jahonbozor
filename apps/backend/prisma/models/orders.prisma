@@ -21,8 +21,9 @@ model Order {
   data        Json
   deletedAt   DateTime?
 
-  user  Users? @relation(fields: [userId], references: [id], onDelete: SetNull)
-  staff Staff? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  user         Users?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  staff        Staff?        @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  debtPayments DebtPayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

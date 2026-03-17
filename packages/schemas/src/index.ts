@@ -16,6 +16,7 @@ export * from "./permissions";
 export * from "./audit-logs";
 export * from "./auth";
 export * from "./categories";
+export * from "./debts";
 export * from "./expenses";
 export * from "./orders";
 export * from "./products";

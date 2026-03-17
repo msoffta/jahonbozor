@@ -9,6 +9,7 @@ enum AuditAction {
   PERMISSION_CHANGE
   ORDER_STATUS_CHANGE
   INVENTORY_ADJUST
+  DEBT_PAYMENT
 }
 
 enum ActorType {

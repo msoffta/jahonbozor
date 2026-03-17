@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import z from "zod";
 
 import { hasPermission, Permission } from "@jahonbozor/schemas";
@@ -34,6 +34,7 @@ const usersSearchSchema = z.object({
 
 function UsersPage() {
     const { t } = useTranslation("clients");
+    const navigate = useNavigate();
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const { new: isNew } = Route.useSearch();
     const isReady = useDeferredReady();
@@ -183,6 +184,12 @@ function UsersPage() {
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
                             translations={translations}
+                            onRowClick={(row) =>
+                                void navigate({
+                                    to: "/users/$userId",
+                                    params: { userId: String(row.id) },
+                                })
+                            }
                         />
                     </motion.div>
                 )}
@@ -191,7 +198,7 @@ function UsersPage() {
     );
 }
 
-export const Route = createFileRoute("/_dashboard/users")({
+export const Route = createFileRoute("/_dashboard/users/")({
     validateSearch: (search) => usersSearchSchema.parse(search),
     beforeLoad: async () => {
         const { permissions } = useAuthStore.getState();

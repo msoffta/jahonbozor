@@ -1,4 +1,5 @@
 import type { Order } from "@backend/generated/prisma/client";
+import type { DebtPaymentModel } from "@backend/generated/prisma/models/DebtPayment";
 import type { ExpenseModel } from "@backend/generated/prisma/models/Expense";
 import type { ProductModel } from "@backend/generated/prisma/models/Product";
 import type { UsersModel } from "@backend/generated/prisma/models/Users";
@@ -90,5 +91,15 @@ export function createRoleSnapshot(role: { name: string; permissions: string[] }
     return {
         name: role.name,
         permissions: role.permissions,
+    };
+}
+
+export function createDebtPaymentSnapshot(payment: DebtPaymentModel) {
+    return {
+        orderId: payment.orderId,
+        userId: payment.userId,
+        amount: Number(payment.amount),
+        staffId: payment.staffId,
+        comment: payment.comment,
     };
 }

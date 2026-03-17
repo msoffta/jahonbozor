@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 import { analytics } from "./analytics/analytics.index";
 import { auditLogs } from "./audit-logs/audit-logs.index";
 import { categories } from "./categories/categories.index";
+import { debts } from "./debts/debts.index";
 import { expenses } from "./expenses/expenses.index";
 import { orders } from "./orders/orders.index";
 import { products } from "./products/products.index";
@@ -16,5 +17,6 @@ export const privateRoutes = new Elysia({ prefix: "/api/private" })
     .use(products)
     .use(orders)
     .use(expenses)
+    .use(debts)
     .use(auditLogs)
     .use(analytics);
