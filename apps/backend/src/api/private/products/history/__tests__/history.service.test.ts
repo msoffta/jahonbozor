@@ -86,7 +86,7 @@ describe("HistoryService", () => {
 
             // Act
             const result = await HistoryService.getAllHistory(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -105,6 +105,8 @@ describe("HistoryService", () => {
                 {
                     page: 1,
                     limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     productId: 1,
                     operation: "CREATE",
@@ -124,7 +126,7 @@ describe("HistoryService", () => {
 
             // Act
             const result = await HistoryService.getAllHistory(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -179,7 +181,7 @@ describe("HistoryService", () => {
             // Act
             const result = await HistoryService.getProductHistory(
                 1,
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -383,7 +385,7 @@ describe("HistoryService", () => {
             prismaMock.productHistory.findMany.mockResolvedValue([]);
 
             const result = await HistoryService.getAllHistory(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 

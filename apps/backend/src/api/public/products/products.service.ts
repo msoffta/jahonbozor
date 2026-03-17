@@ -14,6 +14,8 @@ export abstract class PublicProductsService {
         {
             page,
             limit,
+            sortBy,
+            sortOrder,
             searchQuery,
             categoryIds: categoryIdsStr,
             minPrice,
@@ -71,7 +73,7 @@ export abstract class PublicProductsService {
                             },
                         },
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

@@ -65,6 +65,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     userId: query.userId ? Number(query.userId) : undefined,
                     staffId: query.staffId ? Number(query.staffId) : undefined,
@@ -456,7 +458,12 @@ describe("Orders Service Integration", () => {
 
         // Assert
         expect(spy).toHaveBeenCalledWith(
-            expect.objectContaining({ page: 3, limit: 15 }),
+            expect.objectContaining({
+                page: 3,
+                limit: 15,
+                sortBy: "id",
+                sortOrder: "asc" as const,
+            }),
             expect.any(Number),
             expect.any(Array),
             expect.anything(),

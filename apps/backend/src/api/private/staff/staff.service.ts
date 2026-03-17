@@ -35,7 +35,7 @@ const staffSelect = {
 
 export abstract class StaffService {
     static async getAllStaff(
-        { page, limit, searchQuery, roleId }: StaffPagination,
+        { page, limit, sortBy, sortOrder, searchQuery, roleId }: StaffPagination,
         logger: Logger,
     ): Promise<StaffListResponse> {
         try {
@@ -61,6 +61,7 @@ export abstract class StaffService {
                     take: limit,
                     where: whereClause,
                     select: staffSelect,
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

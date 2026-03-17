@@ -79,6 +79,8 @@ const createTestApp = (userType: "user" | "staff" = "user") => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     paymentType: query.paymentType as "CASH" | "CREDIT_CARD" | undefined,
                     status: query.status as "NEW" | "ACCEPTED" | undefined,
@@ -499,7 +501,12 @@ describe("Public Orders Service Integration", () => {
         // Assert
         expect(spy).toHaveBeenCalledWith(
             1,
-            expect.objectContaining({ page: 2, limit: 10 }),
+            expect.objectContaining({
+                page: 2,
+                limit: 10,
+                sortBy: "id",
+                sortOrder: "asc" as const,
+            }),
             expect.anything(),
         );
 

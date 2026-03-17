@@ -213,7 +213,7 @@ describe("PublicOrders Service", () => {
             // Act
             const result = await PublicOrdersService.getUserOrders(
                 1,
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -229,7 +229,15 @@ describe("PublicOrders Service", () => {
             // Act
             const result = await PublicOrdersService.getUserOrders(
                 1,
-                { page: 1, limit: 20, searchQuery: "", paymentType: "CASH", status: "NEW" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    paymentType: "CASH",
+                    status: "NEW",
+                },
                 mockLogger,
             );
 
@@ -244,7 +252,7 @@ describe("PublicOrders Service", () => {
             // Act
             const result = await PublicOrdersService.getUserOrders(
                 1,
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -261,7 +269,7 @@ describe("PublicOrders Service", () => {
             // Act
             const result = await PublicOrdersService.getUserOrders(
                 1,
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -280,7 +288,15 @@ describe("PublicOrders Service", () => {
             // Act
             const result = await PublicOrdersService.getUserOrders(
                 1,
-                { page: 1, limit: 20, searchQuery: "", dateFrom, dateTo },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    dateFrom,
+                    dateTo,
+                },
                 mockLogger,
             );
 

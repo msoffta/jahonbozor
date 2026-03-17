@@ -16,6 +16,8 @@ const roleIdParams = t.Object({
 const RolesPagination = t.Object({
     page: t.Numeric({ default: 1 }),
     limit: t.Numeric({ default: 20 }),
+    sortBy: t.String({ default: "id" }),
+    sortOrder: t.Union([t.Literal("asc"), t.Literal("desc")], { default: "asc" }),
     searchQuery: t.Optional(t.String()),
     includeStaffCount: t.Optional(t.BooleanString()),
 });

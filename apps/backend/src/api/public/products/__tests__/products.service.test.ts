@@ -40,6 +40,8 @@ const mockProduct2: Product = {
 const defaultParams = {
     page: 1,
     limit: 20,
+    sortBy: "id",
+    sortOrder: "asc" as const,
     searchQuery: "",
     includeDeleted: false,
 };

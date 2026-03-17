@@ -18,7 +18,15 @@ import type {
 
 export abstract class UsersService {
     static async getAllUsers(
-        { page, limit, searchQuery, includeOrders, includeDeleted }: UsersPagination,
+        {
+            page,
+            limit,
+            sortBy,
+            sortOrder,
+            searchQuery,
+            includeOrders,
+            includeDeleted,
+        }: UsersPagination,
         logger: Logger,
     ): Promise<AdminUsersListResponse> {
         try {
@@ -45,7 +53,7 @@ export abstract class UsersService {
                     include: {
                         orders: includeOrders,
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

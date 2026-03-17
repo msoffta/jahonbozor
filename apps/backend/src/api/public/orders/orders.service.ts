@@ -168,7 +168,7 @@ export abstract class PublicOrdersService {
         logger: Logger,
     ): Promise<UserOrdersListResponse> {
         try {
-            const { page, limit, paymentType, status, dateFrom, dateTo } = query;
+            const { page, limit, sortBy, sortOrder, paymentType, status, dateFrom, dateTo } = query;
 
             const whereClause: Prisma.OrderWhereInput = {
                 userId,
@@ -195,7 +195,7 @@ export abstract class PublicOrdersService {
                             },
                         },
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

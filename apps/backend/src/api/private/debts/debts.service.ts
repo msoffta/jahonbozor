@@ -148,6 +148,39 @@ export abstract class DebtsService {
                 return { success: false, error: "Order has no associated user" };
             }
 
+            // Calculate remaining amount to prevent overpayment
+            const orderWithItems = await prisma.order.findUnique({
+                where: { id: orderId },
+                include: {
+                    items: { select: { price: true, quantity: true } },
+                    debtPayments: { select: { amount: true } },
+                },
+            });
+
+            if (orderWithItems) {
+                const orderTotal = orderWithItems.items.reduce(
+                    (sum, item) => sum + Number(item.price) * item.quantity,
+                    0,
+                );
+                const totalPaid = orderWithItems.debtPayments.reduce(
+                    (sum, p) => sum + Number(p.amount),
+                    0,
+                );
+                const remaining = orderTotal - totalPaid;
+
+                if (body.amount > remaining) {
+                    logger.warn("Debts: Payment amount exceeds remaining debt", {
+                        orderId,
+                        amount: body.amount,
+                        remaining,
+                    });
+                    return {
+                        success: false,
+                        error: "Payment amount exceeds remaining debt",
+                    };
+                }
+            }
+
             const [payment] = await prisma.$transaction(async (transaction) => {
                 const created = await transaction.debtPayment.create({
                     data: {

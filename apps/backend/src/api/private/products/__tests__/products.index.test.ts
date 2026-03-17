@@ -73,6 +73,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery,
                     categoryIds: query.categoryIds || undefined,
                     minPrice: query.minPrice ? Number(query.minPrice) : undefined,
@@ -127,6 +129,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery,
                 },
                 logger,
@@ -618,7 +622,12 @@ describe("Products API Routes", () => {
             // Assert
             expect(spy).toHaveBeenCalledWith(
                 1,
-                expect.objectContaining({ page: 2, limit: 10 }),
+                expect.objectContaining({
+                    page: 2,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                }),
                 expect.anything(),
             );
 

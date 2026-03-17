@@ -84,7 +84,7 @@ describe("Orders Service", () => {
 
             // Act
             const result = await OrdersService.getAllOrders(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 1,
                 [Permission.ORDERS_LIST_OWN],
                 mockLogger,
@@ -101,7 +101,14 @@ describe("Orders Service", () => {
 
             // Act
             const result = await OrdersService.getAllOrders(
-                { page: 1, limit: 20, searchQuery: "", staffId: 2 },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    staffId: 2,
+                },
                 1,
                 [Permission.ORDERS_LIST_OWN],
                 mockLogger,
@@ -118,7 +125,14 @@ describe("Orders Service", () => {
 
             // Act
             const result = await OrdersService.getAllOrders(
-                { page: 1, limit: 20, searchQuery: "", staffId: 2 },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    staffId: 2,
+                },
                 1,
                 [Permission.ORDERS_LIST_ALL],
                 mockLogger,
@@ -134,7 +148,14 @@ describe("Orders Service", () => {
 
             // Act
             const result = await OrdersService.getAllOrders(
-                { page: 1, limit: 20, searchQuery: "", paymentType: "CASH" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    paymentType: "CASH",
+                },
                 1,
                 [Permission.ORDERS_LIST_ALL],
                 mockLogger,
@@ -150,7 +171,14 @@ describe("Orders Service", () => {
 
             // Act
             const result = await OrdersService.getAllOrders(
-                { page: 1, limit: 20, searchQuery: "", status: "NEW" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    status: "NEW",
+                },
                 1,
                 [Permission.ORDERS_LIST_ALL],
                 mockLogger,
@@ -169,6 +197,8 @@ describe("Orders Service", () => {
                 {
                     page: 1,
                     limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     dateFrom: "2024-01-01T00:00:00.000Z",
                     dateTo: "2024-12-31T00:00:00.000Z",
@@ -188,7 +218,7 @@ describe("Orders Service", () => {
 
             // Act
             const result = await OrdersService.getAllOrders(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 1,
                 [Permission.ORDERS_LIST_OWN],
                 mockLogger,
@@ -206,7 +236,7 @@ describe("Orders Service", () => {
 
             // Act
             const result = await OrdersService.getAllOrders(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 1,
                 [Permission.ORDERS_LIST_OWN],
                 mockLogger,

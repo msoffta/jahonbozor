@@ -64,6 +64,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     entityType: query.entityType as string | undefined,
                     entityId: query.entityId ? Number(query.entityId) : undefined,

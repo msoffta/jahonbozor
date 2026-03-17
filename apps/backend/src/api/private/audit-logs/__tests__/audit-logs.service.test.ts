@@ -66,7 +66,7 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -84,7 +84,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", entityType: "product" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    entityType: "product",
+                },
                 mockLogger,
             );
 
@@ -100,7 +107,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", entityId: 100 },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    entityId: 100,
+                },
                 mockLogger,
             );
 
@@ -115,7 +129,15 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", actorId: 10, actorType: "STAFF" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    actorId: 10,
+                    actorType: "STAFF",
+                },
                 mockLogger,
             );
 
@@ -130,7 +152,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", action: "CREATE" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    action: "CREATE",
+                },
                 mockLogger,
             );
 
@@ -145,7 +174,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", dateFrom: "2024-01-02T00:00:00Z" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    dateFrom: "2024-01-02T00:00:00Z",
+                },
                 mockLogger,
             );
 
@@ -160,7 +196,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", dateTo: "2024-01-01T23:59:59Z" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    dateTo: "2024-01-01T23:59:59Z",
+                },
                 mockLogger,
             );
 
@@ -175,7 +218,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", requestId: "req-123" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    requestId: "req-123",
+                },
                 mockLogger,
             );
 
@@ -190,7 +240,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", entityType: "nonexistent" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    entityType: "nonexistent",
+                },
                 mockLogger,
             );
 
@@ -206,7 +263,7 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 

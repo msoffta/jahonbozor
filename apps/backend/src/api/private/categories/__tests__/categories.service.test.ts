@@ -52,7 +52,14 @@ describe("CategoriesService", () => {
 
             // Act
             const result = await CategoriesService.getAllCategories(
-                { page: 1, limit: 10, searchQuery: "", depth: 1 },
+                {
+                    page: 1,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    depth: 1,
+                },
                 mockLogger,
             );
 
@@ -70,7 +77,15 @@ describe("CategoriesService", () => {
 
             // Act
             const result = await CategoriesService.getAllCategories(
-                { page: 1, limit: 10, searchQuery: "", parentId: null, depth: 1 },
+                {
+                    page: 1,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    parentId: null,
+                    depth: 1,
+                },
                 mockLogger,
             );
 
@@ -89,7 +104,15 @@ describe("CategoriesService", () => {
 
             // Act
             const result = await CategoriesService.getAllCategories(
-                { page: 1, limit: 10, searchQuery: "", parentId: 1, depth: 1 },
+                {
+                    page: 1,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    parentId: 1,
+                    depth: 1,
+                },
                 mockLogger,
             );
 
@@ -107,7 +130,14 @@ describe("CategoriesService", () => {
 
             // Act
             const result = await CategoriesService.getAllCategories(
-                { page: 1, limit: 10, searchQuery: "Electr", depth: 1 },
+                {
+                    page: 1,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "Electr",
+                    depth: 1,
+                },
                 mockLogger,
             );
 

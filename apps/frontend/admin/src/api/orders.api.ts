@@ -35,7 +35,14 @@ export const ordersListQueryOptions = (params?: {
             orders: AdminOrderItem[];
         }> => {
             const { data, error } = await api.api.private.orders.get({
-                query: { page: 1, limit: 20, searchQuery: "", ...params },
+                query: {
+                    page: 1,
+                    limit: 20,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    ...params,
+                },
             });
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");

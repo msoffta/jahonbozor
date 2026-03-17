@@ -27,6 +27,8 @@ export abstract class OrdersService {
             const {
                 page,
                 limit,
+                sortBy,
+                sortOrder,
                 userId,
                 staffId: filterStaffId,
                 paymentType,
@@ -133,7 +135,7 @@ export abstract class OrdersService {
                         },
                         staff: { select: { id: true, fullname: true } },
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

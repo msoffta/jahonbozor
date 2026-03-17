@@ -41,6 +41,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery || "",
                     categoryIds: query.categoryIds || undefined,
                     minPrice: query.minPrice ? Number(query.minPrice) : undefined,
@@ -103,7 +105,13 @@ describe("PublicProducts Endpoints", () => {
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
-                expect.objectContaining({ page: 2, limit: 10, searchQuery: "test" }),
+                expect.objectContaining({
+                    page: 2,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "test",
+                }),
                 expect.anything(),
             );
 

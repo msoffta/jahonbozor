@@ -17,6 +17,8 @@ export abstract class AuditLogService {
             const {
                 page,
                 limit,
+                sortBy,
+                sortOrder,
                 entityType,
                 entityId,
                 actorId,
@@ -50,7 +52,7 @@ export abstract class AuditLogService {
                     skip: (page - 1) * limit,
                     take: limit,
                     where: whereClause,
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

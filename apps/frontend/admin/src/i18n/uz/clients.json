@@ -34,6 +34,7 @@
   "debt_payment_amount": "To'lov summasi",
   "debt_payment_comment": "Izoh",
   "debt_confirm_payment": "To'lovni tasdiqlash",
+  "debt_overpayment_error": "Summa qarz qoldig'idan oshib ketdi",
   "debt_payment_recorded": "To'lov yozildi",
   "debt_no_debts": "Qarzlar yo'q",
   "debt_order_total": "Buyurtma summasi",

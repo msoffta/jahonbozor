@@ -30,6 +30,8 @@ export const staffListQueryOptions = (params?: {
                 query: {
                     page: 1,
                     limit: 100,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     ...params,
                 },
             });

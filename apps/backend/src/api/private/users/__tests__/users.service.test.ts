@@ -69,7 +69,14 @@ describe("Users Service", () => {
 
             // Act
             const result = await UsersService.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "", includeOrders: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeOrders: false,
+                },
                 mockLogger,
             );
 
@@ -84,7 +91,15 @@ describe("Users Service", () => {
 
             // Act
             const result = await UsersService.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "", includeOrders: false, includeDeleted: true },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeOrders: false,
+                    includeDeleted: true,
+                },
                 mockLogger,
             );
 
@@ -100,7 +115,14 @@ describe("Users Service", () => {
 
             // Act
             const result = await UsersService.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "John", includeOrders: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "John",
+                    includeOrders: false,
+                },
                 mockLogger,
             );
 
@@ -115,7 +137,14 @@ describe("Users Service", () => {
 
             // Act
             const result = await UsersService.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "", includeOrders: true },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeOrders: true,
+                },
                 mockLogger,
             );
 
@@ -130,7 +159,14 @@ describe("Users Service", () => {
 
             // Act
             const result = await UsersService.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "nonexistent", includeOrders: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "nonexistent",
+                    includeOrders: false,
+                },
                 mockLogger,
             );
 
@@ -146,7 +182,14 @@ describe("Users Service", () => {
 
             // Act
             const result = await UsersService.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "", includeOrders: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeOrders: false,
+                },
                 mockLogger,
             );
 

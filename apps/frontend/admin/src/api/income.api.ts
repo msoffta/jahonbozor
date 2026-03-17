@@ -35,6 +35,8 @@ export const incomeListQueryOptions = (params?: {
                     page: params?.page ?? 1,
                     limit: params?.limit ?? 20,
                     searchQuery: params?.searchQuery ?? "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     staffId: params?.staffId,
                     productId: params?.productId,
                     dateFrom: params?.dateFrom,

@@ -51,6 +51,7 @@
   "permission_group_categories": "Kategoriyalar",
   "permission_group_orders": "Buyurtmalar",
   "permission_group_expenses": "Chiqimlar",
+  "permission_group_debts": "Qarzlar",
   "permission_group_analytics": "Analitika",
 
   "perm_users": {
@@ -179,6 +180,16 @@
       "desc": "Tizimdagi barcha foydalanuvchi harakatlarining jurnalini ko'rish"
     },
     "read": { "title": "Logni ko'rish", "desc": "Muayyan tizim hodisasini batafsil ko'rish" }
+  },
+  "perm_debts": {
+    "list": {
+      "title": "Qarzlarni ko'rish",
+      "desc": "Foydalanuvchilarning qarz buyurtmalarini ko'rish"
+    },
+    "read": { "title": "Qarz xulosasi", "desc": "Foydalanuvchining qarz ma'lumotlarini ko'rish" },
+    "create": {
+      "payment": { "title": "To'lov yozish", "desc": "Buyurtma bo'yicha qarz to'lovini yozish" }
+    }
   },
   "perm_analytics": {
     "view": {

@@ -28,7 +28,15 @@ export const expensesListQueryOptions = (params?: {
         queryKey: expenseKeys.list(params),
         queryFn: async (): Promise<{ count: number; expenses: ExpenseItem[] }> => {
             const { data, error } = await api.api.private.expenses.get({
-                query: { page: 1, limit: 20, searchQuery: "", includeDeleted: false, ...params },
+                query: {
+                    page: 1,
+                    limit: 20,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeDeleted: false,
+                    ...params,
+                },
             });
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");

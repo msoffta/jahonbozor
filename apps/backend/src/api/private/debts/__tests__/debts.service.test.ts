@@ -239,7 +239,14 @@ describe("DebtsService", () => {
         test("should create payment successfully", async () => {
             // Arrange
             const mockOrder = createMockOrder({ id: 1, userId: 10 });
-            prismaMock.order.findUnique.mockResolvedValue(mockOrder);
+            const mockOrderWithItems = {
+                ...mockOrder,
+                items: [{ price: 20000, quantity: 1 }],
+                debtPayments: [],
+            };
+            prismaMock.order.findUnique
+                .mockResolvedValueOnce(mockOrder)
+                .mockResolvedValueOnce(mockOrderWithItems as never);
 
             const mockPayment = {
                 ...createMockDebtPayment({ id: 5, orderId: 1, userId: 10 }),
@@ -335,10 +342,43 @@ describe("DebtsService", () => {
             expect(failure.error).toBe("Order has no associated user");
         });
 
+        test("should return error when payment exceeds remaining debt", async () => {
+            // Arrange
+            const mockOrder = createMockOrder({ id: 1, userId: 10 });
+            const mockOrderWithItems = {
+                ...mockOrder,
+                items: [{ price: 10000, quantity: 1 }],
+                debtPayments: [{ amount: 8000 }],
+            };
+            prismaMock.order.findUnique
+                .mockResolvedValueOnce(mockOrder)
+                .mockResolvedValueOnce(mockOrderWithItems as never);
+
+            // Act
+            const result = await DebtsService.createDebtPayment(
+                1,
+                { amount: 5000 },
+                mockContext,
+                mockLogger,
+            );
+
+            // Assert — remaining is 2000, but trying to pay 5000
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Payment amount exceeds remaining debt");
+            expect(mockLogger.warn).toHaveBeenCalled();
+        });
+
         test("should create payment with null comment when not provided", async () => {
             // Arrange
             const mockOrder = createMockOrder({ id: 1, userId: 10 });
-            prismaMock.order.findUnique.mockResolvedValue(mockOrder);
+            const mockOrderWithItems = {
+                ...mockOrder,
+                items: [{ price: 20000, quantity: 1 }],
+                debtPayments: [],
+            };
+            prismaMock.order.findUnique
+                .mockResolvedValueOnce(mockOrder)
+                .mockResolvedValueOnce(mockOrderWithItems as never);
 
             const mockPayment = {
                 ...createMockDebtPayment({ id: 6, comment: null }),
@@ -363,7 +403,14 @@ describe("DebtsService", () => {
         test("should handle database error during transaction", async () => {
             // Arrange
             const mockOrder = createMockOrder({ id: 1, userId: 10 });
-            prismaMock.order.findUnique.mockResolvedValue(mockOrder);
+            const mockOrderWithItems = {
+                ...mockOrder,
+                items: [{ price: 20000, quantity: 1 }],
+                debtPayments: [],
+            };
+            prismaMock.order.findUnique
+                .mockResolvedValueOnce(mockOrder)
+                .mockResolvedValueOnce(mockOrderWithItems as never);
             prismaMock.$transaction.mockRejectedValue(new Error("Transaction failed"));
 
             // Act

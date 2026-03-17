@@ -50,6 +50,7 @@
   "permission_group_categories": "Категории",
   "permission_group_orders": "Заказы",
   "permission_group_expenses": "Расходы",
+  "permission_group_debts": "Долги",
   "permission_group_analytics": "Аналитика",
   "permission_group_producthistory": "История товаров",
   "permission_group_auditlogs": "Журнал аудита",
@@ -167,6 +168,19 @@
     "read": {
       "title": "Просмотр лога",
       "desc": "Детальный просмотр конкретного системного события"
+    }
+  },
+  "perm_debts": {
+    "list": {
+      "title": "Просмотр долгов",
+      "desc": "Просмотр списка долговых заказов пользователей"
+    },
+    "read": {
+      "title": "Сводка долгов",
+      "desc": "Просмотр сводной информации о долгах пользователя"
+    },
+    "create": {
+      "payment": { "title": "Запись оплаты", "desc": "Запись оплаты долга по заказу" }
     }
   },
   "perm_analytics": {

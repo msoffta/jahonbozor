@@ -31,6 +31,8 @@ export const ordersListOptions = (params: {
                         page: params.page ?? 1,
                         limit: params.limit ?? 20,
                         searchQuery: "",
+                        sortBy: "id",
+                        sortOrder: "asc" as const,
                         status: params.status,
                     },
                 }),

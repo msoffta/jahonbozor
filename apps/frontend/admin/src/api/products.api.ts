@@ -28,7 +28,15 @@ export const productsListQueryOptions = (params?: {
         queryKey: productKeys.list(params),
         queryFn: async (): Promise<{ count: number; products: AdminProductItem[] }> => {
             const { data, error } = await api.api.private.products.get({
-                query: { page: 1, limit: 100, searchQuery: "", includeDeleted: false, ...params },
+                query: {
+                    page: 1,
+                    limit: 100,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeDeleted: false,
+                    ...params,
+                },
             });
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");

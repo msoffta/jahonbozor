@@ -41,6 +41,8 @@ export abstract class CategoriesService {
             const {
                 page,
                 limit,
+                sortBy,
+                sortOrder,
                 searchQuery,
                 parentId,
                 includeChildren,
@@ -90,7 +92,7 @@ export abstract class CategoriesService {
                     take: limit,
                     where: whereClause,
                     include: hasIncludes ? includeClause : undefined,
-                    orderBy: { name: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

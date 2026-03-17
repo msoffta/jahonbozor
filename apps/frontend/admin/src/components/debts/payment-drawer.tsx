@@ -34,9 +34,12 @@ export function PaymentDrawer({
     const [comment, setComment] = useState("");
     const createPayment = useCreateDebtPayment();
 
+    const numericAmount = Number(amount);
+    const isOverpayment = remainingAmount !== undefined && numericAmount > remainingAmount;
+    const isInvalidAmount = numericAmount <= 0 || isOverpayment;
+
     const handleSubmit = () => {
-        const numericAmount = Number(amount);
-        if (numericAmount <= 0) return;
+        if (isInvalidAmount) return;
 
         createPayment.mutate(
             { orderId, amount: numericAmount, comment: comment || null },
@@ -82,6 +85,11 @@ export function PaymentDrawer({
                             min={1}
                             autoFocus
                         />
+                        {isOverpayment && (
+                            <p className="text-destructive text-xs">
+                                {t("debt_overpayment_error")}
+                            </p>
+                        )}
                         <Input
                             placeholder={t("debt_payment_comment")}
                             value={comment}
@@ -103,7 +111,7 @@ export function PaymentDrawer({
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={createPayment.isPending || Number(amount) <= 0}
+                            disabled={createPayment.isPending || isInvalidAmount}
                             className="flex-1"
                         >
                             {t("debt_confirm_payment")}

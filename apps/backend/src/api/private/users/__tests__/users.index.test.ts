@@ -71,6 +71,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery as string | undefined,
                     includeOrders: query.includeOrders === "true",
                     includeDeleted: query.includeDeleted === "true",

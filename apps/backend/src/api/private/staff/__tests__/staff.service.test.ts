@@ -76,7 +76,10 @@ describe("Staff Service", () => {
             prismaMock.$transaction.mockResolvedValue([3, [mockStaffWithRole]]);
 
             // Act
-            const result = await StaffService.getAllStaff({ page: 1, limit: 20 }, mockLogger);
+            const result = await StaffService.getAllStaff(
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const },
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -89,7 +92,13 @@ describe("Staff Service", () => {
 
             // Act
             const result = await StaffService.getAllStaff(
-                { page: 1, limit: 20, searchQuery: "John" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "John",
+                },
                 mockLogger,
             );
 
@@ -104,7 +113,7 @@ describe("Staff Service", () => {
 
             // Act
             const result = await StaffService.getAllStaff(
-                { page: 1, limit: 20, roleId: 1 },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, roleId: 1 },
                 mockLogger,
             );
 
@@ -119,7 +128,13 @@ describe("Staff Service", () => {
 
             // Act
             const result = await StaffService.getAllStaff(
-                { page: 1, limit: 20, searchQuery: "nonexistent" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "nonexistent",
+                },
                 mockLogger,
             );
 
@@ -134,7 +149,10 @@ describe("Staff Service", () => {
             prismaMock.$transaction.mockRejectedValue(dbError);
 
             // Act
-            const result = await StaffService.getAllStaff({ page: 1, limit: 20 }, mockLogger);
+            const result = await StaffService.getAllStaff(
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const },
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);

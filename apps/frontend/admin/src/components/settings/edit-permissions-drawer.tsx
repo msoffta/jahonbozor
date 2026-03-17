@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import {
     BarChart3,
+    CreditCard,
     DollarSign,
     FileSearch,
     History,
@@ -109,6 +110,7 @@ export function EditPermissionsDrawer({
             { key: "products", icon: Package, permissions: PermissionGroups.PRODUCTS_ALL },
             { key: "categories", icon: Layers, permissions: PermissionGroups.CATEGORIES_ALL },
             { key: "orders", icon: ShoppingCart, permissions: PermissionGroups.ORDERS_ALL },
+            { key: "debts", icon: CreditCard, permissions: PermissionGroups.DEBTS_ALL },
             { key: "expenses", icon: DollarSign, permissions: PermissionGroups.EXPENSES_ALL },
             {
                 key: "producthistory",

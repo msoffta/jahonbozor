@@ -22,7 +22,15 @@ export const categoriesListQueryOptions = (params?: {
         queryKey: categoryKeys.list(params),
         queryFn: async (): Promise<{ count: number; categories: AdminCategoryItem[] }> => {
             const { data, error } = await api.api.private.categories.get({
-                query: { page: 1, limit: 100, searchQuery: "", depth: 1, ...params },
+                query: {
+                    page: 1,
+                    limit: 100,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    depth: 1,
+                    ...params,
+                },
             });
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");

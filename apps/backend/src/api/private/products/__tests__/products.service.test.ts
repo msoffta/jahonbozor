@@ -96,7 +96,14 @@ describe("ProductsService", () => {
 
             // Act
             const result = await ProductsService.getAllProducts(
-                { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -112,7 +119,14 @@ describe("ProductsService", () => {
 
             // Act
             const result = await ProductsService.getAllProducts(
-                { page: 1, limit: 20, searchQuery: "iPhone", includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "iPhone",
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -134,7 +148,15 @@ describe("ProductsService", () => {
 
             // Act
             const result = await ProductsService.getAllProducts(
-                { page: 1, limit: 20, searchQuery: "", categoryIds: "1", includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    categoryIds: "1",
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -152,6 +174,8 @@ describe("ProductsService", () => {
                 {
                     page: 1,
                     limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     minPrice: 50,
                     maxPrice: 150,
@@ -171,7 +195,14 @@ describe("ProductsService", () => {
 
             // Act
             const result = await ProductsService.getAllProducts(
-                { page: 1, limit: 20, searchQuery: "", includeDeleted: true },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeDeleted: true,
+                },
                 mockLogger,
             );
 
@@ -187,7 +218,14 @@ describe("ProductsService", () => {
 
             // Act
             const result = await ProductsService.getAllProducts(
-                { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -512,7 +550,14 @@ describe("ProductsService", () => {
                 prismaMock.$transaction.mockResolvedValue([0, []]);
 
                 const result = await ProductsService.getAllProducts(
-                    { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                    {
+                        page: 1,
+                        limit: 20,
+                        sortBy: "id",
+                        sortOrder: "asc" as const,
+                        searchQuery: "",
+                        includeDeleted: false,
+                    },
                     mockLogger,
                 );
 
@@ -528,6 +573,8 @@ describe("ProductsService", () => {
                     {
                         page: 1,
                         limit: 20,
+                        sortBy: "id",
+                        sortOrder: "asc" as const,
                         searchQuery: "",
                         categoryIds: "abc,def",
                         includeDeleted: false,
@@ -543,7 +590,15 @@ describe("ProductsService", () => {
                 prismaMock.$transaction.mockResolvedValue([0, []]);
 
                 const result = await ProductsService.getAllProducts(
-                    { page: 1, limit: 20, searchQuery: "", categoryIds: "", includeDeleted: false },
+                    {
+                        page: 1,
+                        limit: 20,
+                        sortBy: "id",
+                        sortOrder: "asc" as const,
+                        searchQuery: "",
+                        categoryIds: "",
+                        includeDeleted: false,
+                    },
                     mockLogger,
                 );
 
@@ -558,6 +613,8 @@ describe("ProductsService", () => {
                     {
                         page: 1,
                         limit: 20,
+                        sortBy: "id",
+                        sortOrder: "asc" as const,
                         searchQuery: "",
                         minPrice: 100,
                         maxPrice: 50,

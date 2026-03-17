@@ -15,6 +15,8 @@ import type {
 interface RolesPagination {
     page: number;
     limit: number;
+    sortBy: string;
+    sortOrder: string;
     searchQuery?: string;
     includeStaffCount?: boolean;
 }
@@ -22,7 +24,7 @@ interface RolesPagination {
 export abstract class RolesService {
     static async getAllRoles(params: RolesPagination, logger: Logger): Promise<RolesListResponse> {
         try {
-            const { page, limit, searchQuery, includeStaffCount } = params;
+            const { page, limit, sortBy, sortOrder, searchQuery, includeStaffCount } = params;
             const whereClause: Prisma.RoleWhereInput = { deletedAt: null };
 
             if (searchQuery) {
@@ -38,7 +40,7 @@ export abstract class RolesService {
                     include: includeStaffCount
                         ? { _count: { select: { staffs: true } } }
                         : undefined,
-                    orderBy: { name: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

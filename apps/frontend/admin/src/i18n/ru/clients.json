@@ -34,6 +34,7 @@
   "debt_payment_amount": "Сумма оплаты",
   "debt_payment_comment": "Комментарий",
   "debt_confirm_payment": "Подтвердить оплату",
+  "debt_overpayment_error": "Сумма превышает остаток долга",
   "debt_payment_recorded": "Оплата записана",
   "debt_no_debts": "Долгов нет",
   "debt_order_total": "Сумма заказа",

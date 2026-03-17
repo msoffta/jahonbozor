@@ -23,6 +23,8 @@ export abstract class ProductsService {
             const {
                 page,
                 limit,
+                sortBy,
+                sortOrder,
                 searchQuery,
                 categoryIds: categoryIdsStr,
                 minPrice,
@@ -75,7 +77,7 @@ export abstract class ProductsService {
                             },
                         },
                     },
-                    orderBy: { createdAt: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

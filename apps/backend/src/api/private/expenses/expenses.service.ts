@@ -19,7 +19,17 @@ export abstract class ExpensesService {
         logger: Logger,
     ): Promise<ExpensesListResponse> {
         try {
-            const { page, limit, searchQuery, staffId, dateFrom, dateTo, includeDeleted } = params;
+            const {
+                page,
+                limit,
+                sortBy,
+                sortOrder,
+                searchQuery,
+                staffId,
+                dateFrom,
+                dateTo,
+                includeDeleted,
+            } = params;
 
             const whereClause: Prisma.ExpenseWhereInput = {};
 
@@ -60,7 +70,7 @@ export abstract class ExpensesService {
                             },
                         },
                     },
-                    orderBy: { id: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 

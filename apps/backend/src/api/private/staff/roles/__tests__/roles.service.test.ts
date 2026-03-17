@@ -50,7 +50,10 @@ describe("Roles Service", () => {
             prismaMock.$transaction.mockResolvedValue([3, [mockRole]]);
 
             // Act
-            const result = await RolesService.getAllRoles({ page: 1, limit: 20 }, mockLogger);
+            const result = await RolesService.getAllRoles(
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const },
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -63,7 +66,13 @@ describe("Roles Service", () => {
 
             // Act
             const result = await RolesService.getAllRoles(
-                { page: 1, limit: 20, searchQuery: "Admin" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "Admin",
+                },
                 mockLogger,
             );
 
@@ -78,7 +87,13 @@ describe("Roles Service", () => {
 
             // Act
             const result = await RolesService.getAllRoles(
-                { page: 1, limit: 20, includeStaffCount: true },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeStaffCount: true,
+                },
                 mockLogger,
             );
 
@@ -94,7 +109,13 @@ describe("Roles Service", () => {
 
             // Act
             const result = await RolesService.getAllRoles(
-                { page: 1, limit: 20, searchQuery: "nonexistent" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "nonexistent",
+                },
                 mockLogger,
             );
 
@@ -109,7 +130,10 @@ describe("Roles Service", () => {
             prismaMock.$transaction.mockRejectedValue(dbError);
 
             // Act
-            const result = await RolesService.getAllRoles({ page: 1, limit: 20 }, mockLogger);
+            const result = await RolesService.getAllRoles(
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const },
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);

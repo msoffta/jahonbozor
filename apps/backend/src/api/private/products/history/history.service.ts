@@ -17,8 +17,18 @@ export abstract class HistoryService {
         logger: Logger,
     ): Promise<HistoryListResponse> {
         try {
-            const { page, limit, searchQuery, productId, operation, staffId, dateFrom, dateTo } =
-                params;
+            const {
+                page,
+                limit,
+                sortBy,
+                sortOrder,
+                searchQuery,
+                productId,
+                operation,
+                staffId,
+                dateFrom,
+                dateTo,
+            } = params;
             const whereClause = {
                 ...(productId && { productId }),
                 ...(operation && { operation }),
@@ -47,7 +57,7 @@ export abstract class HistoryService {
                         },
                         staff: { select: { id: true, fullname: true } },
                     },
-                    orderBy: { id: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
@@ -118,7 +128,7 @@ export abstract class HistoryService {
         logger: Logger,
     ): Promise<HistoryListResponse> {
         try {
-            const { page, limit, operation, staffId, dateFrom, dateTo } = params;
+            const { page, limit, sortBy, sortOrder, operation, staffId, dateFrom, dateTo } = params;
             const whereClause = {
                 productId,
                 ...(operation && { operation }),
@@ -136,7 +146,7 @@ export abstract class HistoryService {
                     include: {
                         staff: { select: { id: true, fullname: true } },
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
