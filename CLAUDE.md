@@ -79,19 +79,56 @@ bun run format:check       # Check formatting (CI)
 - Commit-msg hook (`commitlint`) — валидация conventional commits
 - Подробности правил: [docs/rules.md](docs/rules.md#linting--formatting)
 
-### Versioning & Releases
+### Versioning & Commits
 
-```bash
-bun run commit             # Interactive commit prompt (commitizen)
-bun run changeset          # Create changeset file for version bump
-bun run version-packages   # Bump versions + generate CHANGELOG (CI only)
+#### Как делать коммиты
+
+1. **Staged файлы** → pre-commit hook автоматически прогонит `lint-staged` (ESLint --fix + Prettier)
+2. **Commit message** → commit-msg hook валидирует через `commitlint` (conventional commits)
+3. **Changeset** (если есть user/dev-facing изменения) → создать перед коммитом
+
+#### Формат коммитов (Conventional Commits)
+
+```
+<type>(<scope>): <description>
+
+[optional body]
 ```
 
-- **Conventional Commits** — enforced via commitlint: `feat(backend):`, `fix(ui):`, `chore(deps):` и т.д.
-- **Scopes:** `backend`, `bot`, `admin`, `user`, `ui`, `schemas`, `logger`, `utils`, `ci`, `deps`
-- **Changesets** — PR с user/dev-facing изменениями должен содержать changeset файл (`.changeset/*.md`)
+**Types:** `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `perf`, `ci`, `build`, `style`, `revert`
+**Scopes (обязательный):** `backend`, `bot`, `admin`, `user`, `ui`, `schemas`, `logger`, `utils`, `ci`, `deps`
+**Мульти-scope:** при изменениях в нескольких workspace — `feat(backend,admin): ...`
+
+Примеры:
+
+```
+feat(backend): add product categories API
+fix(ui): correct DataTable sorting on empty values
+chore(deps): update vitest to v3.2
+refactor(admin,user): extract shared auth hook
+```
+
+#### Changeset workflow
+
+```bash
+bun run changeset          # Создать changeset файл (.changeset/*.md)
+bun run version-packages   # Bump versions + CHANGELOG (CI only)
+```
+
+- **Когда нужен changeset:** любой PR с user/dev-facing изменениями (feat, fix, perf)
+- **Когда НЕ нужен:** chore, docs, test, ci, refactor (внутренние изменения)
 - **Fixed versioning** — все workspace получают одинаковую версию
 - **Release flow:** merge PR → `release.yml` создаёт "Version Packages" PR → merge → deploy с semver тегами
+
+#### Git hooks (автоматические)
+
+| Hook         | Что делает                                               |
+| ------------ | -------------------------------------------------------- |
+| `pre-commit` | `lint-staged` — ESLint --fix + Prettier на staged файлах |
+| `commit-msg` | `commitlint` — валидация формата conventional commit     |
+
+> **Важно:** НЕ пропускать hooks (`--no-verify`). Если hook падает — исправить причину, не обходить.
+
 - Подробности: [docs/rules.md](docs/rules.md#versioning--commits)
 
 ### Testing
