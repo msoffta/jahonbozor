@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { prismaMock, createMockLogger } from "@backend/test/setup";
 import type { Category } from "@backend/generated/prisma/client";
@@ -44,7 +44,7 @@ const allCategoryPermissions = [
  * Uses mocked middleware context instead of real authMiddleware.
  *
  * Note: This duplicates routing logic from categories.index.ts intentionally -
- * Elysia macros (authMiddleware) cannot be easily mocked via mock.module()
+ * Elysia macros (authMiddleware) cannot be easily mocked via vi.vi.fn()
  * because they use runtime plugins. Using spyOn(CategoriesService) allows
  * testing route-to-service integration without full middleware stack.
  */
@@ -273,7 +273,13 @@ describe("Categories API Routes", () => {
             // Arrange
             const categoryWithChildren = {
                 ...mockCategory,
-                children: [mockChildCategory],
+                children: [{
+                    id: 2,
+                    name: "Child",
+                    parentId: 1,
+                    createdAt: new Date("2024-01-01"),
+                    updatedAt: new Date("2024-01-01"),
+                }],
             };
             prismaMock.category.findUnique.mockResolvedValueOnce(categoryWithChildren);
 
@@ -296,8 +302,8 @@ describe("Categories API Routes", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
             prismaMock.$transaction.mockImplementationOnce(async (callback) => {
                 const mockTx = {
-                    category: { create: mock(() => Promise.resolve(mockCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { create: vi.fn(() => Promise.resolve(mockCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return (callback as (tx: unknown) => Promise<unknown>)(mockTx);
             });
@@ -324,8 +330,8 @@ describe("Categories API Routes", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null); // No duplicate
             prismaMock.$transaction.mockImplementationOnce(async (callback) => {
                 const mockTx = {
-                    category: { create: mock(() => Promise.resolve(mockChildCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { create: vi.fn(() => Promise.resolve(mockChildCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return (callback as (tx: unknown) => Promise<unknown>)(mockTx);
             });
@@ -393,8 +399,8 @@ describe("Categories API Routes", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null); // No duplicate
             prismaMock.$transaction.mockImplementationOnce(async (callback) => {
                 const mockTx = {
-                    category: { update: mock(() => Promise.resolve(updatedCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { update: vi.fn(() => Promise.resolve(updatedCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return (callback as (tx: unknown) => Promise<unknown>)(mockTx);
             });
@@ -462,8 +468,8 @@ describe("Categories API Routes", () => {
             prismaMock.product.count.mockResolvedValueOnce(0); // No products
             prismaMock.$transaction.mockImplementationOnce(async (callback) => {
                 const mockTx = {
-                    category: { delete: mock(() => Promise.resolve(mockCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { delete: vi.fn(() => Promise.resolve(mockCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return (callback as (tx: unknown) => Promise<unknown>)(mockTx);
             });
@@ -532,7 +538,7 @@ describe("Categories API Routes", () => {
 describe("Categories Service Integration", () => {
     test("getAllCategories should be called with correct pagination", async () => {
         // Arrange
-        const spy = spyOn(CategoriesService, "getAllCategories").mockResolvedValue({
+        const spy = vi.spyOn(CategoriesService, "getAllCategories").mockResolvedValue({
             success: true,
             data: { count: 0, categories: [] },
         });
@@ -552,7 +558,7 @@ describe("Categories Service Integration", () => {
 
     test("getCategory should be called with correct parameters", async () => {
         // Arrange
-        const spy = spyOn(CategoriesService, "getCategory").mockResolvedValue({
+        const spy = vi.spyOn(CategoriesService, "getCategory").mockResolvedValue({
             success: true,
             data: mockCategory,
         });
@@ -569,7 +575,7 @@ describe("Categories Service Integration", () => {
 
     test("createCategory should be called with context", async () => {
         // Arrange
-        const spy = spyOn(CategoriesService, "createCategory").mockResolvedValue({
+        const spy = vi.spyOn(CategoriesService, "createCategory").mockResolvedValue({
             success: true,
             data: mockCategory,
         });
@@ -596,7 +602,7 @@ describe("Categories Service Integration", () => {
 
     test("deleteCategory should be called with context", async () => {
         // Arrange
-        const spy = spyOn(CategoriesService, "deleteCategory").mockResolvedValue({
+        const spy = vi.spyOn(CategoriesService, "deleteCategory").mockResolvedValue({
             success: true,
             data: mockCategory,
         });

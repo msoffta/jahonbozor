@@ -1,7 +1,6 @@
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { useCartStore } from "@/stores/cart.store";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
 const makeProducts = (count: number) =>
     Array.from({ length: count }, (_, i) => ({
@@ -14,14 +13,16 @@ const makeProducts = (count: number) =>
         updatedAt: new Date(),
     }));
 
-let mockQueryData: { count: number; products: ReturnType<typeof makeProducts> } | undefined;
-let mockIsLoading = false;
+const mocks = vi.hoisted(() => ({
+    queryData: undefined as { count: number; products: any[] } | undefined,
+    isLoading: false,
+}));
 
-mock.module("react-i18next", () => ({
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, search, ...props }: any) => (
         <a href={`${to}?categoryIds=${search?.categoryIds || ""}`} {...props}>
             {children}
@@ -29,21 +30,27 @@ mock.module("@tanstack/react-router", () => ({
     ),
 }));
 
-mock.module("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", () => ({
     useQuery: () => ({
-        data: mockQueryData,
-        isLoading: mockIsLoading,
+        data: mocks.queryData,
+        isLoading: mocks.isLoading,
     }),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
+vi.mock("motion/react", async () => {
+    const { motionReactMock } = await import("@/test-utils/ui-mocks");
+    return motionReactMock();
+});
+vi.mock("@jahonbozor/ui", async () => {
+    const { jahonbozorUIMock } = await import("@/test-utils/ui-mocks");
+    return jahonbozorUIMock();
+});
 
-mock.module("@/api/products.api", () => ({
+vi.mock("@/api/products.api", () => ({
     productsListOptions: () => ({}),
 }));
 
-mock.module("@/stores/ui.store", () => ({
+vi.mock("@/stores/ui.store", () => ({
     useUIStore: () => ({ locale: "uz" }),
 }));
 
@@ -52,12 +59,12 @@ import { CategorySection } from "../category-section";
 describe("CategorySection", () => {
     beforeEach(() => {
         useCartStore.setState({ items: [] });
-        mockQueryData = undefined;
-        mockIsLoading = false;
+        mocks.queryData = undefined;
+        mocks.isLoading = false;
     });
 
     test("should return null when no products and not loading", () => {
-        mockQueryData = { count: 0, products: [] };
+        mocks.queryData = { count: 0, products: [] };
         const { container } = render(
             <CategorySection categoryId={1} categoryName="Empty" />,
         );
@@ -65,7 +72,7 @@ describe("CategorySection", () => {
     });
 
     test("should render category name", () => {
-        mockQueryData = { count: 3, products: makeProducts(3) };
+        mocks.queryData = { count: 3, products: makeProducts(3) };
         const { getByText } = render(
             <CategorySection categoryId={1} categoryName="Electronics" />,
         );
@@ -73,7 +80,7 @@ describe("CategorySection", () => {
     });
 
     test("should render product cards", () => {
-        mockQueryData = { count: 3, products: makeProducts(3) };
+        mocks.queryData = { count: 3, products: makeProducts(3) };
         const { getByText } = render(
             <CategorySection categoryId={1} categoryName="Cat" />,
         );
@@ -83,7 +90,7 @@ describe("CategorySection", () => {
     });
 
     test("should show loading skeletons", () => {
-        mockIsLoading = true;
+        mocks.isLoading = true;
         const { getAllByTestId } = render(
             <CategorySection categoryId={1} categoryName="Cat" />,
         );
@@ -91,7 +98,7 @@ describe("CategorySection", () => {
     });
 
     test("should not show 'see all' when count <= 10", () => {
-        mockQueryData = { count: 5, products: makeProducts(5) };
+        mocks.queryData = { count: 5, products: makeProducts(5) };
         const { queryByText } = render(
             <CategorySection categoryId={1} categoryName="Cat" />,
         );
@@ -99,7 +106,7 @@ describe("CategorySection", () => {
     });
 
     test("should show 'see all' when count > 10", () => {
-        mockQueryData = { count: 15, products: makeProducts(10) };
+        mocks.queryData = { count: 15, products: makeProducts(10) };
         const { getByText } = render(
             <CategorySection categoryId={1} categoryName="Cat" />,
         );
@@ -107,7 +114,7 @@ describe("CategorySection", () => {
     });
 
     test("should render products in vertical list", () => {
-        mockQueryData = { count: 3, products: makeProducts(3) };
+        mocks.queryData = { count: 3, products: makeProducts(3) };
         const { container } = render(
             <CategorySection categoryId={1} categoryName="Cat" />,
         );
@@ -117,7 +124,7 @@ describe("CategorySection", () => {
     });
 
     test("should link category name to products page with categoryId", () => {
-        mockQueryData = { count: 2, products: makeProducts(2) };
+        mocks.queryData = { count: 2, products: makeProducts(2) };
         const { getByText } = render(
             <CategorySection categoryId={7} categoryName="Food" />,
         );

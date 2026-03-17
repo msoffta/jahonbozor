@@ -9,7 +9,7 @@ export const analytics = new Elysia({ prefix: "/analytics" })
 	.use(authMiddleware)
 	.get(
 		"/summary",
-		async ({ query, logger }): Promise<AnalyticsSummaryResponse> => {
+		async ({ query, set, logger }): Promise<AnalyticsSummaryResponse> => {
 			try {
 				return await AnalyticsService.getAnalyticsSummary(query, logger);
 			} catch (error) {
@@ -17,6 +17,7 @@ export const analytics = new Elysia({ prefix: "/analytics" })
 					"Analytics: Unhandled error in GET /analytics/summary",
 					{ error },
 				);
+				set.status = 500;
 				return { success: false, error };
 			}
 		},

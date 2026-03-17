@@ -57,7 +57,7 @@ Quick reference for code conventions. See CLAUDE.md for detailed guidance.
 ```bash
 bun install          # НЕ npm install
 bun run dev          # НЕ node/npm run
-bun test             # НЕ npm test
+bun run test         # Vitest across all workspaces
 bun run typecheck    # Проверка типов
 ```
 
@@ -335,63 +335,54 @@ const childLogger = createChildLogger(parentLogger, { requestId, userId });
 ```
 apps/backend/
 ├── test/
-│   └── setup.ts           # Preload with Prisma mocks
-├── bunfig.toml            # preload = ["./test/setup.ts"]
+│   └── setup.ts           # Setup with Prisma mockDeep
+├── vitest.config.ts        # Vitest configuration
 └── src/api/{domain}/__tests__/
     ├── {domain}.service.test.ts
     └── {domain}.index.test.ts
 ```
 
-### Mocking (Bun native)
+### Mocking (Vitest)
 
 ```typescript
-import { mock, spyOn, beforeEach, afterEach } from "bun:test";
+import { vi, describe, test, expect, beforeEach } from "vitest";
 
-// mock() — create mock functions
-const mockFn = mock((x: number) => x * 2);
+// vi.fn() — create mock functions
+const mockFn = vi.fn((x: number) => x * 2);
 mockFn.mockReturnValue(42);
 mockFn.mockResolvedValue({ id: 1 });
 mockFn.mockRejectedValue(new Error("fail"));
 expect(mockFn).toHaveBeenCalledWith(5);
 
-// spyOn() — spy on methods
-const spy = spyOn(service, "method").mockResolvedValue({});
+// vi.spyOn() — spy on methods
+const spy = vi.spyOn(service, "method").mockResolvedValue({});
 expect(spy).toHaveBeenCalledTimes(1);
 
-// mock.module() — mock modules
-mock.module("@lib/prisma", () => ({ prisma: prismaMock }));
-
-// Cleanup
-afterEach(() => {
-    mock.restore();        // Restore spyOn
-    mock.clearAllMocks();  // Clear history
-});
+// vi.mock() — mock modules (hoisted automatically, order doesn't matter)
+vi.mock("@backend/lib/prisma", () => ({ prisma: prismaMock }));
 ```
 
 ### Prisma Mock (test/setup.ts)
 
-Strictly typed mocks using Prisma model types:
+Type-safe mocks using `vitest-mock-extended`:
 
 ```typescript
-import type { Users, Staff, ... } from "@generated/prisma/client";
+import { mockDeep, mockReset } from "vitest-mock-extended";
+import type { PrismaClient } from "@backend/generated/prisma/client";
 
-type MockedModel<T> = {
-    findUnique: ReturnType<typeof mock<(args: unknown) => Promise<T | null>>>;
-    create: ReturnType<typeof mock<(args: unknown) => Promise<T>>>;
-    // ...
-};
+export const prismaMock = mockDeep<PrismaClient>();
 
-export const prismaMock = {
-    users: createModelMock<Users>(),
-    staff: createModelMock<Staff>(),
-    // ...
-};
+vi.mock("@backend/lib/prisma", () => ({ prisma: prismaMock }));
+
+beforeEach(() => {
+    mockReset(prismaMock);
+});
 ```
 
 ### Type Guards for ReturnSchema
 
 ```typescript
-import { expectSuccess, expectFailure } from "@test/setup";
+import { expectSuccess, expectFailure } from "@backend/test/setup";
 
 // Success — TS knows data exists
 const success = expectSuccess(result);
@@ -405,21 +396,16 @@ expect(failure.error).toBe("Error");
 ### Service Test Pattern
 
 ```typescript
-import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@test/setup";
+import { describe, test, expect, beforeEach } from "vitest";
+import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import { Users } from "../users.service";
 
 describe("Users.createUser", () => {
-    let mockLogger: ReturnType<typeof createMockLogger>;
-
-    beforeEach(() => {
-        mockLogger = createMockLogger();
-        mock.clearAllMocks();
-    });
+    const mockLogger = createMockLogger();
 
     test("should create user with valid data", async () => {
-        // Arrange
-        const mockUser = { id: 1, fullname: "John", ... };
+        // Arrange — TypeScript enforces all required fields
+        const mockUser = { id: 1, fullname: "John", phone: "+998...", /* all fields */ };
         prismaMock.users.create.mockResolvedValue(mockUser);
 
         // Act
@@ -432,16 +418,12 @@ describe("Users.createUser", () => {
     });
 
     test("should handle database error", async () => {
-        // Arrange
-        const dbError = new Error("DB error");
-        prismaMock.users.create.mockRejectedValue(dbError);
+        prismaMock.users.create.mockRejectedValue(new Error("DB error"));
 
-        // Act
         const result = await Users.createUser({ fullname: "John" }, mockLogger);
 
-        // Assert
         const failure = expectFailure(result);
-        expect(failure.error).toBe(dbError);
+        expect(failure.error).toBeInstanceOf(Error);
     });
 });
 ```
@@ -449,7 +431,7 @@ describe("Users.createUser", () => {
 ### Elysia Test Pattern
 
 ```typescript
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect } from "vitest";
 import { Elysia } from "elysia";
 import { users } from "../users.index";
 
@@ -457,7 +439,6 @@ describe("Users API", () => {
     const app = new Elysia().use(users);
 
     test("GET /users", async () => {
-        // URL must be fully qualified!
         const response = await app.handle(
             new Request("http://localhost/users")
         );
@@ -473,25 +454,20 @@ describe("Users API", () => {
 
 ```typescript
 test.skip("incomplete", () => {});        // Skip
-test.todo("implement later", () => {});   // TODO
+test.todo("implement later");             // TODO
 test.only("debug this", () => {});        // Only this
 
-test.skipIf(isCI)("slow test", () => {}); // Conditional skip
-test.if(isMacOS)("mac only", () => {});   // Conditional run
-
-test("with timeout", () => {}, 10000);    // 10s timeout
+test("with timeout", () => {}, { timeout: 10000 }); // 10s timeout
 test("retry", () => {}, { retry: 3 });    // Up to 3 retries
 ```
 
 ### Parametrized Tests
 
 ```typescript
-const cases = [
+test.each([
     [1, 2, 3],
     [0, 0, 0],
-];
-
-test.each(cases)("add(%i, %i) = %i", (a, b, expected) => {
+])("add(%i, %i) = %i", (a, b, expected) => {
     expect(a + b).toBe(expected);
 });
 ```
@@ -499,11 +475,11 @@ test.each(cases)("add(%i, %i) = %i", (a, b, expected) => {
 ### Test Naming
 
 ```typescript
-// ✅ Хорошо
+// Хорошо
 test("should return null when user not found", ...);
 test("creates user with valid data", ...);
 
-// ❌ Плохо
+// Плохо
 test("test1", ...);
 test("works", ...);
 ```
@@ -511,17 +487,10 @@ test("works", ...);
 ### Commands
 
 ```bash
-# Run from apps/backend/ directory!
-cd apps/backend
-
-bun test                          # All tests
-bun test --watch                  # Watch mode
-bun test --coverage               # With coverage
-bun test --bail                   # Stop on first failure
-bun test --test-name-pattern "X"  # Filter by name
+bun run test:backend                    # All tests
+bun run test:backend -- --watch         # Watch mode
+bun run test:backend -- --coverage      # With coverage
 ```
-
-> Tests must run from `apps/backend/` (where bunfig.toml is).
 
 ### Test Coverage (обязательно)
 
@@ -550,33 +519,19 @@ test("should validate input", ...);                 // validation
 - [ ] Права доступа (если есть)
 
 ### DO
-- Isolate tests (setup.ts handles `mockReset()` globally)
 - Test behavior, not implementation
 - Use AAA pattern (Arrange-Act-Assert)
 - Group tests with `describe`
 - Cover ALL edge cases — they catch real bugs
-- Test boundary values (0, negative, max, empty)
+- Use `mockDeep` for type-safe Prisma mocks — no `as any`
 
 ### DON'T
-- Don't call `mock.clearAllMocks()` in test files — setup.ts already does `mockReset()`
 - Don't rely on test execution order
 - Don't leave `.only` in commits
 - Don't test internal implementation details
 - Don't use real external services
 - Don't skip edge cases
-
-### Mock Isolation (setup.ts handles this)
-
-```typescript
-// mockClear() — clears call history ONLY
-// mockReset() — clears history AND mockResolvedValueOnce queue
-
-// setup.ts already does this globally — DON'T duplicate in test files
-beforeEach(() => {
-    method.mockReset();
-    method.mockImplementation(defaultImpl);
-});
-```
+- Don't use `as any` in mock return values — provide full objects
 
 ---
 
@@ -907,10 +862,10 @@ import { motion, AnimatePresence, LayoutGroup, PageTransition, AnimatedList, Ani
 ## Frontend Testing
 
 ### Stack
-- `bun:test` — test runner
+- **Vitest** — test runner (with `vi.mock()` auto-hoisting)
 - `@testing-library/react` — component rendering
 - `@testing-library/user-event` — user interactions
-- `happy-dom` — DOM implementation
+- `happy-dom` — DOM implementation (via `vitest.config.ts`)
 
 ### Test Priority
 1. **Must:** Zustand stores, permission hooks, auth flow, form validation
@@ -931,7 +886,7 @@ src/components/products/__tests__/product-form.test.tsx
 ### Store Test Pattern
 
 ```typescript
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach } from "vitest";
 import { useAuthStore } from "../auth.store";
 
 describe("Auth Store", () => {
@@ -954,18 +909,16 @@ describe("Auth Store", () => {
 });
 ```
 
-### mock.module Ordering (CRITICAL)
-
-`mock.module()` calls **MUST** precede imports of modules that use the mocked dependency:
+### Mocking (vi.mock — hoisted automatically)
 
 ```typescript
-// ✅ CORRECT
-mock.module("@tanstack/react-router", () => ({ Link: ... }));
-import { Header } from "../header";  // Header uses @tanstack/react-router
-
-// ❌ WRONG — mock won't take effect
+import { vi } from "vitest";
 import { Header } from "../header";
-mock.module("@tanstack/react-router", () => ({ Link: ... }));
+
+// vi.mock is hoisted above imports — order doesn't matter
+vi.mock("@tanstack/react-router", () => ({
+    Link: ({ children, to }: any) => <a href={to}>{children}</a>,
+}));
 ```
 
 ### Store Reset Pattern
@@ -985,17 +938,16 @@ beforeEach(() => {
 - AAA pattern (Arrange-Act-Assert)
 - Reset store state in `beforeEach`
 - Descriptive test names: `"should redirect when unauthenticated"`
-- Place `mock.module()` BEFORE imports
-- Use `afterEach(() => { mock.restore() })` with `spyOn`
+- Use `vi.mock()` for module mocking
 - Prefer semantic queries (`getByRole`, `getByText`)
+- Use `waitFor()` for async assertions
 
 ### DON'T
 - Don't test internal component state
 - Don't test third-party libraries
 - Don't leave `.only` in commits
 - Don't mock Zustand's `create` — test the real store
-- Don't import modules BEFORE their `mock.module()` calls
 - Don't use `container.querySelector` when a semantic query is available
+- Don't mock what you don't own (prefer integration over unit for routes)
 
 > Full guide: [docs/frontend-testing.md](frontend-testing.md)
-- Don't mock what you don't own (prefer integration over unit for routes)

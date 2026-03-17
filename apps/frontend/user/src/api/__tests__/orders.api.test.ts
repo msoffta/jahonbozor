@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { useCartStore } from "@/stores/cart.store";
 
 const mockOrder = {
@@ -11,28 +11,28 @@ const mockOrder = {
     items: [],
 };
 
-const mockGet = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: { count: 1, orders: [mockOrder] } },
-        error: null,
-    }),
-);
+const { mockGet, mockDetailGet, mockPost } = vi.hoisted(() => ({
+    mockGet: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: { count: 1, orders: [mockOrder] } },
+            error: null,
+        }),
+    ),
+    mockDetailGet: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: mockOrder },
+            error: null,
+        }),
+    ),
+    mockPost: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: mockOrder },
+            error: null,
+        }),
+    ),
+}));
 
-const mockDetailGet = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: mockOrder },
-        error: null,
-    }),
-);
-
-const mockPost = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: mockOrder },
-        error: null,
-    }),
-);
-
-mock.module("@/lib/api-client", () => ({
+vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
@@ -50,7 +50,6 @@ import { orderKeys, ordersListOptions, orderDetailOptions } from "../orders.api"
 describe("orders.api", () => {
     beforeEach(() => {
         useCartStore.setState({ items: [] });
-        mock.restore();
     });
 
     describe("orderKeys", () => {

@@ -1,16 +1,21 @@
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import { useCartStore } from "@/stores/cart.store";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
-mock.module("react-i18next", () => ({
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
+vi.mock("motion/react", async () => {
+    const { motionReactMock } = await import("@/test-utils/ui-mocks");
+    return motionReactMock();
+});
+vi.mock("@jahonbozor/ui", async () => {
+    const { jahonbozorUIMock } = await import("@/test-utils/ui-mocks");
+    return jahonbozorUIMock();
+});
 
-mock.module("@/components/catalog/quantity-control", () => ({
+vi.mock("@/components/catalog/quantity-control", () => ({
     QuantityControl: ({ quantity, onIncrement, onDecrement }: any) => (
         <div data-testid="quantity-control">
             <button data-testid="decrement" onClick={onDecrement}>-</button>
@@ -30,14 +35,14 @@ describe("ProductCard variant='cart'", () => {
         price: 5000,
         quantity: 3,
         selected: false,
-        onSelect: mock(() => {}),
+        onSelect: vi.fn(),
     };
 
     beforeEach(() => {
         useCartStore.setState({
             items: [{ productId: 1, name: "Test Item", price: 5000, quantity: 3 }],
         });
-        defaultProps.onSelect = mock(() => {});
+        defaultProps.onSelect = vi.fn();
     });
 
     test("should render item name", () => {

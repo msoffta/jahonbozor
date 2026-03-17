@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import type { Category } from "@backend/generated/prisma/client";
 import { PublicCategoriesService } from "../categories.service";
@@ -43,7 +43,7 @@ describe("PublicCategories Service", () => {
             // Arrange
             prismaMock.category.findMany.mockResolvedValueOnce([
                 mockCategoryWithChildren,
-            ] as unknown as Category[]);
+            ]);
 
             // Act
             const result = await PublicCategoriesService.getAllCategories(mockLogger);
@@ -83,7 +83,7 @@ describe("PublicCategories Service", () => {
         test("should return single category with children", async () => {
             // Arrange
             prismaMock.category.findFirst.mockResolvedValueOnce(
-                mockCategoryWithChildren as unknown as Category,
+                mockCategoryWithChildren,
             );
 
             // Act

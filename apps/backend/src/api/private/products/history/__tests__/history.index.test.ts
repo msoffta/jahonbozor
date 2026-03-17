@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { createMockLogger } from "@backend/test/setup";
 import { Permission } from "@jahonbozor/schemas";
@@ -78,7 +78,7 @@ describe("History API Routes", () => {
     describe("GET /history", () => {
         test("should return paginated history list", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 2, history: [mockHistoryEntry] },
             });
@@ -99,7 +99,7 @@ describe("History API Routes", () => {
 
         test("should apply productId filter", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 1, history: [mockHistoryEntry] },
             });
@@ -120,7 +120,7 @@ describe("History API Routes", () => {
 
         test("should apply operation filter", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 1, history: [mockHistoryEntry] },
             });
@@ -141,7 +141,7 @@ describe("History API Routes", () => {
 
         test("should apply staffId filter", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 1, history: [mockHistoryEntry] },
             });
@@ -162,7 +162,7 @@ describe("History API Routes", () => {
 
         test("should return empty list when no history found", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 0, history: [] },
             });
@@ -184,7 +184,7 @@ describe("History API Routes", () => {
 
         test("should handle pagination parameters", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 0, history: [] },
             });
@@ -207,7 +207,7 @@ describe("History API Routes", () => {
     describe("GET /history/:historyId", () => {
         test("should return history entry by id", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: true,
                 data: mockHistoryEntry,
             });
@@ -228,7 +228,7 @@ describe("History API Routes", () => {
 
         test("should return error when history entry not found", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: false,
                 error: "History entry not found",
             });
@@ -248,7 +248,7 @@ describe("History API Routes", () => {
 
         test("should call service with correct id", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: true,
                 data: mockHistoryEntry,
             });
@@ -265,7 +265,7 @@ describe("History API Routes", () => {
 
     describe("edge cases", () => {
         test("GET /history with empty results should return empty list", async () => {
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 0, history: [] },
             });
@@ -284,7 +284,7 @@ describe("History API Routes", () => {
         });
 
         test("GET /history/:historyId with id=0 should call service with 0", async () => {
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: false,
                 error: "History entry not found",
             });
@@ -301,7 +301,7 @@ describe("History API Routes", () => {
         });
 
         test("GET /history/:historyId when service fails should return error", async () => {
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: false,
                 error: "History entry not found",
             });

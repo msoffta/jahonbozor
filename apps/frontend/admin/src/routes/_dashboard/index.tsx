@@ -1,22 +1,25 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useAuthStore } from "@/stores/auth.store";
 import { Permission, hasPermission, hasAnyPermission } from "@jahonbozor/schemas";
+import { AnimatePresence, PageTransition, DataTable, DataTableSkeleton, motion, toast } from "@jahonbozor/ui";
+import { useAuthStore } from "@/stores/auth.store";
 import { useHasPermission, useHasAnyPermission } from "@/hooks/use-permissions";
-import { PageTransition, DataTable, DataTableSkeleton, toast } from "@jahonbozor/ui";
-import type { DataTableTranslations } from "@jahonbozor/ui";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
 import { ordersListQueryOptions, useDeleteOrder, useUpdateOrder, useCreateOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { clientsListQueryOptions } from "@/api/clients.api";
 import { getOrderColumns } from "@/components/orders/orders-columns";
+import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
 
 function OrdersPage() {
     const { t } = useTranslation("orders");
     const [page] = useState(1);
     const navigate = useNavigate();
-    const [isReady, setIsReady] = useState(false);
+    const isReady = useDeferredReady(300);
+    const translations = useDataTableTranslations("orders_empty");
 
     // Permission checks for component-level actions
     const canCreate = useHasPermission(Permission.ORDERS_CREATE);
@@ -26,11 +29,8 @@ function OrdersPage() {
     ]);
     const canDelete = useHasPermission(Permission.ORDERS_DELETE);
 
-    // Delay heavy rendering to allow BottomNav animations to finish smoothly
-    useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 300);
-        return () => clearTimeout(timer);
-    }, []);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
     const newRowDefaultValues = useMemo(() => ({
         paymentType: "CASH",
@@ -62,14 +62,13 @@ function OrdersPage() {
 
     const actions = useMemo(() => ({
         onDelete: (id: number) => {
-            if (confirm(t("common:confirm_delete"))) {
-                deleteOrder.mutate(id);
-            }
+            setDeleteTargetId(id);
+            setDeleteConfirmOpen(true);
         },
         onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => {
             updateOrder.mutate({ id, status });
         },
-    }), [t, deleteOrder, updateOrder]);
+    }), [updateOrder]);
 
     const columns = useMemo(() => {
         if (!isReady) return [];
@@ -81,7 +80,7 @@ function OrdersPage() {
     const handleCellEdit = useCallback(
         async (rowIndex: number, columnId: string, value: unknown) => {
             if (columnId === "user" && value === "CREATE_NEW") {
-                navigate({ to: "/users", search: { new: true } as any });
+                navigate({ to: "/users", search: { new: true } });
                 return;
             }
 
@@ -98,11 +97,11 @@ function OrdersPage() {
             }
 
             if (body.paymentType === "DEBT" && !order.userId && !body.userId) {
-                toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+                toast.error(t("error_debt_requires_user"));
                 throw new Error("Validation failed");
             }
             if (order.paymentType === "DEBT" && columnId === "user" && body.userId === null) {
-                toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+                toast.error(t("error_debt_requires_user"));
                 throw new Error("Validation failed");
             }
 
@@ -118,7 +117,7 @@ function OrdersPage() {
             linkedId?: unknown,
         ) => {
             if (data.user === "CREATE_NEW") {
-                navigate({ to: "/users", search: { new: true } as any });
+                navigate({ to: "/users", search: { new: true } });
                 return;
             }
 
@@ -135,7 +134,7 @@ function OrdersPage() {
                 const hasNoUser = (body.userId === null) || (!body.userId && !existingOrder?.userId);
 
                 if (isDebt && hasNoUser) {
-                    toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+                    toast.error(t("error_debt_requires_user"));
                     throw new Error("Validation failed");
                 }
 
@@ -153,7 +152,7 @@ function OrdersPage() {
 
             const paymentType = (data.paymentType as "CASH" | "CREDIT_CARD" | "DEBT") || "CASH";
             if (paymentType === "DEBT" && !data.user) {
-                toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+                toast.error(t("error_debt_requires_user"));
                 throw new Error("Validation failed");
             }
 
@@ -205,20 +204,6 @@ function OrdersPage() {
         [products],
     );
 
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("orders_empty"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
-
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
@@ -227,32 +212,48 @@ function OrdersPage() {
                 <h1 className="text-2xl font-bold">{t("title")}</h1>
             </div>
 
-            {isLoading ? (
-                <DataTableSkeleton columns={8} rows={10} className="flex-1" />
-            ) : (
-                <DataTable
-                    className="flex-1 costprice-table"
-                    columns={columns}
-                    data={orders}
-                    pagination
-                    defaultPageSize={20}
-                    pageSizeOptions={[10, 20, 50]}
-                    enableShowAll
-                    enableSorting
-                    enableGlobalSearch
-                    enableFiltering
-                    enableColumnVisibility
-                    enableColumnResizing
-                    enableEditing={canUpdate}
-                    enableMultipleNewRows={canCreate}
-                    multiRowCount={15}
-                    onCellEdit={handleCellEdit}
-                    onMultiRowSave={handleNewRowSave}
-                    onMultiRowChange={handleNewRowChange}
-                    multiRowDefaultValues={newRowDefaultValues}
-                    translations={translations}
-                />
-            )}
+            <AnimatePresence mode="wait">
+                {isLoading ? (
+                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <DataTableSkeleton columns={8} rows={10} className="flex-1" />
+                    </motion.div>
+                ) : (
+                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                        <DataTable
+                            className="flex-1 costprice-table"
+                            columns={columns}
+                            data={orders}
+                            pagination
+                            defaultPageSize={20}
+                            pageSizeOptions={[10, 20, 50]}
+                            enableShowAll
+                            enableSorting
+                            enableGlobalSearch
+                            enableFiltering
+                            enableColumnVisibility
+                            enableColumnResizing
+                            enableEditing={canUpdate}
+                            enableMultipleNewRows={canCreate}
+                            multiRowCount={15}
+                            onCellEdit={handleCellEdit}
+                            onMultiRowSave={handleNewRowSave}
+                            onMultiRowChange={handleNewRowChange}
+                            multiRowDefaultValues={newRowDefaultValues}
+                            translations={translations}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            <ConfirmDrawer
+                open={deleteConfirmOpen}
+                onOpenChange={setDeleteConfirmOpen}
+                onConfirm={() => {
+                    if (deleteTargetId !== null) {
+                        deleteOrder.mutate(deleteTargetId);
+                    }
+                }}
+                isLoading={deleteOrder.isPending}
+            />
         </PageTransition>
     );
 }

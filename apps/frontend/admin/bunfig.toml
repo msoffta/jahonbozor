@@ -1,4 +1,0 @@
-[test]
-preload = ["./test/happydom.ts", "./test/setup.ts"]
-coverageSkipTestFiles = true
-coveragePathIgnorePatterns = ["src/routeTree.gen.ts", "src/i18n/**"]

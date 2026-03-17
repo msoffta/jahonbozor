@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { prismaMock, createMockLogger } from "@backend/test/setup";
 import type { Role } from "@backend/generated/prisma/client";
@@ -192,7 +192,7 @@ describe("Roles API Routes", () => {
 describe("Roles Service Integration", () => {
     test("getAllRoles should be called with correct pagination", async () => {
         // Arrange
-        const spy = spyOn(RolesService, "getAllRoles").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getAllRoles").mockResolvedValue({
             success: true,
             data: { count: 0, roles: [] },
         });
@@ -212,7 +212,7 @@ describe("Roles Service Integration", () => {
 
     test("getRole should be called with correct id and includeStaffCount", async () => {
         // Arrange
-        const spy = spyOn(RolesService, "getRole").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getRole").mockResolvedValue({
             success: true,
             data: mockRole,
         });
@@ -229,7 +229,7 @@ describe("Roles Service Integration", () => {
 
     test("getRole should pass false for includeStaffCount when not specified", async () => {
         // Arrange
-        const spy = spyOn(RolesService, "getRole").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getRole").mockResolvedValue({
             success: true,
             data: mockRole,
         });
@@ -247,7 +247,7 @@ describe("Roles Service Integration", () => {
 
 describe("Roles API edge cases", () => {
     test("GET /roles/:id with id=0 should call service", async () => {
-        const spy = spyOn(RolesService, "getRole").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getRole").mockResolvedValue({
             success: false,
             error: "Role not found",
         });
@@ -263,7 +263,7 @@ describe("Roles API edge cases", () => {
     });
 
     test("GET /roles with no results should return empty list", async () => {
-        const spy = spyOn(RolesService, "getAllRoles").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getAllRoles").mockResolvedValue({
             success: true,
             data: { count: 0, roles: [] },
         });

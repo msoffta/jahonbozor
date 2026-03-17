@@ -4,23 +4,13 @@ import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
 import { prisma } from "@backend/lib/prisma";
 import { auditInTransaction } from "@backend/lib/audit";
-import type { Prisma, Order } from "@backend/generated/prisma/client";
+import { createOrderSnapshot } from "@backend/lib/snapshots";
+import type { Prisma } from "@backend/generated/prisma/client";
 
 interface ServiceContext {
     userId: number;
     user: Token;
     requestId?: string;
-}
-
-function createOrderSnapshot(order: Pick<Order, "userId" | "staffId" | "paymentType" | "status" | "comment" | "data">) {
-    return {
-        userId: order.userId,
-        staffId: order.staffId,
-        paymentType: order.paymentType,
-        status: order.status,
-        comment: order.comment,
-        data: order.data,
-    };
 }
 
 export abstract class PublicOrdersService {
@@ -48,6 +38,7 @@ export abstract class PublicOrdersService {
                 return { success: false, error: `Products not found: ${missingIds.join(", ")}` };
             }
 
+            // All productIds are guaranteed to exist in the map (validated by length check above)
             const productMap = new Map(products.map(product => [product.id, product]));
 
             const insufficientStock: Array<{ productId: number; productName: string; requested: number; available: number }> = [];
@@ -172,8 +163,12 @@ export abstract class PublicOrdersService {
                 userId,
                 ...(paymentType && { paymentType }),
                 ...(status && { status }),
-                ...(dateFrom && { createdAt: { gte: dateFrom } }),
-                ...(dateTo && { createdAt: { lte: dateTo } }),
+                ...((dateFrom || dateTo) && {
+                    createdAt: {
+                        ...(dateFrom && { gte: dateFrom }),
+                        ...(dateTo && { lte: dateTo }),
+                    },
+                }),
             };
 
             const [count, orders] = await prisma.$transaction([

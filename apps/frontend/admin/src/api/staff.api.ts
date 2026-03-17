@@ -5,13 +5,16 @@ import {
 	useMutation,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { toast } from "@jahonbozor/ui";
 
 // --- Query Keys ---
 export const staffKeys = {
 	all: ["staff"] as const,
+	lists: () => [...staffKeys.all, "list"] as const,
 	list: (params?: Record<string, unknown>) =>
-		[...staffKeys.all, "list", params] as const,
-	detail: (id: number) => [...staffKeys.all, "detail", id] as const,
+		[...staffKeys.lists(), params] as const,
+	details: () => [...staffKeys.all, "detail"] as const,
+	detail: (id: number) => [...staffKeys.details(), id] as const,
 };
 
 // --- Query Options ---
@@ -117,6 +120,9 @@ export const useCreateStaff = () => {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: staffKeys.all });
 		},
+		onError: () => {
+			toast.error("Xatolik yuz berdi");
+		},
 	});
 };
 
@@ -127,6 +133,9 @@ export const useUpdateStaff = () => {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: staffKeys.all });
 		},
+		onError: () => {
+			toast.error("Xatolik yuz berdi");
+		},
 	});
 };
 
@@ -136,6 +145,9 @@ export const useDeleteStaff = () => {
 		mutationFn: deleteStaffFn,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: staffKeys.all });
+		},
+		onError: () => {
+			toast.error("Xatolik yuz berdi");
 		},
 	});
 };

@@ -1,21 +1,19 @@
+import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { PageTransition } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { Permission, hasPermission } from "@jahonbozor/schemas";
+import { DatePicker, PageTransition } from "@jahonbozor/ui";
+import { DollarSign, TrendingUp, TrendingDown, ShoppingCart } from "lucide-react";
+import { useAuthStore } from "@/stores/auth.store";
 import { analyticsSummaryQueryOptions } from "@/api/analytics.api";
 import { StatCard } from "@/components/analytics/stat-card";
 import { SalesTrendChart } from "@/components/analytics/sales-trend-chart";
 import { TopProductsChart } from "@/components/analytics/top-products-chart";
 import { CategoryBreakdownChart } from "@/components/analytics/category-breakdown-chart";
-import { DatePicker } from "@jahonbozor/ui";
-import { DollarSign, TrendingUp, TrendingDown, ShoppingCart } from "lucide-react";
-import { useState } from "react";
-import { useAuthStore } from "@/stores/auth.store";
-import { Permission } from "@jahonbozor/schemas";
-import { hasPermission } from "@jahonbozor/schemas/src/permissions/permissions.schema";
 
 function SummaryPage() {
-	const { t } = useTranslation();
+	const { t } = useTranslation("analytics");
 
 	const [dateFrom, setDateFrom] = useState<Date | undefined>();
 	const [dateTo, setDateTo] = useState<Date | undefined>();
@@ -30,7 +28,7 @@ function SummaryPage() {
 	if (isLoading) {
 		return (
 			<PageTransition className="p-6">
-				<div className="text-center">{t("loading")}</div>
+				<div className="text-center">{t("common:loading")}</div>
 			</PageTransition>
 		);
 	}
@@ -38,7 +36,7 @@ function SummaryPage() {
 	if (error) {
 		return (
 			<PageTransition className="p-6">
-				<div className="text-center text-red-600">{t("error")}</div>
+				<div className="text-center text-destructive">{t("common:error")}</div>
 			</PageTransition>
 		);
 	}
@@ -76,25 +74,25 @@ function SummaryPage() {
 						title={t("total_sales")}
 						value={formatCurrency(overview?.totalSales || 0)}
 						icon={DollarSign}
-						iconColor="text-zinc-700"
+						iconColor="text-muted-foreground"
 					/>
 					<StatCard
 						title={t("total_expenses")}
 						value={formatCurrency(overview?.totalExpenses || 0)}
 						icon={TrendingDown}
-						iconColor="text-zinc-700"
+						iconColor="text-muted-foreground"
 					/>
 					<StatCard
 						title={t("profit")}
 						value={formatCurrency(overview?.profit || 0)}
 						icon={TrendingUp}
-						iconColor="text-zinc-700"
+						iconColor="text-muted-foreground"
 					/>
 					<StatCard
 						title={t("orders_count")}
 						value={overview?.ordersCount || 0}
 						icon={ShoppingCart}
-						iconColor="text-zinc-700"
+						iconColor="text-muted-foreground"
 					/>
 				</div>
 
@@ -109,23 +107,23 @@ function SummaryPage() {
 			</PageTransition>
 
 			{/* Fixed Summary Footer (above bottom nav) */}
-			<div className="fixed bottom-16 left-0 right-0 z-10 border-t border-zinc-200 bg-white px-6 py-4 shadow-lg">
+			<div className="fixed bottom-16 left-0 right-0 z-10 border-t border-border bg-background px-6 py-4 shadow-lg">
 				<div className="grid grid-cols-3 gap-4">
 					<div className="text-center">
-						<p className="text-sm text-zinc-600">{t("total_sales")}</p>
-						<p className="text-2xl font-bold text-zinc-900">
+						<p className="text-sm text-muted-foreground">{t("total_sales")}</p>
+						<p className="text-2xl font-bold text-foreground">
 							{formatCurrency(overview?.totalSales || 0)}
 						</p>
 					</div>
 					<div className="text-center">
-						<p className="text-sm text-zinc-600">{t("total_expenses")}</p>
-						<p className="text-2xl font-bold text-zinc-900">
+						<p className="text-sm text-muted-foreground">{t("total_expenses")}</p>
+						<p className="text-2xl font-bold text-foreground">
 							{formatCurrency(overview?.totalExpenses || 0)}
 						</p>
 					</div>
 					<div className="text-center">
-						<p className="text-sm text-zinc-600">{t("profit")}</p>
-						<p className="text-2xl font-bold text-zinc-900">
+						<p className="text-sm text-muted-foreground">{t("profit")}</p>
+						<p className="text-2xl font-bold text-foreground">
 							{formatCurrency(overview?.profit || 0)}
 						</p>
 					</div>

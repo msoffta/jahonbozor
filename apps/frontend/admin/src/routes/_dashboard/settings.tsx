@@ -1,12 +1,13 @@
+import { useMemo } from "react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
 import { PageTransition, Tabs, TabsList, TabsTrigger, TabsContent } from "@jahonbozor/ui";
+import { Users, ShieldCheck } from "lucide-react";
+import { useAuthStore } from "@/stores/auth.store";
 import { useHasPermission } from "@/hooks/use-permissions";
-import { Permission } from "@jahonbozor/schemas";
 import { StaffTab } from "@/components/settings/staff-tab";
 import { RolesTab } from "@/components/settings/roles-tab";
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { createFileRoute } from "@tanstack/react-router";
-import { Users, ShieldCheck } from "lucide-react";
 
 function SettingsPage() {
 	const { t } = useTranslation("settings");
@@ -70,5 +71,15 @@ function SettingsPage() {
 }
 
 export const Route = createFileRoute("/_dashboard/settings")({
+	beforeLoad: async () => {
+		const { permissions } = useAuthStore.getState();
+		const canAccessSettings = hasAnyPermission(permissions, [
+			Permission.STAFF_LIST,
+			Permission.ROLES_LIST,
+		]);
+		if (!canAccessSettings) {
+			throw redirect({ to: "/" });
+		}
+	},
 	component: SettingsPage,
 });

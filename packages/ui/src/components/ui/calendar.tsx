@@ -51,8 +51,8 @@ function Calendar({
             locale={props.locale ?? contextLocale}
             weekStartsOn={props.weekStartsOn ?? 1}
             captionLayout={props.captionLayout ?? "dropdown"}
-            startMonth={props.startMonth ?? new Date(2020, 0)}
-            endMonth={props.endMonth ?? new Date(2030, 11)}
+            startMonth={props.startMonth ?? new Date(new Date().getFullYear() - 10, 0)}
+            endMonth={props.endMonth ?? new Date(new Date().getFullYear() + 10, 11)}
             className={cn("p-3", className)}
             classNames={{
                 months: "relative flex flex-col sm:flex-row gap-2",

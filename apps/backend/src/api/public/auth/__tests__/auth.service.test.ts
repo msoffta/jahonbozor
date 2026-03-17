@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { prismaMock, createMockLogger } from "@backend/test/setup";
 import type { Staff, RefreshToken, Users } from "@backend/generated/prisma/client";
 import { password } from "bun";
@@ -79,11 +79,11 @@ const mockUserResult = {
 
 describe("Auth Service", () => {
     let mockLogger: ReturnType<typeof createMockLogger>;
-    let passwordVerifySpy: ReturnType<typeof spyOn>;
+    let passwordVerifySpy: any;
 
     beforeEach(() => {
         mockLogger = createMockLogger();
-        passwordVerifySpy = spyOn(password, "verify");
+        passwordVerifySpy = vi.spyOn(password, "verify");
     });
 
     describe("checkIfStaffExists", () => {
@@ -144,18 +144,19 @@ describe("Auth Service", () => {
             });
         });
 
-        test("should throw error when database fails", async () => {
+        test("should return null when database fails", async () => {
             // Arrange
             const dbError = new Error("Database connection failed");
             prismaMock.staff.findFirst.mockRejectedValueOnce(dbError);
 
-            // Act & Assert
-            await expect(
-                Auth.checkIfStaffExists(
-                    { username: "johndoe", password: "anypassword" },
-                    mockLogger,
-                ),
-            ).rejects.toThrow("Auth: Failed to login user");
+            // Act
+            const result = await Auth.checkIfStaffExists(
+                { username: "johndoe", password: "anypassword" },
+                mockLogger,
+            );
+
+            // Assert
+            expect(result).toBeNull();
             expect(mockLogger.error).toHaveBeenCalledWith("Auth: Error in checkIfStaffExists", {
                 username: "johndoe",
                 error: dbError,

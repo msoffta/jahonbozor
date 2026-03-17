@@ -1,10 +1,12 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AdminCategoryItem } from "@jahonbozor/schemas/src/categories";
 import { api } from "@/api/client";
+import { toast } from "@jahonbozor/ui";
 
 export const categoryKeys = {
     all: ["categories"] as const,
-    list: (params?: Record<string, unknown>) => [...categoryKeys.all, "list", params] as const,
+    lists: () => [...categoryKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...categoryKeys.lists(), params] as const,
 };
 
 export const categoriesListQueryOptions = (params?: {
@@ -38,6 +40,9 @@ export const useCreateCategory = () => {
         mutationFn: createCategoryFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 };

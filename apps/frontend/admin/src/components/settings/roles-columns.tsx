@@ -4,6 +4,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
 import { Edit, Trash2 } from "lucide-react";
 
+type RoleItemWithCount = RoleItem & {
+	_count?: { staffs: number };
+};
+
 export interface RolesActions {
 	onEdit: (role: RoleItem) => void;
 	onDelete: (id: number) => void;
@@ -59,7 +63,7 @@ export function getRolesColumns(
 			header: t("role_staff_count"),
 			size: 100,
 			cell: ({ row }) => {
-				const count = (row.original as any)._count?.staffs ?? 0;
+				const count = (row.original as RoleItemWithCount)._count?.staffs ?? 0;
 				return (
 					<div className="text-center text-muted-foreground">{count}</div>
 				);

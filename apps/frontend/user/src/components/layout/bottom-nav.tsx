@@ -13,8 +13,8 @@ const navItems = [
 
 export function BottomNav() {
     const { t } = useTranslation();
-    const pathname = useRouterState({ select: (s) => s.location.pathname });
-    const totalItems = useCartStore((s) => s.items.reduce((sum, item) => sum + item.quantity, 0));
+    const pathname = useRouterState({ select: (state) => state.location.pathname });
+    const totalItems = useCartStore((state) => state.items.reduce((sum, item) => sum + item.quantity, 0));
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">

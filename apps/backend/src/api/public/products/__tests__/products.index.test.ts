@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { createMockLogger } from "@backend/test/setup";
 import { PublicProductsService } from "../products.service";
@@ -70,7 +70,7 @@ describe("PublicProducts Endpoints", () => {
     describe("GET /products", () => {
         test("should return 200 with products list", async () => {
             // Arrange
-            const spy = spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
                 success: true,
                 data: { count: 2, products: mockProducts },
             });
@@ -90,7 +90,7 @@ describe("PublicProducts Endpoints", () => {
 
         test("should pass query parameters to service", async () => {
             // Arrange
-            const spy = spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
                 success: true,
                 data: { count: 0, products: [] },
             });
@@ -110,7 +110,7 @@ describe("PublicProducts Endpoints", () => {
 
         test("should handle service error", async () => {
             // Arrange
-            const spy = spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
                 success: false,
                 error: "DB error",
             });
@@ -128,7 +128,7 @@ describe("PublicProducts Endpoints", () => {
 
         test("should return empty list when no products found", async () => {
             // Arrange
-            const spy = spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
                 success: true,
                 data: { count: 0, products: [] },
             });
@@ -149,7 +149,7 @@ describe("PublicProducts Endpoints", () => {
     describe("GET /products/:id", () => {
         test("should return 200 with product detail", async () => {
             // Arrange
-            const spy = spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
                 success: true,
                 data: mockProducts[0],
             });
@@ -169,7 +169,7 @@ describe("PublicProducts Endpoints", () => {
 
         test("should return 404 when product not found", async () => {
             // Arrange
-            const spy = spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
                 success: false,
                 error: "Product not found",
             });
@@ -188,7 +188,7 @@ describe("PublicProducts Endpoints", () => {
 
         test("should return 404 on service error", async () => {
             // Arrange — any failure sets 404 in the handler
-            const spy = spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
                 success: false,
                 error: "DB error",
             });
@@ -206,7 +206,7 @@ describe("PublicProducts Endpoints", () => {
 
         test("should call getProduct with parsed numeric id", async () => {
             // Arrange
-            const spy = spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
                 success: true,
                 data: mockProducts[0],
             });
@@ -216,6 +216,85 @@ describe("PublicProducts Endpoints", () => {
 
             // Assert
             expect(spy).toHaveBeenCalledWith(42, expect.anything());
+
+            spy.mockRestore();
+        });
+
+        test("should call getProduct with 0 when id param is 0", async () => {
+            // Arrange
+            const spy = vi.spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
+                success: false,
+                error: "Product not found",
+            });
+
+            // Act
+            const response = await app.handle(new Request("http://localhost/products/0"));
+
+            // Assert
+            expect(spy).toHaveBeenCalledWith(0, expect.anything());
+            expect(response.status).toBe(404);
+
+            spy.mockRestore();
+        });
+
+        test("should call getProduct with negative number when id is negative", async () => {
+            // Arrange
+            const spy = vi.spyOn(PublicProductsService, "getProduct").mockResolvedValueOnce({
+                success: false,
+                error: "Product not found",
+            });
+
+            // Act
+            await app.handle(new Request("http://localhost/products/-5"));
+
+            // Assert
+            expect(spy).toHaveBeenCalledWith(-5, expect.anything());
+
+            spy.mockRestore();
+        });
+    });
+
+    describe("GET /products - filter params", () => {
+        test("should pass filter params (categoryIds, minPrice, maxPrice) to service", async () => {
+            // Arrange
+            const spy = vi.spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
+                success: true,
+                data: { count: 0, products: [] },
+            });
+
+            // Act
+            const url = "http://localhost/products?categoryIds=1,2&minPrice=5000&maxPrice=50000";
+            await app.handle(new Request(url));
+
+            // Assert
+            expect(spy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    categoryIds: "1,2",
+                    minPrice: 5000,
+                    maxPrice: 50000,
+                }),
+                expect.anything(),
+            );
+
+            spy.mockRestore();
+        });
+
+        test("should parse includeDeleted string 'true' to boolean true", async () => {
+            // Arrange
+            const spy = vi.spyOn(PublicProductsService, "getAllProducts").mockResolvedValueOnce({
+                success: true,
+                data: { count: 0, products: [] },
+            });
+
+            // Act
+            const url = "http://localhost/products?includeDeleted=true";
+            await app.handle(new Request(url));
+
+            // Assert
+            expect(spy).toHaveBeenCalledWith(
+                expect.objectContaining({ includeDeleted: true }),
+                expect.anything(),
+            );
 
             spy.mockRestore();
         });

@@ -6,19 +6,18 @@ import {
 	Legend,
 	ResponsiveContainer,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@jahonbozor/ui";
-import { motion } from "motion/react";
+import { Card, CardContent, CardHeader, CardTitle, motion } from "@jahonbozor/ui";
 import type { CategorySalesData } from "@jahonbozor/schemas/src/analytics";
 import { useTranslation } from "react-i18next";
-
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
+import { useChartColors } from "@/lib/chart-colors";
 
 interface CategoryBreakdownChartProps {
 	data: CategorySalesData[];
 }
 
 export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
-	const { t, i18n } = useTranslation();
+	const { t, i18n } = useTranslation("analytics");
+	const colors = useChartColors();
 
 	const chartData = data.map((item) => ({
 		name: item.categoryName,
@@ -29,7 +28,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
 		<motion.div
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
-			transition={{ duration: 0.4, delay: 0.3 }}
+			transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.3 }}
 		>
 			<Card>
 				<CardHeader>
@@ -50,7 +49,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
 								{chartData.map((_, index) => (
 									<Cell
 										key={`cell-${index}`}
-										fill={COLORS[index % COLORS.length]}
+										fill={colors.palette[index % colors.palette.length]}
 									/>
 								))}
 							</Pie>

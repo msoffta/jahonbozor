@@ -1,14 +1,19 @@
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import { useCartStore } from "@/stores/cart.store";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
-mock.module("react-i18next", () => ({
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
+vi.mock("motion/react", async () => {
+    const { motionReactMock } = await import("@/test-utils/ui-mocks");
+    return motionReactMock();
+});
+vi.mock("@jahonbozor/ui", async () => {
+    const { jahonbozorUIMock } = await import("@/test-utils/ui-mocks");
+    return jahonbozorUIMock();
+});
 
 import { ProductCard } from "../product-card";
 

@@ -2,8 +2,8 @@ import { clientDetailQueryOptions } from "@/api/clients.api";
 import { useCreateOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
-import type { DataTableTranslations } from "@jahonbozor/ui";
 import {
+    AnimatePresence,
     Button,
     DataTable,
     DataTableSkeleton,
@@ -13,11 +13,14 @@ import {
     Input,
 } from "@jahonbozor/ui";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { ArrowLeft, Save } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import z from "zod";
+import { Permission, hasPermission } from "@jahonbozor/schemas";
+import { useAuthStore } from "@/stores/auth.store";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 
 const newOrderSearchSchema = z.object({
     userId: z.coerce.number().optional(),
@@ -34,6 +37,7 @@ interface LocalItem {
 function NewOrderPage() {
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
+    const translations = useDataTableTranslations("no_items");
     const { userId } = Route.useSearch();
 
     const [items, setItems] = useState<LocalItem[]>([]);
@@ -124,7 +128,7 @@ function NewOrderPage() {
             }
 
             // Create new item in local list
-            const newId = Date.now();
+            const newId = Math.floor(Math.random() * 1_000_000_000) + Date.now();
             const newItem: LocalItem = {
                 id: newId,
                 productId,
@@ -152,7 +156,7 @@ function NewOrderPage() {
         }
 
         if (paymentType === "DEBT" && !userId) {
-            toast.error(t("error_debt_requires_user", { defaultValue: "Для оплаты в долг необходимо выбрать клиента" }));
+            toast.error(t("error_debt_requires_user"));
             return;
         }
 
@@ -183,20 +187,6 @@ function NewOrderPage() {
         0,
     );
 
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("no_items"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
-
     return (
         <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
             {/* Header */}
@@ -207,6 +197,7 @@ function NewOrderPage() {
                         onClick={() => navigate({ to: "/orders" })}
                         className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
                         whileTap={{ scale: 0.9 }}
+                        aria-label={t("common:back")}
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </motion.button>
@@ -224,7 +215,7 @@ function NewOrderPage() {
 
                 <div className="flex items-center gap-3">
                     <Input
-                        placeholder={t("order_comment", { defaultValue: "Комментарий" })}
+                        placeholder={t("order_comment")}
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         className="w-48 h-9 text-sm"
@@ -254,7 +245,7 @@ function NewOrderPage() {
                             onClick={() => setPaymentType("DEBT")}
                             whileTap={{ scale: 0.95 }}
                         >
-                            {t("payment_debt", { defaultValue: "Долг" })}
+                            {t("payment_debt")}
                         </motion.button>
                     </div>
 
@@ -284,27 +275,39 @@ function NewOrderPage() {
             )}
 
             {/* Items table */}
-            {isProductsLoading ? (
-                <DataTableSkeleton columns={6} rows={5} className="flex-1" />
-            ) : (
-                <DataTable
-                    className="flex-1 costprice-table"
-                    columns={columns}
-                    data={items}
-                    enableMultipleNewRows
-                    multiRowCount={15}
-                    onMultiRowSave={handleNewRowSave}
-                    onMultiRowChange={handleNewRowChange}
-                    multiRowDefaultValues={newRowDefaultValues}
-                    enableSorting={false}
-                    translations={translations}
-                />
-            )}
+            <AnimatePresence mode="wait">
+                {isProductsLoading ? (
+                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <DataTableSkeleton columns={6} rows={5} className="flex-1" />
+                    </motion.div>
+                ) : (
+                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                        <DataTable
+                            className="flex-1 costprice-table"
+                            columns={columns}
+                            data={items}
+                            enableMultipleNewRows
+                            multiRowCount={15}
+                            onMultiRowSave={handleNewRowSave}
+                            onMultiRowChange={handleNewRowChange}
+                            multiRowDefaultValues={newRowDefaultValues}
+                            enableSorting={false}
+                            translations={translations}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </PageTransition>
     );
 }
 
 export const Route = createFileRoute("/_dashboard/orders/new")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        if (!hasPermission(permissions, Permission.ORDERS_CREATE)) {
+            throw redirect({ to: "/" });
+        }
+    },
     validateSearch: (search) => newOrderSearchSchema.parse(search),
     component: NewOrderPage,
 });

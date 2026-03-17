@@ -123,8 +123,7 @@ export function CreateOrderDialog({
 
                             {/* Client list */}
                             <div
-                                className="flex flex-col gap-1 overflow-y-auto px-5 pb-5"
-                                style={{ maxHeight: "50vh" }}
+                                className="flex flex-col gap-1 overflow-y-auto px-5 pb-5 max-h-[50vh]"
                             >
                                 {/* Create new client */}
                                 <motion.button

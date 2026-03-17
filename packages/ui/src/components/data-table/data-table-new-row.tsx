@@ -83,6 +83,12 @@ export function DataTableNewRow<TData>({
           }
         : setInternalValues;
     const setErrors = isControlled ? () => {} : setInternalErrors;
+    const clearError = (key: string) =>
+        setErrors((prev) => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+        });
     const inputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
 
     // Update internal state when defaultValues change from outside (uncontrolled mode only)
@@ -240,11 +246,11 @@ export function DataTableNewRow<TData>({
                     <Checkbox />
                 </TableCell>
             )}
-            {columns.map((col) => {
+            {columns.map((col, colIndex) => {
                 const key =
                     "accessorKey" in col ? String(col.accessorKey) : col.id;
                 if (!key)
-                    return <TableCell key={String(col.id ?? Math.random())} />;
+                    return <TableCell key={col.id ?? `empty-${colIndex}`} />;
 
                 const meta = col.meta;
                 if (!meta?.editable) {
@@ -289,11 +295,7 @@ export function DataTableNewRow<TData>({
                                         ...prev,
                                         [key]: newValue,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
                             >
                                 <SelectTrigger
@@ -327,24 +329,13 @@ export function DataTableNewRow<TData>({
                                         ...prev,
                                         [key]: newValue,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
                                 onSelect={(newValue) => {
-                                    const newValues = {
+                                    setValues({
                                         ...values,
                                         [key]: newValue,
-                                    };
-                                    setValues(newValues);
-                                    if (
-                                        key === "user" &&
-                                        newValue === "CREATE_NEW"
-                                    ) {
-                                        handleSave(newValues);
-                                    }
+                                    });
                                 }}
                                 onKeyDown={(e) =>
                                     handleKeyDown(e, currentEditableIndex)
@@ -369,11 +360,7 @@ export function DataTableNewRow<TData>({
                                         ...prev,
                                         [key]: val,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
                                 onKeyDown={(e) =>
                                     handleKeyDown(e, currentEditableIndex)
@@ -406,11 +393,7 @@ export function DataTableNewRow<TData>({
                                         ...prev,
                                         [key]: vals.floatValue ?? 0,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
                                 onKeyDown={(e) =>
                                     handleKeyDown(e, currentEditableIndex)
@@ -443,11 +426,7 @@ export function DataTableNewRow<TData>({
                                         ...prev,
                                         [key]: newValue,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
                                 onKeyDown={(e) =>
                                     handleKeyDown(e, currentEditableIndex)

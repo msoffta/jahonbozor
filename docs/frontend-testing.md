@@ -7,41 +7,26 @@
 ### UI Package (packages/ui)
 
 ```bash
-# Run UI package tests (DataTable components)
-cd packages/ui
-bun test                          # Run all tests
-bun test --watch                  # Watch mode
-
-# Or from monorepo root
-bun run test:ui
+bun run test:ui                      # Run all UI package tests
+bun run test:ui -- --watch           # Watch mode
 ```
 
 ### Frontend Apps (admin/user)
 
 ```bash
-# IMPORTANT: Run from the specific frontend app directory!
-cd apps/frontend/admin   # or apps/frontend/user
-
-bun test                          # Run all tests
-bun test --watch                  # Watch mode
-bun test --coverage               # With coverage report
-bun test --bail                   # Stop after first failure
-bun test --test-name-pattern "X"  # Filter by test name
-
-# Or from monorepo root
-bun run test:admin
-bun run test:user
+bun run test:admin                   # Run admin tests
+bun run test:user                    # Run user tests
+bun run test:admin -- --watch        # Watch mode
+bun run test:admin -- --coverage     # With coverage report
 ```
-
-> **Note:** Tests must be run from their respective directories where `bunfig.toml` is located. Running from monorepo root will skip the preload and mocks won't work (except via npm scripts).
 
 ## Test Structure
 
 ```
 apps/frontend/{admin,user}/
 ├── test/
-│   └── setup.ts                          # Preload: happy-dom + cleanup
-├── bunfig.toml                           # Test configuration
+│   └── setup.ts                          # Setup: cleanup
+├── vitest.config.ts                      # Vitest configuration
 └── src/
     ├── stores/__tests__/
     │   ├── auth.store.test.ts            # Auth store tests
@@ -63,12 +48,12 @@ apps/frontend/{admin,user}/
 
 packages/ui/
 ├── test/
-│   └── setup.ts                          # Preload: happy-dom + cleanup
-├── bunfig.toml                           # Test configuration
+│   └── setup.ts                          # Setup: cleanup
+├── vitest.config.ts                      # Vitest configuration
 └── src/
     └── components/
         └── data-table/__tests__/
-            ├── data-table.test.tsx               # DataTable component (45 tests)
+            ├── data-table.test.tsx               # DataTable component
             ├── data-table-new-row.test.tsx       # New row functionality
             └── data-table-multi-new-rows.test.tsx # Multi-row functionality
 ```
@@ -80,64 +65,56 @@ packages/ui/
 UI package тестирует shared компоненты (DataTable, motion, shadcn/ui) изолированно от приложений.
 
 **Current Coverage:**
-- ✅ DataTable components (45 tests covering all scenarios)
-- ⏳ Motion components (not tested yet)
-- ⏳ shadcn/ui components (not tested yet)
+- DataTable components (45 tests covering all scenarios)
 
-### Key Differences from App Tests
+### Key Points
 
-1. **Real Components:** НЕ мокируем Input - используем реальные компоненты из `packages/ui`
-2. **fireEvent for Controlled Inputs:** Из-за известной проблемы с Bun + happy-dom + userEvent, используем `fireEvent` вместо `user.type()` для controlled inputs
-3. **React in devDependencies:** UI package требует `react` и `react-dom` в devDependencies (не только peerDependencies) для корректной работы тестов
+1. **Real Components:** НЕ мокируем Input — используем реальные компоненты из `packages/ui`
+2. **userEvent:** Используем `userEvent.setup()` + `userEvent.type()` для взаимодействий
+3. **React in devDependencies:** UI package требует `react` и `react-dom` в devDependencies для тестов
 
 ### Example Test
 
 ```typescript
-import { describe, test, expect, mock } from "bun:test";
-import { render, fireEvent } from "@testing-library/react";
+import { describe, test, expect, vi } from "vitest";
+import { render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-// НЕ мокируем Input - используем реальный компонент
 import { DataTableNewRow } from "../data-table-new-row";
 
-test("should update value on input change", () => {
+test("should update value on input change", async () => {
+    const user = userEvent.setup();
     const { container } = render(<DataTableNewRow {...props} />);
-    const input = container.querySelector("input");
+    const input = container.querySelector("input")!;
 
-    // Use fireEvent instead of user.type() for controlled inputs
-    fireEvent.change(input, { target: { value: "Test" } });
+    await user.type(input, "Test");
 
     expect(input.value).toBe("Test");
 });
 ```
 
-### Known Issues & Workarounds
+## Test Setup
 
-**Issue:** `userEvent.type()` only types first character with controlled inputs in Bun + happy-dom
-**Workaround:** Use `fireEvent.change()` + `fireEvent.keyDown()` instead
-**References:**
-- [userEvent.type Issue #533](https://github.com/testing-library/user-event/issues/533)
-- [Controlled Components Issue #549](https://github.com/testing-library/user-event/issues/549)
+### vitest.config.ts
 
-## Test Setup (happy-dom)
+```typescript
+// apps/frontend/{admin,user}/vitest.config.ts
+import { defineConfig, mergeConfig } from "vitest/config";
+import viteConfig from "./vite.config";
 
-### bunfig.toml
-
-```toml
-# apps/frontend/*/bunfig.toml
-[test]
-preload = ["./test/setup.ts"]
-coverageSkipTestFiles = true
-coveragePathIgnorePatterns = ["src/routeTree.gen.ts", "src/i18n/**"]
+export default mergeConfig(viteConfig, defineConfig({
+    test: {
+        environment: "happy-dom",
+        setupFiles: ["./test/setup.ts"],
+        mockReset: true,
+    },
+}));
 ```
 
 ### test/setup.ts
 
 ```typescript
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
-
-GlobalRegistrator.register();
-
-import { afterEach } from "bun:test";
+import { afterEach } from "vitest";
 import { cleanup } from "@testing-library/react";
 
 afterEach(() => {
@@ -145,7 +122,7 @@ afterEach(() => {
 });
 ```
 
-> **IMPORTANT:** `GlobalRegistrator.register()` must be called BEFORE any `@testing-library/react` imports. The `afterEach(cleanup)` prevents DOM state leaking between tests.
+> **Note:** `cleanup()` prevents DOM state leaking between tests. `mockReset: true` in config handles mock cleanup automatically.
 
 ## Zustand Store Testing
 
@@ -154,11 +131,10 @@ Stores are tested without rendering React components — call actions via `getSt
 ### Store Reset Pattern
 
 ```typescript
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach } from "vitest";
 import { useCartStore } from "../cart.store";
 
 describe("Cart Store", () => {
-    // Reset to initial state before each test
     beforeEach(() => {
         useCartStore.setState({ items: [] });
     });
@@ -179,7 +155,7 @@ describe("Cart Store", () => {
 describe("totalItems", () => {
     test("should return sum of all quantities", () => {
         useCartStore.getState().addItem({ productId: 1, name: "A", price: 100 });
-        useCartStore.getState().addItem({ productId: 1, name: "A", price: 100 }); // quantity → 2
+        useCartStore.getState().addItem({ productId: 1, name: "A", price: 100 }); // quantity -> 2
         useCartStore.getState().addItem({ productId: 2, name: "B", price: 200 }); // new item
 
         expect(useCartStore.getState().totalItems()).toBe(3);
@@ -201,7 +177,7 @@ describe("totalItems", () => {
 
 ## Hook Testing with renderHook
 
-Use `renderHook()` from `@testing-library/react` for hooks that use React features (other hooks, context, re-renders).
+Use `renderHook()` from `@testing-library/react` for hooks that use React features.
 
 ### Basic Pattern (Stateless Hooks)
 
@@ -222,17 +198,9 @@ test("should return true when user has the permission", () => {
     const { result } = renderHook(() => useHasPermission(Permission.PRODUCTS_LIST));
     expect(result.current).toBe(true);
 });
-
-test("should return false when permissions are empty", () => {
-    useAuthStore.setState({ permissions: [] });
-    const { result } = renderHook(() => useHasPermission(Permission.PRODUCTS_LIST));
-    expect(result.current).toBe(false);
-});
 ```
 
 ### Async Hooks with Mutations
-
-For hooks that use `useMutation` or other async operations, wrap in `act(async () => { ... })`:
 
 ```typescript
 import { renderHook, act } from "@testing-library/react";
@@ -259,7 +227,7 @@ test("should set auth on successful login", async () => {
 ### Basic Rendering + Queries
 
 ```typescript
-import { render, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 test("should render product name", () => {
     const { getByText } = render(<ProductCard id={1} name="Test Product" price={50000} remaining={10} />);
@@ -269,9 +237,9 @@ test("should render product name", () => {
 
 ### User Interactions + Store Integration
 
-Test that component interactions correctly update the Zustand store:
-
 ```typescript
+import { fireEvent } from "@testing-library/react";
+
 test("should add item to cart on button click", () => {
     const { getByRole } = render(<ProductCard id={5} name="Product A" price={1000} remaining={10} />);
 
@@ -290,8 +258,6 @@ test("should add item to cart on button click", () => {
 ```
 
 ### Testing Conditional Rendering
-
-Set store state BEFORE render to test different UI states:
 
 ```typescript
 test("should show quantity control after adding to cart", () => {
@@ -315,7 +281,7 @@ test("should show quantity control after adding to cart", () => {
 |-------------|---------------------|
 | Simpler, synchronous | More realistic, async |
 | Good for simple click/change | Better for typing, focus, sequential interactions |
-| Used in existing tests | Recommended for new tests with complex interactions |
+| | Recommended for new tests |
 
 ```typescript
 // fireEvent (simple)
@@ -329,27 +295,25 @@ await user.type(input, "Hello");
 
 ## Mocking Patterns
 
-### CRITICAL: mock.module() Ordering
+### vi.mock() is Hoisted Automatically
 
-`mock.module()` calls **MUST** come BEFORE imports of modules that use the mocked dependency:
+Unlike Bun's `mock.module()`, Vitest's `vi.mock()` is automatically hoisted to the top of the file. **Import order doesn't matter:**
 
 ```typescript
-// ✅ CORRECT — mock BEFORE import
-mock.module("@tanstack/react-router", () => ({
-    Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
-}));
-
-import { Header } from "../header";  // Header uses @tanstack/react-router
-
-// ❌ WRONG — mock AFTER import (mock won't take effect)
+// This works — vi.mock is hoisted above the import automatically
+import { vi } from "vitest";
 import { Header } from "../header";
-mock.module("@tanstack/react-router", () => ({ Link: ... }));
+
+vi.mock("@tanstack/react-router", () => ({
+    Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+    useNavigate: () => mockNavigate,
+}));
 ```
 
 ### @tanstack/react-router
 
 ```typescript
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, ...props }: any) => (
         <a href={to} {...props}>{children}</a>
     ),
@@ -360,7 +324,7 @@ mock.module("@tanstack/react-router", () => ({
 ### @tanstack/react-query (useMutation mock)
 
 ```typescript
-mock.module("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", () => ({
     useMutation: ({ mutationFn, onSuccess, onSettled }: any) => ({
         mutate: async (body: any) => {
             try {
@@ -384,10 +348,10 @@ mock.module("@tanstack/react-query", () => ({
 ### Eden Treaty API client
 
 ```typescript
-const mockGet = mock(() => Promise.resolve({ data: { success: true, data: { id: 1 } }, error: null }));
-const mockPost = mock(() => Promise.resolve({ data: { success: true, data: {} }, error: null }));
+const mockGet = vi.fn(() => Promise.resolve({ data: { success: true, data: { id: 1 } }, error: null }));
+const mockPost = vi.fn(() => Promise.resolve({ data: { success: true, data: {} }, error: null }));
 
-mock.module("@/api/client", () => ({
+vi.mock("@/api/client", () => ({
     api: {
         api: {
             public: {
@@ -404,30 +368,74 @@ mock.module("@/api/client", () => ({
 
 > **Note:** The mock structure must match the Eden Treaty path: `api.api.public.auth.login.post(body)`.
 
-### @jahonbozor/ui (Motion + UI components)
+### motion/react (Animation mocking)
 
 ```typescript
-mock.module("@jahonbozor/ui", () => ({
-    motion: {
-        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-        button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-        span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
-    },
+import { createElement } from "react";
+
+vi.mock("motion/react", () => ({
+    motion: new Proxy({}, {
+        get: (_target: any, prop: string) => {
+            return ({ children, className, ...rest }: any) =>
+                createElement(prop, { className }, children);
+        },
+    }),
     AnimatePresence: ({ children }: any) => <>{children}</>,
-    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
-        <input type="checkbox" checked={checked}
-               onChange={(e: any) => onCheckedChange?.(e.target.checked)} {...props} />
-    ),
-    cn: (...args: any[]) => args.filter(Boolean).join(" "),
+    LayoutGroup: ({ children }: any) => <>{children}</>,
 }));
 ```
 
-> **Why mock Motion?** happy-dom doesn't support Web Animations API. Mock `motion.*` as plain HTML elements and `AnimatePresence` as a passthrough.
+> **Why mock Motion?** happy-dom doesn't support Web Animations API. Mock `motion.*` as plain HTML elements.
+
+### @jahonbozor/ui
+
+```typescript
+vi.mock("@jahonbozor/ui", () => ({
+    cn: (...args: any[]) => args.filter(Boolean).join(" "),
+    Button: ({ children, className, disabled, onClick, type, ...props }: any) => (
+        <button className={className} disabled={disabled} onClick={onClick} type={type || "button"}>
+            {children}
+        </button>
+    ),
+    Input: ({ className, ...props }: any) => <input className={className} {...props} />,
+    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
+        <input type="checkbox" checked={checked}
+               onChange={(e: any) => onCheckedChange?.(e.target.checked)} />
+    ),
+    PageTransition: ({ children }: any) => <>{children}</>,
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+```
+
+### Shared UI Mock Factories
+
+Вместо `setupUIMocks()` (Bun-специфичная церемония), экспортируем фабрики:
+
+```typescript
+// test-utils/ui-mocks.ts — exports mock objects (no vi.mock calls)
+export const motionMocks = {
+    motion: new Proxy({}, { /* ... */ }),
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+};
+
+export const uiMocks = {
+    cn: (...args: any[]) => args.filter(Boolean).join(" "),
+    Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+    Input: (props: any) => <input {...props} />,
+    // ... other components
+};
+
+// In test file — vi.mock is hoisted, order doesn't matter:
+import { motionMocks, uiMocks } from "../test-utils/ui-mocks";
+
+vi.mock("motion/react", () => motionMocks);
+vi.mock("@jahonbozor/ui", () => uiMocks);
+```
 
 ### react-i18next
 
 ```typescript
-mock.module("react-i18next", () => ({
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 ```
@@ -437,8 +445,8 @@ mock.module("react-i18next", () => ({
 ### @sentry/react
 
 ```typescript
-const mockSentrySetUser = mock(() => {});
-mock.module("@sentry/react", () => ({
+const mockSentrySetUser = vi.fn();
+vi.mock("@sentry/react", () => ({
     setUser: mockSentrySetUser,
 }));
 ```
@@ -446,14 +454,14 @@ mock.module("@sentry/react", () => ({
 ### fetch API (spyOn)
 
 ```typescript
-import { spyOn, afterEach, mock } from "bun:test";
+import { vi, afterEach } from "vitest";
 
 afterEach(() => {
-    mock.restore();  // Restore spyOn mocks
+    vi.restoreAllMocks();
 });
 
 test("should refresh token", async () => {
-    const fetchMock = spyOn(globalThis, "fetch");
+    const fetchMock = vi.spyOn(globalThis, "fetch");
 
     fetchMock.mockResolvedValueOnce({
         ok: true,
@@ -466,7 +474,25 @@ test("should refresh token", async () => {
 });
 ```
 
-> **IMPORTANT:** Always use `afterEach(() => { mock.restore() })` when using `spyOn` to prevent leaking between tests.
+### vi.hoisted() for Shared Mock Variables
+
+When mock variables need to be accessible both in mock factories and tests:
+
+```typescript
+const mocks = vi.hoisted(() => ({
+    mockGet: vi.fn(),
+    mockPost: vi.fn(),
+}));
+
+vi.mock("@/api/client", () => ({
+    api: { api: { public: { auth: { login: { post: mocks.mockPost } } } } }
+}));
+
+test("calls login", () => {
+    mocks.mockPost.mockResolvedValueOnce({ data: { success: true } });
+    // ...
+});
+```
 
 ## Testing Library Query Priority
 
@@ -483,14 +509,13 @@ Prefer semantic queries that reflect how users interact with the UI:
 | Last resort | `container.querySelector("...")` | No semantic alternative |
 
 ```typescript
-// ✅ Prefer semantic queries
+// Prefer semantic queries
 getByRole("button", { name: "add_to_cart" })
 getByAltText("Jahon Bozor")
 getByText("Test Product")
 
-// ❌ Avoid when a semantic query is available
+// Avoid when a semantic query is available
 container.querySelector(".add-button")
-container.querySelectorAll("a")
 ```
 
 ## API Layer Testing
@@ -512,7 +537,7 @@ describe("profileOptions", () => {
     });
 
     test("should be enabled when authenticated", () => {
-        useAuthStore.getState().login("token", { id: 1, name: "Test", ... });
+        useAuthStore.getState().login("token", { id: 1, name: "Test" });
         const options = profileOptions();
         expect(options.enabled).toBe(true);
     });
@@ -522,28 +547,24 @@ describe("profileOptions", () => {
 ## Test Coverage Requirements
 
 ### Store Tests
-
 - All actions (addItem, removeItem, updateQuantity, clearCart, etc.)
 - All derived/computed values (totalItems, totalPrice)
 - Edge cases: empty state, duplicate items, non-existent items
 - Boundary values: quantity=0, negative quantity
 
 ### Hook Tests
-
 - Return values for different store states (permissions present/absent/empty)
 - Side effects: store mutations, navigation, API calls, Sentry user tracking
 - Error scenarios: API failure, network error, missing data
 - Edge cases: empty permissions array, null role
 
 ### Component Tests
-
 - Rendering with different props
-- User interactions → store mutations
+- User interactions -> store mutations
 - Conditional rendering based on store state
 - Formatted values (prices, counts)
 
 ### API Tests
-
 - Query keys and options correctness
 - `enabled` conditions based on auth state
 - Token refresh flow (success, failure, network error)
@@ -552,133 +573,21 @@ describe("profileOptions", () => {
 ## Best Practices
 
 ### DO
-
 - Reset Zustand stores in `beforeEach` via `setState()`
-- Place `mock.module()` calls BEFORE imports
-- Use `afterEach(() => { mock.restore() })` with `spyOn`
-- Test the integration: component click → store update
-- Use `mock.restore()` in `beforeEach` when re-importing modules
+- Use `vi.mock()` for module mocking (hoisted automatically)
+- Use `afterEach(() => { vi.restoreAllMocks() })` with `vi.spyOn`
+- Test the integration: component click -> store update
 - Use semantic Testing Library queries (`getByRole`, `getByText`)
-- Test the same store across different test files independently (each resets)
+- Test the same store across different test files independently
+- Use `waitFor()` for async state updates
 
 ### DON'T
+- Don't rely on state from previous tests
+- Don't mock Zustand's `create` function — test the real store
+- Don't leave `.only` in committed tests
+- Don't use `container.querySelector` when a semantic query is available
+- Don't test third-party library internals (React Query caching, Zustand middleware)
+- Don't skip `cleanup()` — it's in `test/setup.ts` but never remove it
+- Don't use `as any` in mock return values when type-safe alternatives exist
 
-- Rely on state from previous tests
-- Mock Zustand's `create` function — test the real store
-- Import modules BEFORE their `mock.module()` calls
-- Leave `.only` in committed tests
-- Use `container.querySelector` when a semantic query is available
-- Test third-party library internals (React Query caching, Zustand middleware)
-- Skip `cleanup()` — it's in `test/setup.ts` but never remove it
-
-## Mock Consistency and Isolation (Bun-specific)
-
-### Critical: Bun Test Isolation Issue
-
-Unlike Vitest/Jest, Bun's `mock.module` patches the module cache at runtime and affects ALL subsequent tests globally. Mocks are NOT isolated between test files.
-
-**Solution**: Use centralized mocks from `apps/frontend/admin/src/test-utils/ui-mocks.tsx`
-
-### Using Centralized UI Mocks
-
-```typescript
-import { setupUIMocks } from "../test-utils/ui-mocks";
-
-// At top of test file, before component imports
-setupUIMocks();
-
-import { MyComponent } from "../my-component";
-```
-
-This replaces inline `mock.module()` declarations for:
-- `motion/react` - motion components and AnimatePresence
-- `@jahonbozor/ui` - all UI components (Input, Button, Table*, Select*, Tooltip*, DropdownMenu*, etc.)
-
-### Mock Module Ordering (CRITICAL)
-
-Always follow this order to prevent conflicts:
-
-1. `setupUIMocks()` call (or inline mock.module calls)
-2. Component imports (MUST be after mocks)
-
-**Why?** Bun doesn't hoist mocks like Jest. Module cache is patched at runtime when mock.module executes.
-
-```typescript
-// ✅ CORRECT
-mock.module("react-i18next", () => ({
-    useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-setupUIMocks();  // Centralized mocks for motion/react and @jahonbozor/ui
-
-import { MyComponent } from "../my-component";
-
-// ❌ WRONG — import before mocks
-import { MyComponent } from "../my-component";
-setupUIMocks();  // Too late! Module already loaded
-```
-
-### Extending Centralized Mocks
-
-For tests requiring additional component-specific mocks:
-
-```typescript
-import { setupUIMocks } from "../test-utils/ui-mocks";
-
-// Setup centralized UI mocks first
-setupUIMocks();
-
-// Extend with additional mocks specific to this test
-mock.module("@jahonbozor/ui", () => ({
-    ...require("../test-utils/ui-mocks").uiMocks,
-    LayoutGroup: ({ children }: any) => <>{children}</>,
-}));
-
-import { MyComponent } from "../my-component";
-```
-
-### Prop Filtering
-
-All centralized mocks automatically filter:
-- **Motion props**: whileTap, whileHover, initial, animate, exit, etc.
-- **Radix props**: asChild
-- **Other framework props**: Custom component props that shouldn't reach DOM
-
-This prevents React warnings: "React does not recognize the `whileTap` prop on a DOM element"
-
-### Centralized Mocks Contents
-
-The `ui-mocks.tsx` file includes:
-- **Input**: Supports both controlled and uncontrolled modes with proper state management
-- **Button**: Filters asChild and motion props
-- **Table components**: Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-- **Select components**: Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-- **Tooltip components**: Tooltip, TooltipContent, TooltipProvider, TooltipTrigger
-- **Checkbox**: Standard checkbox with onCheckedChange callback
-- **DropdownMenu components**: DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator
-- **Motion**: Proxied motion.* components with prop filtering
-- **AnimatePresence**: Passthrough wrapper
-- **DataTableNewRow**: Simplified mock for multi-row tests
-
-### When NOT to Use Centralized Mocks
-
-Keep component-specific mocks when:
-- Test requires module-specific behavior (e.g., react-router, react-query, react-i18next)
-- Test needs special test doubles (spies with mockResolvedValue, etc.)
-- Component has unique requirements not covered by centralized mocks
-
-```typescript
-// Component-specific mocks alongside centralized mocks
-mock.module("react-i18next", () => ({
-    useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-mock.module("@tanstack/react-router", () => ({
-    Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
-    useRouterState: ({ select }: any) => select({ location: { pathname: "/" } }),
-}));
-
-setupUIMocks();  // Centralized mocks for UI components
-
-import { MyComponent } from "../my-component";
-```
+> Full backend testing guide: [docs/testing.md](testing.md)

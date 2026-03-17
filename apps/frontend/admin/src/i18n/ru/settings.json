@@ -18,6 +18,7 @@
 	"create_staff": "Добавить сотрудника",
 	"create_staff_title": "Новый сотрудник",
 	"staff_password": "Пароль",
+	"staff_fullname_placeholder": "Иван Иванов",
 
 	"role_id": "ID",
 	"role_name": "Название",
@@ -32,6 +33,7 @@
 	"roles_description": "Управление ролями и правами доступа сотрудников",
 	"create_role": "Создать роль",
 	"create_role_title": "Новая роль",
+	"role_name_placeholder": "Менеджер",
 
     "select_role": "Выберите роль",
 

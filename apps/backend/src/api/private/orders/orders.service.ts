@@ -1,6 +1,7 @@
-import type { Order, Prisma } from "@backend/generated/prisma/client";
+import type { Prisma } from "@backend/generated/prisma/client";
 import { auditInTransaction } from "@backend/lib/audit";
 import { prisma } from "@backend/lib/prisma";
+import { createOrderSnapshot } from "@backend/lib/snapshots";
 import type { Logger } from "@jahonbozor/logger";
 import { Permission, hasAnyPermission, type Token } from "@jahonbozor/schemas";
 import type {
@@ -20,22 +21,6 @@ interface ServiceContext {
     requestId?: string;
 }
 
-function createOrderSnapshot(
-    order: Pick<
-        Order,
-        "userId" | "staffId" | "paymentType" | "status" | "comment" | "data"
-    >,
-) {
-    return {
-        userId: order.userId,
-        staffId: order.staffId,
-        paymentType: order.paymentType,
-        status: order.status,
-        comment: order.comment,
-        data: order.data,
-    };
-}
-
 export abstract class OrdersService {
     static async getAllOrders(
         query: OrdersPagination,
@@ -47,7 +32,6 @@ export abstract class OrdersService {
             const {
                 page,
                 limit,
-                searchQuery: _searchQuery,
                 userId,
                 staffId: filterStaffId,
                 paymentType,
@@ -271,6 +255,7 @@ export abstract class OrdersService {
                 };
             }
 
+            // All productIds are guaranteed to exist in the map (validated by length check above)
             const productMap = new Map(
                 products.map((product) => [product.id, product]),
             );

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { createMockLogger } from "@backend/test/setup";
 import { Permission } from "@jahonbozor/schemas";
@@ -111,7 +111,7 @@ describe("Orders API Routes", () => {
     describe("GET /orders", () => {
         test("should return paginated orders list", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
                 success: true,
                 data: { count: 2, orders: [mockOrderWithRelations] },
             });
@@ -133,7 +133,7 @@ describe("Orders API Routes", () => {
 
         test("should apply paymentType filter", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
                 success: true,
                 data: { count: 1, orders: [mockOrderWithRelations] },
             });
@@ -159,7 +159,7 @@ describe("Orders API Routes", () => {
 
         test("should apply status filter", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
                 success: true,
                 data: { count: 1, orders: [mockOrderWithRelations] },
             });
@@ -185,7 +185,7 @@ describe("Orders API Routes", () => {
 
         test("should return empty list when no orders found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
                 success: true,
                 data: { count: 0, orders: [] },
             });
@@ -209,7 +209,7 @@ describe("Orders API Routes", () => {
     describe("GET /orders/:id", () => {
         test("should return order by id", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
                 success: true,
                 data: mockOrderWithRelations,
             });
@@ -230,7 +230,7 @@ describe("Orders API Routes", () => {
 
         test("should return error when order not found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
                 success: false,
                 error: "Order not found",
             });
@@ -250,7 +250,7 @@ describe("Orders API Routes", () => {
 
         test("should return Forbidden when access denied", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
                 success: false,
                 error: "Forbidden",
             });
@@ -272,7 +272,7 @@ describe("Orders API Routes", () => {
     describe("POST /orders", () => {
         test("should create order with valid data", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
                 success: true,
                 data: mockOrderWithRelations,
             });
@@ -300,7 +300,7 @@ describe("Orders API Routes", () => {
 
         test("should return error when products not found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
                 success: false,
                 error: "Products not found: 999",
             });
@@ -330,7 +330,7 @@ describe("Orders API Routes", () => {
         test("should update order status", async () => {
             // Arrange
             const updatedOrder = { ...mockOrderWithRelations, status: "ACCEPTED" };
-            const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
                 success: true,
                 data: updatedOrder,
             });
@@ -355,7 +355,7 @@ describe("Orders API Routes", () => {
 
         test("should return error when order not found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
                 success: false,
                 error: "Order not found",
             });
@@ -379,7 +379,7 @@ describe("Orders API Routes", () => {
 
         test("should return Forbidden when access denied", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
                 success: false,
                 error: "Forbidden",
             });
@@ -405,7 +405,7 @@ describe("Orders API Routes", () => {
     describe("DELETE /orders/:id", () => {
         test("should delete order successfully", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
                 success: true,
                 data: { orderId: 1, deleted: true },
             });
@@ -426,7 +426,7 @@ describe("Orders API Routes", () => {
 
         test("should return error when order not found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
                 success: false,
                 error: "Order not found",
             });
@@ -449,7 +449,7 @@ describe("Orders API Routes", () => {
 describe("Orders Service Integration", () => {
     test("getAllOrders should be called with correct pagination", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
             success: true,
             data: { count: 0, orders: [] },
         });
@@ -471,7 +471,7 @@ describe("Orders Service Integration", () => {
 
     test("getOrder should be called with correct id", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -488,7 +488,7 @@ describe("Orders Service Integration", () => {
 
     test("createOrder should be called with context", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -518,7 +518,7 @@ describe("Orders Service Integration", () => {
 
     test("updateOrder should be called with context", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -547,7 +547,7 @@ describe("Orders Service Integration", () => {
 
     test("deleteOrder should be called with context", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
             success: true,
             data: { orderId: 1, deleted: true },
         });
@@ -575,7 +575,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("GET /orders with no results should return empty list", async () => {
-        const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
             success: true,
             data: { count: 0, orders: [] },
         });
@@ -591,7 +591,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("GET /orders/:id with id=0 should call service", async () => {
-        const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
             success: false,
             error: "Order not found",
         });
@@ -606,7 +606,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("POST /orders should handle insufficient stock error", async () => {
-        const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
             success: false,
             error: {
                 code: "INSUFFICIENT_STOCK",
@@ -634,7 +634,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("PATCH /orders/:id with empty body should call service", async () => {
-        const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -654,7 +654,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("DELETE /orders/:id should handle service error", async () => {
-        const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
             success: false,
             error: "Database error",
         });

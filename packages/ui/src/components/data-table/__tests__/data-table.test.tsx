@@ -1,73 +1,13 @@
-import { describe, test, expect, mock } from "bun:test";
-import { render, fireEvent, act } from "@testing-library/react";
+import { describe, test, expect, vi } from "vitest";
+import { render, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createElement } from "react";
-import * as React from "react";
 
-// Helper to filter non-DOM props
-const filterDOMProps = (props: Record<string, any>) => {
-    const FILTER_PROPS = new Set(["whileTap", "whileHover", "initial", "animate", "exit", "transition", "asChild"]);
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(props)) {
-        if (!FILTER_PROPS.has(key)) filtered[key] = value;
-    }
-    return filtered;
-};
-
-// Mock motion/react
-mock.module("motion/react", () => ({
-    motion: new Proxy({}, {
-        get: (_target: any, prop: string) => {
-            return ({ children, className, ...rest }: any) =>
-                createElement(prop, { className, ...filterDOMProps(rest) }, children);
-        },
-    }),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    LayoutGroup: ({ children }: any) => <>{children}</>,
-}));
-
-// Mock UI components that DataTable depends on
-mock.module("../../ui/button.tsx", () => ({
-    Button: React.forwardRef(({ children, className, ...props }: any, ref: any) => (
-        <button ref={ref} className={className} {...filterDOMProps(props)}>{children}</button>
-    )),
-}));
-
-// НЕ мокируем Input - реальный компонент работает правильно
-
-mock.module("../../ui/checkbox.tsx", () => ({
-    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
-        <input type="checkbox" checked={checked} onChange={(e) => onCheckedChange?.(e.target.checked)} {...filterDOMProps(props)} />
-    ),
-}));
-
-mock.module("../../ui/select.tsx", () => ({
-    Select: ({ children, onValueChange, value }: any) => (
-        <select value={value} onChange={(e) => onValueChange?.(e.target.value)}>{children}</select>
-    ),
-    SelectContent: ({ children }: any) => <>{children}</>,
-    SelectItem: ({ children, value }: any) => <option value={value}>{children}</option>,
-    SelectTrigger: () => null,
-    SelectValue: () => null,
-}));
-
-mock.module("../../ui/table.tsx", () => ({
-    Table: ({ children, className, style }: any) => <table className={className} style={style}>{children}</table>,
-    TableBody: ({ children, style }: any) => <tbody style={style}>{children}</tbody>,
-    TableCell: ({ children, colSpan, style }: any) => <td colSpan={colSpan} style={style}>{children}</td>,
-    TableHead: ({ children, colSpan, style }: any) => <th colSpan={colSpan} style={style}>{children}</th>,
-    TableHeader: ({ children, className, style }: any) => <thead className={className} style={style}>{children}</thead>,
-    TableRow: ({ children, style }: any) => <tr style={style}>{children}</tr>,
-}));
-
-mock.module("../../ui/dropdown-menu.tsx", () => ({
-    DropdownMenu: ({ children }: any) => <div>{children}</div>,
-    DropdownMenuTrigger: ({ children }: any) => <>{children}</>,
-    DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
-    DropdownMenuItem: ({ children, onClick }: any) => <button type="button" onClick={onClick}>{children}</button>,
-    DropdownMenuLabel: ({ children }: any) => <span>{children}</span>,
-    DropdownMenuSeparator: () => <hr />,
-}));
+vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
+vi.mock("../../ui/button.tsx", async () => (await import("./test-helpers")).buttonMock);
+vi.mock("../../ui/checkbox.tsx", async () => (await import("./test-helpers")).checkboxMock);
+vi.mock("../../ui/select.tsx", async () => (await import("./test-helpers")).selectMock);
+vi.mock("../../ui/table.tsx", async () => (await import("./test-helpers")).tableMock);
+vi.mock("../../ui/dropdown-menu.tsx", async () => (await import("./test-helpers")).dropdownMenuMock);
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "../data-table";
@@ -208,14 +148,14 @@ describe("DataTable", () => {
             status: "active",
         }));
 
-        const { getByText, queryByText } = render(
+        const { getByRole, queryByText } = render(
             <DataTable columns={baseColumns} data={manyRows} pagination defaultPageSize={10} />,
         );
 
         expect(queryByText("User 1")).toBeDefined();
         expect(queryByText("User 11")).toBeNull();
 
-        await user.click(getByText("→"));
+        await user.click(getByRole("button", { name: "Next page" }));
 
         expect(queryByText("User 1")).toBeNull();
         expect(queryByText("User 11")).toBeDefined();
@@ -250,7 +190,7 @@ describe("DataTable", () => {
     });
 
     test("should select a row via checkbox", () => {
-        const onSelectionChange = mock(() => {});
+        const onSelectionChange = vi.fn();
         const { getAllByRole } = render(
             <DataTable
                 columns={baseColumns}
@@ -268,7 +208,7 @@ describe("DataTable", () => {
 
     test("should enter edit mode on double-click and save on blur", async () => {
         const user = userEvent.setup();
-        const onCellEdit = mock(() => {});
+        const onCellEdit = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
             { accessorKey: "id", header: "ID" },
             {
@@ -294,8 +234,9 @@ describe("DataTable", () => {
         expect(onCellEdit).toHaveBeenCalledWith(0, "name", "Updated");
     });
 
-    test("should save new row on Enter and call onNewRowSave", () => {
-        const onNewRowSave = mock(() => {});
+    test("should save new row on Enter and call onNewRowSave", async () => {
+        const user = userEvent.setup();
+        const onNewRowSave = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
             { accessorKey: "id", header: "ID", meta: { editable: true, inputType: "text" as const } },
             { accessorKey: "name", header: "Name", meta: { editable: true, inputType: "text" as const } },
@@ -318,9 +259,8 @@ describe("DataTable", () => {
         const inputs = getAllByRole("textbox");
         const lastInput = inputs[inputs.length - 1];
 
-        // Use fireEvent instead of user.type() to avoid controlled input issues with Bun/happy-dom
-        fireEvent.change(lastInput, { target: { value: "test" } });
-        fireEvent.keyDown(lastInput, { key: "Enter", code: "Enter" });
+        lastInput.focus();
+        await user.keyboard("{Enter}");
 
         expect(onNewRowSave).toHaveBeenCalled();
     });
@@ -394,7 +334,7 @@ describe("DataTable", () => {
     });
 
     test("should not enter edit mode on double-click if column is not editable", () => {
-        const onCellEdit = mock(() => {});
+        const onCellEdit = vi.fn();
         const { getByText, queryByDisplayValue } = render(
             <DataTable columns={baseColumns} data={testData} enableEditing onCellEdit={onCellEdit} />,
         );
@@ -441,7 +381,7 @@ describe("DataTable", () => {
     test("should show validation error for invalid inline edit value", async () => {
         const { z } = await import("zod");
         const user = userEvent.setup();
-        const onCellEdit = mock(() => {});
+        const onCellEdit = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
             { accessorKey: "id", header: "ID" },
             {
@@ -475,7 +415,7 @@ describe("DataTable", () => {
     test("should not call onNewRowSave when required fields are invalid", async () => {
         const { z } = await import("zod");
         const user = userEvent.setup();
-        const onNewRowSave = mock(() => {});
+        const onNewRowSave = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
             {
                 accessorKey: "id",
@@ -520,7 +460,7 @@ describe("DataTable", () => {
 
     test("should revert value on Escape during edit", async () => {
         const user = userEvent.setup();
-        const onCellEdit = mock(() => {});
+        const onCellEdit = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
             { accessorKey: "id", header: "ID" },
             {
@@ -563,10 +503,32 @@ describe("DataTable", () => {
         expect(getByText("-5")).toBeDefined();
     });
 
+    // ── onRowClick ─────────────────────────────────────────────
+    test("should call onRowClick when a row is clicked", async () => {
+        const user = userEvent.setup();
+        const onRowClick = vi.fn();
+        const { getByText } = render(
+            <DataTable columns={baseColumns} data={testData} onRowClick={onRowClick} />,
+        );
+
+        await user.click(getByText("Alice"));
+
+        expect(onRowClick).toHaveBeenCalledWith(testData[0]);
+    });
+
+    test("should not call onRowClick when onRowClick is not provided", () => {
+        const { getByText } = render(
+            <DataTable columns={baseColumns} data={testData} />,
+        );
+
+        // Clicking should not throw
+        fireEvent.click(getByText("Alice"));
+    });
+
     // ── Race Condition Fix: Multi-row Navigation ──────────────────
     describe("Multi-row Tab navigation race condition fix", () => {
         test("should render multiple new rows with enableMultipleNewRows", () => {
-            const onMultiRowSave = mock(() => {});
+            const onMultiRowSave = vi.fn();
             const editableColumns: ColumnDef<TestRow, any>[] = [
                 { accessorKey: "name", header: "Name", meta: { editable: true, inputType: "text" as const } },
             ];

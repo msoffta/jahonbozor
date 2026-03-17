@@ -9,6 +9,7 @@ import ruIncome from "@/i18n/ru/income.json";
 import ruProducts from "@/i18n/ru/products.json";
 import ruOrders from "@/i18n/ru/orders.json";
 import ruSettings from "@/i18n/ru/settings.json";
+import ruAnalytics from "@/i18n/ru/analytics.json";
 import uzClients from "@/i18n/uz/clients.json";
 import uzCommon from "@/i18n/uz/common.json";
 import uzExpenses from "@/i18n/uz/expenses.json";
@@ -16,6 +17,7 @@ import uzIncome from "@/i18n/uz/income.json";
 import uzProducts from "@/i18n/uz/products.json";
 import uzOrders from "@/i18n/uz/orders.json";
 import uzSettings from "@/i18n/uz/settings.json";
+import uzAnalytics from "@/i18n/uz/analytics.json";
 
 const resources = {
     uz: {
@@ -26,6 +28,7 @@ const resources = {
         income: uzIncome,
         orders: uzOrders,
         settings: uzSettings,
+        analytics: uzAnalytics,
     },
     ru: {
         common: ruCommon,
@@ -35,6 +38,7 @@ const resources = {
         income: ruIncome,
         orders: ruOrders,
         settings: ruSettings,
+        analytics: ruAnalytics,
     },
 };
 
@@ -58,4 +62,4 @@ useUIStore.subscribe((state) => {
     }
 });
 
-export default i18n;
+export { i18n };

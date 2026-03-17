@@ -10,6 +10,7 @@ import {
 import { useForm } from "@tanstack/react-form";
 import { CreateRoleBody } from "@jahonbozor/schemas";
 import { useTranslation } from "react-i18next";
+import { FieldError } from "@/components/forms/field-error";
 import { useState } from "react";
 
 interface CreateRoleDialogProps {
@@ -75,15 +76,9 @@ export function CreateRoleDialog({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									placeholder="Менеджер"
+									placeholder={t("role_name_placeholder")}
 								/>
-								{field.state.meta.isTouched && field.state.meta.errors?.length > 0 && (
-									<p className="text-xs text-destructive font-medium px-1">
-										{field.state.meta.errors.map((err: any) => 
-											typeof err === 'object' ? err.message : err
-										).join(", ")}
-									</p>
-								)}
+								<FieldError field={field} />
 							</div>
 						)}
 					/>

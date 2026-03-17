@@ -1,7 +1,12 @@
 import { orderDetailQueryOptions, useDeleteOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
-import type { DataTableTranslations } from "@jahonbozor/ui";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
+import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
 import {
     Badge,
     Button,
@@ -10,20 +15,17 @@ import {
     motion,
     PageTransition,
 } from "@jahonbozor/ui";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import dayjs from "dayjs";
 import { ArrowLeft, Trash2 } from "lucide-react";
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/auth.store";
-import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
 import { useHasPermission } from "@/hooks/use-permissions";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
 
 function OrderDetailPage() {
     const { orderId } = Route.useParams();
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
+    const translations = useDataTableTranslations("no_items");
     const numericId = Number(orderId);
 
     // Permission check for delete action
@@ -38,6 +40,7 @@ function OrderDetailPage() {
     );
 
     const deleteOrder = useDeleteOrder();
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const products = productsData?.products ?? [];
 
     const columns = useMemo(
@@ -62,26 +65,8 @@ function OrderDetailPage() {
     );
 
     function handleDelete() {
-        if (confirm(t("common:confirm_delete"))) {
-            deleteOrder.mutate(numericId, {
-                onSuccess: () => navigate({ to: "/orders" }),
-            });
-        }
+        setDeleteConfirmOpen(true);
     }
-
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("no_items"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
 
     if (isLoading) {
         return (
@@ -109,6 +94,7 @@ function OrderDetailPage() {
                         onClick={() => navigate({ to: "/orders" })}
                         className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
                         whileTap={{ scale: 0.9 }}
+                        aria-label={t("common:back")}
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </motion.button>
@@ -178,6 +164,17 @@ function OrderDetailPage() {
                 data={orderItems}
                 enableSorting={false}
                 translations={translations}
+            />
+
+            <ConfirmDrawer
+                open={deleteConfirmOpen}
+                onOpenChange={setDeleteConfirmOpen}
+                onConfirm={() => {
+                    deleteOrder.mutate(numericId, {
+                        onSuccess: () => navigate({ to: "/orders" }),
+                    });
+                }}
+                isLoading={deleteOrder.isPending}
             />
         </PageTransition>
     );

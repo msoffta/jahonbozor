@@ -1,5 +1,7 @@
 import { queryOptions, useMutation } from "@tanstack/react-query";
+import * as Sentry from "@sentry/react";
 import { api } from "@/lib/api-client";
+import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 
@@ -18,16 +20,16 @@ interface UserProfile {
     createdAt: Date | string;
 }
 
-export const profileOptions = () =>
+export const profileOptions = (params?: { enabled?: boolean }) =>
     queryOptions({
         queryKey: authKeys.me,
         queryFn: async (): Promise<UserProfile> => {
             const { data, error } = await api.api.public.auth.me.get();
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
-            return data.data as UserProfile;
+            return data.data;
         },
-        enabled: useAuthStore.getState().isAuthenticated,
+        enabled: params?.enabled ?? useAuthStore.getState().isAuthenticated,
     });
 
 export function useTelegramLogin() {
@@ -63,6 +65,7 @@ export function useTelegramLogin() {
                     type: "user",
                 });
                 useUIStore.getState().setLocale(language);
+                Sentry.setUser({ id: String(user.id), username: user.fullname });
             }
         },
     });
@@ -86,6 +89,8 @@ export function useLogout() {
         },
         onSettled: () => {
             useAuthStore.getState().logout();
+            Sentry.setUser(null);
+            queryClient.clear();
         },
     });
 }

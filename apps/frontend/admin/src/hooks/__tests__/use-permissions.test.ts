@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { Permission } from "@jahonbozor/schemas";
 import { useAuthStore } from "../../stores/auth.store";

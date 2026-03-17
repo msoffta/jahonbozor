@@ -1,8 +1,8 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import type { Users as UsersType } from "@backend/generated/prisma/client";
-import { Users } from "@backend/api/private/users/users.service";
+import { UsersService } from "@backend/api/private/users/users.service";
 import crypto from "crypto";
 
 // Mock user data
@@ -73,7 +73,7 @@ const createTestApp = () => {
                 return { success: false, error: "Server configuration error" };
             }
 
-            const isValidHash = Users.validateTelegramHash(telegramData, botToken);
+            const isValidHash = UsersService.validateTelegramHash(telegramData, botToken);
             if (!isValidHash) {
                 set.status = 401;
                 return { success: false, error: "Invalid authentication data" };
@@ -87,7 +87,7 @@ const createTestApp = () => {
                 return { success: false, error: "Authentication data expired" };
             }
 
-            const result = await Users.createOrUpdateFromTelegram(telegramData, logger, undefined, requestId);
+            const result = await UsersService.createOrUpdateFromTelegram(telegramData, logger, undefined, requestId);
 
             if (!result.success || !result.data) {
                 set.status = 400;

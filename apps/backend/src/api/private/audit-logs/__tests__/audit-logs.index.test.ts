@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import { Permission } from "@jahonbozor/schemas";

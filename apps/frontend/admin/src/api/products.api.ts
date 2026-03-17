@@ -1,11 +1,14 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import { api } from "@/api/client";
+import { toast } from "@jahonbozor/ui";
 
 export const productKeys = {
     all: ["products"] as const,
-    list: (params?: Record<string, unknown>) => [...productKeys.all, "list", params] as const,
-    detail: (id: number) => [...productKeys.all, "detail", id] as const,
+    lists: () => [...productKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...productKeys.lists(), params] as const,
+    details: () => [...productKeys.all, "detail"] as const,
+    detail: (id: number) => [...productKeys.details(), id] as const,
 };
 
 export const productsListQueryOptions = (params?: {
@@ -81,6 +84,9 @@ export const useCreateProduct = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
+        },
     });
 };
 
@@ -91,6 +97,9 @@ export const useUpdateProduct = () => {
         mutationFn: updateProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 };
@@ -103,6 +112,9 @@ export const useDeleteProduct = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
+        },
     });
 };
 
@@ -113,6 +125,9 @@ export const useRestoreProduct = () => {
         mutationFn: restoreProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 };

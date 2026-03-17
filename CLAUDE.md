@@ -28,7 +28,7 @@ Guidance for Claude Code when working with this repository.
 **Bun** — единственный runtime и package manager в проекте.
 
 - **НЕ использовать:** Node.js, npm, yarn, pnpm
-- **Использовать:** `bun`, `bun run`, `bun test`, `bun install`
+- **Использовать:** `bun`, `bun run`, `bun install`
 
 ## Environment
 
@@ -52,16 +52,25 @@ Workspace-скрипты сами резолвят env:
 
 ## Quick Reference
 
+### Test Runner
+
+**Vitest** — единственный тест-раннер для всех workspace.
+- Конфигурация: `vitest.config.ts` в каждом workspace
+- Моки: `vi.mock()` (hoisted автоматически), `vi.fn()`, `vi.spyOn()`
+- Prisma: `vitest-mock-extended` + `mockDeep<PrismaClient>()`
+- DOM: happy-dom через `environment: 'happy-dom'` в vitest.config.ts
+- Mock isolation: per-file (vi.mock() в файле A не влияет на файл B)
+
 ### Testing
 ```bash
-bun run test               # Run all tests (ui + backend + bot + admin + user)
-bun run test:ui            # Run UI package tests (DataTable components)
+bun run test               # Run all tests (vitest across all workspaces)
+bun run test:ui            # Run UI package tests
 bun run test:backend       # Run backend tests only
 bun run test:bot           # Run bot tests only
 bun run test:user          # Run user frontend tests only
 bun run test:admin         # Run admin frontend tests only
-bun run test:watch         # Watch mode (backend only)
-bun run test:coverage      # With coverage (backend only)
+bun run test:watch         # Watch mode
+bun run test:coverage      # With coverage
 bun run typecheck          # TypeScript check (backend + bot + ui + admin + user)
 ```
 
@@ -106,7 +115,7 @@ packages/
 └── utils/                 # Shared utilities
 ```
 
-> **UI Package Testing:** `packages/ui` содержит тесты для shared компонентов (DataTable - 45 tests). Тесты используют реальные компоненты и `fireEvent` для controlled inputs из-за ограничений Bun + happy-dom. См. [docs/frontend-testing.md#ui-package-testing](docs/frontend-testing.md#ui-package-testing-packagesui).
+> **UI Package Testing:** `packages/ui` содержит тесты для shared компонентов (DataTable - 45 tests). Тесты используют Vitest + happy-dom, реальные компоненты и `userEvent` для взаимодействий. См. [docs/frontend-testing.md#ui-package-testing](docs/frontend-testing.md#ui-package-testing-packagesui).
 
 > **Workspace config:** root `package.json` workspaces must list all apps explicitly:
 > `["apps/backend", "apps/bot", "apps/frontend/admin", "apps/frontend/user", "packages/*"]`
@@ -128,9 +137,9 @@ Frontend tsconfig: @/* (own src) + @backend/lib/*, @backend/api/*, @backend/gene
 | Document | Contents |
 |----------|----------|
 | [docs/backend.md](docs/backend.md) | Backend organization, route prefixes, Elysia error handling (status(), onError, guard scoping), permissions, categories, response pattern, request context, logging, audit logging, enums, TypeScript rules, HTTP status codes, soft delete, transactions, environment variables, database |
-| [docs/testing.md](docs/testing.md) | Backend unit testing: commands, test structure, Bun mocking, Prisma mocks, mock isolation, Elysia endpoint tests, error response testing, AAA pattern, coverage requirements, best practices |
+| [docs/testing.md](docs/testing.md) | Backend unit testing: commands, test structure, Vitest mocking, Prisma mockDeep, Elysia endpoint tests, error response testing, AAA pattern, coverage requirements, best practices |
 | [docs/frontend.md](docs/frontend.md) | Frontend architecture (admin + user apps), tech stack, routing, state management, API layer (Eden), forms, i18n, shared UI package, auth flow, Sentry integration, conventions |
-| [docs/frontend-testing.md](docs/frontend-testing.md) | Frontend testing: Zustand stores, hooks (renderHook), component testing, mocking patterns (Router/Query/Eden/Motion/i18n/Sentry/fetch), mock.module ordering, Testing Library query priority, coverage requirements |
+| [docs/frontend-testing.md](docs/frontend-testing.md) | Frontend testing: Zustand stores, hooks (renderHook), component testing, Vitest mocking patterns (Router/Query/Eden/Motion/i18n/Sentry/fetch), Testing Library query priority, coverage requirements |
 | [docs/bot.md](docs/bot.md) | Telegram bot: architecture, auth flow, phone verification, handlers, services, testing, environment variables |
 | [docs/rules.md](docs/rules.md) | Condensed code conventions quick reference (backend + frontend), Zod 4 patterns |
 

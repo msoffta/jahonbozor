@@ -91,6 +91,7 @@ export interface DataTableTranslations {
     filterMin?: string;
     filterMax?: string;
     filter?: string;
+    sumLabel?: string;
 }
 
 // ── Props ──────────────────────────────────────────────────────
@@ -130,7 +131,6 @@ export interface DataTableProps<TData> {
     multiRowMaxCount?: number;
     onMultiRowSave?: (data: Record<string, unknown>, rowId: string, linkedId?: unknown) => unknown | Promise<unknown>;
     onMultiRowChange?: (data: Record<string, unknown>, rowId: string) => void | Record<string, unknown>;
-    onMultiRowDelete?: (rowId: string) => void;
     multiRowDefaultValues?: Partial<TData> | ((rowIndex: number) => Partial<TData>);
     multiRowValidate?: (data: Record<string, unknown>) => boolean | string;
 

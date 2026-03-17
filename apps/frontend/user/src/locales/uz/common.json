@@ -59,5 +59,8 @@
     "error_unexpected": "Kutilmagan xatolik yuz berdi",
     "go_home": "Bosh sahifaga",
     "try_again": "Qaytadan urinish",
-    "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME sozlanmagan"
+    "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME sozlanmagan",
+    "payment_debt": "Qarz",
+    "order_comment": "Buyurtmaga izoh",
+    "product_fallback": "Mahsulot #{{id}}"
 }

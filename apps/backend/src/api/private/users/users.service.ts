@@ -7,6 +7,7 @@ import {
 } from "@jahonbozor/schemas/src/users";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
+import type { Prisma } from "@backend/generated/prisma/client";
 import { prisma } from "@backend/lib/prisma";
 import { auditInTransaction } from "@backend/lib/audit";
 import type { UsersModel } from "@backend/generated/prisma/models/Users";
@@ -30,13 +31,13 @@ function createUserSnapshot(user: UsersModel) {
     };
 }
 
-export abstract class Users {
+export abstract class UsersService {
     static async getAllUsers(
         { page, limit, searchQuery, includeOrders, includeDeleted }: UsersPagination,
         logger: Logger,
     ): Promise<AdminUsersListResponse> {
         try {
-            const whereClause: Record<string, unknown> = {};
+            const whereClause: Prisma.UsersWhereInput = {};
 
             if (!includeDeleted) {
                 whereClause.deletedAt = null;

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import type { Order, OrderItem, Product, AuditLog, Prisma } from "@backend/generated/prisma/client";
 import { type Token, Permission } from "@jahonbozor/schemas";

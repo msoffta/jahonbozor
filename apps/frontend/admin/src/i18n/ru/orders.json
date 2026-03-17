@@ -20,6 +20,7 @@
     "status_cancelled": "Отменен",
     "payment_cash": "Наличные",
     "payment_credit_card": "Карта",
+    "payment_debt": "Долг",
     "orders_empty": "Заказы не найдены",
     "lists_empty": "Списки не найдены",
     "table_columns": "Столбцы",
@@ -43,5 +44,7 @@
     "save_list": "Сохранить список",
     "min_items_required": "Добавьте минимум 2 позиции",
     "error_product_required": "Пожалуйста, выберите товар",
-    "back_to_lists": "Назад к спискам"
+    "back_to_lists": "Назад к спискам",
+    "order_comment": "Комментарий",
+    "error_debt_requires_user": "Для оплаты в долг необходимо выбрать клиента"
 }

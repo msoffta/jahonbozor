@@ -1,9 +1,9 @@
-import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 
-mock.module("@sentry/react", () => ({
-    setUser: mock(),
+vi.mock("@sentry/react", () => ({
+    setUser: vi.fn(),
 }));
 
 import * as Sentry from "@sentry/react";
@@ -22,11 +22,6 @@ describe("api-client", () => {
     beforeEach(() => {
         useAuthStore.setState({ token: null, user: null, isAuthenticated: false });
         useUIStore.setState({ locale: "uz" });
-        (Sentry.setUser as ReturnType<typeof mock>).mockClear();
-    });
-
-    afterEach(() => {
-        mock.restore();
     });
 
     describe("tryRefreshToken", () => {
@@ -39,7 +34,7 @@ describe("api-client", () => {
                 language: "ru",
             };
 
-            const fetchSpy = spyOn(globalThis, "fetch")
+            const fetchSpy = vi.spyOn(globalThis, "fetch")
                 .mockResolvedValueOnce({
                     ok: true,
                     json: () => Promise.resolve({ success: true, data: { token: "new-token" } }),
@@ -75,7 +70,7 @@ describe("api-client", () => {
         test("should logout on non-ok refresh response", async () => {
             useAuthStore.getState().login("old-token", mockUser);
 
-            spyOn(globalThis, "fetch").mockResolvedValueOnce({
+            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
                 ok: false,
                 json: () => Promise.resolve({}),
             } as Response);
@@ -91,7 +86,7 @@ describe("api-client", () => {
         test("should logout when refresh response has no token", async () => {
             useAuthStore.getState().login("old-token", mockUser);
 
-            spyOn(globalThis, "fetch").mockResolvedValueOnce({
+            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve({ success: false }),
             } as Response);
@@ -104,7 +99,7 @@ describe("api-client", () => {
         });
 
         test("should logout when profile fetch fails", async () => {
-            spyOn(globalThis, "fetch")
+            vi.spyOn(globalThis, "fetch")
                 .mockResolvedValueOnce({
                     ok: true,
                     json: () => Promise.resolve({ success: true, data: { token: "new-token" } }),
@@ -124,7 +119,7 @@ describe("api-client", () => {
         test("should logout on fetch error", async () => {
             useAuthStore.getState().login("old-token", mockUser);
 
-            spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
+            vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
 
             const result = await tryRefreshToken();
 
@@ -142,7 +137,7 @@ describe("api-client", () => {
                 language: "en",
             };
 
-            spyOn(globalThis, "fetch")
+            vi.spyOn(globalThis, "fetch")
                 .mockResolvedValueOnce({
                     ok: true,
                     json: () => Promise.resolve({ success: true, data: { token: "t" } }),

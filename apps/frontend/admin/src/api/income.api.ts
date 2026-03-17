@@ -6,11 +6,13 @@ import {
     useMutation,
     useQueryClient,
 } from "@tanstack/react-query";
+import { toast } from "@jahonbozor/ui";
 
 export const incomeKeys = {
     all: ["income"] as const,
+    lists: () => [...incomeKeys.all, "list"] as const,
     list: (params?: Record<string, unknown>) =>
-        [...incomeKeys.all, "list", params] as const,
+        [...incomeKeys.lists(), params] as const,
 };
 
 export const incomeListQueryOptions = (params?: {
@@ -73,6 +75,9 @@ export const useCreateIncome = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: incomeKeys.all });
             queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 };

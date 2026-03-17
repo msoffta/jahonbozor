@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { QueryFunctionContext } from "@tanstack/react-query";
 
 interface MockEdenResponse {
@@ -13,103 +13,99 @@ type DetailQueryFnContext = QueryFunctionContext<
 	readonly ["staff", "detail", number]
 >;
 
-// --- Mock setup (BEFORE imports) ---
-
-const mockGet = mock(
-	(): Promise<MockEdenResponse> =>
-		Promise.resolve({
-			data: {
-				success: true,
+const { mockGet, mockGetById, mockPost, mockPatch, mockDelete } = vi.hoisted(() => ({
+	mockGet: vi.fn(
+		(): Promise<MockEdenResponse> =>
+			Promise.resolve({
 				data: {
-					count: 2,
-					staff: [
-						{
-							id: 1,
-							fullname: "John Doe",
-							username: "john",
-							roleId: 1,
-							role: { id: 1, name: "Admin", permissions: ["staff:read:all"] },
-							createdAt: "2026-01-01",
-						},
-						{
-							id: 2,
-							fullname: "Jane Smith",
-							username: "jane",
-							roleId: 2,
-							role: { id: 2, name: "Manager", permissions: ["staff:read:own"] },
-							createdAt: "2026-01-02",
-						},
-					],
+					success: true,
+					data: {
+						count: 2,
+						staff: [
+							{
+								id: 1,
+								fullname: "John Doe",
+								username: "john",
+								roleId: 1,
+								role: { id: 1, name: "Admin", permissions: ["staff:read:all"] },
+								createdAt: "2026-01-01",
+							},
+							{
+								id: 2,
+								fullname: "Jane Smith",
+								username: "jane",
+								roleId: 2,
+								role: { id: 2, name: "Manager", permissions: ["staff:read:own"] },
+								createdAt: "2026-01-02",
+							},
+						],
+					},
 				},
-			},
-			error: null,
-		}),
-);
-
-const mockGetById = mock(
-	(): Promise<MockEdenResponse> =>
-		Promise.resolve({
-			data: {
-				success: true,
+				error: null,
+			}),
+	),
+	mockGetById: vi.fn(
+		(): Promise<MockEdenResponse> =>
+			Promise.resolve({
 				data: {
-					id: 1,
-					fullname: "John Doe",
-					username: "john",
-					roleId: 1,
-					role: { id: 1, name: "Admin", permissions: ["staff:read:all"] },
-					createdAt: "2026-01-01",
+					success: true,
+					data: {
+						id: 1,
+						fullname: "John Doe",
+						username: "john",
+						roleId: 1,
+						role: { id: 1, name: "Admin", permissions: ["staff:read:all"] },
+						createdAt: "2026-01-01",
+					},
 				},
-			},
-			error: null,
-		}),
-);
-
-const mockPost = mock(
-	(): Promise<MockEdenResponse> =>
-		Promise.resolve({
-			data: {
-				success: true,
+				error: null,
+			}),
+	),
+	mockPost: vi.fn(
+		(): Promise<MockEdenResponse> =>
+			Promise.resolve({
 				data: {
-					id: 3,
-					fullname: "New Staff",
-					username: "newstaff",
-					roleId: 1,
-					telegramId: "",
-					createdAt: "2026-01-03",
+					success: true,
+					data: {
+						id: 3,
+						fullname: "New Staff",
+						username: "newstaff",
+						roleId: 1,
+						telegramId: "",
+						createdAt: "2026-01-03",
+					},
 				},
-			},
-			error: null,
-		}),
-);
-
-const mockPatch = mock(
-	(): Promise<MockEdenResponse> =>
-		Promise.resolve({
-			data: {
-				success: true,
+				error: null,
+			}),
+	),
+	mockPatch: vi.fn(
+		(): Promise<MockEdenResponse> =>
+			Promise.resolve({
 				data: {
-					id: 1,
-					fullname: "Updated Name",
-					username: "john",
-					roleId: 1,
+					success: true,
+					data: {
+						id: 1,
+						fullname: "Updated Name",
+						username: "john",
+						roleId: 1,
+					},
 				},
-			},
-			error: null,
-		}),
-);
+				error: null,
+			}),
+	),
+	mockDelete: vi.fn(
+		(): Promise<MockEdenResponse> =>
+			Promise.resolve({
+				data: {
+					success: true,
+					data: { id: 1, fullname: "John Doe", deletedAt: "2026-01-01" },
+				},
+				error: null,
+			}),
+	),
+}));
 
-const mockDelete = mock(
-	(): Promise<MockEdenResponse> =>
-		Promise.resolve({
-			data: {
-				success: true,
-				data: { id: 1, fullname: "John Doe", deletedAt: "2026-01-01" },
-			},
-			error: null,
-		}),
-);
-
-mock.module("@/api/client", () => ({
+vi.mock("@/api/client", () => ({
 	api: {
 		api: {
 			private: {
@@ -138,7 +134,7 @@ import {
 
 describe("staff.api", () => {
 	beforeEach(() => {
-		mock.restore();
+		vi.clearAllMocks();
 	});
 
 	// --- Query Keys ---

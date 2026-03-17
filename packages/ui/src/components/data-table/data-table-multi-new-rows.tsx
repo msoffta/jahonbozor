@@ -8,7 +8,6 @@ interface DataTableMultiNewRowsProps<TData> {
     rowStates: NewRowState[];
     onRowChange: (rowId: string, values: Record<string, unknown>) => void;
     onRowSave: (rowId: string) => void;
-    onRowDelete?: (rowId: string) => void;
     onRowFocus?: (rowId: string) => void;
     onRowBlur?: (rowId: string) => void;
     onRowFocusNext?: (rowId: string) => void;
@@ -22,7 +21,6 @@ export function DataTableMultiNewRows<TData>({
     rowStates,
     onRowChange,
     onRowSave,
-    onRowDelete: _onRowDelete,
     onRowFocus,
     onRowBlur,
     onRowFocusNext,

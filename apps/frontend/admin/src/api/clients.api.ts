@@ -5,12 +5,15 @@ import {
     useMutation,
     useQueryClient,
 } from "@tanstack/react-query";
+import { toast } from "@jahonbozor/ui";
 
 export const clientKeys = {
     all: ["clients"] as const,
+    lists: () => [...clientKeys.all, "list"] as const,
     list: (params?: Record<string, unknown>) =>
-        [...clientKeys.all, "list", params] as const,
-    detail: (id: number) => [...clientKeys.all, "detail", id] as const,
+        [...clientKeys.lists(), params] as const,
+    details: () => [...clientKeys.all, "detail"] as const,
+    detail: (id: number) => [...clientKeys.details(), id] as const,
 };
 
 export const clientsListQueryOptions = (params?: {
@@ -111,6 +114,9 @@ export const useCreateClient = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
         },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
+        },
     });
 };
 
@@ -121,6 +127,9 @@ export const useUpdateClient = () => {
         mutationFn: updateClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 };
@@ -133,6 +142,9 @@ export const useDeleteClient = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
         },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
+        },
     });
 };
 
@@ -143,6 +155,9 @@ export const useRestoreClient = () => {
         mutationFn: restoreClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 };

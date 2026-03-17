@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import {
 	prismaMock,
 	createMockLogger,
@@ -450,6 +450,237 @@ describe("AnalyticsService", () => {
 			expect(day2?.totalExpenses).toBe(100);
 			expect(day2?.profit).toBe(200); // 300 - 100
 			expect(day2?.totalOrders).toBe(1);
+		});
+
+		test("should handle database error gracefully", async () => {
+			// Arrange
+			prismaMock.order.findMany.mockRejectedValue(new Error("DB connection failed"));
+
+			// Act
+			const result = await AnalyticsService.getAnalyticsSummary({}, mockLogger);
+
+			// Assert
+			expect(result.success).toBe(false);
+			expect(mockLogger.error).toHaveBeenCalled();
+		});
+
+		test("should count acceptedOrdersCount correctly with mixed statuses", async () => {
+			// Arrange
+			const mockProduct = createMockProduct();
+			const orderNew = createMockOrder({ id: 1, status: "NEW", createdAt: new Date() });
+			const orderAccepted1 = createMockOrder({ id: 2, status: "ACCEPTED", createdAt: new Date() });
+			const orderAccepted2 = createMockOrder({ id: 3, status: "ACCEPTED", createdAt: new Date() });
+			const orderCancelled = createMockOrder({ id: 4, status: "CANCELLED", createdAt: new Date() });
+
+			const item = createMockOrderItem({ quantity: 1, price: 100 as unknown as OrderItem["price"] });
+			// @ts-expect-error - Adding product to OrderItem for include
+			item.product = mockProduct;
+
+			for (const order of [orderNew, orderAccepted1, orderAccepted2, orderCancelled]) {
+				// @ts-expect-error - Adding items to Order for include
+				order.items = [{ ...item, orderId: order.id }];
+			}
+
+			prismaMock.order.findMany.mockResolvedValue([orderNew, orderAccepted1, orderAccepted2, orderCancelled]);
+			prismaMock.expense.findMany.mockResolvedValue([]);
+			prismaMock.category.findMany.mockResolvedValue([]);
+
+			// Act
+			const result = await AnalyticsService.getAnalyticsSummary({}, mockLogger);
+
+			// Assert
+			const success = expectSuccess(result);
+			expect(success.data!.overview.ordersCount).toBe(4);
+			expect(success.data!.overview.acceptedOrdersCount).toBe(2);
+		});
+
+		test("should handle products without categories in categoryBreakdown", async () => {
+			// Arrange — product with categoryId = null
+			const productNoCategory = createMockProduct({ id: 1, name: "Uncategorized", categoryId: null as unknown as number });
+			const item = createMockOrderItem({ productId: 1, quantity: 1, price: 100 as unknown as OrderItem["price"] });
+			// @ts-expect-error - Adding product to OrderItem for include
+			item.product = { ...productNoCategory, categoryId: null };
+
+			const order = createMockOrder({ id: 1, createdAt: new Date() });
+			// @ts-expect-error - Adding items to Order for include
+			order.items = [item];
+
+			prismaMock.order.findMany.mockResolvedValue([order]);
+			prismaMock.expense.findMany.mockResolvedValue([]);
+			prismaMock.category.findMany.mockResolvedValue([]);
+
+			// Act
+			const result = await AnalyticsService.getAnalyticsSummary({}, mockLogger);
+
+			// Assert — should not crash, categoryBreakdown should be empty
+			const success = expectSuccess(result);
+			expect(success.data!.categoryBreakdown).toHaveLength(0);
+			expect(success.data!.overview.totalSales).toBe(100);
+		});
+
+		test("should sum same product quantities from multiple orders in topProducts", async () => {
+			// Arrange — same product in 2 different orders
+			const mockProduct = createMockProduct({ id: 1, name: "Popular Item", categoryId: 1 });
+
+			const item1 = createMockOrderItem({ orderId: 1, productId: 1, quantity: 3, price: 100 as unknown as OrderItem["price"] });
+			const item2 = createMockOrderItem({ orderId: 2, productId: 1, quantity: 5, price: 100 as unknown as OrderItem["price"] });
+			// @ts-expect-error
+			item1.product = mockProduct;
+			// @ts-expect-error
+			item2.product = mockProduct;
+
+			const order1 = createMockOrder({ id: 1, createdAt: new Date() });
+			const order2 = createMockOrder({ id: 2, createdAt: new Date() });
+			// @ts-expect-error
+			order1.items = [item1];
+			// @ts-expect-error
+			order2.items = [item2];
+
+			prismaMock.order.findMany.mockResolvedValue([order1, order2]);
+			prismaMock.expense.findMany.mockResolvedValue([]);
+			prismaMock.category.findMany.mockResolvedValue([]);
+
+			// Act
+			const result = await AnalyticsService.getAnalyticsSummary({}, mockLogger);
+
+			// Assert
+			const success = expectSuccess(result);
+			expect(success.data!.topProducts).toHaveLength(1);
+			expect(success.data!.topProducts[0].quantitySold).toBe(8); // 3 + 5
+			expect(success.data!.topProducts[0].totalRevenue).toBe(800); // 100*3 + 100*5
+		});
+
+		test("should limit topProducts to 5 and exclude the rest", async () => {
+			// Arrange — 8 products, should only return top 5
+			const products = Array.from({ length: 8 }, (_, i) =>
+				createMockProduct({ id: i + 1, name: `Product ${i + 1}`, categoryId: 1 }),
+			);
+
+			const orders = Array.from({ length: 8 }, (_, i) => {
+				const order = createMockOrder({ id: i + 1, createdAt: new Date() });
+				const item = createMockOrderItem({
+					id: i + 1,
+					orderId: i + 1,
+					productId: i + 1,
+					quantity: 20 - i, // Product 1 has 20, Product 2 has 19, etc.
+					price: 50 as unknown as OrderItem["price"],
+				});
+				// @ts-expect-error
+				item.product = products[i];
+				// @ts-expect-error
+				order.items = [item];
+				return order;
+			});
+
+			prismaMock.order.findMany.mockResolvedValue(orders);
+			prismaMock.expense.findMany.mockResolvedValue([]);
+			prismaMock.category.findMany.mockResolvedValue([]);
+
+			// Act
+			const result = await AnalyticsService.getAnalyticsSummary({}, mockLogger);
+
+			// Assert
+			const success = expectSuccess(result);
+			expect(success.data!.topProducts).toHaveLength(5);
+			expect(success.data!.topProducts[0].quantitySold).toBe(20);
+			expect(success.data!.topProducts[4].quantitySold).toBe(16);
+		});
+
+		test("should aggregate multiple orders and expenses on the same day", async () => {
+			// Arrange — 3 orders and 2 expenses on the same day
+			const mockProduct = createMockProduct();
+			const sameDay = new Date("2024-06-01T10:00:00Z");
+
+			const orders = Array.from({ length: 3 }, (_, i) => {
+				const order = createMockOrder({ id: i + 1, createdAt: sameDay });
+				const item = createMockOrderItem({
+					orderId: i + 1,
+					quantity: 1,
+					price: (100 * (i + 1)) as unknown as OrderItem["price"],
+				});
+				// @ts-expect-error
+				item.product = mockProduct;
+				// @ts-expect-error
+				order.items = [item];
+				return order;
+			});
+
+			const expenses = [
+				createMockExpense({ id: 1, amount: 50 as unknown as Expense["amount"], expenseDate: sameDay }),
+				createMockExpense({ id: 2, amount: 75 as unknown as Expense["amount"], expenseDate: sameDay }),
+			];
+
+			prismaMock.order.findMany.mockResolvedValue(orders);
+			prismaMock.expense.findMany.mockResolvedValue(expenses);
+			prismaMock.category.findMany.mockResolvedValue([]);
+
+			// Act
+			const result = await AnalyticsService.getAnalyticsSummary(
+				{ dateFrom: "2024-06-01T00:00:00.000Z", dateTo: "2024-06-01T23:59:59.999Z" },
+				mockLogger,
+			);
+
+			// Assert
+			const success = expectSuccess(result);
+			expect(success.data!.dailySales).toHaveLength(1);
+			const day = success.data!.dailySales[0];
+			expect(day.totalSales).toBe(600); // 100 + 200 + 300
+			expect(day.totalOrders).toBe(3);
+			expect(day.totalExpenses).toBe(125); // 50 + 75
+			expect(day.profit).toBe(475); // 600 - 125
+		});
+
+		test("should handle negative profit when expenses exceed sales", async () => {
+			// Arrange
+			const mockProduct = createMockProduct();
+			const item = createMockOrderItem({ quantity: 1, price: 100 as unknown as OrderItem["price"] });
+			// @ts-expect-error
+			item.product = mockProduct;
+
+			const order = createMockOrder({ createdAt: new Date() });
+			// @ts-expect-error
+			order.items = [item];
+
+			const bigExpense = createMockExpense({
+				amount: 9999 as unknown as Expense["amount"],
+			});
+
+			prismaMock.order.findMany.mockResolvedValue([order]);
+			prismaMock.expense.findMany.mockResolvedValue([bigExpense]);
+			prismaMock.category.findMany.mockResolvedValue([]);
+
+			// Act
+			const result = await AnalyticsService.getAnalyticsSummary({}, mockLogger);
+
+			// Assert
+			const success = expectSuccess(result);
+			expect(success.data!.overview.totalSales).toBe(100);
+			expect(success.data!.overview.totalExpenses).toBe(9999);
+			expect(success.data!.overview.profit).toBe(-9899); // Negative profit
+		});
+
+		test("should handle orders with zero quantity items", async () => {
+			// Arrange
+			const mockProduct = createMockProduct();
+			const item = createMockOrderItem({ quantity: 0, price: 500 as unknown as OrderItem["price"] });
+			// @ts-expect-error
+			item.product = mockProduct;
+
+			const order = createMockOrder({ createdAt: new Date() });
+			// @ts-expect-error
+			order.items = [item];
+
+			prismaMock.order.findMany.mockResolvedValue([order]);
+			prismaMock.expense.findMany.mockResolvedValue([]);
+			prismaMock.category.findMany.mockResolvedValue([]);
+
+			// Act
+			const result = await AnalyticsService.getAnalyticsSummary({}, mockLogger);
+
+			// Assert
+			const success = expectSuccess(result);
+			expect(success.data!.overview.totalSales).toBe(0); // 500 * 0 = 0
+			expect(success.data!.overview.ordersCount).toBe(1);
 		});
 	});
 });

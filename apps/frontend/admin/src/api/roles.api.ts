@@ -6,13 +6,16 @@ import {
 	useMutation,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { toast } from "@jahonbozor/ui";
 
 // --- Query Keys ---
 export const roleKeys = {
 	all: ["roles"] as const,
+	lists: () => [...roleKeys.all, "list"] as const,
 	list: (params?: Record<string, unknown>) =>
-		[...roleKeys.all, "list", params] as const,
-	detail: (id: number) => [...roleKeys.all, "detail", id] as const,
+		[...roleKeys.lists(), params] as const,
+	details: () => [...roleKeys.all, "detail"] as const,
+	detail: (id: number) => [...roleKeys.details(), id] as const,
 };
 
 // --- Query Options ---
@@ -98,6 +101,9 @@ export const useCreateRole = () => {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: roleKeys.all });
 		},
+		onError: () => {
+			toast.error("Xatolik yuz berdi");
+		},
 	});
 };
 
@@ -108,6 +114,9 @@ export const useUpdateRole = () => {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: roleKeys.all });
 		},
+		onError: () => {
+			toast.error("Xatolik yuz berdi");
+		},
 	});
 };
 
@@ -117,6 +126,9 @@ export const useDeleteRole = () => {
 		mutationFn: deleteRoleFn,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: roleKeys.all });
+		},
+		onError: () => {
+			toast.error("Xatolik yuz berdi");
 		},
 	});
 };

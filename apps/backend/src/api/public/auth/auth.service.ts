@@ -5,11 +5,11 @@ import { prisma } from "@backend/lib/prisma";
 
 import { password } from "bun";
 
-export default abstract class Auth {
+export default abstract class AuthService {
     static async checkIfStaffExists(
         { username, password: staffPassword }: SignInBody,
         logger: Logger,
-    ) {
+    ): Promise<{ id: number; fullname: string; username: string; roleId: number; type: string } | null> {
         try {
             const staffQuery = await prisma.staff.findFirst({
                 where: {
@@ -57,14 +57,14 @@ export default abstract class Auth {
             return { ...staff, type: "staff" };
         } catch (error) {
             logger.error("Auth: Error in checkIfStaffExists", { username, error });
-            throw new Error("Auth: Failed to login user");
+            return null;
         }
     }
 
     static async saveRefreshToken(
         { token, exp, staffId, userId }: { token: string; exp: Date; staffId?: number; userId?: number },
         logger: Logger,
-    ) {
+    ): Promise<boolean | null> {
         try {
             const responseToken = await prisma.refreshToken.create({
                 data: {
@@ -83,7 +83,7 @@ export default abstract class Auth {
         }
     }
 
-    static async validateRefreshToken(token: string, logger: Logger) {
+    static async validateRefreshToken(token: string, logger: Logger): Promise<{ id: number; staffId: number | null; userId: number | null; revoked: boolean; expiredAt: Date } | null> {
         try {
             const tokenRecord = await prisma.refreshToken.findUnique({
                 where: { token },
@@ -118,7 +118,7 @@ export default abstract class Auth {
         }
     }
 
-    static async revokeRefreshToken(token: string, logger: Logger) {
+    static async revokeRefreshToken(token: string, logger: Logger): Promise<void> {
         try {
             await prisma.refreshToken.update({
                 where: { token },

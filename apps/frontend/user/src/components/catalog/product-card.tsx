@@ -4,10 +4,7 @@ import { motion, AnimatePresence, Checkbox } from "@jahonbozor/ui";
 import { useCartStore } from "@/stores/cart.store";
 import { useUIStore } from "@/stores/ui.store";
 import { QuantityControl } from "@/components/catalog/quantity-control";
-
-function formatPrice(price: number, locale: string): string {
-    return price.toLocaleString(locale).replace(/,/g, " ");
-}
+import { formatPrice, getLocaleCode } from "@/lib/format";
 
 interface CatalogProps {
     variant?: "catalog";
@@ -37,18 +34,16 @@ interface OrderProps {
 type ProductCardProps = CatalogProps | CartProps | OrderProps;
 
 export function ProductCard(props: ProductCardProps) {
-    const variant = props.variant ?? "catalog";
-
-    if (variant === "cart") return <CartVariant {...(props as CartProps)} />;
-    if (variant === "order") return <OrderVariant {...(props as OrderProps)} />;
-    return <CatalogVariant {...(props as CatalogProps)} />;
+    if (props.variant === "cart") return <CartVariant {...props} />;
+    if (props.variant === "order") return <OrderVariant {...props} />;
+    return <CatalogVariant {...props} />;
 }
 
 function CatalogVariant({ productId, name, price, remaining }: CatalogProps) {
     const { t } = useTranslation();
-    const addItem = useCartStore((s) => s.addItem);
-    const updateQuantity = useCartStore((s) => s.updateQuantity);
-    const cartItem = useCartStore((s) => s.items.find((i) => i.productId === productId));
+    const addItem = useCartStore((state) => state.addItem);
+    const updateQuantity = useCartStore((state) => state.updateQuantity);
+    const cartItem = useCartStore((state) => state.items.find((item) => item.productId === productId));
 
     const handleAddToCart = () => {
         addItem({ productId, name, price });
@@ -111,7 +106,7 @@ function CatalogVariant({ productId, name, price, remaining }: CatalogProps) {
 }
 
 function CartVariant({ productId, name, price, quantity, selected, onSelect }: CartProps) {
-    const updateQuantity = useCartStore((s) => s.updateQuantity);
+    const updateQuantity = useCartStore((state) => state.updateQuantity);
 
     return (
         <motion.div
@@ -160,8 +155,8 @@ function OrderVariant({ name, price, quantity }: OrderProps) {
 
 function PriceField({ price }: { price: number }) {
     const { t } = useTranslation();
-    const locale = useUIStore((s) => s.locale);
-    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
+    const locale = useUIStore((state) => state.locale);
+    const loc = getLocaleCode(locale);
     return (
         <div className="flex flex-col gap-1">
             <span className="text-sm font-medium text-muted-foreground">

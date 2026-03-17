@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "bun --env-file=../../.env run --watch src/index.ts",
     "start": "bun --env-file=../../.env run src/index.ts",
-    "test": "bun --env-file=../../.env test",
-    "test:watch": "bun --env-file=../../.env test --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -17,7 +18,10 @@
     "pg": "^8.18.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "bun-types": "latest",
-    "@types/node": "^22.0.0"
+    "@vitest/coverage-v8": "^4.1.0",
+    "vitest": "^4.1.0",
+    "vitest-mock-extended": "^3.1.0"
   }
 }

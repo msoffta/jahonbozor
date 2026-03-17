@@ -1,54 +1,12 @@
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, test, expect, vi, beforeEach } from "vitest";
+import type { Mock } from "vitest";
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createElement } from "react";
-import * as React from "react";
 
-// Helper to filter non-DOM props
-const filterDOMProps = (props: Record<string, any>) => {
-    const FILTER_PROPS = new Set(["whileTap", "whileHover", "initial", "animate", "exit", "transition", "asChild"]);
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(props)) {
-        if (!FILTER_PROPS.has(key)) filtered[key] = value;
-    }
-    return filtered;
-};
-
-// Mock motion/react
-mock.module("motion/react", () => ({
-    motion: new Proxy({}, {
-        get: (_target: any, prop: string) => {
-            return ({ children, className, ...rest }: any) =>
-                createElement(prop, { className, ...filterDOMProps(rest) }, children);
-        },
-    }),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    LayoutGroup: ({ children }: any) => <>{children}</>,
-}));
-
-// Mock UI components that DataTable depends on
-mock.module("../../ui/button.tsx", () => ({
-    Button: React.forwardRef(({ children, className, ...props }: any, ref: any) => (
-        <button ref={ref} className={className} {...filterDOMProps(props)}>{children}</button>
-    )),
-}));
-
-mock.module("../../ui/checkbox.tsx", () => ({
-    Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
-        <input type="checkbox" checked={checked} onChange={(e) => onCheckedChange?.(e.target.checked)} {...filterDOMProps(props)} />
-    ),
-}));
-
-// НЕ мокируем Input - реальный компонент работает правильно
-
-mock.module("../../ui/table.tsx", () => ({
-    Table: ({ children, className, style }: any) => <table className={className} style={style}>{children}</table>,
-    TableBody: ({ children, style }: any) => <tbody style={style}>{children}</tbody>,
-    TableCell: ({ children, colSpan, style }: any) => <td colSpan={colSpan} style={style}>{children}</td>,
-    TableHead: ({ children, colSpan, style }: any) => <th colSpan={colSpan} style={style}>{children}</th>,
-    TableHeader: ({ children, className, style }: any) => <thead className={className} style={style}>{children}</thead>,
-    TableRow: ({ children, style }: any) => <tr style={style}>{children}</tr>,
-}));
+vi.mock("motion/react", async () => (await import("./test-helpers")).motionMock);
+vi.mock("../../ui/button.tsx", async () => (await import("./test-helpers")).buttonMock);
+vi.mock("../../ui/checkbox.tsx", async () => (await import("./test-helpers")).checkboxMock);
+vi.mock("../../ui/table.tsx", async () => (await import("./test-helpers")).tableMock);
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableMultiNewRows } from "../data-table-multi-new-rows";
@@ -77,17 +35,16 @@ const createNewRowStates = (count: number): NewRowState[] => {
 
 // ── Tests ──────────────────────────────────────────────────────
 describe("DataTableMultiNewRows", () => {
-    let onRowChange: ReturnType<typeof mock>;
-    let onRowSave: ReturnType<typeof mock>;
-    let onNeedMoreRows: ReturnType<typeof mock>;
-    let defaultValuesFactory: ReturnType<typeof mock>;
+    let onRowChange: Mock;
+    let onRowSave: Mock;
+    let onNeedMoreRows: Mock;
+    let defaultValuesFactory: Mock;
 
     beforeEach(() => {
-        mock.clearAllMocks();
-        onRowChange = mock(() => {});
-        onRowSave = mock(() => {});
-        onNeedMoreRows = mock(() => {});
-        defaultValuesFactory = mock((_index: number) => ({ id: 0, name: "", value: 0 }));
+        onRowChange = vi.fn();
+        onRowSave = vi.fn();
+        onNeedMoreRows = vi.fn();
+        defaultValuesFactory = vi.fn((_index: number) => ({ id: 0, name: "", value: 0 }));
     });
 
     // ── Happy path ─────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import { CategoriesService } from "../categories.service";
 import type { Category } from "@backend/generated/prisma/client";
@@ -167,8 +167,8 @@ describe("CategoriesService", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
             prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
-                    category: { create: mock(() => Promise.resolve(mockCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { create: vi.fn(() => Promise.resolve(mockCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return callback(mockTransaction);
             });
@@ -195,8 +195,8 @@ describe("CategoriesService", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
             prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
-                    category: { create: mock(() => Promise.resolve(mockCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { create: vi.fn(() => Promise.resolve(mockCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return callback(mockTransaction);
             });
@@ -258,8 +258,8 @@ describe("CategoriesService", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
             prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
-                    category: { update: mock(() => Promise.resolve(updatedCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { update: vi.fn(() => Promise.resolve(updatedCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return callback(mockTransaction);
             });
@@ -343,8 +343,8 @@ describe("CategoriesService", () => {
             prismaMock.product.count.mockResolvedValueOnce(0);
             prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
-                    category: { delete: mock(() => Promise.resolve(mockCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { delete: vi.fn(() => Promise.resolve(mockCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return callback(mockTransaction);
             });

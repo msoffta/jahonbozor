@@ -1,13 +1,12 @@
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { useAuthStore } from "@/stores/auth.store";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
-mock.module("react-i18next", () => ({
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, ...props }: any) => (
         <a href={to} {...props}>
             {children}
@@ -15,18 +14,25 @@ mock.module("@tanstack/react-router", () => ({
     ),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
+vi.mock("motion/react", async () => {
+    const { motionMocks } = await import("../../../test-utils/ui-mocks");
+    return motionMocks;
+});
 
-// Additional mocks specific to Header
-mock.module("@jahonbozor/ui", () => ({
-    ...require("../../../test-utils/ui-mocks").uiMocks,
-    DropdownMenu: ({ children }: any) => <div data-testid="dropdown">{children}</div>,
+vi.mock("@jahonbozor/ui", async () => {
+    const { uiMocks, motionMocks } = await import("../../../test-utils/ui-mocks");
+    return {
+        ...uiMocks,
+        ...motionMocks,
+        DropdownMenu: ({ children }: any) => <div data-testid="dropdown">{children}</div>,
+    };
+});
+
+const { mockLogout } = vi.hoisted(() => ({
+    mockLogout: vi.fn(() => {}),
 }));
 
-const mockLogout = mock(() => {});
-
-mock.module("@/hooks/use-auth", () => ({
+vi.mock("@/hooks/use-auth", () => ({
     useLogout: () => ({ mutate: mockLogout }),
 }));
 

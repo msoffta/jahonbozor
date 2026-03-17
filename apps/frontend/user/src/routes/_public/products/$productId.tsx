@@ -6,45 +6,49 @@ import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { productDetailOptions } from "@/api/products.api";
 import { useCartStore } from "@/stores/cart.store";
 import { useUIStore } from "@/stores/ui.store";
-import { Button, Skeleton } from "@jahonbozor/ui";
+import { Skeleton, PageTransition, motion } from "@jahonbozor/ui";
 import { PageHeader } from "@/components/layout/page-header";
-
-function formatPrice(price: number, locale: string): string {
-    return price.toLocaleString(locale).replace(/,/g, " ");
-}
+import { formatPrice, getLocaleCode } from "@/lib/format";
 
 function ProductDetailPage() {
     const { productId } = Route.useParams();
     const { t } = useTranslation();
     const [quantity, setQuantity] = useState(1);
-    const addItem = useCartStore((s) => s.addItem);
+    const addItem = useCartStore((state) => state.addItem);
+    const updateQuantity = useCartStore((state) => state.updateQuantity);
 
-    const locale = useUIStore((s) => s.locale);
-    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
+    const locale = useUIStore((state) => state.locale);
+    const loc = getLocaleCode(locale);
     const { data: product, isLoading } = useQuery(productDetailOptions(Number(productId)));
 
     const handleAddToCart = () => {
         if (!product) return;
-        for (let i = 0; i < quantity; i++) {
+        const existing = useCartStore.getState().items.find((item) => item.productId === product.id);
+        if (existing) {
+            updateQuantity(product.id, existing.quantity + quantity);
+        } else {
             addItem({ productId: product.id, name: product.name, price: product.price });
+            if (quantity > 1) {
+                updateQuantity(product.id, quantity);
+            }
         }
     };
 
     if (isLoading) {
         return (
-            <div className="space-y-4 p-4">
+            <PageTransition className="space-y-4 p-4">
                 <Skeleton className="h-8 w-48" />
                 <Skeleton className="h-6 w-32" />
                 <Skeleton className="h-6 w-24" />
-            </div>
+            </PageTransition>
         );
     }
 
     if (!product) {
         return (
-            <div className="p-4 text-center">
+            <PageTransition className="p-4 text-center">
                 <p className="text-muted-foreground">{t("no_data")}</p>
-            </div>
+            </PageTransition>
         );
     }
 
@@ -60,7 +64,7 @@ function ProductDetailPage() {
     ];
 
     return (
-        <div>
+        <PageTransition>
             <PageHeader crumbs={crumbs} />
             <div className="px-4">
 
@@ -76,28 +80,40 @@ function ProductDetailPage() {
 
             <div className="mt-6 flex items-center gap-4">
                 <div className="flex items-center rounded-lg border">
-                    <button
+                    <motion.button
+                        type="button"
                         onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                         className="flex h-10 w-10 items-center justify-center hover:bg-accent"
+                        whileTap={{ scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
                         <Minus className="h-4 w-4" />
-                    </button>
+                    </motion.button>
                     <span className="w-10 text-center text-sm font-medium">{quantity}</span>
-                    <button
+                    <motion.button
+                        type="button"
                         onClick={() => setQuantity((q) => Math.min(product.remaining, q + 1))}
                         className="flex h-10 w-10 items-center justify-center hover:bg-accent"
+                        whileTap={{ scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
                         <Plus className="h-4 w-4" />
-                    </button>
+                    </motion.button>
                 </div>
 
-                <Button onClick={handleAddToCart} className="flex-1 gap-2">
+                <motion.button
+                    type="button"
+                    onClick={handleAddToCart}
+                    className="flex-1 gap-2 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
                     <ShoppingCart className="h-4 w-4" />
                     {t("add_to_cart")}
-                </Button>
+                </motion.button>
             </div>
             </div>
-        </div>
+        </PageTransition>
     );
 }
 

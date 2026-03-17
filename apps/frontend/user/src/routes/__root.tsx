@@ -62,7 +62,7 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 function RootLayout() {
-    const pathname = useRouterState({ select: (s) => s.location.pathname });
+    const pathname = useRouterState({ select: (state) => state.location.pathname });
     const isLogin = pathname === "/login";
 
     if (isLogin) {

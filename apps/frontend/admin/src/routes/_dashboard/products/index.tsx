@@ -10,35 +10,34 @@ import {
     useUpdateProduct,
 } from "@/api/products.api";
 import { getProductColumns } from "@/components/products/products-columns";
-import type { DataTableTranslations } from "@jahonbozor/ui";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { Permission, hasPermission } from "@jahonbozor/schemas";
 import {
+    AnimatePresence,
     Checkbox,
     DataTable,
     DataTableSkeleton,
+    motion,
     PageTransition,
 } from "@jahonbozor/ui";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useCallback, useMemo, useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/auth.store";
-import { Permission, hasPermission } from "@jahonbozor/schemas";
 import { useHasPermission } from "@/hooks/use-permissions";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
 
 function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
-    const [isReady, setIsReady] = useState(false);
+    const isReady = useDeferredReady();
+    const translations = useDataTableTranslations("products_empty");
 
     // Permission checks for component-level actions
     const canCreate = useHasPermission(Permission.PRODUCTS_CREATE);
     const canUpdate = useHasPermission(Permission.PRODUCTS_UPDATE);
     const canDelete = useHasPermission(Permission.PRODUCTS_DELETE);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 150);
-        return () => clearTimeout(timer);
-    }, []);
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
         productsListQueryOptions({ limit: 100, includeDeleted }),
@@ -150,20 +149,6 @@ function ProductsPage() {
         [createProduct, updateProduct, resolveCategoryId],
     );
 
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("products_empty"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
-
     const isLoading = isProductsLoading || !isReady;
 
     return (
@@ -181,30 +166,36 @@ function ProductsPage() {
                 </label>
             </div>
 
-            {isLoading ? (
-                <DataTableSkeleton columns={9} rows={10} className="flex-1" />
-            ) : (
-                <DataTable
-                    className="flex-1 costprice-table"
-                    columns={columns}
-                    data={products}
-                    pagination
-                    defaultPageSize={20}
-                    pageSizeOptions={[10, 20, 50]}
-                    enableShowAll
-                    enableSorting
-                    enableGlobalSearch
-                    enableFiltering
-                    enableColumnVisibility
-                    enableColumnResizing
-                    enableEditing={canUpdate}
-                    enableMultipleNewRows={canCreate}
-                    multiRowCount={15}
-                    onCellEdit={handleCellEdit}
-                    onMultiRowSave={handleNewRowSave}
-                    translations={translations}
-                />
-            )}
+            <AnimatePresence mode="wait">
+                {isLoading ? (
+                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <DataTableSkeleton columns={9} rows={10} className="flex-1" />
+                    </motion.div>
+                ) : (
+                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                        <DataTable
+                            className="flex-1 costprice-table"
+                            columns={columns}
+                            data={products}
+                            pagination
+                            defaultPageSize={20}
+                            pageSizeOptions={[10, 20, 50]}
+                            enableShowAll
+                            enableSorting
+                            enableGlobalSearch
+                            enableFiltering
+                            enableColumnVisibility
+                            enableColumnResizing
+                            enableEditing={canUpdate}
+                            enableMultipleNewRows={canCreate}
+                            multiRowCount={15}
+                            onCellEdit={handleCellEdit}
+                            onMultiRowSave={handleNewRowSave}
+                            translations={translations}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </PageTransition>
     );
 }

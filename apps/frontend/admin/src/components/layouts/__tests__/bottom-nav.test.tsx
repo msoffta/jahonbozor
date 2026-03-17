@@ -1,12 +1,11 @@
-import { describe, test, expect, mock } from "bun:test";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
-mock.module("react-i18next", () => ({
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, ...props }: any) => (
         <a href={to} {...props}>
             {children}
@@ -20,33 +19,39 @@ mock.module("@tanstack/react-router", () => ({
     useParams: () => ({}),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
+vi.mock("motion/react", async () => {
+    const { motionMocks } = await import("../../../test-utils/ui-mocks");
+    return motionMocks;
+});
 
-mock.module("@tanstack/react-query", () => ({
+vi.mock("@jahonbozor/ui", async () => {
+    const { uiMocks, motionMocks } = await import("../../../test-utils/ui-mocks");
+    return { ...uiMocks, ...motionMocks };
+});
+
+vi.mock("@tanstack/react-query", () => ({
     useQuery: () => ({ data: { orders: [] } }),
 }));
 
-mock.module("@/api/orders.api", () => ({
+vi.mock("@/api/orders.api", () => ({
     orderDetailQueryOptions: () => ({}),
     ordersListQueryOptions: () => ({}),
 }));
 
-mock.module("@/components/orders/create-order-dialog", () => ({
+vi.mock("@/components/orders/create-order-dialog", () => ({
     CreateOrderDialog: () => null,
 }));
 
 // Mock permission hooks with configurable return values
 let permissionMocks: Record<string, boolean> = {};
 
-mock.module("@/hooks/use-permissions", () => ({
+vi.mock("@/hooks/use-permissions", () => ({
     useHasPermission: (permission: string) => permissionMocks[permission] || false,
     useHasAnyPermission: (permissions: string[]) =>
         permissions.some(p => permissionMocks[p]) || false,
 }));
 
 import { BottomNav } from "../bottom-nav";
-import { beforeEach } from "bun:test";
 
 describe("BottomNav", () => {
     beforeEach(() => {

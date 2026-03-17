@@ -22,7 +22,9 @@ import { DataTableBody } from "./data-table-body";
 import { DataTableColumnHeader } from "./data-table-header";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
-import type { DataTableProps, NewRowState } from "./types";
+import type { DataTableProps } from "./types";
+import { useMultiRowState } from "./use-multi-row-state";
+
 
 const VIRTUALIZATION_THRESHOLD = 200;
 
@@ -55,7 +57,6 @@ export function DataTable<TData>({
     multiRowMaxCount = 100,
     onMultiRowSave,
     onMultiRowChange,
-    onMultiRowDelete,
     multiRowDefaultValues,
     multiRowValidate,
 
@@ -65,9 +66,7 @@ export function DataTable<TData>({
     translations,
 }: DataTableProps<TData>) {
     const [data, setData] = React.useState(externalData);
-    const [sorting, setSorting] = React.useState<SortingState>([
-        { id: "id", desc: false },
-    ]);
+    const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] =
         React.useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] =
@@ -89,258 +88,16 @@ export function DataTable<TData>({
     const containerRef = React.useRef<HTMLDivElement>(null);
 
     // ── Multi-row state management ─────────────────────────────
-    const [multiRowStates, setMultiRowStates] = React.useState<NewRowState[]>(
-        [],
-    );
-    const [, setFocusedRowId] = React.useState<string | null>(null);
-    const focusedRowIdRef = React.useRef<string | null>(null);
-    const savingRowsRef = React.useRef<Set<string>>(new Set());
-    const navigatingFromRowRef = React.useRef<string | null>(null);
-
-    // Initialize multi-rows if enabled
-    React.useEffect(() => {
-        if (!enableMultipleNewRows) return;
-        
-        // Only initialize if we don't have rows yet to prevent wiping data on parent re-renders
-        setMultiRowStates((prev) => {
-            if (prev.length > 0) return prev;
-
-            return Array.from(
-                { length: multiRowCount },
-                (_, index) => {
-                    const defaults =
-                        typeof multiRowDefaultValues === "function"
-                            ? multiRowDefaultValues(index)
-                            : { ...multiRowDefaultValues };
-                    return {
-                        id: `__new_row_${Date.now()}_${index}`,
-                        values: defaults,
-                        errors: {},
-                        lastSavedValues: defaults,
-                    };
-                },
-            );
-        });
-    }, [enableMultipleNewRows, multiRowCount]); // Removed multiRowDefaultValues from deps to avoid reset
-
-    const handleMultiRowChange = React.useCallback(
-        (rowId: string, values: Record<string, unknown>) => {
-            let updatedValues = values;
-            const result = onMultiRowChange?.(values, rowId);
-            if (result && typeof result === "object") {
-                updatedValues = result;
-            }
-
-            setMultiRowStates((prev) =>
-                prev.map((row) =>
-                    row.id === rowId ? { ...row, values: updatedValues } : row,
-                ),
-            );
-        },
-        [onMultiRowChange],
-    );
-
-    const handleMultiRowSave = React.useCallback(
-        async (rowId: string) => {
-            // Instant lock to prevent double-save from multiple events
-            if (savingRowsRef.current.has(rowId)) return;
-
-            const rowState = multiRowStates.find((s) => s.id === rowId);
-            if (!rowState || rowState.isSaving) return;
-
-            // Check if values differ from LAST SAVED values
-            const isChanged = Object.keys(rowState.values).some(
-                (key) => rowState.values[key] !== rowState.lastSavedValues?.[key],
-            );
-
-            // Check if row is empty (skip save)
-            const isEmpty = Object.values(rowState.values).every(
-                (v) => v === "" || v === null || v === undefined,
-            );
-            
-            // Logic for existing rows that might need clearing on exit
-            if (isEmpty || !isChanged) {
-                const isStillFocused = focusedRowIdRef.current === rowId;
-                if (!isStillFocused && rowState.linkedId) {
-                    setMultiRowStates((prev) =>
-                        prev.map((row) => {
-                            if (row.id !== rowId) return row;
-                            const index = prev.findIndex((s) => s.id === rowId);
-                            const defaults = typeof multiRowDefaultValues === "function"
-                                ? multiRowDefaultValues(index)
-                                : { ...multiRowDefaultValues };
-                            return {
-                                ...row,
-                                values: defaults,
-                                errors: {},
-                                linkedId: undefined,
-                                isSaving: false,
-                                lastSavedValues: defaults,
-                            };
-                        })
-                    );
-                }
-                return;
-            }
-
-            // Validate if needed
-            if (multiRowValidate) {
-                const result = multiRowValidate(rowState.values);
-                if (typeof result === "string") {
-                    setMultiRowStates((prev) =>
-                        prev.map((row) =>
-                            row.id === rowId ? { ...row, errors: { _global: result } } : row,
-                        ),
-                    );
-                    return;
-                }
-                if (result === false) return;
-            }
-
-            // Set saving state & lock
-            savingRowsRef.current.add(rowId);
-            setMultiRowStates((prev) =>
-                prev.map((row) =>
-                    row.id === rowId ? { ...row, isSaving: true } : row,
-                ),
-            );
-
-            const valuesToSave = { ...rowState.values };
-
-            try {
-                // Save and get linked ID (e.g. database ID)
-                const resultId = await onMultiRowSave?.(
-                    valuesToSave,
-                    rowId,
-                    rowState.linkedId,
-                );
-
-                setMultiRowStates((prev) =>
-                    prev.map((row) => {
-                        if (row.id !== rowId) return row;
-
-                        const isStillFocused = focusedRowIdRef.current === rowId;
-                        const isNavigating = navigatingFromRowRef.current === rowId;
-
-                        // If save succeeded (returned ID) and user moved away (not navigating):
-                        // Reset to empty to avoid duplication with DB record
-                        if (resultId && !isStillFocused && !isNavigating) {
-                            const index = prev.findIndex((s) => s.id === rowId);
-                            const defaults = typeof multiRowDefaultValues === "function"
-                                ? multiRowDefaultValues(index)
-                                : { ...multiRowDefaultValues };
-
-                            return {
-                                ...row,
-                                values: defaults,
-                                errors: {},
-                                linkedId: undefined,
-                                isSaving: false,
-                                lastSavedValues: defaults,
-                            };
-                        }
-
-                        // If still focused OR navigating, keep values and mark as saved
-                        return {
-                            ...row,
-                            linkedId: resultId ?? row.linkedId,
-                            isSaving: false,
-                            lastSavedValues: valuesToSave,
-                        };
-                    }),
-                );
-            } catch (error) {
-                console.error("Multi-row save error:", error);
-                setMultiRowStates((prev) =>
-                    prev.map((row) =>
-                        row.id === rowId ? { ...row, isSaving: false } : row,
-                    ),
-                );
-            } finally {
-                savingRowsRef.current.delete(rowId);
-            }
-        },
-        [multiRowStates, multiRowValidate, onMultiRowSave, multiRowDefaultValues],
-    );
-
-    const handleMultiRowFocus = React.useCallback((rowId: string) => {
-        setFocusedRowId(rowId);
-        focusedRowIdRef.current = rowId;
-    }, []);
-
-    const handleMultiRowBlur = React.useCallback(
-        (rowId: string) => {
-            // Defer all cleanup to allow navigation and dropdown interactions to complete
-            // Increased delay from 0 to 150ms to handle combobox/select/datepicker dropdowns
-            setTimeout(() => {
-                // Only clear focus if no new row got focus in the meantime
-                if (focusedRowIdRef.current === rowId) {
-                    setFocusedRowId(null);
-                    focusedRowIdRef.current = null;
-                }
-
-                // Only save if:
-                // 1. Focus really left (not just temporarily for dropdown)
-                // 2. This row is NOT currently navigating (handleMultiRowFocusNext already saved it)
-                const isNavigating = navigatingFromRowRef.current === rowId;
-                if (focusedRowIdRef.current !== rowId && !isNavigating) {
-                    handleMultiRowSave(rowId);
-                }
-
-                // Clear navigating flag AFTER save check
-                if (navigatingFromRowRef.current === rowId) {
-                    navigatingFromRowRef.current = null;
-                }
-            }, 150);
-        },
-        [handleMultiRowSave],
-    );
-
-    const handleMultiRowFocusNext = React.useCallback(
-        (rowId: string) => {
-            const index = multiRowStates.findIndex((r) => r.id === rowId);
-            if (index !== -1 && index < multiRowStates.length - 1) {
-                const nextRow = multiRowStates[index + 1];
-
-                // Mark intentional navigation from this row
-                navigatingFromRowRef.current = rowId;
-
-                // Explicitly save row when moving to next via Tab/Enter selection
-                handleMultiRowSave(rowId);
-
-                setTimeout(() => {
-                    const nextRowEl = document.getElementById(nextRow.id);
-                    const firstInput = nextRowEl?.querySelector(
-                        "input, button, select",
-                    ) as HTMLElement;
-                    firstInput?.focus();
-                }, 0);
-            }
-        },
-        [multiRowStates, handleMultiRowSave],
-    );
-
-    const handleNeedMoreRows = React.useCallback(() => {
-        setMultiRowStates((prev) => {
-            if (prev.length >= multiRowMaxCount) return prev;
-
-            const currentCount = prev.length;
-            const moreRows: NewRowState[] = Array.from(
-                { length: multiRowIncrement },
-                (_, index) => ({
-                    id: `__new_row_${Date.now()}_${currentCount + index}`,
-                    values:
-                        typeof multiRowDefaultValues === "function"
-                            ? multiRowDefaultValues(currentCount + index)
-                            : { ...multiRowDefaultValues },
-                    errors: {},
-                }),
-            );
-            return [...prev, ...moreRows];
-        });
-    }, [multiRowMaxCount, multiRowIncrement, multiRowDefaultValues]);
-
-    // ── Auto-save disabled for multiple new rows to avoid interrupting input ──
+    const multiRow = useMultiRowState({
+        enabled: enableMultipleNewRows,
+        initialCount: multiRowCount,
+        increment: multiRowIncrement,
+        maxCount: multiRowMaxCount,
+        defaultValues: multiRowDefaultValues as Record<string, unknown> | ((index: number) => Record<string, unknown>) | undefined,
+        validate: multiRowValidate,
+        onSave: onMultiRowSave,
+        onChange: onMultiRowChange,
+    });
 
     // Sync external data
     React.useEffect(() => {
@@ -464,7 +221,7 @@ export function DataTable<TData>({
             }
         }
         setColumnSizing(newSizing);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- table object is recreated every render; including it would cause infinite loop
     }, [enableColumnResizing, allColumns]);
 
     // Scroll-to-top/bottom button state
@@ -579,7 +336,6 @@ export function DataTable<TData>({
                         <DataTableBody
                             table={table}
                             columns={allColumns}
-                            isShowAll={isShowAll}
                             isVirtualActive={isVirtualActive}
                             scrollContainerRef={scrollContainerRef}
                             enableEditing={enableEditing}
@@ -595,15 +351,14 @@ export function DataTable<TData>({
 
                             // Multi-row props
                             enableMultipleNewRows={enableMultipleNewRows}
-                            multiRowStates={multiRowStates}
+                            multiRowStates={multiRow.rowStates}
                             multiRowPosition={multiRowPosition}
-                            onMultiRowChange={handleMultiRowChange}
-                            onMultiRowSave={handleMultiRowSave}
-                            onMultiRowDelete={onMultiRowDelete}
-                            onMultiRowFocus={handleMultiRowFocus}
-                            onMultiRowBlur={handleMultiRowBlur}
-                            onMultiRowFocusNext={handleMultiRowFocusNext}
-                            onNeedMoreRows={handleNeedMoreRows}
+                            onMultiRowChange={multiRow.handleChange}
+                            onMultiRowSave={multiRow.handleSave}
+                            onMultiRowFocus={multiRow.handleFocus}
+                            onMultiRowBlur={multiRow.handleBlur}
+                            onMultiRowFocusNext={multiRow.handleFocusNext}
+                            onNeedMoreRows={multiRow.handleNeedMoreRows}
                             multiRowDefaultValues={multiRowDefaultValues}
                             onDragSumChange={setDragSumInfo}
                         />

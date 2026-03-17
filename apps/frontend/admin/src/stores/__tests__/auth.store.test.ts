@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach } from "vitest";
 import { useAuthStore } from "../auth.store";
 import type { TokenStaff } from "@jahonbozor/schemas/src/staff/staff.model";
 import { Permission } from "@jahonbozor/schemas";

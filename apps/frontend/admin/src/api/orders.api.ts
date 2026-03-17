@@ -5,12 +5,15 @@ import {
     useMutation,
     useQueryClient,
 } from "@tanstack/react-query";
+import { toast } from "@jahonbozor/ui";
 
 export const orderKeys = {
     all: ["orders"] as const,
+    lists: () => [...orderKeys.all, "list"] as const,
     list: (params?: Record<string, unknown>) =>
-        [...orderKeys.all, "list", params] as const,
-    detail: (id: number) => [...orderKeys.all, "detail", id] as const,
+        [...orderKeys.lists(), params] as const,
+    details: () => [...orderKeys.all, "detail"] as const,
+    detail: (id: number) => [...orderKeys.details(), id] as const,
 };
 
 export const ordersListQueryOptions = (params?: {
@@ -61,7 +64,7 @@ export const updateOrderFn = async ({
     status?: "NEW" | "ACCEPTED" | "CANCELLED";
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
     comment?: string | null;
-    data?: any;
+    userId?: number | null;
 }) => {
     const { data, error } = await api.api.private.orders({ id }).patch(body);
     if (error) throw error;
@@ -95,6 +98,9 @@ export function useCreateOrder() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
+        },
     });
 }
 
@@ -105,6 +111,9 @@ export function useUpdateOrder() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
+        },
     });
 }
 
@@ -114,6 +123,9 @@ export function useDeleteOrder() {
         mutationFn: deleteOrderFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 }

@@ -1,7 +1,7 @@
-import { describe, test, expect, mock } from "bun:test";
+import { describe, test, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, ...props }: any) => (
         <a href={to} {...props}>
             {children}
@@ -80,7 +80,6 @@ describe("PageHeader", () => {
         const { container } = render(<PageHeader crumbs={crumbs} />);
 
         const svgs = container.querySelectorAll("svg");
-        // 1 back arrow + 2 chevrons between 3 crumbs
         expect(svgs.length).toBe(3);
     });
 });

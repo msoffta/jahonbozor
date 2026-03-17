@@ -1,30 +1,27 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
-import { PageTransition, DataTable, DataTableSkeleton, Checkbox } from "@jahonbozor/ui";
-import type { DataTableTranslations } from "@jahonbozor/ui";
+import { Permission, hasPermission } from "@jahonbozor/schemas";
+import { AnimatePresence, PageTransition, DataTable, DataTableSkeleton, Checkbox, motion } from "@jahonbozor/ui";
 import { expensesListQueryOptions, useCreateExpense, useUpdateExpense, useDeleteExpense, useRestoreExpense } from "@/api/expenses.api";
 import { getExpenseColumns } from "@/components/expenses/expenses-columns";
 import { useAuthStore } from "@/stores/auth.store";
-import { Permission, hasPermission } from "@jahonbozor/schemas";
 import { useHasPermission } from "@/hooks/use-permissions";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
 
 function ExpensePage() {
     const { t } = useTranslation("expenses");
     const [includeDeleted, setIncludeDeleted] = useState(false);
-    const [isReady, setIsReady] = useState(false);
+    const isReady = useDeferredReady();
+    const translations = useDataTableTranslations("expenses_empty");
 
     // Permission checks for expense actions
     const canCreate = useHasPermission(Permission.EXPENSES_CREATE);
     const canUpdate = useHasPermission(Permission.EXPENSES_UPDATE);
     const canDelete = useHasPermission(Permission.EXPENSES_DELETE);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 150);
-        return () => clearTimeout(timer);
-    }, []);
 
     const { data: expensesData, isLoading: isExpensesLoading } = useQuery(
         expensesListQueryOptions({ limit: 100, includeDeleted }),
@@ -101,20 +98,6 @@ function ExpensePage() {
     );
 
 
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("expenses_empty"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
-
     const multiRowDefaultValues = useMemo(() => ({
         expenseDate: dayjs().toISOString()
     }), []);
@@ -132,31 +115,37 @@ function ExpensePage() {
                 </label>
             </div>
 
-            {isLoading ? (
-                <DataTableSkeleton columns={9} rows={10} className="flex-1" />
-            ) : (
-                <DataTable
-                    className="flex-1"
-                    columns={columns}
-                    data={expenses}
-                    pagination
-                    defaultPageSize={20}
-                    pageSizeOptions={[10, 20, 50]}
-                    enableShowAll
-                    enableSorting
-                    enableGlobalSearch
-                    enableFiltering
-                    enableColumnVisibility
-                    enableColumnResizing
-                    enableEditing={canUpdate}
-                    enableMultipleNewRows={canCreate}
-                    multiRowCount={15}
-                    onCellEdit={handleCellEdit}
-                    onMultiRowSave={handleNewRowSave}
-                    multiRowDefaultValues={multiRowDefaultValues}
-                    translations={translations}
-                />
-            )}
+            <AnimatePresence mode="wait">
+                {isLoading ? (
+                    <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <DataTableSkeleton columns={9} rows={10} className="flex-1" />
+                    </motion.div>
+                ) : (
+                    <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                        <DataTable
+                            className="flex-1"
+                            columns={columns}
+                            data={expenses}
+                            pagination
+                            defaultPageSize={20}
+                            pageSizeOptions={[10, 20, 50]}
+                            enableShowAll
+                            enableSorting
+                            enableGlobalSearch
+                            enableFiltering
+                            enableColumnVisibility
+                            enableColumnResizing
+                            enableEditing={canUpdate}
+                            enableMultipleNewRows={canCreate}
+                            multiRowCount={15}
+                            onCellEdit={handleCellEdit}
+                            onMultiRowSave={handleNewRowSave}
+                            multiRowDefaultValues={multiRowDefaultValues}
+                            translations={translations}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </PageTransition>
     );
 }

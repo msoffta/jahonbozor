@@ -7,7 +7,7 @@ import { CategorySection } from "@/components/catalog/category-section";
 import { ProductCard } from "@/components/catalog/product-card";
 import { productsListOptions } from "@/api/products.api";
 import { categoriesListOptions } from "@/api/categories.api";
-import { Skeleton } from "@jahonbozor/ui";
+import { Skeleton, PageTransition, AnimatedList, AnimatedListItem, AnimatePresence, motion } from "@jahonbozor/ui";
 
 function HomePage() {
     const { t } = useTranslation();
@@ -29,62 +29,84 @@ function HomePage() {
     const isSearching = searchQuery.length > 0;
 
     return (
-        <div>
+        <PageTransition>
             <div className="sticky top-14 z-40 bg-background">
                 <SearchBar value={searchQuery} onChange={handleSearch} />
             </div>
 
-            {isSearching && searchLoading && (
-                <div className="flex flex-col gap-3 px-4">
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                </div>
-            )}
+            <AnimatePresence mode="wait">
+                {isSearching && searchLoading && (
+                    <motion.div
+                        key="search-loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col gap-3 px-4"
+                    >
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                    </motion.div>
+                )}
 
-            {isSearching && !searchLoading && (searchData?.products?.length ?? 0) === 0 && (
-                <p className="px-4 py-8 text-center text-muted-foreground">
-                    {t("no_data")}
-                </p>
-            )}
+                {isSearching && !searchLoading && (searchData?.products?.length ?? 0) === 0 && (
+                    <motion.p
+                        key="search-empty"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="px-4 py-8 text-center text-muted-foreground"
+                    >
+                        {t("no_data")}
+                    </motion.p>
+                )}
 
-            {isSearching && !searchLoading && (searchData?.products?.length ?? 0) > 0 && (
-                <div className="flex flex-col gap-1.5 px-4 py-2">
-                    {searchData?.products?.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            productId={product.id}
-                            name={product.name}
-                            price={product.price}
-                            remaining={product.remaining}
-                        />
-                    ))}
-                </div>
-            )}
+                {isSearching && !searchLoading && (searchData?.products?.length ?? 0) > 0 && (
+                    <AnimatedList key="search-results" className="flex flex-col gap-1.5 px-4 py-2">
+                        {searchData?.products?.map((product) => (
+                            <AnimatedListItem key={product.id}>
+                                <ProductCard
+                                    productId={product.id}
+                                    name={product.name}
+                                    price={product.price}
+                                    remaining={product.remaining}
+                                />
+                            </AnimatedListItem>
+                        ))}
+                    </AnimatedList>
+                )}
 
-            {!isSearching && categoriesLoading && (
-                <div className="flex flex-col gap-3 px-4">
-                    <Skeleton className="h-6 w-32" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-6 w-32" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                </div>
-            )}
+                {!isSearching && categoriesLoading && (
+                    <motion.div
+                        key="categories-loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col gap-3 px-4"
+                    >
+                        <Skeleton className="h-6 w-32" />
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                        <Skeleton className="h-6 w-32" />
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                    </motion.div>
+                )}
 
-            {!isSearching && !categoriesLoading && (
-                <div className="flex flex-col gap-6 px-4 py-2">
-                    {categories.map((category) => (
-                        <CategorySection
-                            key={category.id}
-                            categoryId={category.id}
-                            categoryName={category.name}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
+                {!isSearching && !categoriesLoading && (
+                    <AnimatedList key="categories" className="flex flex-col gap-6 px-4 py-2">
+                        {categories.map((category) => (
+                            <AnimatedListItem key={category.id}>
+                                <CategorySection
+                                    categoryId={category.id}
+                                    categoryName={category.name}
+                                />
+                            </AnimatedListItem>
+                        ))}
+                    </AnimatedList>
+                )}
+            </AnimatePresence>
+        </PageTransition>
     );
 }
 

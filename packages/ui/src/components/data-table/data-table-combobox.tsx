@@ -3,6 +3,15 @@ import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
 
+/** Portal z-index — must sit above all table layers and modals */
+const COMBOBOX_PORTAL_Z_INDEX = 99999;
+/** Minimum dropdown width to prevent narrow popups */
+const COMBOBOX_MIN_WIDTH_PX = 180;
+/** Delay before closing blur — allows selection click to complete */
+const COMBOBOX_BLUR_DELAY_MS = 150;
+/** Duration for exit animation (matches combobox-out in globals.css) */
+const COMBOBOX_EXIT_ANIMATION_MS = 100;
+
 interface DataTableComboboxProps {
     value: string;
     onChange: (value: string) => void;
@@ -28,6 +37,7 @@ export function DataTableCombobox({
     onBlur,
     inputRef: externalRef,
 }: DataTableComboboxProps) {
+    const listboxId = React.useId();
     const [showList, setShowList] = React.useState(false);
     const [visible, setVisible] = React.useState(false);
     const [closing, setClosing] = React.useState(false);
@@ -67,7 +77,7 @@ export function DataTableCombobox({
         setPos({
             top: rect.bottom + 4,
             left: rect.left,
-            width: Math.max(rect.width, 180),
+            width: Math.max(rect.width, COMBOBOX_MIN_WIDTH_PX),
         });
     }, []);
 
@@ -91,7 +101,7 @@ export function DataTableCombobox({
             closingTimerRef.current = setTimeout(() => {
                 setVisible(false);
                 setClosing(false);
-            }, 100); // matches combobox-out duration
+            }, COMBOBOX_EXIT_ANIMATION_MS);
         }
         return () => clearTimeout(closingTimerRef.current);
     }, [showList, pos, visible]);
@@ -126,7 +136,7 @@ export function DataTableCombobox({
             if (selectingRef.current) return;
             setShowList(false);
             onBlur?.();
-        }, 150);
+        }, COMBOBOX_BLUR_DELAY_MS);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -171,6 +181,15 @@ export function DataTableCombobox({
         <>
             <Input
                 ref={setRef}
+                role="combobox"
+                aria-expanded={visible}
+                aria-controls={visible ? listboxId : undefined}
+                aria-activedescendant={
+                    visible && filtered.length > 0
+                        ? `${listboxId}-option-${selectedIndex}`
+                        : undefined
+                }
+                aria-autocomplete="list"
                 value={searchQuery}
                 onChange={(e) => {
                     const q = e.target.value;
@@ -192,13 +211,15 @@ export function DataTableCombobox({
                 createPortal(
                     <div
                         ref={listRef}
+                        id={listboxId}
+                        role="listbox"
                         data-closing={closing || undefined}
                         style={{
                             position: "fixed",
                             top: pos.top,
                             left: pos.left,
                             width: pos.width,
-                            zIndex: 99999,
+                            zIndex: COMBOBOX_PORTAL_Z_INDEX,
                             pointerEvents: closing ? "none" : undefined,
                         }}
                         className="combobox-dropdown max-h-48 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
@@ -207,6 +228,9 @@ export function DataTableCombobox({
                             filtered.map((option, index) => (
                                 <div
                                     key={option.value}
+                                    id={`${listboxId}-option-${index}`}
+                                    role="option"
+                                    aria-selected={selectedIndex === index}
                                     onMouseDown={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();

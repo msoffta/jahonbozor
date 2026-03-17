@@ -6,6 +6,7 @@ import {
 } from "@jahonbozor/schemas/src/staff";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
+import type { Prisma } from "@backend/generated/prisma/client";
 import { prisma } from "@backend/lib/prisma";
 import { auditInTransaction } from "@backend/lib/audit";
 import { password } from "bun";
@@ -194,7 +195,7 @@ export abstract class StaffService {
                 }
             }
 
-            const updateData: Record<string, unknown> = {};
+            const updateData: Prisma.StaffUncheckedUpdateInput = {};
             const passwordChanged = staffData.password !== undefined;
 
             if (staffData.fullname !== undefined) {

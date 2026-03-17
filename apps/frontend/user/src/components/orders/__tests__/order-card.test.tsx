@@ -1,8 +1,7 @@
-import { describe, test, expect, mock } from "bun:test";
+import { describe, test, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
-mock.module("react-i18next", () => ({
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({
         t: (key: string, params?: Record<string, unknown>) => {
             if (params) return `${key}_${JSON.stringify(params)}`;
@@ -11,7 +10,7 @@ mock.module("react-i18next", () => ({
     }),
 }));
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, params, ...props }: any) => (
         <a href={`${to}/${params?.orderId || ""}`} {...props}>
             {children}
@@ -19,14 +18,17 @@ mock.module("@tanstack/react-router", () => ({
     ),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
-
-// Component-specific mock
-mock.module("@jahonbozor/ui", () => ({
-    ...require("../../../test-utils/ui-mocks").uiMocks,
-    Badge: ({ children, ...props }: any) => <span data-testid="badge" {...props}>{children}</span>,
-}));
+vi.mock("motion/react", async () => {
+    const { motionReactMock } = await import("@/test-utils/ui-mocks");
+    return motionReactMock();
+});
+vi.mock("@jahonbozor/ui", async () => {
+    const { uiMocks } = await import("@/test-utils/ui-mocks");
+    return {
+        ...uiMocks,
+        Badge: ({ children, ...props }: any) => <span data-testid="badge" {...props}>{children}</span>,
+    };
+});
 
 import { OrderCard } from "../order-card";
 

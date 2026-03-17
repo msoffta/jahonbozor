@@ -1,5 +1,6 @@
 import { webhookCallback } from "grammy";
 import { bot } from "@bot/bot";
+import { prisma } from "@bot/lib/prisma";
 import logger from "@bot/lib/logger";
 
 const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
@@ -11,7 +12,7 @@ if (!webhookUrl) {
 
 const handleUpdate = webhookCallback(bot, "std/http");
 
-const server = Bun.serve({
+export const server = Bun.serve({
     port,
     async fetch(req) {
         const url = new URL(req.url);
@@ -20,7 +21,16 @@ const server = Bun.serve({
             return handleUpdate(req);
         }
 
-        return new Response("OK", { status: 200 });
+        if (url.pathname === "/health") {
+            try {
+                await prisma.$queryRaw`SELECT 1`;
+                return Response.json({ status: "ok", uptime: process.uptime() });
+            } catch {
+                return Response.json({ status: "unhealthy", uptime: process.uptime() }, { status: 503 });
+            }
+        }
+
+        return new Response("Not Found", { status: 404 });
     },
 });
 
@@ -34,4 +44,15 @@ bot.api
         logger.error("Failed to set webhook", { error: err });
     });
 
-logger.info(`Bot server started on port ${port}`);
+// Graceful shutdown
+const shutdown = async () => {
+    logger.info("Bot: Shutting down...");
+    server.stop();
+    await prisma.$disconnect();
+    process.exit(0);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+logger.info(`Bot server started on port ${server.port}`);

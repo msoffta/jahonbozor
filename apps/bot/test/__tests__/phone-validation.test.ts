@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect } from "vitest";
 import { validatePhone, normalizePhone } from "@bot/lib/phone-validation";
 
 describe("validatePhone", () => {
@@ -45,6 +45,22 @@ describe("validatePhone", () => {
     test("rejects string with mixed letters and short digits", () => {
         expect(validatePhone("abc123")).toBe(false);
     });
+
+    test("rejects just a plus sign", () => {
+        expect(validatePhone("+")).toBe(false);
+    });
+
+    test("rejects only special characters", () => {
+        expect(validatePhone("+---//()")).toBe(false);
+    });
+
+    test("rejects 9 digits (boundary below minimum)", () => {
+        expect(validatePhone("123456789")).toBe(false);
+    });
+
+    test("rejects 16 digits (boundary above maximum)", () => {
+        expect(validatePhone("1234567890123456")).toBe(false);
+    });
 });
 
 describe("normalizePhone", () => {
@@ -70,5 +86,9 @@ describe("normalizePhone", () => {
 
     test("handles phone without prefix and with formatting", () => {
         expect(normalizePhone("998 90 123-45-67")).toBe("+998901234567");
+    });
+
+    test("strips leading and trailing whitespace", () => {
+        expect(normalizePhone("  +998901234567  ")).toBe("+998901234567");
     });
 });

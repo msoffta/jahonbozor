@@ -1,7 +1,7 @@
 import type { Context } from "grammy";
-import { PhoneService } from "@bot/services/phone.service";
+import { savePhone } from "@bot/services/phone.service";
 import { validatePhone, normalizePhone } from "@bot/lib/phone-validation";
-import { prisma } from "@bot/lib/prisma";
+import { getUserInfo } from "@bot/services/user.service";
 import logger from "@bot/lib/logger";
 
 const messages = {
@@ -27,74 +27,66 @@ const messages = {
     },
 };
 
-async function getUserLanguage(telegramId: string): Promise<"uz" | "ru"> {
-    try {
-        const user = await prisma.users.findUnique({
-            where: { telegramId },
-            select: { language: true },
-        });
-        return user?.language === "ru" ? "ru" : "uz";
-    } catch {
-        return "uz";
-    }
-}
-
 export async function handleContact(ctx: Context): Promise<void> {
-    const contact = ctx.message?.contact;
-    const fromUser = ctx.from;
+    try {
+        const contact = ctx.message?.contact;
+        const fromUser = ctx.from;
 
-    if (!contact || !fromUser) {
-        // No telegramId available — fall back to bilingual
-        await ctx.reply(
-            messages.uz.processingError + "\n\n" + messages.ru.processingError,
-        );
-        return;
-    }
+        if (!contact || !fromUser) {
+            await ctx.reply(
+                messages.uz.processingError + "\n\n" + messages.ru.processingError,
+            );
+            return;
+        }
 
-    const telegramId = String(fromUser.id);
-    const lang = await getUserLanguage(telegramId);
-    const msg = messages[lang];
+        const telegramId = String(fromUser.id);
+        const { language } = await getUserInfo(telegramId);
+        const msg = messages[language];
 
-    if (contact.user_id !== fromUser.id) {
-        logger.warn("Bot: User shared someone else's contact", {
-            fromUserId: fromUser.id,
-            contactUserId: contact.user_id,
-        });
-        await ctx.reply(msg.wrongContact);
-        return;
-    }
+        if (contact.user_id !== fromUser.id) {
+            logger.warn("Bot: User shared someone else's contact", {
+                fromUserId: fromUser.id,
+                contactUserId: contact.user_id,
+            });
+            await ctx.reply(msg.wrongContact);
+            return;
+        }
 
-    const rawPhone = contact.phone_number;
+        const rawPhone = contact.phone_number;
 
-    if (!validatePhone(rawPhone)) {
-        logger.warn("Bot: Invalid phone format", { phone: rawPhone, telegramId: fromUser.id });
-        await ctx.reply(msg.invalidPhone);
-        return;
-    }
+        if (!validatePhone(rawPhone)) {
+            logger.warn("Bot: Invalid phone format", { telegramId: fromUser.id });
+            await ctx.reply(msg.invalidPhone);
+            return;
+        }
 
-    const phone = normalizePhone(rawPhone);
+        const phone = normalizePhone(rawPhone);
 
-    const result = await PhoneService.savePhone(telegramId, phone, logger);
+        const result = await savePhone(telegramId, phone, logger);
 
-    if (result.success) {
-        await ctx.reply(msg.success, {
-            reply_markup: { remove_keyboard: true },
-        });
-    } else if (result.error === "PHONE_TAKEN") {
-        await ctx.reply(msg.phoneTaken, {
-            reply_markup: { remove_keyboard: true },
-        });
-    } else if (result.error === "USER_NOT_FOUND") {
-        await ctx.reply(msg.userNotFound, {
-            reply_markup: { remove_keyboard: true },
-        });
-    } else if (result.error === "ALREADY_HAS_PHONE") {
-        await ctx.reply(msg.alreadyHasPhone, {
-            reply_markup: { remove_keyboard: true },
-        });
-    } else {
-        await ctx.reply(msg.genericError, {
-            reply_markup: { remove_keyboard: true },
-        });
+        if (result.success) {
+            logger.info("Bot: Phone saved successfully", { telegramId });
+            await ctx.reply(msg.success, {
+                reply_markup: { remove_keyboard: true },
+            });
+        } else if (result.error === "PHONE_TAKEN") {
+            await ctx.reply(msg.phoneTaken, {
+                reply_markup: { remove_keyboard: true },
+            });
+        } else if (result.error === "USER_NOT_FOUND") {
+            await ctx.reply(msg.userNotFound, {
+                reply_markup: { remove_keyboard: true },
+            });
+        } else if (result.error === "ALREADY_HAS_PHONE") {
+            await ctx.reply(msg.alreadyHasPhone, {
+                reply_markup: { remove_keyboard: true },
+            });
+        } else {
+            await ctx.reply(msg.genericError, {
+                reply_markup: { remove_keyboard: true },
+            });
+        }
+    } catch (error) {
+        logger.error("Bot: Failed to handle contact", { error });
     }
 }

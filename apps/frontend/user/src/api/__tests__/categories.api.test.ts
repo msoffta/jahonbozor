@@ -1,13 +1,15 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, vi } from "vitest";
 
-const mockGet = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: { categories: [{ id: 1, name: "Cat1", children: [] }] } },
-        error: null,
-    }),
-);
+const { mockGet } = vi.hoisted(() => ({
+    mockGet: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: { categories: [{ id: 1, name: "Cat1", children: [] }] } },
+            error: null,
+        }),
+    ),
+}));
 
-mock.module("@/lib/api-client", () => ({
+vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
@@ -20,10 +22,6 @@ mock.module("@/lib/api-client", () => ({
 import { categoryKeys, categoriesListOptions } from "../categories.api";
 
 describe("categories.api", () => {
-    beforeEach(() => {
-        mock.restore();
-    });
-
     describe("categoryKeys", () => {
         test("should have correct all key", () => {
             expect(categoryKeys.all).toEqual(["categories"]);

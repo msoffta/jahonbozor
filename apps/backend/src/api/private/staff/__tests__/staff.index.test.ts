@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { prismaMock, createMockLogger } from "@backend/test/setup";
 import type { Staff } from "@backend/generated/prisma/client";
@@ -109,7 +109,7 @@ describe("Staff API Routes", () => {
     describe("GET /staff", () => {
         test("should return paginated staff list", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "getAllStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "getAllStaff").mockResolvedValue({
                 success: true,
                 data: { count: 2, staff: [mockStaffWithRole] },
             });
@@ -131,7 +131,7 @@ describe("Staff API Routes", () => {
 
         test("should apply searchQuery filter", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "getAllStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "getAllStaff").mockResolvedValue({
                 success: true,
                 data: { count: 1, staff: [mockStaffWithRole] },
             });
@@ -155,7 +155,7 @@ describe("Staff API Routes", () => {
 
         test("should apply roleId filter", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "getAllStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "getAllStaff").mockResolvedValue({
                 success: true,
                 data: { count: 1, staff: [mockStaffWithRole] },
             });
@@ -179,7 +179,7 @@ describe("Staff API Routes", () => {
 
         test("should return empty list when no staff found", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "getAllStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "getAllStaff").mockResolvedValue({
                 success: true,
                 data: { count: 0, staff: [] },
             });
@@ -203,7 +203,7 @@ describe("Staff API Routes", () => {
     describe("GET /staff/:id", () => {
         test("should return staff by id", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "getStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "getStaff").mockResolvedValue({
                 success: true,
                 data: mockStaffWithRole,
             });
@@ -225,7 +225,7 @@ describe("Staff API Routes", () => {
 
         test("should return error when staff not found", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "getStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "getStaff").mockResolvedValue({
                 success: false,
                 error: "Staff not found",
             });
@@ -247,7 +247,7 @@ describe("Staff API Routes", () => {
     describe("POST /staff", () => {
         test("should create staff with valid data", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "createStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "createStaff").mockResolvedValue({
                 success: true,
                 data: mockStaffWithRole,
             });
@@ -278,7 +278,7 @@ describe("Staff API Routes", () => {
 
         test("should return error when username already exists", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "createStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "createStaff").mockResolvedValue({
                 success: false,
                 error: "Username already exists",
             });
@@ -311,7 +311,7 @@ describe("Staff API Routes", () => {
         test("should update staff fullname", async () => {
             // Arrange
             const updatedStaff = { ...mockStaffWithRole, fullname: "Jane Doe" };
-            const spy = spyOn(StaffService, "updateStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "updateStaff").mockResolvedValue({
                 success: true,
                 data: updatedStaff,
             });
@@ -336,7 +336,7 @@ describe("Staff API Routes", () => {
 
         test("should return error when staff not found", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "updateStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "updateStaff").mockResolvedValue({
                 success: false,
                 error: "Staff not found",
             });
@@ -360,7 +360,7 @@ describe("Staff API Routes", () => {
 
         test("should return error when new username already exists", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "updateStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "updateStaff").mockResolvedValue({
                 success: false,
                 error: "Username already exists",
             });
@@ -387,7 +387,7 @@ describe("Staff API Routes", () => {
         test("should delete staff successfully", async () => {
             // Arrange
             const deletedStaff = { id: 1, fullname: "John Doe", username: "johndoe" };
-            const spy = spyOn(StaffService, "deleteStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "deleteStaff").mockResolvedValue({
                 success: true,
                 data: deletedStaff,
             });
@@ -408,7 +408,7 @@ describe("Staff API Routes", () => {
 
         test("should return error when staff not found", async () => {
             // Arrange
-            const spy = spyOn(StaffService, "deleteStaff").mockResolvedValue({
+            const spy = vi.spyOn(StaffService, "deleteStaff").mockResolvedValue({
                 success: false,
                 error: "Staff not found",
             });
@@ -431,7 +431,7 @@ describe("Staff API Routes", () => {
 describe("Staff Service Integration", () => {
     test("getAllStaff should be called with correct pagination", async () => {
         // Arrange
-        const spy = spyOn(StaffService, "getAllStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "getAllStaff").mockResolvedValue({
             success: true,
             data: { count: 0, staff: [] },
         });
@@ -451,7 +451,7 @@ describe("Staff Service Integration", () => {
 
     test("getStaff should be called with correct id", async () => {
         // Arrange
-        const spy = spyOn(StaffService, "getStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "getStaff").mockResolvedValue({
             success: true,
             data: mockStaffWithRole,
         });
@@ -468,7 +468,7 @@ describe("Staff Service Integration", () => {
 
     test("createStaff should be called with context", async () => {
         // Arrange
-        const spy = spyOn(StaffService, "createStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "createStaff").mockResolvedValue({
             success: true,
             data: mockStaffWithRole,
         });
@@ -501,7 +501,7 @@ describe("Staff Service Integration", () => {
 
     test("updateStaff should be called with context", async () => {
         // Arrange
-        const spy = spyOn(StaffService, "updateStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "updateStaff").mockResolvedValue({
             success: true,
             data: mockStaffWithRole,
         });
@@ -529,7 +529,7 @@ describe("Staff Service Integration", () => {
 
     test("deleteStaff should be called with context", async () => {
         // Arrange
-        const spy = spyOn(StaffService, "deleteStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "deleteStaff").mockResolvedValue({
             success: true,
             data: { id: 1, fullname: "John", username: "john" },
         });
@@ -557,7 +557,7 @@ describe("Staff API edge cases", () => {
     });
 
     test("GET /staff/:id with id=0 should call service", async () => {
-        const spy = spyOn(StaffService, "getStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "getStaff").mockResolvedValue({
             success: false,
             error: "Staff not found",
         });
@@ -572,7 +572,7 @@ describe("Staff API edge cases", () => {
     });
 
     test("GET /staff with no results should return empty list", async () => {
-        const spy = spyOn(StaffService, "getAllStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "getAllStaff").mockResolvedValue({
             success: true,
             data: { count: 0, staff: [] },
         });
@@ -588,7 +588,7 @@ describe("Staff API edge cases", () => {
     });
 
     test("POST /staff should handle duplicate username error", async () => {
-        const spy = spyOn(StaffService, "createStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "createStaff").mockResolvedValue({
             success: false,
             error: "Username already exists",
         });
@@ -615,7 +615,7 @@ describe("Staff API edge cases", () => {
     });
 
     test("DELETE /staff/:id should handle service error", async () => {
-        const spy = spyOn(StaffService, "deleteStaff").mockResolvedValue({
+        const spy = vi.spyOn(StaffService, "deleteStaff").mockResolvedValue({
             success: false,
             error: "Database error",
         });

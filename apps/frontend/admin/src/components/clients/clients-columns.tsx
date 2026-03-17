@@ -52,7 +52,7 @@ export function getClientColumns(
             size: 100,
             cell: ({ getValue }) => {
                 const lang = getValue<string>();
-                return lang === "ru" ? "Русский" : "O'zbekcha";
+                return lang === "ru" ? t("common:russian") : t("common:uzbek");
             },
             meta: { flex: 1, editable: true, inputType: "text" as const },
         },

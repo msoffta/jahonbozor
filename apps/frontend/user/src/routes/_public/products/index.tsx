@@ -6,7 +6,7 @@ import { SearchBar } from "@/components/catalog/search-bar";
 import { ProductCard } from "@/components/catalog/product-card";
 import { productsInfiniteOptions } from "@/api/products.api";
 import { categoriesListOptions } from "@/api/categories.api";
-import { Skeleton, cn, Checkbox, Button, Drawer, DrawerHeader, DrawerTitle, motion } from "@jahonbozor/ui";
+import { Skeleton, cn, Checkbox, Drawer, DrawerHeader, DrawerTitle, motion, PageTransition, AnimatePresence, AnimatedList, AnimatedListItem } from "@jahonbozor/ui";
 import { Ellipsis, Loader2, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 
@@ -97,14 +97,15 @@ function ProductsPage() {
     const products = data?.pages.flatMap((page) => page.products) ?? [];
 
     return (
-        <div>
+        <PageTransition>
             <PageHeader crumbs={[{ label: t("home"), to: "/" }, { label: t("products") }]} />
             <div className="sticky top-14 z-40 bg-background">
                 <SearchBar value={searchQuery} onChange={handleSearch} />
 
                 {categories.length > 0 && (
                     <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide">
-                        <button
+                        <motion.button
+                            type="button"
                             onClick={() => setSelectedCategoryIds(new Set())}
                             className={cn(
                                 "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors",
@@ -112,11 +113,14 @@ function ProductsPage() {
                                     ? "bg-accent text-accent-foreground"
                                     : "bg-surface text-foreground",
                             )}
+                            whileTap={{ scale: 0.95 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
                         >
                             {t("all")}
-                        </button>
+                        </motion.button>
                         {visibleCategories.map((cat) => (
-                            <button
+                            <motion.button
+                                type="button"
                                 key={cat.id}
                                 onClick={() => setSelectedCategoryIds(new Set([cat.id]))}
                                 className={cn(
@@ -125,18 +129,23 @@ function ProductsPage() {
                                         ? "bg-accent text-accent-foreground"
                                         : "bg-surface text-foreground",
                                 )}
+                                whileTap={{ scale: 0.95 }}
+                                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                             >
                                 {cat.name}
-                            </button>
+                            </motion.button>
                         ))}
                         {hasMore && (
-                            <button
+                            <motion.button
+                                type="button"
                                 onClick={handleOpenDrawer}
                                 className="shrink-0 flex items-center justify-center size-9 rounded-full bg-surface text-foreground"
                                 aria-label={t("more")}
+                                whileTap={{ scale: 0.9 }}
+                                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                             >
                                 <Ellipsis className="size-5" />
-                            </button>
+                            </motion.button>
                         )}
                     </div>
                 )}
@@ -145,12 +154,15 @@ function ProductsPage() {
             <Drawer open={drawerOpen} onOpenChange={handleDrawerClose}>
                 <DrawerHeader className="flex items-center justify-between">
                     <DrawerTitle>{t("categories")}</DrawerTitle>
-                    <button
+                    <motion.button
+                        type="button"
                         onClick={() => setDrawerOpen(false)}
                         className="flex items-center justify-center size-8 rounded-full bg-surface text-muted-foreground active:opacity-70"
+                        whileTap={{ scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
                         <X className="size-5" />
-                    </button>
+                    </motion.button>
                 </DrawerHeader>
                 <div className="overflow-y-auto px-4 pb-4">
                     {categories.map((cat) => (
@@ -158,7 +170,7 @@ function ProductsPage() {
                             <div
                                 role="button"
                                 onClick={() => handleTogglePending(cat.id)}
-                                className="flex items-center gap-3 py-3 text-base font-semibold text-foreground active:opacity-70 cursor-pointer"
+                                className="flex items-center gap-3 py-3 text-base font-semibold text-foreground active:opacity-70"
                             >
                                 <Checkbox
                                     checked={pendingCategoryIds.has(cat.id)}
@@ -172,7 +184,7 @@ function ProductsPage() {
                                     role="button"
                                     key={child.id}
                                     onClick={() => handleTogglePending(child.id)}
-                                    className="flex items-center gap-3 py-2.5 pl-4 text-sm text-foreground active:opacity-70 cursor-pointer"
+                                    className="flex items-center gap-3 py-2.5 pl-4 text-sm text-foreground active:opacity-70"
                                 >
                                     <Checkbox
                                         checked={pendingCategoryIds.has(child.id)}
@@ -186,55 +198,72 @@ function ProductsPage() {
                     ))}
                 </div>
                 <div className="flex gap-3 px-4 pb-6 pt-2 border-t border-border">
-                    <Button
-                        variant="outline"
-                        className="flex-1"
+                    <motion.button
+                        type="button"
+                        className="flex-1 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium"
                         onClick={handleReset}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
                         {t("reset")}
-                    </Button>
-                    <Button
-                        className="flex-1"
+                    </motion.button>
+                    <motion.button
+                        type="button"
+                        className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
                         onClick={handleApply}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
                         {t("apply")}
-                    </Button>
+                    </motion.button>
                 </div>
             </Drawer>
 
-            {isLoading && (
-                <div className="flex flex-col gap-1.5 px-4 py-2">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton key={i} className="h-24 w-full rounded-xl" />
-                    ))}
-                </div>
-            )}
+            <AnimatePresence mode="wait">
+                {isLoading && (
+                    <motion.div
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col gap-1.5 px-4 py-2"
+                    >
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                        ))}
+                    </motion.div>
+                )}
 
-            {!isLoading && products.length === 0 && (
-                <p className="px-4 py-8 text-center text-muted-foreground">
-                    {t("no_data")}
-                </p>
-            )}
+                {!isLoading && products.length === 0 && (
+                    <motion.p
+                        key="empty"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="px-4 py-8 text-center text-muted-foreground"
+                    >
+                        {t("no_data")}
+                    </motion.p>
+                )}
 
-            {!isLoading && products.length > 0 && (
-                <motion.div
-                    key={searchQuery + categoryIdsArray?.join()}
-                    className="flex flex-col gap-1.5 px-4 py-2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.2 }}
-                >
-                    {products.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            productId={product.id}
-                            name={product.name}
-                            price={product.price}
-                            remaining={product.remaining}
-                        />
-                    ))}
-                </motion.div>
-            )}
+                {!isLoading && products.length > 0 && (
+                    <AnimatedList
+                        key={searchQuery + categoryIdsArray?.join()}
+                        className="flex flex-col gap-1.5 px-4 py-2"
+                    >
+                        {products.map((product) => (
+                            <AnimatedListItem key={product.id}>
+                                <ProductCard
+                                    productId={product.id}
+                                    name={product.name}
+                                    price={product.price}
+                                    remaining={product.remaining}
+                                />
+                            </AnimatedListItem>
+                        ))}
+                    </AnimatedList>
+                )}
+            </AnimatePresence>
 
             {isFetchingNextPage && (
                 <div className="flex justify-center py-4">
@@ -243,7 +272,7 @@ function ProductsPage() {
             )}
 
             <div ref={sentinelRef} className="h-1" />
-        </div>
+        </PageTransition>
     );
 }
 

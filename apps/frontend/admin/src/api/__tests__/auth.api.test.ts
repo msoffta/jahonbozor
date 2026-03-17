@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { QueryFunctionContext } from "@tanstack/react-query";
 
 interface MockEdenResponse {
@@ -9,15 +9,17 @@ interface MockEdenResponse {
 type MeQueryFnContext = QueryFunctionContext<readonly ["auth", "me"]>;
 
 // Mock api client before importing auth.api
-const mockGet = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: { success: true, data: { id: 1, fullname: "Test" } },
-            error: null,
-        }),
-);
+const { mockGet } = vi.hoisted(() => ({
+    mockGet: vi.fn(
+        (): Promise<MockEdenResponse> =>
+            Promise.resolve({
+                data: { success: true, data: { id: 1, fullname: "Test" } },
+                error: null,
+            }),
+    ),
+}));
 
-mock.module("@/api/client", () => ({
+vi.mock("@/api/client", () => ({
     api: {
         api: {
             public: {
@@ -33,7 +35,7 @@ import { authKeys, meQueryOptions } from "../auth.api";
 
 describe("auth.api", () => {
     beforeEach(() => {
-        mock.restore();
+        vi.clearAllMocks();
     });
 
     describe("authKeys", () => {

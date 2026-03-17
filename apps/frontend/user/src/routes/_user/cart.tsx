@@ -6,32 +6,29 @@ import { useCartStore } from "@/stores/cart.store";
 import { useUIStore } from "@/stores/ui.store";
 import { useCreateOrder } from "@/api/orders.api";
 import { ProductCard } from "@/components/catalog/product-card";
-import { Button, Checkbox, cn, Input } from "@jahonbozor/ui";
-
-function formatPrice(price: number, locale: string): string {
-    return price.toLocaleString(locale).replace(/,/g, " ");
-}
+import { Checkbox, cn, Input, PageTransition, motion, AnimatedList, AnimatedListItem } from "@jahonbozor/ui";
+import { formatPrice, getLocaleCode } from "@/lib/format";
 
 function CartPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const locale = useUIStore((s) => s.locale);
-    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
-    const items = useCartStore((s) => s.items);
+    const locale = useUIStore((state) => state.locale);
+    const loc = getLocaleCode(locale);
+    const items = useCartStore((state) => state.items);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(
-        () => new Set(items.map((i) => i.productId)),
+        () => new Set(items.map((item) => item.productId)),
     );
     const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD" | "DEBT">("CREDIT_CARD");
     const [comment, setComment] = useState("");
     const createOrder = useCreateOrder();
 
     const allSelected = items.length > 0 && selectedIds.size === items.length;
-    const selectedItems = items.filter((i) => selectedIds.has(i.productId));
-    const totalPrice = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const selectedItems = items.filter((item) => selectedIds.has(item.productId));
+    const totalPrice = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const toggleAll = (checked: boolean) => {
         if (checked) {
-            setSelectedIds(new Set(items.map((i) => i.productId)));
+            setSelectedIds(new Set(items.map((item) => item.productId)));
         } else {
             setSelectedIds(new Set());
         }
@@ -72,46 +69,48 @@ function CartPage() {
 
     if (items.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center px-4 py-16">
+            <PageTransition className="flex flex-col items-center justify-center px-4 py-16">
                 <ShoppingCart className="h-16 w-16 text-muted-foreground" />
                 <p className="mt-4 text-lg text-muted-foreground">{t("empty_cart")}</p>
-            </div>
+            </PageTransition>
         );
     }
 
     return (
-        <div className="pb-52">
+        <PageTransition className="pb-52">
             <div className="flex items-center gap-2 border-b px-4 py-3">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
                 <span className="text-sm">{t("select_all")}</span>
             </div>
 
-            <div className="flex flex-col gap-3 px-4 py-2">
-            {items.map((item) => (
-                <ProductCard
-                    key={item.productId}
-                    variant="cart"
-                    productId={item.productId}
-                    name={item.name}
-                    price={item.price}
-                    quantity={item.quantity}
-                    selected={selectedIds.has(item.productId)}
-                    onSelect={(checked) => toggleItem(item.productId, checked)}
-                />
-            ))}
-            </div>
+            <AnimatedList className="flex flex-col gap-3 px-4 py-2">
+                {items.map((item) => (
+                    <AnimatedListItem key={item.productId}>
+                        <ProductCard
+                            variant="cart"
+                            productId={item.productId}
+                            name={item.name}
+                            price={item.price}
+                            quantity={item.quantity}
+                            selected={selectedIds.has(item.productId)}
+                            onSelect={(checked) => toggleItem(item.productId, checked)}
+                        />
+                    </AnimatedListItem>
+                ))}
+            </AnimatedList>
 
             <div className="fixed bottom-20 left-0 right-0 border-t bg-background px-4 py-3">
                 <div className="mb-3">
                     <Input
-                        placeholder={t("order_comment", { defaultValue: "Комментарий к заказу" })}
+                        placeholder={t("order_comment")}
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         className="h-9 text-sm"
                     />
                 </div>
                 <div className="mb-2 flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-                    <button
+                    <motion.button
+                        type="button"
                         onClick={() => setPaymentType("CREDIT_CARD")}
                         className={cn(
                             "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium",
@@ -119,10 +118,13 @@ function CartPage() {
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-secondary text-secondary-foreground",
                         )}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
                         {t("payment_card")}
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                        type="button"
                         onClick={() => setPaymentType("CASH")}
                         className={cn(
                             "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium",
@@ -130,10 +132,13 @@ function CartPage() {
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-secondary text-secondary-foreground",
                         )}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
                         {t("payment_cash")}
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                        type="button"
                         onClick={() => setPaymentType("DEBT")}
                         className={cn(
                             "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium",
@@ -141,29 +146,34 @@ function CartPage() {
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-secondary text-secondary-foreground",
                         )}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
-                        {t("payment_debt", { defaultValue: "Долг" })}
-                    </button>
+                        {t("payment_debt")}
+                    </motion.button>
                 </div>
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-xs text-muted-foreground">
-                            {t("total")}: {t("items_count", { count: selectedItems.reduce((s, i) => s + i.quantity, 0) })}
+                            {t("total")}: {t("items_count", { count: selectedItems.reduce((sum, item) => sum + item.quantity, 0) })}
                         </p>
                         <p className="text-lg font-bold">
                             {formatPrice(totalPrice, loc)} {t("sum")}
                         </p>
                     </div>
-                    <Button
+                    <motion.button
+                        type="button"
                         onClick={handleBuy}
                         disabled={selectedItems.length === 0 || createOrder.isPending}
-                        className="px-8"
+                        className="rounded-md bg-primary px-8 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
                         {createOrder.isPending ? t("loading") : t("buy")}
-                    </Button>
+                    </motion.button>
                 </div>
             </div>
-        </div>
+        </PageTransition>
     );
 }
 

@@ -22,11 +22,14 @@
     --color-border: hsl(240 5.9% 90%);
     --color-input: hsl(240 5.9% 90%);
     --color-ring: hsl(240 5.9% 10%);
-    --color-chart-1: hsl(12 76% 61%);
-    --color-chart-2: hsl(173 58% 39%);
-    --color-chart-3: hsl(197 37% 24%);
-    --color-chart-4: hsl(43 74% 66%);
-    --color-chart-5: hsl(27 87% 67%);
+    --color-chart-1: hsl(217 91% 60%);
+    --color-chart-2: hsl(160 84% 39%);
+    --color-chart-3: hsl(0 84% 60%);
+    --color-chart-4: hsl(38 92% 50%);
+    --color-chart-5: hsl(258 90% 66%);
+    --color-chart-6: hsl(330 81% 60%);
+    --color-chart-7: hsl(189 94% 43%);
+    --color-chart-grid: hsl(220 13% 91%);
     --color-sidebar: hsl(0 0% 98%);
     --color-sidebar-foreground: hsl(240 5.3% 26.1%);
     --color-sidebar-primary: hsl(240 5.9% 10%);
@@ -35,6 +38,8 @@
     --color-sidebar-accent-foreground: hsl(240 5.9% 10%);
     --color-sidebar-border: hsl(220 13% 91%);
     --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --color-drag-sum: #e8f0fe;
+    --color-drag-sum-border: #1a73e8;
     --radius: 0.625rem;
 }
 
@@ -58,11 +63,14 @@
     --color-border: hsl(240 3.7% 15.9%);
     --color-input: hsl(240 3.7% 15.9%);
     --color-ring: hsl(240 4.9% 83.9%);
-    --color-chart-1: hsl(220 70% 50%);
-    --color-chart-2: hsl(160 60% 45%);
-    --color-chart-3: hsl(30 80% 55%);
-    --color-chart-4: hsl(280 65% 60%);
-    --color-chart-5: hsl(340 75% 55%);
+    --color-chart-1: hsl(217 91% 65%);
+    --color-chart-2: hsl(160 84% 45%);
+    --color-chart-3: hsl(0 84% 65%);
+    --color-chart-4: hsl(38 92% 55%);
+    --color-chart-5: hsl(258 90% 70%);
+    --color-chart-6: hsl(330 81% 65%);
+    --color-chart-7: hsl(189 94% 50%);
+    --color-chart-grid: hsl(240 3.7% 20%);
     --color-sidebar: hsl(240 5.9% 10%);
     --color-sidebar-foreground: hsl(240 4.8% 95.9%);
     --color-sidebar-primary: hsl(224.3 76.3% 48%);
@@ -71,6 +79,8 @@
     --color-sidebar-accent-foreground: hsl(240 4.8% 95.9%);
     --color-sidebar-border: hsl(240 3.7% 15.9%);
     --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --color-drag-sum: rgba(232, 240, 254, 0.1);
+    --color-drag-sum-border: #8ab4f8;
 }
 
 @layer base {

@@ -1,9 +1,14 @@
-import { describe, test, expect, mock } from "bun:test";
+import { describe, test, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
 
-// Setup centralized UI mocks
-setupUIMocks();
+vi.mock("motion/react", async () => {
+    const { motionReactMock } = await import("@/test-utils/ui-mocks");
+    return motionReactMock();
+});
+vi.mock("@jahonbozor/ui", async () => {
+    const { jahonbozorUIMock } = await import("@/test-utils/ui-mocks");
+    return jahonbozorUIMock();
+});
 
 import { QuantityControl } from "../quantity-control";
 
@@ -16,25 +21,23 @@ describe("QuantityControl", () => {
     });
 
     test("should call onIncrement when plus button is clicked", () => {
-        const onIncrement = mock();
+        const onIncrement = vi.fn();
         const { getAllByRole } = render(
             <QuantityControl quantity={1} onIncrement={onIncrement} onDecrement={() => {}} />,
         );
 
         const buttons = getAllByRole("button");
-        // Plus is the second button
         fireEvent.click(buttons[1]);
         expect(onIncrement).toHaveBeenCalledTimes(1);
     });
 
     test("should call onDecrement when minus button is clicked", () => {
-        const onDecrement = mock();
+        const onDecrement = vi.fn();
         const { getAllByRole } = render(
             <QuantityControl quantity={3} onIncrement={() => {}} onDecrement={onDecrement} />,
         );
 
         const buttons = getAllByRole("button");
-        // Minus is the first button
         fireEvent.click(buttons[0]);
         expect(onDecrement).toHaveBeenCalledTimes(1);
     });

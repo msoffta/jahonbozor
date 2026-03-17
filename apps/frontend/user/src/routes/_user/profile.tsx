@@ -5,15 +5,16 @@ import { ClipboardList, ShoppingCart, Globe, LogOut } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 import { profileOptions, useLogout, useUpdateLanguage } from "@/api/auth.api";
-import { Avatar, AvatarFallback, AvatarImage } from "@jahonbozor/ui";
+import { Avatar, AvatarFallback, AvatarImage, PageTransition, motion } from "@jahonbozor/ui";
+import { getLocaleCode } from "@/lib/format";
 
 function ProfilePage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const user = useAuthStore((s) => s.user);
-    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-    const locale = useUIStore((s) => s.locale);
-    const setLocale = useUIStore((s) => s.setLocale);
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const locale = useUIStore((state) => state.locale);
+    const setLocale = useUIStore((state) => state.setLocale);
     const logout = useLogout();
     const updateLanguage = useUpdateLanguage();
 
@@ -40,7 +41,7 @@ function ProfilePage() {
     };
 
     return (
-        <div className="flex flex-col items-center px-4 py-6">
+        <PageTransition className="flex flex-col items-center px-4 py-6">
             <Avatar className="h-32 w-32">
                 {profile?.photo && <AvatarImage src={profile.photo} alt={displayName} />}
                 <AvatarFallback className="text-3xl">{initials}</AvatarFallback>
@@ -53,50 +54,58 @@ function ProfilePage() {
             )}
             {profile?.createdAt && (
                 <p className="text-base font-normal">
-                    {t("registered")}: {new Date(profile.createdAt).toLocaleDateString(locale === "uz" ? "uz-UZ" : "ru-RU")}
+                    {t("registered")}: {new Date(profile.createdAt).toLocaleDateString(getLocaleCode(locale))}
                 </p>
             )}
 
             <div className="mt-6 w-full space-y-2.5">
-                <button
+                <motion.button
                     type="button"
                     onClick={() => navigate({ to: "/orders" })}
                     className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3"
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                     <ClipboardList className="h-5 w-5 text-accent-foreground" />
                     <span className="text-base font-medium text-accent-foreground">{t("orders")}</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
                     type="button"
                     onClick={() => navigate({ to: "/cart" })}
                     className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3"
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                     <ShoppingCart className="h-5 w-5 text-accent-foreground" />
                     <span className="text-base font-medium text-accent-foreground">{t("cart")}</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
                     type="button"
                     onClick={handleChangeLanguage}
                     className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3"
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                     <Globe className="h-5 w-5 text-accent-foreground" />
                     <span className="text-base font-medium text-accent-foreground">
                         {t("change_language")} ({locale === "uz" ? "RU" : "UZ"})
                     </span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
                     type="button"
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 rounded-lg bg-accent px-3 py-3"
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                     <LogOut className="h-5 w-5 text-accent-foreground" />
                     <span className="text-base font-medium text-accent-foreground">{t("logout")}</span>
-                </button>
+                </motion.button>
             </div>
-        </div>
+        </PageTransition>
     );
 }
 

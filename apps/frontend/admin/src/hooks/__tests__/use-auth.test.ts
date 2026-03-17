@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useAuthStore } from "@/stores/auth.store";
 
@@ -7,17 +7,19 @@ interface MockEdenResponse {
     error: Record<string, unknown> | null;
 }
 
-const mockLoginPost = mock(
-    (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
-);
-const mockLogoutPost = mock(
-    (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
-);
-const mockNavigate = mock(() => {});
-const mockQueryClientClear = mock(() => {});
-const mockSentrySetUser = mock(() => {});
+const { mockLoginPost, mockLogoutPost, mockNavigate, mockQueryClientClear, mockSentrySetUser } = vi.hoisted(() => ({
+    mockLoginPost: vi.fn(
+        (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
+    ),
+    mockLogoutPost: vi.fn(
+        (): Promise<MockEdenResponse> => Promise.resolve({ data: null, error: null }),
+    ),
+    mockNavigate: vi.fn(() => {}),
+    mockQueryClientClear: vi.fn(() => {}),
+    mockSentrySetUser: vi.fn(() => {}),
+}));
 
-mock.module("@/api/client", () => ({
+vi.mock("@/api/client", () => ({
     api: {
         api: {
             public: {
@@ -30,11 +32,11 @@ mock.module("@/api/client", () => ({
     },
 }));
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     useNavigate: () => mockNavigate,
 }));
 
-mock.module("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", () => ({
     useMutation: ({ mutationFn, onSuccess, onSettled }: any) => ({
         mutate: async (body: any) => {
             try {
@@ -54,7 +56,7 @@ mock.module("@tanstack/react-query", () => ({
     }),
 }));
 
-mock.module("@sentry/react", () => ({
+vi.mock("@sentry/react", () => ({
     setUser: mockSentrySetUser,
 }));
 
@@ -68,12 +70,12 @@ describe("use-auth hooks", () => {
             permissions: [],
             isAuthenticated: false,
         });
-        mock.restore();
+        vi.clearAllMocks();
     });
 
     describe("useLogin", () => {
         function mockFetchMe(profileData: Record<string, unknown>) {
-            spyOn(globalThis, "fetch").mockResolvedValueOnce(
+            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
                 new Response(JSON.stringify(profileData), {
                     status: 200,
                     headers: { "Content-Type": "application/json" },
@@ -136,7 +138,7 @@ describe("use-auth hooks", () => {
                 error: null,
             });
 
-            const fetchSpy = spyOn(globalThis, "fetch").mockResolvedValueOnce(
+            const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
                 new Response(
                     JSON.stringify({ success: true, data: { role: null } }),
                     { status: 200, headers: { "Content-Type": "application/json" } },
@@ -266,7 +268,7 @@ describe("use-auth hooks", () => {
                 error: null,
             });
 
-            spyOn(globalThis, "fetch").mockResolvedValueOnce(
+            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
                 new Response("Unauthorized", { status: 401 }),
             );
 

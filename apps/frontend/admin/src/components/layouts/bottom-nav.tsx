@@ -38,7 +38,7 @@ const fastTransition = {
     mass: 1,
 };
 
-const NavPill = React.memo(({ item, isActive, t }: { item: typeof navKeys[number], isActive: boolean, t: any }) => (
+const NavPill = React.memo(({ item, isActive, t }: { item: typeof navKeys[number], isActive: boolean, t: (key: string) => string }) => (
     <Link
         key={item.to}
         to={item.to}

@@ -638,53 +638,48 @@ useEffect(() => {
 ```
 packages/ui/
 ├── package.json                      # name: "@jahonbozor/ui"
-├── tailwind.config.ts                # Base Tailwind config with CSS variables
-├── globals.css                       # shadcn/ui CSS variables + Tailwind directives
+├── globals.css                       # CSS variables (theme tokens) + Tailwind directives
+├── vitest.config.ts                  # Vitest config (happy-dom)
 ├── src/
 │   ├── index.ts                      # Re-exports all components
 │   ├── components/
 │   │   ├── ui/                       # shadcn/ui primitives
-│   │   │   ├── button.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── label.tsx
-│   │   │   ├── textarea.tsx
-│   │   │   ├── select.tsx
-│   │   │   ├── checkbox.tsx
-│   │   │   ├── switch.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   ├── sheet.tsx
-│   │   │   ├── dropdown-menu.tsx
-│   │   │   ├── popover.tsx
-│   │   │   ├── table.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── badge.tsx
 │   │   │   ├── avatar.tsx
-│   │   │   ├── tooltip.tsx
-│   │   │   ├── tabs.tsx
+│   │   │   ├── badge.tsx
+│   │   │   ├── button.tsx            # motion/react whileTap animation
+│   │   │   ├── calendar.tsx          # react-day-picker wrapper
+│   │   │   ├── card.tsx
+│   │   │   ├── checkbox.tsx
+│   │   │   ├── date-picker.tsx       # Input + Calendar + auto-formatting mask
+│   │   │   ├── drawer.tsx            # Portal-based responsive drawer (mobile/desktop)
+│   │   │   ├── dropdown-menu.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── popover.tsx
+│   │   │   ├── select.tsx
 │   │   │   ├── separator.tsx
 │   │   │   ├── skeleton.tsx
-│   │   │   ├── toast.tsx
-│   │   │   ├── alert.tsx
-│   │   │   ├── pagination.tsx
-│   │   │   ├── breadcrumb.tsx
-│   │   │   ├── sidebar.tsx
-│   │   │   └── form.tsx              # TanStack Form helpers
+│   │   │   ├── sonner.tsx            # Toast notifications (sonner library)
+│   │   │   ├── table.tsx
+│   │   │   ├── tabs.tsx
+│   │   │   └── tooltip.tsx
 │   │   ├── data-table/               # Generic DataTable (TanStack Table v8)
 │   │   │   ├── index.ts              # Barrel export
 │   │   │   ├── types.ts              # Props, ColumnMeta, Translations, module augmentation
 │   │   │   ├── data-table.tsx         # Main orchestrator
 │   │   │   ├── data-table-header.tsx  # Sort indicators + resize handles
-│   │   │   ├── data-table-body.tsx    # Paginated + virtualized (TanStack Virtual)
+│   │   │   ├── data-table-body.tsx    # Paginated + virtualized (TanStack Virtual) + drag-sum
 │   │   │   ├── data-table-toolbar.tsx # Search, column filters, visibility toggle
-│   │   │   ├── data-table-pagination.tsx # Page controls, size selector, "Show All"
+│   │   │   ├── data-table-pagination.tsx # Page controls, size selector, "Show All", drag-sum display
+│   │   │   ├── data-table-skeleton.tsx   # Loading skeleton placeholder
 │   │   │   ├── data-table-editable-cell.tsx # Inline edit (dblClick, Enter/Escape)
-│   │   │   └── data-table-new-row.tsx # Empty row for creating records
-│   │   └── shared/                   # Higher-level reusable components
-│   │       ├── confirm-dialog.tsx    # "Are you sure?" dialog
-│   │       ├── loading-spinner.tsx
-│   │       ├── empty-state.tsx
-│   │       ├── error-boundary.tsx
-│   │       └── language-switch.tsx   # uz/ru toggle
+│   │   │   ├── data-table-new-row.tsx     # Empty row for creating records
+│   │   │   ├── data-table-multi-new-rows.tsx # Multi-row creation (batch input)
+│   │   │   ├── data-table-combobox.tsx    # WAI-ARIA combobox with portal dropdown
+│   │   │   └── use-multi-row-state.ts     # Hook: multi-row CRUD state management
+│   │   └── motion/                   # Animation wrapper components
+│   │       ├── page-transition.tsx    # Route transition animation
+│   │       ├── fade-in.tsx            # Fade-in on mount
+│   │       └── animated-list.tsx      # Staggered list animation
 │   └── lib/
 │       └── utils.ts                  # cn() = clsx + twMerge
 ```
@@ -692,15 +687,16 @@ packages/ui/
 ### Usage from Apps
 
 ```typescript
-import { Button, Input, Dialog } from "@jahonbozor/ui";
-import { DataTable, ConfirmDialog } from "@jahonbozor/ui";
+import { Button, Input, DatePicker } from "@jahonbozor/ui";
+import { DataTable, Drawer } from "@jahonbozor/ui";
+import { PageTransition, FadeIn } from "@jahonbozor/ui";
 import { cn } from "@jahonbozor/ui";
 ```
 
 ### Dependencies
 
 ```json
-// packages/ui/package.json
+// packages/ui/package.json (key dependencies)
 {
     "name": "@jahonbozor/ui",
     "dependencies": {
@@ -709,7 +705,18 @@ import { cn } from "@jahonbozor/ui";
         "tailwind-merge": "...",
         "lucide-react": "...",
         "motion": "...",
-        "@radix-ui/react-*": "..."
+        "dayjs": "...",
+        "react-day-picker": "...",
+        "react-number-format": "...",
+        "sonner": "...",
+        "@radix-ui/react-checkbox": "...",
+        "@radix-ui/react-dropdown-menu": "...",
+        "@radix-ui/react-popover": "...",
+        "@radix-ui/react-select": "...",
+        "@radix-ui/react-separator": "...",
+        "@radix-ui/react-slot": "...",
+        "@radix-ui/react-tabs": "...",
+        "@radix-ui/react-tooltip": "..."
     },
     "peerDependencies": {
         "@tanstack/react-table": "^8",

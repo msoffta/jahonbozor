@@ -170,7 +170,7 @@ export abstract class RolesService {
 
             const permissionsChanged =
                 roleData.permissions !== undefined &&
-                JSON.stringify(roleData.permissions) !== JSON.stringify(existingRole.permissions);
+                JSON.stringify([...roleData.permissions].sort()) !== JSON.stringify([...(existingRole.permissions as string[])].sort());
             const auditAction = permissionsChanged ? "PERMISSION_CHANGE" : "UPDATE";
 
             const [updatedRole] = await prisma.$transaction(async (transaction) => {

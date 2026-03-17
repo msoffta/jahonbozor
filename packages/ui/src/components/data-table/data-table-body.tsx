@@ -1,4 +1,4 @@
-import type { ColumnDef, Table as TanStackTable } from "@tanstack/react-table";
+import type { ColumnDef, Row, Table as TanStackTable } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion } from "motion/react";
@@ -10,10 +10,16 @@ import { DataTableNewRow } from "./data-table-new-row";
 import { DataTableMultiNewRows } from "./data-table-multi-new-rows";
 import type { NewRowState } from "./types";
 
+const VIRTUAL_ROW_HEIGHT_PX = 40;
+const VIRTUALIZER_OVERSCAN = 20;
+const NOOP = () => {};
+
+
+const DRAG_SUM_HIGHLIGHT = "bg-drag-sum ring-1 ring-inset ring-drag-sum-border";
+
 interface DataTableBodyProps<TData> {
     table: TanStackTable<TData>;
     columns: ColumnDef<TData, any>[];
-    isShowAll: boolean;
     isVirtualActive?: boolean;
     scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
     enableEditing?: boolean;
@@ -33,7 +39,6 @@ interface DataTableBodyProps<TData> {
     multiRowPosition?: "start" | "end";
     onMultiRowChange?: (rowId: string, values: Record<string, unknown>) => void;
     onMultiRowSave?: (rowId: string) => void;
-    onMultiRowDelete?: (rowId: string) => void;
     onMultiRowFocus?: (rowId: string) => void;
     onMultiRowBlur?: (rowId: string) => void;
     onMultiRowFocusNext?: (rowId: string) => void;
@@ -45,7 +50,6 @@ interface DataTableBodyProps<TData> {
 export function DataTableBody<TData>({
     table,
     columns,
-    isShowAll,
     isVirtualActive,
     scrollContainerRef,
     enableEditing,
@@ -64,7 +68,6 @@ export function DataTableBody<TData>({
     multiRowPosition = "end",
     onMultiRowChange,
     onMultiRowSave,
-    onMultiRowDelete,
     onMultiRowFocus,
     onMultiRowBlur,
     onMultiRowFocusNext,
@@ -78,8 +81,8 @@ export function DataTableBody<TData>({
     const virtualizer = useVirtualizer({
         count: isVirtualActive ? rows.length : 0,
         getScrollElement: () => scrollContainerRef?.current ?? null,
-        estimateSize: () => 40,
-        overscan: 20,
+        estimateSize: () => VIRTUAL_ROW_HEIGHT_PX,
+        overscan: VIRTUALIZER_OVERSCAN,
         enabled: !!isVirtualActive,
     });
 
@@ -132,6 +135,54 @@ export function DataTableBody<TData>({
         }
     }, [selectedAreaSum, dragStart, dragCurrent, onDragSumChange]);
 
+    const renderCells = (row: Row<TData>, rowIndex: number, extraCellStyle?: React.CSSProperties) =>
+        row.getVisibleCells().map((cell) => {
+            const isDragSumEnabled = cell.column.columnDef.meta?.enableDragSum;
+            let isSelectedForSum = false;
+            if (dragStart && dragCurrent && dragStart.col === cell.column.id) {
+                const minRow = Math.min(dragStart.row, dragCurrent.row);
+                const maxRow = Math.max(dragStart.row, dragCurrent.row);
+                isSelectedForSum = rowIndex >= minRow && rowIndex <= maxRow;
+            }
+
+            return (
+                <TableCell
+                    key={cell.id}
+                    style={{ width: cell.column.getSize(), ...extraCellStyle }}
+                    className={cn(
+                        cell.column.columnDef.meta?.cellClassName,
+                        isSelectedForSum && DRAG_SUM_HIGHLIGHT,
+                        isDragSumEnabled && "cursor-cell",
+                    )}
+                    onMouseDown={() => {
+                        if (isDragSumEnabled) {
+                            setIsDragging(true);
+                            setDragStart({ row: rowIndex, col: cell.column.id });
+                            setDragCurrent({ row: rowIndex });
+                        } else {
+                            setDragStart(null);
+                            setDragCurrent(null);
+                        }
+                    }}
+                    onMouseEnter={() => {
+                        if (isDragging && dragStart) {
+                            setDragCurrent({ row: rowIndex });
+                        }
+                    }}
+                >
+                    {enableEditing && cell.column.columnDef.meta?.editable ? (
+                        <DataTableEditableCell
+                            cell={cell.getContext()}
+                            enableEditing
+                            onCellEdit={onCellEdit}
+                        />
+                    ) : (
+                        flexRender(cell.column.columnDef.cell, cell.getContext())
+                    )}
+                </TableCell>
+            );
+        });
+
     // Single row (existing behavior)
     const singleNewRow =
         enableNewRow && !enableMultipleNewRows && onNewRowSave ? (
@@ -152,7 +203,6 @@ export function DataTableBody<TData>({
                 rowStates={multiRowStates}
                 onRowChange={onMultiRowChange}
                 onRowSave={onMultiRowSave}
-                onRowDelete={onMultiRowDelete}
                 onRowFocus={onMultiRowFocus}
                 onRowBlur={onMultiRowBlur}
                 onRowFocusNext={onMultiRowFocusNext}
@@ -162,7 +212,7 @@ export function DataTableBody<TData>({
                         ? multiRowDefaultValues(index)
                         : { ...multiRowDefaultValues }
                 }
-                onNeedMoreRows={onNeedMoreRows || (() => {})}
+                onNeedMoreRows={onNeedMoreRows || NOOP}
             />
         ) : null;
 
@@ -217,59 +267,7 @@ export function DataTableBody<TData>({
                             }}
                             className={cn(onRowClick ? "cursor-pointer" : "")}
                         >
-                            {row.getVisibleCells().map((cell) => {
-                                const isDragSumEnabled = cell.column.columnDef.meta?.enableDragSum;
-                                let isSelectedForSum = false;
-                                if (dragStart && dragCurrent && dragStart.col === cell.column.id) {
-                                    const minRow = Math.min(dragStart.row, dragCurrent.row);
-                                    const maxRow = Math.max(dragStart.row, dragCurrent.row);
-                                    isSelectedForSum = virtualRow.index >= minRow && virtualRow.index <= maxRow;
-                                }
-
-                                return (
-                                <TableCell
-                                    key={cell.id}
-                                    style={{
-                                        display: "flex",
-                                        width: cell.column.getSize(),
-                                    }}
-                                    className={cn(
-                                        cell.column.columnDef.meta?.cellClassName,
-                                        isSelectedForSum && "bg-[#e8f0fe] shadow-[inset_0_0_0_1px_#1a73e8] dark:bg-[#e8f0fe]/10 dark:shadow-[inset_0_0_0_1px_#8ab4f8]",
-                                        isDragSumEnabled && "cursor-cell"
-                                    )}
-                                    onMouseDown={() => {
-                                        if (isDragSumEnabled) {
-                                            setIsDragging(true);
-                                            setDragStart({ row: virtualRow.index, col: cell.column.id });
-                                            setDragCurrent({ row: virtualRow.index });
-                                        } else {
-                                            setDragStart(null);
-                                            setDragCurrent(null);
-                                        }
-                                    }}
-                                    onMouseEnter={() => {
-                                        if (isDragging && dragStart) {
-                                            setDragCurrent({ row: virtualRow.index });
-                                        }
-                                    }}
-                                >
-                                    {enableEditing &&
-                                    cell.column.columnDef.meta?.editable ? (
-                                        <DataTableEditableCell
-                                            cell={cell.getContext()}
-                                            enableEditing
-                                            onCellEdit={onCellEdit}
-                                        />
-                                    ) : (
-                                        flexRender(
-                                            cell.column.columnDef.cell,
-                                            cell.getContext(),
-                                        )
-                                    )}
-                                </TableCell>
-                                );
-                            })}
+                            {renderCells(row, virtualRow.index, { display: "flex" })}
                         </TableRow>
                     );
                 })}
@@ -278,88 +276,7 @@ export function DataTableBody<TData>({
         );
     }
 
-    // Show All with small dataset — render all rows without virtualization
-    if (isShowAll && rows.length > 0) {
-        return (
-            <TableBody className={cn(isDragging && "select-none")}>
-                {position === "start" && newRows}
-                {rows.map((row, index) => (
-                    <motion.tr
-                        key={row.id}
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                            type: "spring",
-                            stiffness: 500,
-                            damping: 30,
-                        }}
-                        data-state={
-                            row.getIsSelected() ? "selected" : undefined
-                        }
-                        className={cn(
-                            "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-                            onRowClick ? "cursor-pointer" : "",
-                        )}
-                        onClick={() => onRowClick?.(row.original)}
-                    >
-                        {row.getVisibleCells().map((cell) => {
-                            const isDragSumEnabled = cell.column.columnDef.meta?.enableDragSum;
-                            let isSelectedForSum = false;
-                            if (dragStart && dragCurrent && dragStart.col === cell.column.id) {
-                                const minRow = Math.min(dragStart.row, dragCurrent.row);
-                                const maxRow = Math.max(dragStart.row, dragCurrent.row);
-                                isSelectedForSum = index >= minRow && index <= maxRow;
-                            }
-
-                            return (
-                            <TableCell
-                                key={cell.id}
-                                style={{ width: cell.column.getSize() }}
-                                className={cn(
-                                    cell.column.columnDef.meta?.cellClassName,
-                                    isSelectedForSum && "bg-[#e8f0fe] shadow-[inset_0_0_0_1px_#1a73e8] dark:bg-[#e8f0fe]/10 dark:shadow-[inset_0_0_0_1px_#8ab4f8]",
-                                    isDragSumEnabled && "cursor-cell"
-                                )}
-                                onMouseDown={() => {
-                                    if (isDragSumEnabled) {
-                                        setIsDragging(true);
-                                        setDragStart({ row: index, col: cell.column.id });
-                                        setDragCurrent({ row: index });
-                                    } else {
-                                        setDragStart(null);
-                                        setDragCurrent(null);
-                                    }
-                                }}
-                                onMouseEnter={() => {
-                                    if (isDragging && dragStart) {
-                                        setDragCurrent({ row: index });
-                                    }
-                                }}
-                            >
-                                {enableEditing &&
-                                cell.column.columnDef.meta?.editable ? (
-                                    <DataTableEditableCell
-                                        cell={cell.getContext()}
-                                        enableEditing
-                                        onCellEdit={onCellEdit}
-                                    />
-                                ) : (
-                                    flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext(),
-                                    )
-                                )}
-                            </TableCell>
-                            );
-                        })}
-                    </motion.tr>
-                ))}
-                {position === "end" && newRows}
-            </TableBody>
-        );
-    }
-
-    // Paginated mode (default)
+    // Show-all / paginated mode — same rendering, only virtualized differs
     return (
         <TableBody className={cn(isDragging && "select-none")}>
             {position === "start" && newRows}
@@ -376,56 +293,7 @@ export function DataTableBody<TData>({
                     )}
                     onClick={() => onRowClick?.(row.original)}
                 >
-                    {row.getVisibleCells().map((cell) => {
-                        const isDragSumEnabled = cell.column.columnDef.meta?.enableDragSum;
-                        let isSelectedForSum = false;
-                        if (dragStart && dragCurrent && dragStart.col === cell.column.id) {
-                            const minRow = Math.min(dragStart.row, dragCurrent.row);
-                            const maxRow = Math.max(dragStart.row, dragCurrent.row);
-                            isSelectedForSum = index >= minRow && index <= maxRow;
-                        }
-
-                        return (
-                        <TableCell
-                            key={cell.id}
-                            style={{ width: cell.column.getSize() }}
-                            className={cn(
-                                cell.column.columnDef.meta?.cellClassName,
-                                isSelectedForSum && "bg-[#e8f0fe] shadow-[inset_0_0_0_1px_#1a73e8] dark:bg-[#e8f0fe]/10 dark:shadow-[inset_0_0_0_1px_#8ab4f8]",
-                                isDragSumEnabled && "cursor-cell"
-                            )}
-                            onMouseDown={() => {
-                                if (isDragSumEnabled) {
-                                    setIsDragging(true);
-                                    setDragStart({ row: index, col: cell.column.id });
-                                    setDragCurrent({ row: index });
-                                } else {
-                                    setDragStart(null);
-                                    setDragCurrent(null);
-                                }
-                            }}
-                            onMouseEnter={() => {
-                                if (isDragging && dragStart) {
-                                    setDragCurrent({ row: index });
-                                }
-                            }}
-                        >
-                            {enableEditing &&
-                            cell.column.columnDef.meta?.editable ? (
-                                <DataTableEditableCell
-                                    cell={cell.getContext()}
-                                    enableEditing
-                                    onCellEdit={onCellEdit}
-                                />
-                            ) : (
-                                flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext(),
-                                )
-                            )}
-                        </TableCell>
-                        );
-                    })}
+                    {renderCells(row, index)}
                 </motion.tr>
             ))}
             {position === "end" && newRows}

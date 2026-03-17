@@ -1,10 +1,13 @@
 import type { Table } from "@tanstack/react-table";
-import { ChevronLeft, ChevronsLeft, ChevronsRight, Copy, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import type { DataTableTranslations } from "./types";
 import * as React from "react";
+
+/** Duration to show "copied" checkmark after clipboard copy */
+const COPIED_FEEDBACK_MS = 2000;
 
 interface DataTablePaginationProps<TData> {
     table: Table<TData>;
@@ -30,11 +33,15 @@ export function DataTablePagination<TData>({
     const tapTransition = { type: "spring" as const, stiffness: 400, damping: 17 };
     const [copied, setCopied] = React.useState(false);
 
-    const handleCopySum = () => {
+    const handleCopySum = async () => {
         if (!dragSumInfo) return;
-        navigator.clipboard.writeText(dragSumInfo.sum.toString());
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        try {
+            await navigator.clipboard.writeText(dragSumInfo.sum.toString());
+            setCopied(true);
+            setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+        } catch {
+            // Clipboard API unavailable (e.g. HTTP context)
+        }
     };
 
     return (
@@ -57,10 +64,10 @@ export function DataTablePagination<TData>({
                             className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-1.5 text-sm"
                         >
                             <span className="text-muted-foreground">
-                                Сумма ({dragSumInfo.count}):
+                                {translations?.sumLabel ?? "Sum"} ({dragSumInfo.count}):
                             </span>
                             <span className="font-semibold text-foreground">
-                                {dragSumInfo.sum.toLocaleString('ru-RU')}
+                                {dragSumInfo.sum.toLocaleString()}
                             </span>
                             <Button 
                                 variant="ghost" 
@@ -151,8 +158,9 @@ export function DataTablePagination<TData>({
                                 className="h-8 w-8"
                                 onClick={() => table.nextPage()}
                                 disabled={!table.getCanNextPage()}
+                                aria-label={translations?.next ?? "Next page"}
                             >
-                                <span>→</span>
+                                <ChevronRight className="h-4 w-4" />
                             </Button>
                         </motion.div>
                         <motion.div whileTap={{ scale: 0.95 }} transition={tapTransition}>

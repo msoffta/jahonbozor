@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, spyOn, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { createMockLogger } from "@backend/test/setup";
 import Auth from "../auth.service";
@@ -93,8 +93,8 @@ describe("Auth API Routes", () => {
 
         test("should return 200 with staff and token on valid credentials", async () => {
             // Arrange
-            const checkIfStaffExistsSpy = spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
-            const saveRefreshTokenSpy = spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+            const checkIfStaffExistsSpy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
+            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
             const app = createLoginApp();
 
             // Act
@@ -119,7 +119,7 @@ describe("Auth API Routes", () => {
 
         test("should return 401 when credentials are invalid", async () => {
             // Arrange
-            const checkIfStaffExistsSpy = spyOn(Auth, "checkIfStaffExists").mockResolvedValue(null);
+            const checkIfStaffExistsSpy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(null);
             const app = createLoginApp();
 
             // Act
@@ -142,8 +142,8 @@ describe("Auth API Routes", () => {
 
         test("should return 500 when refresh token save fails", async () => {
             // Arrange
-            const checkIfStaffExistsSpy = spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
-            const saveRefreshTokenSpy = spyOn(Auth, "saveRefreshToken").mockResolvedValue(null);
+            const checkIfStaffExistsSpy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
+            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(null);
             const app = createLoginApp();
 
             // Act
@@ -167,8 +167,8 @@ describe("Auth API Routes", () => {
 
         test("should call checkIfStaffExists with correct credentials", async () => {
             // Arrange
-            const checkIfStaffExistsSpy = spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
-            const saveRefreshTokenSpy = spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+            const checkIfStaffExistsSpy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(mockStaffData);
+            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
             const app = createLoginApp();
 
             // Act
@@ -200,8 +200,8 @@ describe("Auth API Routes", () => {
                     cookie: {
                         auth: {
                             value: cookieValue,
-                            remove: mock(() => {}),
-                            set: mock(() => {}),
+                            remove: vi.fn(() => {}),
+                            set: vi.fn(() => {}),
                         },
                     },
                 }))
@@ -272,10 +272,10 @@ describe("Auth API Routes", () => {
 
         test("should return 200 with new token on valid staff refresh", async () => {
             // Arrange
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const getStaffByIdSpy = spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
-            const saveRefreshTokenSpy = spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
+            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
             const app = createRefreshApp("valid-refresh-token");
 
             // Act
@@ -298,10 +298,10 @@ describe("Auth API Routes", () => {
         test("should return 200 with new token on valid user refresh", async () => {
             // Arrange
             const userTokenRecord = { id: 2, staffId: null, userId: 1, revoked: false, expiredAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) };
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(userTokenRecord);
-            const getUserByIdSpy = spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
-            const saveRefreshTokenSpy = spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(userTokenRecord);
+            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
             const app = createRefreshApp("valid-user-refresh-token");
 
             // Act
@@ -340,7 +340,7 @@ describe("Auth API Routes", () => {
 
         test("should return 401 when token is invalid", async () => {
             // Arrange
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(null);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(null);
             const app = createRefreshApp("invalid-token");
 
             // Act
@@ -359,9 +359,9 @@ describe("Auth API Routes", () => {
 
         test("should return 401 when staff not found", async () => {
             // Arrange
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const getStaffByIdSpy = spyOn(Auth, "getStaffById").mockResolvedValue(null);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
+            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(null);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
             const app = createRefreshApp("valid-token");
 
             // Act
@@ -383,9 +383,9 @@ describe("Auth API Routes", () => {
         test("should return 401 when user not found for user token", async () => {
             // Arrange
             const userTokenRecord = { id: 2, staffId: null, userId: 999, revoked: false, expiredAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) };
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(userTokenRecord);
-            const getUserByIdSpy = spyOn(Auth, "getUserById").mockResolvedValue(null);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(userTokenRecord);
+            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(null);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
             const app = createRefreshApp("valid-token");
 
             // Act
@@ -406,10 +406,10 @@ describe("Auth API Routes", () => {
 
         test("should return 500 when saving new token fails", async () => {
             // Arrange
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const getStaffByIdSpy = spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
-            const saveRefreshTokenSpy = spyOn(Auth, "saveRefreshToken").mockResolvedValue(null);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
+            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(null);
             const app = createRefreshApp("valid-token");
 
             // Act
@@ -431,10 +431,10 @@ describe("Auth API Routes", () => {
 
         test("should revoke old token before issuing new one", async () => {
             // Arrange
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const getStaffByIdSpy = spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
-            const saveRefreshTokenSpy = spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
+            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const saveRefreshTokenSpy = vi.spyOn(Auth, "saveRefreshToken").mockResolvedValue(true);
             const app = createRefreshApp("old-token");
 
             // Act
@@ -452,7 +452,7 @@ describe("Auth API Routes", () => {
 
     describe("POST /logout", () => {
         const createLogoutApp = (cookieValue?: string) => {
-            const removeMock = mock(() => {});
+            const removeMock = vi.fn(() => {});
             return {
                 app: new Elysia()
                     .derive(() => ({
@@ -493,8 +493,8 @@ describe("Auth API Routes", () => {
 
         test("should return 200 and revoke token on valid logout", async () => {
             // Arrange
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
             const { app, removeMock } = createLogoutApp("valid-token");
 
             // Act
@@ -532,8 +532,8 @@ describe("Auth API Routes", () => {
 
         test("should still succeed even if token is invalid", async () => {
             // Arrange
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(null);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(null);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
             const { app, removeMock } = createLogoutApp("invalid-token");
 
             // Act
@@ -553,8 +553,8 @@ describe("Auth API Routes", () => {
 
         test("should call revokeRefreshToken with correct token", async () => {
             // Arrange
-            const validateRefreshTokenSpy = spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
-            const revokeRefreshTokenSpy = spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
+            const validateRefreshTokenSpy = vi.spyOn(Auth, "validateRefreshToken").mockResolvedValue(mockTokenRecord);
+            const revokeRefreshTokenSpy = vi.spyOn(Auth, "revokeRefreshToken").mockResolvedValue(undefined);
             const { app } = createLogoutApp("my-refresh-token");
 
             // Act
@@ -593,7 +593,7 @@ describe("Auth API Routes", () => {
 
         test("should return staff profile for staff user", async () => {
             // Arrange
-            const getStaffByIdSpy = spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
+            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
             const app = createMeApp("staff", 1);
 
             // Act
@@ -611,7 +611,7 @@ describe("Auth API Routes", () => {
 
         test("should return user profile for regular user", async () => {
             // Arrange
-            const getUserByIdSpy = spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
+            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
             const app = createMeApp("user", 1);
 
             // Act
@@ -629,7 +629,7 @@ describe("Auth API Routes", () => {
 
         test("should return 404 when staff profile not found", async () => {
             // Arrange
-            const getStaffByIdSpy = spyOn(Auth, "getStaffById").mockResolvedValue(null);
+            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(null);
             const app = createMeApp("staff", 999);
 
             // Act
@@ -646,7 +646,7 @@ describe("Auth API Routes", () => {
 
         test("should return 404 when user profile not found", async () => {
             // Arrange
-            const getUserByIdSpy = spyOn(Auth, "getUserById").mockResolvedValue(null);
+            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(null);
             const app = createMeApp("user", 999);
 
             // Act
@@ -663,7 +663,7 @@ describe("Auth API Routes", () => {
 
         test("should call getStaffById for staff type", async () => {
             // Arrange
-            const getStaffByIdSpy = spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
+            const getStaffByIdSpy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(mockStaffWithRole);
             const app = createMeApp("staff", 42);
 
             // Act
@@ -677,7 +677,7 @@ describe("Auth API Routes", () => {
 
         test("should call getUserById for user type", async () => {
             // Arrange
-            const getUserByIdSpy = spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
+            const getUserByIdSpy = vi.spyOn(Auth, "getUserById").mockResolvedValue(mockUserData);
             const app = createMeApp("user", 42);
 
             // Act
@@ -693,7 +693,7 @@ describe("Auth API Routes", () => {
 
 describe("Auth API edge cases", () => {
     test("POST /login should return 401 when credentials are invalid", async () => {
-        const spy = spyOn(Auth, "checkIfStaffExists").mockResolvedValue(null);
+        const spy = vi.spyOn(Auth, "checkIfStaffExists").mockResolvedValue(null);
         const mockLogger = createMockLogger();
 
         const app = new Elysia()
@@ -724,7 +724,7 @@ describe("Auth API edge cases", () => {
     });
 
     test("GET /me should return 404 when staff not found", async () => {
-        const spy = spyOn(Auth, "getStaffById").mockResolvedValue(null);
+        const spy = vi.spyOn(Auth, "getStaffById").mockResolvedValue(null);
         const mockLogger = createMockLogger();
 
         const app = new Elysia()
@@ -748,7 +748,7 @@ describe("Auth API edge cases", () => {
     });
 
     test("GET /me should return 404 when user not found", async () => {
-        const spy = spyOn(Auth, "getUserById").mockResolvedValue(null);
+        const spy = vi.spyOn(Auth, "getUserById").mockResolvedValue(null);
         const mockLogger = createMockLogger();
 
         const app = new Elysia()

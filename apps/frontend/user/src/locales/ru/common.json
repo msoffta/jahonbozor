@@ -59,5 +59,8 @@
     "error_unexpected": "Произошла непредвиденная ошибка",
     "go_home": "На главную",
     "try_again": "Попробовать снова",
-    "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME не настроен"
+    "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME не настроен",
+    "payment_debt": "Долг",
+    "order_comment": "Комментарий к заказу",
+    "product_fallback": "Товар #{{id}}"
 }

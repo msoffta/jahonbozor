@@ -30,4 +30,4 @@ useUIStore.subscribe((state) => {
     }
 });
 
-export default i18n;
+export { i18n };

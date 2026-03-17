@@ -7,29 +7,26 @@ import {
 import { rolesListQueryOptions } from "@/api/roles.api";
 import { getStaffColumns } from "./staff-columns";
 import { CreateStaffDialog } from "./create-staff-dialog";
-import { DataTable, DataTableSkeleton, Button } from "@jahonbozor/ui";
-import type { DataTableTranslations } from "@jahonbozor/ui";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Permission } from "@jahonbozor/schemas";
+import { AnimatePresence, DataTable, DataTableSkeleton, Button, motion } from "@jahonbozor/ui";
+import { Plus } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useHasPermission } from "@/hooks/use-permissions";
-import { Permission } from "@jahonbozor/schemas";
-import { Plus } from "lucide-react";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
 
 export function StaffTab() {
 	const { t } = useTranslation("settings");
 	const currentUser = useAuthStore((s) => s.user);
-	const [isReady, setIsReady] = useState(false);
+	const isReady = useDeferredReady();
+	const translations = useDataTableTranslations("staff_empty");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
 	const canCreate = useHasPermission(Permission.STAFF_CREATE);
 	const canDelete = useHasPermission(Permission.STAFF_DELETE);
-
-	useEffect(() => {
-		const timer = setTimeout(() => setIsReady(true), 150);
-		return () => clearTimeout(timer);
-	}, []);
 
 	const { data: staffData, isLoading: isStaffLoading } = useQuery(
 		staffListQueryOptions({ limit: 100 }),
@@ -92,7 +89,7 @@ export function StaffTab() {
 		[staff, updateStaff],
 	);
 
-	const handleCreateStaff = async (data: any) => {
+	const handleCreateStaff = async (data: { fullname: string; username: string; password: string; roleId: number; telegramId?: string | null }) => {
 		await createStaff.mutateAsync({
 			fullname: data.fullname,
 			username: data.username,
@@ -100,20 +97,6 @@ export function StaffTab() {
 			roleId: Number(data.roleId),
 			telegramId: data.telegramId || null,
 		});
-	};
-
-	const translations: DataTableTranslations = {
-		search: t("common:search"),
-		noResults: t("staff_empty"),
-		columns: t("common:table_columns"),
-		rowsPerPage: t("common:per_page"),
-		showAll: t("common:table_show_all"),
-		previous: t("common:table_previous"),
-		next: t("common:table_next"),
-		filterAll: t("common:filter_all"),
-		filterMin: t("common:filter_min"),
-		filterMax: t("common:filter_max"),
-		filter: t("common:filter"),
 	};
 
 	return (
@@ -133,27 +116,33 @@ export function StaffTab() {
 				)}
 			</div>
 
-			{isLoading ? (
-				<DataTableSkeleton columns={6} rows={10} className="flex-1" />
-			) : (
-				<DataTable
-					className="flex-1"
-					columns={columns}
-					data={staff}
-					pagination
-					defaultPageSize={20}
-					pageSizeOptions={[10, 20, 50]}
-					enableShowAll
-					enableSorting
-					enableGlobalSearch
-					enableFiltering
-					enableColumnVisibility
-					enableColumnResizing
-					enableEditing
-					onCellEdit={handleCellEdit}
-					translations={translations}
-				/>
-			)}
+			<AnimatePresence mode="wait">
+				{isLoading ? (
+					<motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+						<DataTableSkeleton columns={6} rows={10} className="flex-1" />
+					</motion.div>
+				) : (
+					<motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+						<DataTable
+							className="flex-1"
+							columns={columns}
+							data={staff}
+							pagination
+							defaultPageSize={20}
+							pageSizeOptions={[10, 20, 50]}
+							enableShowAll
+							enableSorting
+							enableGlobalSearch
+							enableFiltering
+							enableColumnVisibility
+							enableColumnResizing
+							enableEditing
+							onCellEdit={handleCellEdit}
+							translations={translations}
+						/>
+					</motion.div>
+				)}
+			</AnimatePresence>
 
 			<CreateStaffDialog
 				open={isCreateDialogOpen}

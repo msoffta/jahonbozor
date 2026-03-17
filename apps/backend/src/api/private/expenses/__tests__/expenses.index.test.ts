@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { createMockLogger } from "@backend/test/setup";
 import { Permission } from "@jahonbozor/schemas";
@@ -107,7 +107,7 @@ describe("Expenses API Routes", () => {
     describe("GET /expenses", () => {
         test("should return paginated expenses list", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 2, expenses: [mockExpense] },
             });
@@ -128,7 +128,7 @@ describe("Expenses API Routes", () => {
 
         test("should apply searchQuery filter", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 1, expenses: [mockExpense] },
             });
@@ -149,7 +149,7 @@ describe("Expenses API Routes", () => {
 
         test("should apply staffId filter", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 1, expenses: [mockExpense] },
             });
@@ -170,7 +170,7 @@ describe("Expenses API Routes", () => {
 
         test("should apply date range filter", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 0, expenses: [] },
             });
@@ -191,7 +191,7 @@ describe("Expenses API Routes", () => {
 
         test("should include deleted expenses when requested", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 1, expenses: [{ ...mockExpense, deletedAt: new Date() }] },
             });
@@ -212,7 +212,7 @@ describe("Expenses API Routes", () => {
 
         test("should return empty list when no expenses exist", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 0, expenses: [] },
             });
@@ -236,7 +236,7 @@ describe("Expenses API Routes", () => {
     describe("GET /expenses/:id", () => {
         test("should return expense by id", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getExpense").mockResolvedValue({
                 success: true,
                 data: mockExpense,
             });
@@ -257,7 +257,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense not found", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
@@ -277,7 +277,7 @@ describe("Expenses API Routes", () => {
 
         test("should call service with id=0", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
@@ -299,7 +299,7 @@ describe("Expenses API Routes", () => {
     describe("POST /expenses", () => {
         test("should create expense with valid data", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "createExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "createExpense").mockResolvedValue({
                 success: true,
                 data: mockExpense,
             });
@@ -329,7 +329,7 @@ describe("Expenses API Routes", () => {
 
         test("should pass context to service", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "createExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "createExpense").mockResolvedValue({
                 success: true,
                 data: mockExpense,
             });
@@ -360,7 +360,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when service fails", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "createExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "createExpense").mockResolvedValue({
                 success: false,
                 error: "Database error",
             });
@@ -391,7 +391,7 @@ describe("Expenses API Routes", () => {
         test("should update expense", async () => {
             // Arrange
             const updatedExpense = { ...mockExpense, name: "Updated Rent" };
-            const spy = spyOn(ExpensesService, "updateExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "updateExpense").mockResolvedValue({
                 success: true,
                 data: updatedExpense,
             });
@@ -416,7 +416,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense not found", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "updateExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "updateExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
@@ -440,7 +440,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when updating deleted expense", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "updateExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "updateExpense").mockResolvedValue({
                 success: false,
                 error: "Cannot update deleted expense",
             });
@@ -464,7 +464,7 @@ describe("Expenses API Routes", () => {
 
         test("should handle empty body update", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "updateExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "updateExpense").mockResolvedValue({
                 success: true,
                 data: mockExpense,
             });
@@ -491,7 +491,7 @@ describe("Expenses API Routes", () => {
         test("should soft delete expense", async () => {
             // Arrange
             const deletedExpense = { ...mockExpense, deletedAt: new Date() };
-            const spy = spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
                 success: true,
                 data: deletedExpense,
             });
@@ -511,7 +511,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense not found", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
@@ -531,7 +531,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense already deleted", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
                 success: false,
                 error: "Expense already deleted",
             });
@@ -554,7 +554,7 @@ describe("Expenses API Routes", () => {
         test("should restore deleted expense", async () => {
             // Arrange
             const restoredExpense = { ...mockExpense, deletedAt: null };
-            const spy = spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
                 success: true,
                 data: restoredExpense,
             });
@@ -574,7 +574,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense not found", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
@@ -594,7 +594,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense is not deleted", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
                 success: false,
                 error: "Expense is not deleted",
             });

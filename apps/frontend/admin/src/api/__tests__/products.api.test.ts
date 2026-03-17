@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { QueryFunctionContext } from "@tanstack/react-query";
 
 interface MockEdenResponse {
@@ -9,81 +9,76 @@ interface MockEdenResponse {
 type ListQueryFnContext = QueryFunctionContext<readonly ["products", "list", Record<string, unknown> | undefined]>;
 type DetailQueryFnContext = QueryFunctionContext<readonly ["products", "detail", number]>;
 
-// --- Mock setup (BEFORE imports) ---
-
-const mockGet = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
+const { mockGet, mockGetById, mockPost, mockPatch, mockDelete, mockRestorePost } = vi.hoisted(() => ({
+    mockGet: vi.fn(
+        (): Promise<MockEdenResponse> =>
+            Promise.resolve({
                 data: {
-                    count: 2,
-                    products: [
-                        { id: 1, name: "Product A", price: 1000, costprice: 500, categoryId: 1, remaining: 10 },
-                        { id: 2, name: "Product B", price: 2000, costprice: 800, categoryId: 2, remaining: 5 },
-                    ],
+                    success: true,
+                    data: {
+                        count: 2,
+                        products: [
+                            { id: 1, name: "Product A", price: 1000, costprice: 500, categoryId: 1, remaining: 10 },
+                            { id: 2, name: "Product B", price: 2000, costprice: 800, categoryId: 2, remaining: 5 },
+                        ],
+                    },
                 },
-            },
-            error: null,
-        }),
-);
+                error: null,
+            }),
+    ),
+    mockGetById: vi.fn(
+        (): Promise<MockEdenResponse> =>
+            Promise.resolve({
+                data: {
+                    success: true,
+                    data: { id: 1, name: "Product A", price: 1000, costprice: 500, categoryId: 1, remaining: 10 },
+                },
+                error: null,
+            }),
+    ),
+    mockPost: vi.fn(
+        (): Promise<MockEdenResponse> =>
+            Promise.resolve({
+                data: {
+                    success: true,
+                    data: { id: 3, name: "New Product", price: 1500, costprice: 700, categoryId: 1, remaining: 0 },
+                },
+                error: null,
+            }),
+    ),
+    mockPatch: vi.fn(
+        (): Promise<MockEdenResponse> =>
+            Promise.resolve({
+                data: {
+                    success: true,
+                    data: { id: 1, name: "Updated Product", price: 1200 },
+                },
+                error: null,
+            }),
+    ),
+    mockDelete: vi.fn(
+        (): Promise<MockEdenResponse> =>
+            Promise.resolve({
+                data: {
+                    success: true,
+                    data: { id: 1, name: "Product A", deletedAt: "2026-01-01" },
+                },
+                error: null,
+            }),
+    ),
+    mockRestorePost: vi.fn(
+        (): Promise<MockEdenResponse> =>
+            Promise.resolve({
+                data: {
+                    success: true,
+                    data: { id: 1, name: "Product A", deletedAt: null },
+                },
+                error: null,
+            }),
+    ),
+}));
 
-const mockGetById = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 1, name: "Product A", price: 1000, costprice: 500, categoryId: 1, remaining: 10 },
-            },
-            error: null,
-        }),
-);
-
-const mockPost = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 3, name: "New Product", price: 1500, costprice: 700, categoryId: 1, remaining: 0 },
-            },
-            error: null,
-        }),
-);
-
-const mockPatch = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 1, name: "Updated Product", price: 1200 },
-            },
-            error: null,
-        }),
-);
-
-const mockDelete = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 1, name: "Product A", deletedAt: "2026-01-01" },
-            },
-            error: null,
-        }),
-);
-
-const mockRestorePost = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 1, name: "Product A", deletedAt: null },
-            },
-            error: null,
-        }),
-);
-
-mock.module("@/api/client", () => ({
+vi.mock("@/api/client", () => ({
     api: {
         api: {
             private: {
@@ -114,7 +109,7 @@ import {
 
 describe("products.api", () => {
     beforeEach(() => {
-        mock.restore();
+        vi.clearAllMocks();
     });
 
     // --- Query Keys ---

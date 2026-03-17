@@ -1,4 +1,3 @@
-import { mock } from "bun:test";
 import { createElement } from "react";
 import * as React from "react";
 
@@ -89,6 +88,19 @@ function getMotionComponent(prop: string) {
     }
     return motionCache.get(prop);
 }
+
+/**
+ * Motion library mocks (motion/react).
+ * Use with vi.mock("motion/react", async () => { const { motionMocks } = await import("..."); return motionMocks; })
+ */
+export const motionMocks = {
+    motion: new Proxy(
+        {},
+        { get: (_target: any, prop: string) => getMotionComponent(prop) },
+    ),
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+    LayoutGroup: ({ children }: any) => <>{children}</>,
+};
 
 /**
  * Centralized UI component mocks for testing.
@@ -220,36 +232,79 @@ export const uiMocks = {
     DropdownMenuLabel: ({ children }: any) => <span>{children}</span>,
     DropdownMenuSeparator: () => <hr />,
 
-    // Motion components
-    motion: new Proxy(
-        {},
-        { get: (_target: any, prop: string) => getMotionComponent(prop) },
+    // Card components
+    Card: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
     ),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    LayoutGroup: ({ children }: any) => <>{children}</>,
+    CardContent: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    CardHeader: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    CardTitle: ({ children, className, ...props }: any) => (
+        <h3 className={className} {...filterDOMProps(props)}>
+            {children}
+        </h3>
+    ),
+
+    // Drawer components
+    Drawer: ({ children, open }: any) => (open ? <div data-testid="drawer">{children}</div> : null),
+    DrawerContent: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    DrawerHeader: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    DrawerTitle: ({ children, className, ...props }: any) => (
+        <h2 className={className} {...filterDOMProps(props)}>
+            {children}
+        </h2>
+    ),
+    DrawerFooter: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+
+    // Layout components
+    ScrollArea: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    Badge: ({ children, className, ...props }: any) => (
+        <span className={className} {...filterDOMProps(props)}>
+            {children}
+        </span>
+    ),
+    Skeleton: ({ className, ...props }: any) => (
+        <div className={className} data-testid="skeleton" {...filterDOMProps(props)} />
+    ),
+    Separator: ({ className, ...props }: any) => (
+        <hr className={className} {...filterDOMProps(props)} />
+    ),
+
+    // DataTable components
+    DataTable: ({ data, columns, ...props }: any) => (
+        <div data-testid="data-table" data-row-count={data?.length ?? 0} {...filterDOMProps(props)}>
+            data-table
+        </div>
+    ),
+    DataTableSkeleton: ({ columns, rows, ...props }: any) => (
+        <div data-testid="data-table-skeleton" {...filterDOMProps(props)}>
+            loading
+        </div>
+    ),
+
 };
-
-/**
- * Sets up all UI mocks for testing.
- * Call this at the top of your test file, BEFORE importing components.
- *
- * @example
- * ```typescript
- * import { setupUIMocks } from "../test-utils/ui-mocks";
- *
- * setupUIMocks();
- *
- * import { MyComponent } from "../my-component";
- * ```
- */
-export function setupUIMocks() {
-    // Mock motion/react - DataTable sub-components import motion directly
-    mock.module("motion/react", () => ({
-        motion: uiMocks.motion,
-        AnimatePresence: uiMocks.AnimatePresence,
-        LayoutGroup: uiMocks.LayoutGroup,
-    }));
-
-    // Mock @jahonbozor/ui - must be AFTER motion/react mock
-    mock.module("@jahonbozor/ui", () => uiMocks);
-}

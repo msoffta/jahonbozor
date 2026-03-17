@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { DatePicker } from "../ui/date-picker";
 import { DataTableCombobox } from "./data-table-combobox";
 
+/** Auto-save debounce delay for editable cells */
+const AUTO_SAVE_DEBOUNCE_MS = 500;
+
 interface DataTableEditableCellProps<TData> {
     cell: CellContext<TData, unknown>;
     enableEditing?: boolean;
@@ -60,7 +63,7 @@ export function DataTableEditableCell<TData>({
 
         const timer = setTimeout(() => {
             handleSave(value, false);
-        }, 500);
+        }, AUTO_SAVE_DEBOUNCE_MS);
 
         return () => clearTimeout(timer);
     }, [value, isEditing, initialValue, handleSave]);

@@ -8,31 +8,33 @@ import {
 	Legend,
 	ResponsiveContainer,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@jahonbozor/ui";
-import { motion } from "motion/react";
+import { Card, CardContent, CardHeader, CardTitle, motion } from "@jahonbozor/ui";
 import type { DailySalesData } from "@jahonbozor/schemas/src/analytics";
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
-import { ru, uz } from "date-fns/locale";
+import dayjs from "dayjs";
+import "dayjs/locale/ru";
+import "dayjs/locale/uz-latn";
+import { useChartColors } from "@/lib/chart-colors";
 
 interface SalesTrendChartProps {
 	data: DailySalesData[];
 }
 
 export function SalesTrendChart({ data }: SalesTrendChartProps) {
-	const { t, i18n } = useTranslation();
-	const locale = i18n.language === "ru" ? ru : uz;
+	const { t, i18n } = useTranslation("analytics");
+	const colors = useChartColors();
+	const dayjsLocale = i18n.language === "ru" ? "ru" : "uz-latn";
 
 	const formattedData = data.map((item) => ({
 		...item,
-		date: format(new Date(item.date), "dd MMM", { locale }),
+		date: dayjs(item.date).locale(dayjsLocale).format("DD MMM"),
 	}));
 
 	return (
 		<motion.div
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
-			transition={{ duration: 0.4, delay: 0.1 }}
+			transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
 		>
 			<Card>
 				<CardHeader>
@@ -41,7 +43,7 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
 				<CardContent>
 					<ResponsiveContainer width="100%" height={300}>
 						<LineChart data={formattedData}>
-							<CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+							<CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
 							<XAxis dataKey="date" tick={{ fontSize: 12 }} />
 							<YAxis tick={{ fontSize: 12 }} />
 							<Tooltip
@@ -61,7 +63,7 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
 							<Line
 								type="monotone"
 								dataKey="totalSales"
-								stroke="#3b82f6"
+								stroke={colors.chart1}
 								name={t("total_sales")}
 								strokeWidth={2}
 								dot={{ r: 4 }}
@@ -70,7 +72,7 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
 							<Line
 								type="monotone"
 								dataKey="totalExpenses"
-								stroke="#ef4444"
+								stroke={colors.chart3}
 								name={t("total_expenses")}
 								strokeWidth={2}
 								dot={{ r: 4 }}
@@ -79,7 +81,7 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
 							<Line
 								type="monotone"
 								dataKey="profit"
-								stroke="#10b981"
+								stroke={colors.chart2}
 								name={t("profit")}
 								strokeWidth={2}
 								dot={{ r: 4 }}

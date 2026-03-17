@@ -1,4 +1,3 @@
-import { mock } from "bun:test";
 import { createElement } from "react";
 
 /**
@@ -113,6 +112,58 @@ export const uiMocks = {
         <div className={className} data-testid="skeleton" {...filterDOMProps(props)} />
     ),
 
+    // Badge
+    Badge: ({ children, className, ...props }: any) => (
+        <span className={className} data-testid="badge" {...filterDOMProps(props)}>{children}</span>
+    ),
+
+    // Button
+    Button: ({ children, className, disabled, onClick, type, ...props }: any) => (
+        <button className={className} disabled={disabled} onClick={onClick} type={type || "button"} {...filterDOMProps(props)}>
+            {children}
+        </button>
+    ),
+
+    // Input
+    Input: ({ className, ...props }: any) => (
+        <input className={className} {...filterDOMProps(props)} />
+    ),
+
+    // Separator
+    Separator: ({ className, ...props }: any) => (
+        <hr className={className} data-testid="separator" {...filterDOMProps(props)} />
+    ),
+
+    // Avatar
+    Avatar: ({ children, className, ...props }: any) => (
+        <div className={className} data-testid="avatar" {...filterDOMProps(props)}>{children}</div>
+    ),
+    AvatarImage: ({ src, alt, ...props }: any) => (
+        <img src={src} alt={alt} data-testid="avatar-image" {...filterDOMProps(props)} />
+    ),
+    AvatarFallback: ({ children, className, ...props }: any) => (
+        <span className={className} data-testid="avatar-fallback" {...filterDOMProps(props)}>{children}</span>
+    ),
+
+    // Toaster
+    Toaster: () => null,
+
+    // Drawer
+    Drawer: ({ children, open }: any) => (open ? <div data-testid="drawer">{children}</div> : null),
+    DrawerHeader: ({ children, className }: any) => <div className={className}>{children}</div>,
+    DrawerTitle: ({ children }: any) => <h2>{children}</h2>,
+
+    // Page-level motion components
+    PageTransition: ({ children, className }: any) => (
+        <div className={className} data-testid="page-transition">{children}</div>
+    ),
+    AnimatedList: ({ children, className }: any) => (
+        <div className={className} data-testid="animated-list">{children}</div>
+    ),
+    AnimatedListItem: ({ children, className }: any) => (
+        <div className={className} data-testid="animated-list-item">{children}</div>
+    ),
+
     // Motion components
     motion: new Proxy(
         {},
@@ -122,25 +173,15 @@ export const uiMocks = {
 };
 
 /**
- * Sets up all UI mocks for testing.
- * Call this at the top of your test file, BEFORE importing components.
- *
- * @example
- * ```typescript
- * import { setupUIMocks } from "../test-utils/ui-mocks";
- *
- * setupUIMocks();
- *
- * import { MyComponent } from "../my-component";
- * ```
+ * Factory for vi.mock("motion/react") — returns motion + AnimatePresence mocks.
  */
-export function setupUIMocks() {
-    // Mock motion/react
-    mock.module("motion/react", () => ({
-        motion: uiMocks.motion,
-        AnimatePresence: uiMocks.AnimatePresence,
-    }));
+export function motionReactMock() {
+    return { motion: uiMocks.motion, AnimatePresence: uiMocks.AnimatePresence };
+}
 
-    // Mock @jahonbozor/ui
-    mock.module("@jahonbozor/ui", () => uiMocks);
+/**
+ * Factory for vi.mock("@jahonbozor/ui") — returns all UI component mocks.
+ */
+export function jahonbozorUIMock() {
+    return { ...uiMocks };
 }

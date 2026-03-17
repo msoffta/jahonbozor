@@ -15,6 +15,7 @@ import {
 import { useForm } from "@tanstack/react-form";
 import { CreateStaffBody, CreateStaffForm } from "@jahonbozor/schemas";
 import { useTranslation } from "react-i18next";
+import { FieldError } from "@/components/forms/field-error";
 import type { RoleItem } from "@jahonbozor/schemas/src/roles";
 import { useState } from "react";
 
@@ -91,20 +92,9 @@ export function CreateStaffDialog({
                                     onChange={(e) =>
                                         field.handleChange(e.target.value)
                                     }
-                                    placeholder="Иван Иванов"
+                                    placeholder={t("staff_fullname_placeholder")}
                                 />
-                                {field.state.meta.isTouched &&
-                                    field.state.meta.errors?.length > 0 && (
-                                        <p className="text-xs text-destructive font-medium px-1">
-                                            {field.state.meta.errors
-                                                .map((err: any) =>
-                                                    typeof err === "object"
-                                                        ? err.message
-                                                        : err,
-                                                )
-                                                .join(", ")}
-                                        </p>
-                                    )}
+                                <FieldError field={field} />
                             </div>
                         )}
                     />
@@ -127,18 +117,7 @@ export function CreateStaffDialog({
                                     }
                                     placeholder="ivan_v"
                                 />
-                                {field.state.meta.isTouched &&
-                                    field.state.meta.errors?.length > 0 && (
-                                        <p className="text-xs text-destructive font-medium px-1">
-                                            {field.state.meta.errors
-                                                .map((err: any) =>
-                                                    typeof err === "object"
-                                                        ? err.message
-                                                        : err,
-                                                )
-                                                .join(", ")}
-                                        </p>
-                                    )}
+                                <FieldError field={field} />
                             </div>
                         )}
                     />
@@ -162,18 +141,7 @@ export function CreateStaffDialog({
                                     }
                                     placeholder="••••••••"
                                 />
-                                {field.state.meta.isTouched &&
-                                    field.state.meta.errors?.length > 0 && (
-                                        <p className="text-xs text-destructive font-medium px-1">
-                                            {field.state.meta.errors
-                                                .map((err: any) =>
-                                                    typeof err === "object"
-                                                        ? err.message
-                                                        : err,
-                                                )
-                                                .join(", ")}
-                                        </p>
-                                    )}
+                                <FieldError field={field} />
                             </div>
                         )}
                     />
@@ -217,18 +185,7 @@ export function CreateStaffDialog({
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                {field.state.meta.isTouched &&
-                                    field.state.meta.errors?.length > 0 && (
-                                        <p className="text-xs text-destructive font-medium px-1">
-                                            {field.state.meta.errors
-                                                .map((err: any) =>
-                                                    typeof err === "object"
-                                                        ? err.message
-                                                        : err,
-                                                )
-                                                .join(", ")}
-                                        </p>
-                                    )}
+                                <FieldError field={field} />
                             </div>
                         )}
                     />

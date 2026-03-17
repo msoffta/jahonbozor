@@ -203,7 +203,7 @@ export function EditPermissionsDrawer({
 														{t(`permission_group_${group.name.toLowerCase()}`)}
 													</h3>
 													<p className="text-xs text-muted-foreground">
-														{groupPerms.filter(p => selectedPermissions.includes(p)).length} из {groupPerms.length}
+														{groupPerms.filter(p => selectedPermissions.includes(p)).length} / {groupPerms.length}
 													</p>
 												</div>
 												<Button 

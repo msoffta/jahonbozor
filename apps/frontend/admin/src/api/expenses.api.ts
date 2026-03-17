@@ -1,11 +1,14 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
 import { api } from "@/api/client";
+import { toast } from "@jahonbozor/ui";
 
 export const expenseKeys = {
     all: ["expenses"] as const,
-    list: (params?: Record<string, unknown>) => [...expenseKeys.all, "list", params] as const,
-    detail: (id: number) => [...expenseKeys.all, "detail", id] as const,
+    lists: () => [...expenseKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...expenseKeys.lists(), params] as const,
+    details: () => [...expenseKeys.all, "detail"] as const,
+    detail: (id: number) => [...expenseKeys.details(), id] as const,
 };
 
 export const expensesListQueryOptions = (params?: {
@@ -81,6 +84,9 @@ export const useCreateExpense = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
+        },
     });
 };
 
@@ -91,6 +97,9 @@ export const useUpdateExpense = () => {
         mutationFn: updateExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 };
@@ -103,6 +112,9 @@ export const useDeleteExpense = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
+        },
     });
 };
 
@@ -113,6 +125,9 @@ export const useRestoreExpense = () => {
         mutationFn: restoreExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        },
+        onError: () => {
+            toast.error("Xatolik yuz berdi");
         },
     });
 };

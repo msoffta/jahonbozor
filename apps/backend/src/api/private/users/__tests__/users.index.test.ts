@@ -1,9 +1,9 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import type { Users as UsersType } from "@backend/generated/prisma/client";
 import { Permission } from "@jahonbozor/schemas";
-import { Users } from "../users.service";
+import { UsersService } from "../users.service";
 
 // Mock user data
 const mockUser: UsersType = {
@@ -63,7 +63,7 @@ const createTestApp = () => {
             requestId: "test-request-id",
         }))
         .get("/users", async ({ query, logger }) => {
-            return await Users.getAllUsers(
+            return await UsersService.getAllUsers(
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
@@ -75,19 +75,19 @@ const createTestApp = () => {
             );
         })
         .get("/users/:id", async ({ params, set, logger }) => {
-            const result = await Users.getUser(Number(params.id), logger);
+            const result = await UsersService.getUser(Number(params.id), logger);
             if (!result.success) set.status = 404;
             return result;
         })
         .post("/users", async ({ body, logger, requestId }) => {
-            return await Users.createUser(
+            return await UsersService.createUser(
                 body as { fullname: string; username: string; phone: string; photo: string | null; telegramId: string | null; language: "uz" | "ru" },
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
                 logger,
             );
         })
         .put("/users/:id", async ({ params, body, set, logger, requestId }) => {
-            const result = await Users.updateUser(
+            const result = await UsersService.updateUser(
                 Number(params.id),
                 body as { fullname?: string; username?: string; phone?: string },
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
@@ -99,7 +99,7 @@ const createTestApp = () => {
             return result;
         })
         .delete("/users/:id", async ({ params, set, logger, requestId }) => {
-            const result = await Users.deleteUser(
+            const result = await UsersService.deleteUser(
                 Number(params.id),
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
                 logger,
@@ -110,7 +110,7 @@ const createTestApp = () => {
             return result;
         })
         .post("/users/:id/restore", async ({ params, set, logger, requestId }) => {
-            const result = await Users.restoreUser(
+            const result = await UsersService.restoreUser(
                 Number(params.id),
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
                 logger,

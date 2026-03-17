@@ -1,6 +1,7 @@
-import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { useForm } from "@tanstack/react-form";
+import { SignInBody } from "@jahonbozor/schemas";
 import { Loader2 } from "lucide-react";
 import { Button, Input, cn, motion, AnimatePresence } from "@jahonbozor/ui";
 import { useLogin } from "@/hooks/use-auth";
@@ -25,20 +26,30 @@ const fieldVariants = {
 
 function LoginPage() {
     const { t } = useTranslation();
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
     const loginMutation = useLogin();
     const locale = useUIStore((s) => s.locale);
     const setLocale = useUIStore((s) => s.setLocale);
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        loginMutation.mutate({ username, password });
-    };
+    const form = useForm({
+        defaultValues: {
+            username: "",
+            password: "",
+        },
+        validators: {
+            onSubmit: SignInBody,
+        },
+        onSubmit: async ({ value }) => {
+            loginMutation.mutate(value);
+        },
+    });
 
     return (
         <motion.form
-            onSubmit={handleSubmit}
+            onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                form.handleSubmit();
+            }}
             className="w-full max-w-sm space-y-4 p-6"
             variants={formVariants}
             initial="hidden"
@@ -81,26 +92,66 @@ function LoginPage() {
                 </motion.button>
             </motion.div>
 
-            <motion.div variants={fieldVariants}>
-                <Input
-                    placeholder={t("username")}
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                    autoComplete="username"
-                />
-            </motion.div>
+            <form.Field
+                name="username"
+                validators={{
+                    onBlur: SignInBody.shape.username,
+                }}
+                children={(field) => (
+                    <motion.div variants={fieldVariants}>
+                        <Input
+                            placeholder={t("username")}
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            autoComplete="username"
+                        />
+                        {field.state.meta.isTouched &&
+                            field.state.meta.errors?.length > 0 && (
+                                <p className="text-xs text-destructive font-medium px-1 mt-1">
+                                    {field.state.meta.errors
+                                        .map((err: unknown) =>
+                                            typeof err === "object" && err !== null && "message" in err
+                                                ? (err as { message: string }).message
+                                                : String(err),
+                                        )
+                                        .join(", ")}
+                                </p>
+                            )}
+                    </motion.div>
+                )}
+            />
 
-            <motion.div variants={fieldVariants}>
-                <Input
-                    type="password"
-                    placeholder={t("password")}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                />
-            </motion.div>
+            <form.Field
+                name="password"
+                validators={{
+                    onBlur: SignInBody.shape.password,
+                }}
+                children={(field) => (
+                    <motion.div variants={fieldVariants}>
+                        <Input
+                            type="password"
+                            placeholder={t("password")}
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            autoComplete="current-password"
+                        />
+                        {field.state.meta.isTouched &&
+                            field.state.meta.errors?.length > 0 && (
+                                <p className="text-xs text-destructive font-medium px-1 mt-1">
+                                    {field.state.meta.errors
+                                        .map((err: unknown) =>
+                                            typeof err === "object" && err !== null && "message" in err
+                                                ? (err as { message: string }).message
+                                                : String(err),
+                                        )
+                                        .join(", ")}
+                                </p>
+                            )}
+                    </motion.div>
+                )}
+            />
 
             <AnimatePresence>
                 {loginMutation.isError && (
@@ -109,7 +160,7 @@ function LoginPage() {
                         animate={{ opacity: 1, x: [0, -3, 3, -3, 0] }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="text-sm text-red-500 text-center"
+                        className="text-sm text-destructive text-center"
                     >
                         {t("login_error")}
                     </motion.p>

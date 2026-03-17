@@ -16,6 +16,7 @@
     "status_cancelled": "Bekor qilindi",
     "payment_cash": "Naqd",
     "payment_credit_card": "Karta",
+    "payment_debt": "Qarz",
     "orders_empty": "Buyurtmalar topilmadi",
     "lists_empty": "Ro'yxatlar topilmadi",
     "table_columns": "Ustunlar",
@@ -40,5 +41,7 @@
     "min_items_required": "Kamida 2 pozitsiya qo'shing",
     "error_product_required": "Iltimos, mahsulotni tanlang",
     "back_to_lists": "Ro'yxatlarga qaytish",
-    "order_total": "Summa"
+    "order_total": "Summa",
+    "order_comment": "Izoh",
+    "error_debt_requires_user": "Qarz to'lovi uchun mijozni tanlash kerak"
 }

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
 import type { Order, Product, AuditLog, Prisma } from "@backend/generated/prisma/client";
 import type { Token } from "@jahonbozor/schemas";
@@ -245,6 +245,29 @@ describe("PublicOrders Service", () => {
             const failure = expectFailure(result);
             expect(failure.error).toBe(dbError);
             expect(mockLogger.error).toHaveBeenCalled();
+        });
+
+        test("should apply both dateFrom and dateTo filters correctly", async () => {
+            // Arrange — regression test for date range filter overwrite bug
+            const dateFrom = "2024-01-01";
+            const dateTo = "2024-01-31";
+            prismaMock.$transaction.mockResolvedValueOnce([1, [mockOrderWithRelations]]);
+
+            // Act
+            const result = await PublicOrdersService.getUserOrders(
+                1,
+                { page: 1, limit: 20, searchQuery: "", dateFrom, dateTo },
+                mockLogger,
+            );
+
+            // Assert
+            expectSuccess(result);
+            // Verify both gte and lte are passed in the count/findMany where clause
+            const countArgs = prismaMock.order.count.mock.calls[0]?.[0] as { where: { createdAt?: { gte?: string; lte?: string } } } | undefined;
+            expect(countArgs?.where.createdAt).toEqual({
+                gte: dateFrom,
+                lte: dateTo,
+            });
         });
     });
 

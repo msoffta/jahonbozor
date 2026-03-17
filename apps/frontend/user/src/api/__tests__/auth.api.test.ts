@@ -1,11 +1,12 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { useAuthStore } from "@/stores/auth.store";
 
-// Mock api-client before importing auth.api
-const mockGet = mock(() => Promise.resolve({ data: { success: true, data: { id: 1, fullname: "Test" } }, error: null }));
-const mockPost = mock(() => Promise.resolve({ data: { success: true, data: {} }, error: null }));
+const { mockGet, mockPost } = vi.hoisted(() => ({
+    mockGet: vi.fn(() => Promise.resolve({ data: { success: true, data: { id: 1, fullname: "Test" } }, error: null })),
+    mockPost: vi.fn(() => Promise.resolve({ data: { success: true, data: {} }, error: null })),
+}));
 
-mock.module("@/lib/api-client", () => ({
+vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
@@ -30,7 +31,6 @@ describe("auth.api", () => {
             user: null,
             isAuthenticated: false,
         });
-        mock.restore();
     });
 
     describe("authKeys", () => {

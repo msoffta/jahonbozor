@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach } from "vitest";
 import { useUIStore } from "@/stores/ui.store";
 
 describe("i18n", () => {
@@ -7,25 +7,25 @@ describe("i18n", () => {
     });
 
     test("should initialize with locale from UI store", async () => {
-        const i18n = (await import("@/lib/i18n")).default;
+        const i18n = (await import("@/lib/i18n")).i18n;
 
         expect(i18n.language).toBe("uz");
     });
 
     test("should have uz as fallback language", async () => {
-        const i18n = (await import("@/lib/i18n")).default;
+        const i18n = (await import("@/lib/i18n")).i18n;
 
         expect(i18n.options.fallbackLng).toEqual(["uz"]);
     });
 
     test("should use common as default namespace", async () => {
-        const i18n = (await import("@/lib/i18n")).default;
+        const i18n = (await import("@/lib/i18n")).i18n;
 
         expect(i18n.options.defaultNS).toBe("common");
     });
 
     test("should sync language when UI store locale changes", async () => {
-        const i18n = (await import("@/lib/i18n")).default;
+        const i18n = (await import("@/lib/i18n")).i18n;
 
         useUIStore.getState().setLocale("ru");
 
@@ -34,7 +34,7 @@ describe("i18n", () => {
     });
 
     test("should have both uz and ru resources loaded", async () => {
-        const i18n = (await import("@/lib/i18n")).default;
+        const i18n = (await import("@/lib/i18n")).i18n;
 
         expect(i18n.hasResourceBundle("uz", "common")).toBe(true);
         expect(i18n.hasResourceBundle("ru", "common")).toBe(true);

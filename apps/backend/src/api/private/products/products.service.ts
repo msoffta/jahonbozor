@@ -6,8 +6,10 @@ import {
 } from "@jahonbozor/schemas/src/products";
 import type { Token } from "@jahonbozor/schemas";
 import type { Logger } from "@jahonbozor/logger";
+import type { Prisma } from "@backend/generated/prisma/client";
 import { prisma } from "@backend/lib/prisma";
 import { auditInTransaction } from "@backend/lib/audit";
+import { getCategoryWithDescendants } from "@backend/lib/categories";
 import type { ProductModel } from "@backend/generated/prisma/models/Product";
 
 interface AuditContext {
@@ -26,25 +28,6 @@ function createProductSnapshot(product: ProductModel) {
     };
 }
 
-/**
- * Get all descendant category IDs for hierarchical filtering
- */
-async function getCategoryWithDescendants(categoryId: number): Promise<number[]> {
-    const ids = [categoryId];
-
-    const children = await prisma.category.findMany({
-        where: { parentId: categoryId },
-        select: { id: true },
-    });
-
-    for (const child of children) {
-        const descendantIds = await getCategoryWithDescendants(child.id);
-        ids.push(...descendantIds);
-    }
-
-    return ids;
-}
-
 export abstract class ProductsService {
     static async getAllProducts(
         params: ProductsPagination,
@@ -54,7 +37,7 @@ export abstract class ProductsService {
             const { page, limit, searchQuery, categoryIds: categoryIdsStr, minPrice, maxPrice, includeDeleted } = params;
 
             // Build where clause with hierarchical category filter
-            const whereClause: Record<string, unknown> = {};
+            const whereClause: Prisma.ProductWhereInput = {};
 
             if (!includeDeleted) {
                 whereClause.deletedAt = null;
@@ -75,13 +58,10 @@ export abstract class ProductsService {
                 whereClause.categoryId = { in: [...new Set(allIds)] };
             }
 
-            if (minPrice) {
-                whereClause.price = { ...(whereClause.price as object || {}), gte: minPrice };
-            }
-
-            if (maxPrice) {
-                whereClause.price = { ...(whereClause.price as object || {}), lte: maxPrice };
-            }
+            const priceFilter: Prisma.DecimalFilter = {};
+            if (minPrice) priceFilter.gte = minPrice;
+            if (maxPrice) priceFilter.lte = maxPrice;
+            if (minPrice || maxPrice) whereClause.price = priceFilter;
 
             const [count, products] = await prisma.$transaction([
                 prisma.product.count({ where: whereClause }),
