@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "bun --env-file=../../.env run --watch src/index.ts",
     "start": "bun --env-file=../../.env run src/index.ts",
-    "test": "bunx vitest run",
-    "test:watch": "bunx vitest",
-    "test:coverage": "bunx vitest run --coverage",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

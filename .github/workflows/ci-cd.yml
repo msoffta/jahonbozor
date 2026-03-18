@@ -142,7 +142,7 @@ jobs:
         run: cd apps/backend && bun x prisma migrate deploy
 
       - name: Run backend tests
-        run: bun run --cwd apps/backend test
+        run: bun run test:backend
 
   test-bot:
     name: Test Bot
@@ -187,7 +187,7 @@ jobs:
         run: cd apps/backend && bun x prisma migrate deploy
 
       - name: Run bot tests
-        run: bun run --cwd apps/bot test
+        run: bun run test:bot
 
   test-ui:
     name: Test UI Package
@@ -208,7 +208,7 @@ jobs:
           name: node_modules
 
       - name: Run UI package tests
-        run: bun run --cwd packages/ui test
+        run: bun run test:ui
 
   test-frontend-admin:
     name: Test Frontend Admin
@@ -229,7 +229,7 @@ jobs:
           name: node_modules
 
       - name: Run admin tests
-        run: bun run --cwd apps/frontend/admin test
+        run: bun run test:admin
 
   test-frontend-user:
     name: Test Frontend User
@@ -250,7 +250,7 @@ jobs:
           name: node_modules
 
       - name: Run user tests
-        run: bun run --cwd apps/frontend/user test
+        run: bun run test:user
 
   build-images:
     name: Build Docker Images
