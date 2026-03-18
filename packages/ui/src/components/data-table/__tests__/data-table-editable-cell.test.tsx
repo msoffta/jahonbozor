@@ -251,7 +251,7 @@ describe("DataTableEditableCell", () => {
     // ── Validation ─────────────────────────────────────────────
     describe("validation", () => {
         test("should show error message on invalid value", async () => {
-            const { z } = await import("zod");
+            const z = (await import("zod")).default;
             const user = userEvent.setup();
             const columns: ColumnDef<TestRow, any>[] = [
                 { accessorKey: "id", header: "ID" },
@@ -286,7 +286,7 @@ describe("DataTableEditableCell", () => {
         });
 
         test("should clear error on valid value after previous error", async () => {
-            const { z } = await import("zod");
+            const z = (await import("zod")).default;
             const user = userEvent.setup();
             const columns: ColumnDef<TestRow, any>[] = [
                 { accessorKey: "id", header: "ID" },

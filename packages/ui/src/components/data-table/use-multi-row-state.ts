@@ -93,7 +93,9 @@ export function useMultiRowState({
 
             if (isEmpty || !isChanged) {
                 const isStillFocused = focusedRowIdRef.current === rowId;
-                if (!isStillFocused && rowState.linkedId) {
+                const focusOnAnotherNewRow =
+                    focusedRowIdRef.current !== null && focusedRowIdRef.current !== rowId;
+                if (!isStillFocused && rowState.linkedId && !focusOnAnotherNewRow) {
                     setRowStates((prev) =>
                         prev.map((row) => {
                             if (row.id !== rowId) return row;
@@ -145,8 +147,10 @@ export function useMultiRowState({
 
                         const isStillFocused = focusedRowIdRef.current === rowId;
                         const isNavigating = navigatingFromRowRef.current === rowId;
+                        const focusOnAnotherNewRow =
+                            focusedRowIdRef.current !== null && focusedRowIdRef.current !== rowId;
 
-                        if (resultId && !isStillFocused && !isNavigating) {
+                        if (resultId && !isStillFocused && !isNavigating && !focusOnAnotherNewRow) {
                             const index = prev.findIndex((s) => s.id === rowId);
                             const defaults =
                                 typeof defaultValues === "function"
@@ -204,9 +208,31 @@ export function useMultiRowState({
                 if (navigatingFromRowRef.current === rowId) {
                     navigatingFromRowRef.current = null;
                 }
+
+                // Cleanup: when focus leaves ALL new rows, reset previously-saved rows
+                if (focusedRowIdRef.current === null) {
+                    setRowStates((prev) =>
+                        prev.map((row) => {
+                            if (!row.linkedId || savingRowsRef.current.has(row.id)) return row;
+                            const index = prev.findIndex((s) => s.id === row.id);
+                            const defaults =
+                                typeof defaultValues === "function"
+                                    ? defaultValues(index)
+                                    : { ...defaultValues };
+                            return {
+                                ...row,
+                                values: defaults,
+                                errors: {},
+                                linkedId: undefined,
+                                isSaving: false,
+                                lastSavedValues: defaults,
+                            };
+                        }),
+                    );
+                }
             }, BLUR_SAVE_DELAY_MS);
         },
-        [handleSave],
+        [handleSave, defaultValues],
     );
 
     const handleFocusNext = React.useCallback(

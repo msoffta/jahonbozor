@@ -1313,6 +1313,166 @@ describe("useMultiRowState", () => {
         });
     });
 
+    // ── Click navigation (gap fix) ─────────────────────────────
+    describe("click navigation (gap fix)", () => {
+        test("does not reset row when another new row is focused", async () => {
+            const onSave = vi.fn().mockResolvedValue("saved-id");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                defaultValues: { name: "", quantity: 0 },
+                onSave,
+            });
+
+            const row0Id = result.current.rowStates[0].id;
+            const row1Id = result.current.rowStates[1].id;
+
+            // Fill row 0
+            await act(async () => {
+                result.current.handleChange(row0Id, { name: "Product A", quantity: 5 });
+            });
+
+            // Focus row 1 (simulates clicking row 1)
+            await act(async () => {
+                result.current.handleFocus(row1Id);
+            });
+
+            // Save row 0 (triggered by blur)
+            await act(async () => {
+                await result.current.handleSave(row0Id);
+            });
+
+            // Row 0 should keep its saved values — NOT reset to defaults
+            expect(result.current.rowStates[0].values).toEqual({
+                name: "Product A",
+                quantity: 5,
+            });
+            expect(result.current.rowStates[0].linkedId).toBe("saved-id");
+        });
+
+        test("resets all stale linked rows when focus leaves all new rows", async () => {
+            const onSave = vi.fn().mockResolvedValue("saved-id");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                defaultValues: { name: "", quantity: 0 },
+                onSave,
+            });
+
+            const row0Id = result.current.rowStates[0].id;
+            const row1Id = result.current.rowStates[1].id;
+
+            // Fill and save row 0 while row 1 is focused (row 0 keeps values)
+            await act(async () => {
+                result.current.handleChange(row0Id, { name: "Product A", quantity: 5 });
+            });
+            await act(async () => {
+                result.current.handleFocus(row1Id);
+            });
+            await act(async () => {
+                await result.current.handleSave(row0Id);
+            });
+
+            // Verify row 0 kept values
+            expect(result.current.rowStates[0].linkedId).toBe("saved-id");
+
+            // Now blur row 1 without focusing any new row (focus leaves entirely)
+            await act(async () => {
+                result.current.handleBlur(row1Id);
+            });
+            await act(async () => {
+                vi.advanceTimersByTime(200);
+            });
+
+            // Row 0 should now be reset (cleanup triggered)
+            expect(result.current.rowStates[0].values).toEqual({ name: "", quantity: 0 });
+            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+        });
+
+        test("does not reset rows currently being saved during cleanup", async () => {
+            let resolveSave: (id: string) => void;
+            const savePromise = new Promise<string>((resolve) => {
+                resolveSave = (id) => resolve(id);
+            });
+            const onSave = vi.fn().mockReturnValue(savePromise);
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 2,
+                defaultValues: { name: "" },
+                onSave,
+            });
+
+            const row0Id = result.current.rowStates[0].id;
+
+            // Start saving row 0 (will be pending)
+            await act(async () => {
+                result.current.handleChange(row0Id, { name: "saving" });
+            });
+            act(() => {
+                void result.current.handleSave(row0Id);
+            });
+
+            // Row 0 is now mid-save (isSaving=true)
+            expect(result.current.rowStates[0].isSaving).toBe(true);
+
+            // Trigger blur cleanup (no row focused)
+            await act(async () => {
+                result.current.handleBlur(row0Id);
+            });
+            await act(async () => {
+                vi.advanceTimersByTime(200);
+            });
+
+            // Row 0 should NOT be reset because it's mid-save (in savingRowsRef)
+            expect(result.current.rowStates[0].isSaving).toBe(true);
+            expect(result.current.rowStates[0].values).toEqual({ name: "saving" });
+
+            // Resolve the save
+            await act(async () => {
+                resolveSave!("saved-id");
+            });
+        });
+
+        test("early-return path: does not reset linked row when another new row is focused", async () => {
+            const onSave = vi.fn().mockResolvedValue("linked-42");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                defaultValues: { name: "" },
+                onSave,
+            });
+
+            const row0Id = result.current.rowStates[0].id;
+            const row1Id = result.current.rowStates[1].id;
+
+            // Save row 0 while focused to establish linkedId
+            await act(async () => {
+                result.current.handleFocus(row0Id);
+            });
+            await act(async () => {
+                result.current.handleChange(row0Id, { name: "saved" });
+            });
+            await act(async () => {
+                await result.current.handleSave(row0Id);
+            });
+            expect(result.current.rowStates[0].linkedId).toBe("linked-42");
+
+            // Now focus row 1 (click away to another new row)
+            await act(async () => {
+                result.current.handleFocus(row1Id);
+            });
+
+            // Call handleSave again on row 0 — values haven't changed (isEmpty || !isChanged)
+            await act(async () => {
+                await result.current.handleSave(row0Id);
+            });
+
+            // Row 0 should NOT be reset because row 1 has focus
+            expect(result.current.rowStates[0].linkedId).toBe("linked-42");
+            expect(result.current.rowStates[0].values).toEqual({ name: "saved" });
+        });
+    });
+
     // ── Return value shape ───────────────────────────────────────
     describe("return value", () => {
         test("returns all expected handler functions", async () => {
