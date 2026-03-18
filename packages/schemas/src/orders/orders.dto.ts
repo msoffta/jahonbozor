@@ -19,17 +19,12 @@ export const CreateOrderBody = Order.omit({
     updatedAt: true,
     staffId: true,
     items: true,
-})
-    .extend({
-        userId: z.number().nullish(),
-        comment: z.string().nullish(),
-        data: z.record(z.string(), z.unknown()).nullish(),
-        items: z.array(CreateOrderItemBody).min(1),
-    })
-    .refine((data) => new Set(data.items.map((i) => i.productId)).size === data.items.length, {
-        message: "Duplicate productId in items",
-        path: ["items"],
-    });
+}).extend({
+    userId: z.number().nullish(),
+    comment: z.string().nullish(),
+    data: z.record(z.string(), z.unknown()).nullish(),
+    items: z.array(CreateOrderItemBody).min(1),
+});
 
 export const UpdateOrderBody = Order.pick({
     paymentType: true,
@@ -39,12 +34,7 @@ export const UpdateOrderBody = Order.pick({
     .partial()
     .extend({
         items: z.array(CreateOrderItemBody).min(1).optional(),
-    })
-    .refine(
-        (data) =>
-            !data.items || new Set(data.items.map((i) => i.productId)).size === data.items.length,
-        { message: "Duplicate productId in items", path: ["items"] },
-    );
+    });
 
 export const OrdersPagination = PaginationQuery.extend({
     userId: z.coerce.number().optional(),

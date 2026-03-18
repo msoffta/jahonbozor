@@ -227,7 +227,16 @@ export abstract class OrdersService {
     ): Promise<AdminOrderDetailResponse> {
         try {
             const { staffId, user, requestId } = context;
-            const productIds = [...new Set(orderData.items.map((item) => item.productId))];
+            const mergedItems = orderData.items.reduce<typeof orderData.items>((acc, item) => {
+                const existing = acc.find((i) => i.productId === item.productId);
+                if (existing) {
+                    existing.quantity += item.quantity;
+                } else {
+                    acc.push({ ...item });
+                }
+                return acc;
+            }, []);
+            const productIds = mergedItems.map((item) => item.productId);
 
             const products = await prisma.product.findMany({
                 where: {
@@ -258,7 +267,7 @@ export abstract class OrdersService {
                 requested: number;
                 available: number;
             }[] = [];
-            for (const item of orderData.items) {
+            for (const item of mergedItems) {
                 const product = productMap.get(item.productId)!;
                 if (product.remaining < item.quantity) {
                     insufficientStock.push({
@@ -293,7 +302,7 @@ export abstract class OrdersService {
                         comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
-                            create: orderData.items.map((item) => {
+                            create: mergedItems.map((item) => {
                                 const product = productMap.get(item.productId)!;
                                 return {
                                     productId: item.productId,
@@ -325,7 +334,7 @@ export abstract class OrdersService {
                     },
                 });
 
-                for (const item of orderData.items) {
+                for (const item of mergedItems) {
                     const product = productMap.get(item.productId)!;
                     const previousRemaining = product.remaining;
                     const newRemaining = previousRemaining - item.quantity;
@@ -437,6 +446,7 @@ export abstract class OrdersService {
                       { id: number; name: string; price: Prisma.Decimal; remaining: number }
                   >
                 | undefined;
+            let mergedItems: typeof orderData.items | undefined;
 
             if (orderData.items) {
                 // Build map of old quantities per product for effective stock calculation
@@ -450,7 +460,16 @@ export abstract class OrdersService {
                     }
                 }
 
-                const productIds = [...new Set(orderData.items.map((item) => item.productId))];
+                mergedItems = orderData.items.reduce<typeof orderData.items>((acc, item) => {
+                    const existing = acc.find((i) => i.productId === item.productId);
+                    if (existing) {
+                        existing.quantity += item.quantity;
+                    } else {
+                        acc.push({ ...item });
+                    }
+                    return acc;
+                }, []);
+                const productIds = mergedItems.map((item) => item.productId);
                 const products = await prisma.product.findMany({
                     where: { id: { in: productIds }, deletedAt: null },
                     select: { id: true, name: true, price: true, remaining: true },
@@ -475,7 +494,7 @@ export abstract class OrdersService {
                     available: number;
                 }[] = [];
 
-                for (const item of orderData.items) {
+                for (const item of mergedItems) {
                     const product = productMap.get(item.productId)!;
                     const effectiveRemaining =
                         product.remaining + (oldQuantityMap.get(item.productId) ?? 0);
@@ -536,7 +555,7 @@ export abstract class OrdersService {
                     });
 
                     // 3. Create new items + deduct stock
-                    for (const item of orderData.items) {
+                    for (const item of mergedItems!) {
                         const product = productMap.get(item.productId)!;
 
                         await transaction.orderItem.create({
