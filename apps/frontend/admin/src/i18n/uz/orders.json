@@ -34,10 +34,12 @@
   "all_clients": "Barcha mijozlar",
   "total_sum": "Jami",
   "save_list": "Ro'yxatni saqlash",
+  "items_saved": "Pozitsiyalar saqlandi",
   "min_items_required": "Kamida 2 pozitsiya qo'shing",
   "error_product_required": "Iltimos, mahsulotni tanlang",
   "back_to_lists": "Ro'yxatlarga qaytish",
   "order_total": "Summa",
   "order_comment": "Izoh",
-  "error_debt_requires_user": "Qarz to'lovi uchun mijozni tanlash kerak"
+  "error_debt_requires_user": "Qarz to'lovi uchun mijozni tanlash kerak",
+  "insufficient_stock": "Mahsulot yetarli emas"
 }

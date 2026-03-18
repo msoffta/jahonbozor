@@ -188,27 +188,6 @@ export function useMultiRowState({
         focusedRowIdRef.current = rowId;
     }, []);
 
-    const handleBlur = React.useCallback(
-        (rowId: string) => {
-            setTimeout(() => {
-                if (focusedRowIdRef.current === rowId) {
-                    setFocusedRowId(null);
-                    focusedRowIdRef.current = null;
-                }
-
-                const isNavigating = navigatingFromRowRef.current === rowId;
-                if (focusedRowIdRef.current !== rowId && !isNavigating) {
-                    void handleSave(rowId);
-                }
-
-                if (navigatingFromRowRef.current === rowId) {
-                    navigatingFromRowRef.current = null;
-                }
-            }, BLUR_SAVE_DELAY_MS);
-        },
-        [handleSave],
-    );
-
     const handleFocusNext = React.useCallback(
         (rowId: string) => {
             const index = rowStates.findIndex((r) => r.id === rowId);
@@ -327,6 +306,42 @@ export function useMultiRowState({
         [rowStates, validate, onSave, defaultValues, onError],
     );
 
+    const handleBlur = React.useCallback(
+        (rowId: string) => {
+            setTimeout(() => {
+                if (focusedRowIdRef.current === rowId) {
+                    setFocusedRowId(null);
+                    focusedRowIdRef.current = null;
+                }
+
+                const isNavigating = navigatingFromRowRef.current === rowId;
+
+                // If focus moved to another new row, use saveAndLoop (Tab-like behavior):
+                // save current row, reset it, and redirect focus back
+                const focusMovedToAnotherNewRow =
+                    focusedRowIdRef.current !== null && focusedRowIdRef.current !== rowId;
+
+                if (focusMovedToAnotherNewRow && !isNavigating) {
+                    void handleSaveAndLoop(rowId).then((saved) => {
+                        if (saved) {
+                            const rowEl = document.getElementById(rowId);
+                            const firstInput =
+                                rowEl?.querySelector<HTMLElement>("input, button, select");
+                            firstInput?.focus();
+                        }
+                    });
+                } else if (focusedRowIdRef.current !== rowId && !isNavigating) {
+                    void handleSave(rowId);
+                }
+
+                if (navigatingFromRowRef.current === rowId) {
+                    navigatingFromRowRef.current = null;
+                }
+            }, BLUR_SAVE_DELAY_MS);
+        },
+        [handleSave, handleSaveAndLoop],
+    );
+
     const handleNeedMoreRows = React.useCallback(() => {
         setRowStates((prev) => {
             if (prev.length >= maxCount) return prev;
@@ -344,6 +359,20 @@ export function useMultiRowState({
         });
     }, [maxCount, increment, defaultValues]);
 
+    const flushPendingRows = React.useCallback(async () => {
+        const pendingRows = rowStates.filter((row) => {
+            if (row.isSaving || savingRowsRef.current.has(row.id)) return false;
+            const isEmpty = Object.values(row.values).every(
+                (v) => v === "" || v === null || v === undefined,
+            );
+            const isChanged = Object.keys(row.values).some(
+                (key) => row.values[key] !== row.lastSavedValues?.[key],
+            );
+            return !isEmpty && isChanged;
+        });
+        await Promise.all(pendingRows.map((row) => handleSave(row.id)));
+    }, [rowStates, handleSave]);
+
     return {
         rowStates,
         handleChange,
@@ -353,5 +382,6 @@ export function useMultiRowState({
         handleFocusNext,
         handleSaveAndLoop,
         handleNeedMoreRows,
+        flushPendingRows,
     };
 }

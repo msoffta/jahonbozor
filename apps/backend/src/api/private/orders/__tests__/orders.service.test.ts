@@ -591,6 +591,338 @@ describe("Orders Service", () => {
             expect(failure.error).toBe(dbError);
             expect(mockLogger.error).toHaveBeenCalled();
         });
+
+        // --- Items update tests ---
+
+        const mockOrderWithItemsForUpdate = {
+            ...mockOrder,
+            items: [
+                {
+                    ...mockOrderItem,
+                    product: { id: 1, remaining: 10, deletedAt: null },
+                },
+            ],
+        };
+
+        const mockProduct2 = {
+            ...mockProduct,
+            id: 2,
+            name: "Product 2",
+            remaining: 20,
+        };
+
+        const mockUpdatedOrderWithNewItems = {
+            ...mockOrder,
+            items: [
+                {
+                    ...mockOrderItem,
+                    productId: 2,
+                    quantity: 3,
+                    price: 100 as unknown as Prisma.Decimal,
+                    product: { id: 2, name: "Product 2", price: 100, costprice: 80, remaining: 17 },
+                },
+            ],
+            user: null,
+            staff: { id: 1, fullname: "Test Staff" },
+        };
+
+        function setupItemsUpdateMocks(
+            existingOrder = mockOrderWithItemsForUpdate,
+            newProducts = [mockProduct2],
+            updatedOrder = mockUpdatedOrderWithNewItems,
+        ) {
+            prismaMock.order.findUnique.mockResolvedValueOnce(existingOrder as unknown as Order);
+            prismaMock.product.findMany.mockResolvedValueOnce(newProducts as unknown as Product[]);
+            // In transaction: restore old stock
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            // Delete old items
+            prismaMock.orderItem.deleteMany.mockResolvedValueOnce({ count: 1 });
+            // Create new items + deduct stock
+            prismaMock.orderItem.create.mockResolvedValueOnce({} as never);
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct2 as unknown as Product);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            // Update order
+            prismaMock.order.update.mockResolvedValueOnce(updatedOrder as unknown as Order);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+        }
+
+        test("should update order items with valid data", async () => {
+            // Arrange
+            setupItemsUpdateMocks();
+
+            // Act
+            const result = await OrdersService.updateOrder(
+                1,
+                { items: [{ productId: 2, quantity: 3, price: 100 }] },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data).toBeDefined();
+            expect(prismaMock.orderItem.deleteMany).toHaveBeenCalledWith({
+                where: { orderId: 1 },
+            });
+            expect(prismaMock.orderItem.create).toHaveBeenCalled();
+        });
+
+        test("should restore old stock and deduct new stock when updating items", async () => {
+            // Arrange
+            setupItemsUpdateMocks();
+
+            // Act
+            await OrdersService.updateOrder(
+                1,
+                { items: [{ productId: 2, quantity: 3, price: 100 }] },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert — product.update called twice: restore old (increment) + deduct new (decrement)
+            expect(prismaMock.product.update).toHaveBeenCalledTimes(2);
+            // First call: restore old stock (increment)
+            expect(prismaMock.product.update).toHaveBeenNthCalledWith(1, {
+                where: { id: 1 },
+                data: { remaining: { increment: 2 } },
+            });
+            // Second call: deduct new stock (decrement)
+            expect(prismaMock.product.update).toHaveBeenNthCalledWith(2, {
+                where: { id: 2 },
+                data: { remaining: { decrement: 3 } },
+            });
+        });
+
+        test("should create ProductHistory for both restore and deduct", async () => {
+            // Arrange
+            setupItemsUpdateMocks();
+
+            // Act
+            await OrdersService.updateOrder(
+                1,
+                { items: [{ productId: 2, quantity: 3, price: 100 }] },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert — productHistory.create called twice
+            expect(prismaMock.productHistory.create).toHaveBeenCalledTimes(2);
+            // First: INVENTORY_ADD (restore)
+            expect(prismaMock.productHistory.create).toHaveBeenNthCalledWith(
+                1,
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        operation: "INVENTORY_ADD",
+                        productId: 1,
+                        quantity: 2,
+                    }),
+                }),
+            );
+            // Second: INVENTORY_REMOVE (deduct)
+            expect(prismaMock.productHistory.create).toHaveBeenNthCalledWith(
+                2,
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        operation: "INVENTORY_REMOVE",
+                        productId: 2,
+                        quantity: 3,
+                    }),
+                }),
+            );
+        });
+
+        test("should return error when new items reference non-existent products", async () => {
+            // Arrange
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                mockOrderWithItemsForUpdate as unknown as Order,
+            );
+            prismaMock.product.findMany.mockResolvedValueOnce([]);
+
+            // Act
+            const result = await OrdersService.updateOrder(
+                1,
+                { items: [{ productId: 999, quantity: 1, price: 100 }] },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toContain("Products not found");
+        });
+
+        test("should return INSUFFICIENT_STOCK when new items exceed available stock", async () => {
+            // Arrange
+            const lowStockProduct = { ...mockProduct2, remaining: 1 };
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                mockOrderWithItemsForUpdate as unknown as Order,
+            );
+            prismaMock.product.findMany.mockResolvedValueOnce([
+                lowStockProduct as unknown as Product,
+            ]);
+
+            // Act — requesting 10 of product2 (remaining=1, old stock of product1 doesn't help)
+            const result = await OrdersService.updateOrder(
+                1,
+                { items: [{ productId: 2, quantity: 10, price: 100 }] },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toEqual({
+                code: "INSUFFICIENT_STOCK",
+                message: "One or more products have insufficient stock",
+                details: expect.arrayContaining([
+                    expect.objectContaining({
+                        productId: 2,
+                        requested: 10,
+                    }),
+                ]),
+            });
+        });
+
+        test("should succeed when stock is sufficient after old stock restoration", async () => {
+            // Arrange — old order has 5 of product1 (remaining=0), new order wants 3 of same product
+            const orderWithHighQty = {
+                ...mockOrder,
+                items: [
+                    {
+                        ...mockOrderItem,
+                        quantity: 5,
+                        product: { id: 1, remaining: 0, deletedAt: null },
+                    },
+                ],
+            };
+            // Product1 has remaining=0, but old stock (5) is restored → effective=5 >= 3
+            const product1WithZeroStock = { ...mockProduct, remaining: 0 };
+            prismaMock.order.findUnique.mockResolvedValueOnce(orderWithHighQty as unknown as Order);
+            prismaMock.product.findMany.mockResolvedValueOnce([
+                product1WithZeroStock as unknown as Product,
+            ]);
+            // Transaction mocks
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct); // restore
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.orderItem.deleteMany.mockResolvedValueOnce({ count: 1 });
+            prismaMock.orderItem.create.mockResolvedValueOnce({} as never);
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct); // deduct
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.order.update.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            // Act
+            const result = await OrdersService.updateOrder(
+                1,
+                { items: [{ productId: 1, quantity: 3, price: 100 }] },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert — should succeed because effective remaining (0+5=5) >= 3
+            expectSuccess(result);
+        });
+
+        test("should not restore stock for deleted products when replacing items", async () => {
+            // Arrange
+            const orderWithDeletedProduct = {
+                ...mockOrder,
+                items: [
+                    {
+                        ...mockOrderItem,
+                        product: { id: 1, remaining: 10, deletedAt: new Date() },
+                    },
+                ],
+            };
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                orderWithDeletedProduct as unknown as Order,
+            );
+            prismaMock.product.findMany.mockResolvedValueOnce([mockProduct2 as unknown as Product]);
+            // No restore calls — skip to delete + create
+            prismaMock.orderItem.deleteMany.mockResolvedValueOnce({ count: 1 });
+            prismaMock.orderItem.create.mockResolvedValueOnce({} as never);
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct2 as unknown as Product);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.order.update.mockResolvedValueOnce(
+                mockUpdatedOrderWithNewItems as unknown as Order,
+            );
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            // Act
+            await OrdersService.updateOrder(
+                1,
+                { items: [{ productId: 2, quantity: 3, price: 100 }] },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert — product.update called only once (deduct new), not for restore
+            expect(prismaMock.product.update).toHaveBeenCalledTimes(1);
+            expect(prismaMock.productHistory.create).toHaveBeenCalledTimes(1);
+        });
+
+        test("should leave items unchanged when items field is omitted", async () => {
+            // Arrange
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                mockOrderWithItemsForUpdate as unknown as Order,
+            );
+            prismaMock.order.update.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            // Act
+            const result = await OrdersService.updateOrder(
+                1,
+                { comment: "updated comment" },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert — no item operations
+            expectSuccess(result);
+            expect(prismaMock.orderItem.deleteMany).not.toHaveBeenCalled();
+            expect(prismaMock.orderItem.create).not.toHaveBeenCalled();
+            expect(prismaMock.product.findMany).not.toHaveBeenCalled();
+        });
+
+        test("should update comment and items simultaneously", async () => {
+            // Arrange
+            setupItemsUpdateMocks();
+
+            // Act
+            const result = await OrdersService.updateOrder(
+                1,
+                {
+                    comment: "new comment",
+                    items: [{ productId: 2, quantity: 3, price: 100 }],
+                },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert
+            expectSuccess(result);
+            expect(prismaMock.order.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({ comment: "new comment" }),
+                }),
+            );
+            expect(prismaMock.orderItem.deleteMany).toHaveBeenCalled();
+            expect(prismaMock.orderItem.create).toHaveBeenCalled();
+        });
     });
 
     describe("deleteOrder", () => {

@@ -109,7 +109,13 @@ export const orders = new Elysia({ prefix: "/orders" })
                 );
 
                 if (!result.success) {
-                    set.status = result.error === "Forbidden" ? 403 : 404;
+                    if (result.error === "Forbidden") {
+                        set.status = 403;
+                    } else if (result.error === "Order not found") {
+                        set.status = 404;
+                    } else {
+                        set.status = 400;
+                    }
                 }
 
                 return result;

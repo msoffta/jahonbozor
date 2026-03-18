@@ -421,7 +421,7 @@ describe("DataTable", () => {
 
     // ── Error cases ────────────────────────────────────────────
     test("should show validation error for invalid inline edit value", async () => {
-        const { z } = await import("zod");
+        const z = (await import("zod")).default;
         const user = userEvent.setup();
         const onCellEdit = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
@@ -460,7 +460,7 @@ describe("DataTable", () => {
     });
 
     test("should not call onNewRowSave when required fields are invalid", async () => {
-        const { z } = await import("zod");
+        const z = (await import("zod")).default;
         const user = userEvent.setup();
         const onNewRowSave = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [

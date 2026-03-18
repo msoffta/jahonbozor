@@ -1,7 +1,7 @@
 {
   "app_name": "Jahonbozor Admin",
   "loading": "Yuklanmoqda...",
-  "error": "Xatolik yuz berdi",
+  "error": "Xatolik yuz berdi, qayta urinib ko'ring",
   "save": "Saqlash",
   "cancel": "Bekor qilish",
   "delete": "O'chirish",

@@ -1313,6 +1313,107 @@ describe("useMultiRowState", () => {
         });
     });
 
+    // ── Click navigation (Tab-like behavior) ───────────────────
+    describe("click navigation (Tab-like blur)", () => {
+        test("uses saveAndLoop when focus moves to another new row", async () => {
+            const onSave = vi.fn().mockResolvedValue("saved-id");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                defaultValues: { name: "", quantity: 0 },
+                onSave,
+            });
+
+            const row0Id = result.current.rowStates[0].id;
+            const row1Id = result.current.rowStates[1].id;
+
+            // Fill row 0
+            await act(async () => {
+                result.current.handleChange(row0Id, { name: "Product A", quantity: 5 });
+            });
+
+            // Simulate click on row 1: focus row 1, then blur row 0
+            await act(async () => {
+                result.current.handleFocus(row1Id);
+            });
+            await act(async () => {
+                result.current.handleBlur(row0Id);
+            });
+
+            // Advance past BLUR_SAVE_DELAY_MS + let saveAndLoop resolve
+            await act(async () => {
+                vi.advanceTimersByTime(200);
+            });
+
+            // Row 0 should be saved AND reset (saveAndLoop behavior, like Tab)
+            expect(onSave).toHaveBeenCalledWith(
+                { name: "Product A", quantity: 5 },
+                row0Id,
+                undefined,
+            );
+            expect(result.current.rowStates[0].values).toEqual({ name: "", quantity: 0 });
+            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+        });
+
+        test("uses regular handleSave when focus leaves all new rows", async () => {
+            const onSave = vi.fn().mockResolvedValue("saved-id");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 2,
+                defaultValues: { name: "" },
+                onSave,
+            });
+
+            const row0Id = result.current.rowStates[0].id;
+
+            // Fill row 0 and focus it
+            await act(async () => {
+                result.current.handleFocus(row0Id);
+            });
+            await act(async () => {
+                result.current.handleChange(row0Id, { name: "Product" });
+            });
+
+            // Blur without focusing another new row (focus leaves entirely)
+            await act(async () => {
+                result.current.handleBlur(row0Id);
+            });
+            await act(async () => {
+                vi.advanceTimersByTime(200);
+            });
+
+            // Should still save via regular handleSave
+            expect(onSave).toHaveBeenCalledWith({ name: "Product" }, row0Id, undefined);
+        });
+
+        test("does not saveAndLoop empty row on click navigation", async () => {
+            const onSave = vi.fn().mockResolvedValue("saved-id");
+
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                defaultValues: { name: "" },
+                onSave,
+            });
+
+            const row0Id = result.current.rowStates[0].id;
+            const row1Id = result.current.rowStates[1].id;
+
+            // Focus row 1 without changing row 0 (row 0 is empty)
+            await act(async () => {
+                result.current.handleFocus(row1Id);
+            });
+            await act(async () => {
+                result.current.handleBlur(row0Id);
+            });
+            await act(async () => {
+                vi.advanceTimersByTime(200);
+            });
+
+            // Empty row → saveAndLoop returns false → no save called
+            expect(onSave).not.toHaveBeenCalled();
+        });
+    });
+
     // ── Return value shape ───────────────────────────────────────
     describe("return value", () => {
         test("returns all expected handler functions", async () => {

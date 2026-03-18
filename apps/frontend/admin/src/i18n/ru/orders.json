@@ -38,9 +38,11 @@
   "all_clients": "Все клиенты",
   "total_sum": "Итого",
   "save_list": "Сохранить список",
+  "items_saved": "Позиции сохранены",
   "min_items_required": "Добавьте минимум 2 позиции",
   "error_product_required": "Пожалуйста, выберите товар",
   "back_to_lists": "Назад к спискам",
   "order_comment": "Комментарий",
-  "error_debt_requires_user": "Для оплаты в долг необходимо выбрать клиента"
+  "error_debt_requires_user": "Для оплаты в долг необходимо выбрать клиента",
+  "insufficient_stock": "Недостаточно товара"
 }
