@@ -12,6 +12,7 @@ import {
     DataTableSkeleton,
     motion,
     PageTransition,
+    useIsMobile,
 } from "@jahonbozor/ui";
 
 import { categoriesListQueryOptions, useCreateCategory } from "@/api/categories.api";
@@ -87,6 +88,13 @@ function ProductsPage() {
 
     const products = productsData?.products ?? [];
 
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile ? { costprice: false, category: false, status: false, createdAt: false } : {},
+        [isMobile],
+    );
+
     const handleCellEdit = useCallback(
         async (rowIndex: number, columnId: string, value: unknown) => {
             const product = products[rowIndex];
@@ -143,9 +151,9 @@ function ProductsPage() {
     const isLoading = isProductsLoading || !isReady;
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
-            <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-2xl font-bold">{t("common:products")}</h1>
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex items-center justify-between md:mb-6">
+                <h1 className="text-xl font-bold md:text-2xl">{t("common:products")}</h1>
                 <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <Checkbox
                         checked={includeDeleted}
@@ -176,6 +184,7 @@ function ProductsPage() {
                         <DataTable
                             className="costprice-table flex-1"
                             columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
                             data={products}
                             pagination
                             defaultPageSize={20}

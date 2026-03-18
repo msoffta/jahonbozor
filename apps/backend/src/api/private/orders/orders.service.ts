@@ -32,7 +32,6 @@ export abstract class OrdersService {
                 userId,
                 staffId: filterStaffId,
                 paymentType,
-                status,
                 dateFrom,
                 dateTo,
                 itemsCount,
@@ -44,7 +43,6 @@ export abstract class OrdersService {
             const whereClause: Prisma.OrderWhereInput = {
                 deletedAt: null,
                 ...(paymentType && { paymentType }),
-                ...(status && { status }),
                 ...((dateFrom ?? dateTo) && {
                     createdAt: {
                         ...(dateFrom && { gte: dateFrom }),
@@ -292,7 +290,6 @@ export abstract class OrdersService {
                         userId: orderData.userId ?? null,
                         staffId,
                         paymentType: orderData.paymentType,
-                        status: "NEW",
                         comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
@@ -420,18 +417,12 @@ export abstract class OrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
-            const isStatusChange = orderData.status && orderData.status !== existingOrder.status;
-            const auditAction = isStatusChange ? "ORDER_STATUS_CHANGE" : "UPDATE";
-
             const [updatedOrder] = await prisma.$transaction(async (transaction) => {
                 const order = await transaction.order.update({
                     where: { id: orderId },
                     data: {
                         ...(orderData.paymentType && {
                             paymentType: orderData.paymentType,
-                        }),
-                        ...(orderData.status && {
-                            status: orderData.status,
                         }),
                         ...(orderData.comment !== undefined && {
                             comment: orderData.comment,
@@ -471,7 +462,7 @@ export abstract class OrdersService {
                     {
                         entityType: "order",
                         entityId: orderId,
-                        action: auditAction,
+                        action: "UPDATE",
                         previousData: createOrderSnapshot(existingOrder),
                         newData: createOrderSnapshot(order),
                     },

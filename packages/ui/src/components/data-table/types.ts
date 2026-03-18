@@ -140,6 +140,9 @@ export interface DataTableProps<TData> {
     onRowSelectionChange?: (selection: Record<string, boolean>) => void;
     onRowClick?: (row: TData) => void;
 
+    // Column visibility
+    initialColumnVisibility?: Record<string, boolean>;
+
     // Styling
     className?: string;
 

@@ -12,6 +12,7 @@ import {
     motion,
     PageTransition,
     toast,
+    useIsMobile,
 } from "@jahonbozor/ui";
 
 import { clientsListQueryOptions } from "@/api/clients.api";
@@ -84,11 +85,8 @@ function OrdersPage() {
                 setDeleteTargetId(id);
                 setDeleteConfirmOpen(true);
             },
-            onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => {
-                updateOrder.mutate({ id, status });
-            },
         }),
-        [updateOrder],
+        [],
     );
 
     const columns = useMemo(() => {
@@ -97,6 +95,23 @@ function OrdersPage() {
     }, [t, actions, products, users, isReady, canDelete]);
 
     const orders = ordersData?.orders ?? [];
+
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile
+                ? {
+                      price: false,
+                      remaining: false,
+                      paymentType: false,
+                      user: false,
+                      createdAt: false,
+                      costprice: false,
+                      comment: false,
+                  }
+                : {},
+        [isMobile],
+    );
 
     const handleCellEdit = useCallback(
         async (rowIndex: number, columnId: string, value: unknown) => {
@@ -226,9 +241,9 @@ function OrdersPage() {
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
-            <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex items-center justify-between md:mb-6">
+                <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
             </div>
 
             <AnimatePresence mode="wait">
@@ -252,6 +267,7 @@ function OrdersPage() {
                         <DataTable
                             className="costprice-table flex-1"
                             columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
                             data={orders}
                             pagination
                             defaultPageSize={20}

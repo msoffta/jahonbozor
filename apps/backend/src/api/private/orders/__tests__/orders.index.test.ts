@@ -12,7 +12,6 @@ const mockOrderWithRelations = {
     userId: null,
     staffId: 1,
     paymentType: "CASH",
-    status: "NEW",
     comment: null,
     data: {},
     items: [
@@ -71,7 +70,6 @@ const createTestApp = () => {
                     userId: query.userId ? Number(query.userId) : undefined,
                     staffId: query.staffId ? Number(query.staffId) : undefined,
                     paymentType: query.paymentType as "CASH" | "CREDIT_CARD" | undefined,
-                    status: query.status as "NEW" | "ACCEPTED" | undefined,
                 },
                 user.id,
                 permissions,
@@ -94,7 +92,7 @@ const createTestApp = () => {
         .patch("/orders/:id", async ({ params, body, user, permissions, logger, requestId }) => {
             return await OrdersService.updateOrder(
                 Number(params.id),
-                body as { paymentType?: "CASH" | "CREDIT_CARD"; status?: "NEW" | "ACCEPTED" },
+                body as { paymentType?: "CASH" | "CREDIT_CARD" },
                 { staffId: user.id, user, requestId },
                 permissions,
                 logger,
@@ -157,30 +155,6 @@ describe("Orders API Routes", () => {
             expect(body.success).toBe(true);
             expect(spy).toHaveBeenCalledWith(
                 expect.objectContaining({ paymentType: "CASH" }),
-                expect.any(Number),
-                expect.any(Array),
-                expect.anything(),
-            );
-
-            spy.mockRestore();
-        });
-
-        test("should apply status filter", async () => {
-            // Arrange
-            const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
-                success: true,
-                data: { count: 1, orders: [mockOrderWithRelations] },
-            });
-
-            // Act
-            const response = await app.handle(new Request("http://localhost/orders?status=NEW"));
-            const body = await response.json();
-
-            // Assert
-            expect(response.status).toBe(200);
-            expect(body.success).toBe(true);
-            expect(spy).toHaveBeenCalledWith(
-                expect.objectContaining({ status: "NEW" }),
                 expect.any(Number),
                 expect.any(Array),
                 expect.anything(),
@@ -325,9 +299,9 @@ describe("Orders API Routes", () => {
     });
 
     describe("PATCH /orders/:id", () => {
-        test("should update order status", async () => {
+        test("should update order paymentType", async () => {
             // Arrange
-            const updatedOrder = { ...mockOrderWithRelations, status: "ACCEPTED" };
+            const updatedOrder = { ...mockOrderWithRelations, paymentType: "CREDIT_CARD" };
             const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
                 success: true,
                 data: updatedOrder,
@@ -338,7 +312,7 @@ describe("Orders API Routes", () => {
                 new Request("http://localhost/orders/1", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "ACCEPTED" }),
+                    body: JSON.stringify({ paymentType: "CREDIT_CARD" }),
                 }),
             );
             const body = await response.json();
@@ -346,7 +320,7 @@ describe("Orders API Routes", () => {
             // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
-            expect(body.data.status).toBe("ACCEPTED");
+            expect(body.data.paymentType).toBe("CREDIT_CARD");
 
             spy.mockRestore();
         });
@@ -363,7 +337,7 @@ describe("Orders API Routes", () => {
                 new Request("http://localhost/orders/999", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "ACCEPTED" }),
+                    body: JSON.stringify({ paymentType: "CREDIT_CARD" }),
                 }),
             );
             const body = await response.json();
@@ -387,7 +361,7 @@ describe("Orders API Routes", () => {
                 new Request("http://localhost/orders/1", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "ACCEPTED" }),
+                    body: JSON.stringify({ paymentType: "CREDIT_CARD" }),
                 }),
             );
             const body = await response.json();
@@ -537,14 +511,14 @@ describe("Orders Service Integration", () => {
             new Request("http://localhost/orders/1", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "ACCEPTED" }),
+                body: JSON.stringify({ paymentType: "CREDIT_CARD" }),
             }),
         );
 
         // Assert
         expect(spy).toHaveBeenCalledWith(
             1,
-            { status: "ACCEPTED" },
+            { paymentType: "CREDIT_CARD" },
             expect.objectContaining({ staffId: 1, requestId: "test-request-id" }),
             expect.any(Array),
             expect.anything(),

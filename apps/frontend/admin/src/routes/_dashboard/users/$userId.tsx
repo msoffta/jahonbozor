@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ArrowLeft, Banknote, CreditCard, Package, ShoppingCart, Wallet } from "lucide-react";
+import { ArrowLeft, Banknote, CreditCard, ShoppingCart, Wallet } from "lucide-react";
 
 import { hasPermission, Permission } from "@jahonbozor/schemas";
 import {
@@ -15,6 +15,7 @@ import {
     DataTableSkeleton,
     motion,
     PageTransition,
+    useIsMobile,
 } from "@jahonbozor/ui";
 
 import { clientDetailQueryOptions } from "@/api/clients.api";
@@ -38,23 +39,6 @@ function getSimpleOrderColumns(t: TFunction): ColumnDef<AdminOrderItem, unknown>
             header: t("orders:order_id"),
             size: 60,
             meta: { align: "center" as const },
-        },
-        {
-            accessorKey: "status",
-            header: t("orders:order_status"),
-            size: 100,
-            cell: ({ getValue }) => {
-                const status = getValue<string>();
-                const variant =
-                    status === "ACCEPTED"
-                        ? "default"
-                        : status === "CANCELLED"
-                          ? "destructive"
-                          : "outline";
-                return (
-                    <Badge variant={variant}>{t(`orders:status_${status.toLowerCase()}`)}</Badge>
-                );
-            },
         },
         {
             accessorKey: "paymentType",
@@ -118,6 +102,12 @@ function UserDetailPage() {
 
     const orderColumns = useMemo(() => getSimpleOrderColumns(t), [t]);
 
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> => (isMobile ? { paymentType: false, itemsCount: false } : {}),
+        [isMobile],
+    );
+
     const totalSpent = useMemo(
         () =>
             orders.reduce(
@@ -130,14 +120,9 @@ function UserDetailPage() {
         [orders],
     );
 
-    const acceptedCount = useMemo(
-        () => orders.filter((o) => o.status === "ACCEPTED").length,
-        [orders],
-    );
-
     if (isLoading) {
         return (
-            <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+            <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
                 <DataTableSkeleton columns={6} rows={5} className="flex-1" />
             </PageTransition>
         );
@@ -145,33 +130,33 @@ function UserDetailPage() {
 
     if (!user) {
         return (
-            <PageTransition className="p-6">
+            <PageTransition className="p-3 md:p-6">
                 <p className="text-muted-foreground">{t("clients_empty")}</p>
             </PageTransition>
         );
     }
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3 md:gap-6 md:p-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                     <motion.button
                         type="button"
                         onClick={() => navigate({ to: "/users" })}
-                        className="border-border text-muted-foreground hover:text-foreground flex h-9 w-9 items-center justify-center rounded-lg border"
+                        className="border-border text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
                         whileTap={{ scale: 0.9 }}
                         aria-label={t("common:back")}
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </motion.button>
                     <div>
-                        <h1 className="text-2xl font-bold">{user.fullname}</h1>
-                        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                        <h1 className="text-xl font-bold md:text-2xl">{user.fullname}</h1>
+                        <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
                             <span>@{user.username}</span>
                             <span>&middot;</span>
                             <span>{user.phone ?? t("detail_phone_none")}</span>
-                            <span>&middot;</span>
+                            <span className="hidden sm:inline">&middot;</span>
                             <span>
                                 {t("detail_registered")}{" "}
                                 {format(new Date(user.createdAt), "dd.MM.yyyy")}
@@ -199,12 +184,6 @@ function UserDetailPage() {
                     iconColor="text-emerald-500"
                 />
                 <StatCard
-                    title={t("detail_accepted_orders")}
-                    value={acceptedCount}
-                    icon={Package}
-                    iconColor="text-violet-500"
-                />
-                <StatCard
                     title={t("detail_debt_balance")}
                     value={
                         debtSummary?.balance
@@ -228,7 +207,7 @@ function UserDetailPage() {
                         {debtOrders.map((debtOrder) => (
                             <motion.div
                                 key={debtOrder.orderId}
-                                className="border-border flex items-center justify-between rounded-lg border p-3"
+                                className="border-border flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                                 whileHover={{ backgroundColor: "rgba(0,0,0,0.02)" }}
                             >
                                 <div className="flex items-center gap-4">
@@ -301,6 +280,7 @@ function UserDetailPage() {
                         <DataTable
                             className="flex-1"
                             columns={orderColumns}
+                            initialColumnVisibility={initialColumnVisibility}
                             data={orders}
                             pagination
                             defaultPageSize={10}

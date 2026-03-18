@@ -38,7 +38,6 @@ export interface DebtOrderItem {
     orderTotal: number;
     paidAmount: number;
     remainingAmount: number;
-    status: string;
     createdAt: Date | string;
     payments: DebtPaymentItem[];
 }

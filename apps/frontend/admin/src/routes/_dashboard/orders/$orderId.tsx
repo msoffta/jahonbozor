@@ -12,11 +12,13 @@ import {
     Button,
     DataTable,
     DataTableSkeleton,
+    Input,
     motion,
     PageTransition,
+    useIsMobile,
 } from "@jahonbozor/ui";
 
-import { orderDetailQueryOptions, useDeleteOrder } from "@/api/orders.api";
+import { orderDetailQueryOptions, useDeleteOrder, useUpdateOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
@@ -32,8 +34,9 @@ function OrderDetailPage() {
     const translations = useDataTableTranslations("no_items");
     const numericId = Number(orderId);
 
-    // Permission check for delete action
+    // Permission checks
     const canDelete = useHasPermission(Permission.ORDERS_DELETE);
+    const canUpdate = useHasPermission(Permission.ORDERS_UPDATE_OWN);
 
     const { data: order, isLoading } = useQuery(orderDetailQueryOptions(numericId));
 
@@ -42,10 +45,27 @@ function OrderDetailPage() {
     );
 
     const deleteOrder = useDeleteOrder();
+    const updateOrder = useUpdateOrder();
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const serverComment = order?.comment ?? "";
+    const [editComment, setEditComment] = useState(serverComment);
+    const [prevServerComment, setPrevServerComment] = useState(serverComment);
+
+    if (serverComment !== prevServerComment) {
+        setPrevServerComment(serverComment);
+        setEditComment(serverComment);
+    }
+
     const products = productsData?.products ?? [];
 
     const columns = useMemo(() => getOrderItemColumns(t, products), [t, products]);
+
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile ? { price: false, remaining: false, costprice: false } : {},
+        [isMobile],
+    );
 
     const orderItems = useMemo(() => {
         if (!order?.items) return [];
@@ -66,7 +86,7 @@ function OrderDetailPage() {
 
     if (isLoading) {
         return (
-            <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+            <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
                 <DataTableSkeleton columns={6} rows={5} className="flex-1" />
             </PageTransition>
         );
@@ -74,47 +94,59 @@ function OrderDetailPage() {
 
     if (!order) {
         return (
-            <PageTransition className="p-6">
+            <PageTransition className="p-3 md:p-6">
                 <p className="text-muted-foreground">{t("orders_empty")}</p>
             </PageTransition>
         );
     }
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
             {/* Header */}
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
                     <motion.button
                         type="button"
                         onClick={() => navigate({ to: "/orders" })}
-                        className="border-border text-muted-foreground hover:text-foreground flex h-9 w-9 items-center justify-center rounded-lg border"
+                        className="border-border text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
                         whileTap={{ scale: 0.9 }}
                         aria-label={t("common:back")}
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </motion.button>
                     <div>
-                        <h1 className="text-2xl font-bold">
+                        <h1 className="text-xl font-bold md:text-2xl">
                             {t("lists_title")} #{order.id}
                         </h1>
-                        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                        <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
                             {order.user && <span>{order.user.fullname}</span>}
                             <span>·</span>
                             <span>{format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}</span>
                         </div>
-                        {order.comment && (
-                            <p className="text-muted-foreground mt-1 text-sm italic">
-                                {order.comment}
-                            </p>
+                        {canUpdate ? (
+                            <Input
+                                placeholder={t("order_comment")}
+                                value={editComment}
+                                onChange={(e) => setEditComment(e.target.value)}
+                                onBlur={() => {
+                                    const newComment = editComment.trim() || null;
+                                    if (newComment !== (order.comment ?? null)) {
+                                        updateOrder.mutate({ id: order.id, comment: newComment });
+                                    }
+                                }}
+                                className="mt-1 h-8 text-sm italic"
+                            />
+                        ) : (
+                            order.comment && (
+                                <p className="text-muted-foreground mt-1 text-sm italic">
+                                    {order.comment}
+                                </p>
+                            )
                         )}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <Badge variant={order.status === "ACCEPTED" ? "default" : "outline"}>
-                        {t(`status_${order.status.toLowerCase()}`)}
-                    </Badge>
+                <div className="flex items-center gap-2 md:gap-3">
                     <Badge variant="secondary">
                         {t(`payment_${order.paymentType.toLowerCase()}`)}
                     </Badge>
@@ -148,6 +180,7 @@ function OrderDetailPage() {
             <DataTable
                 className="costprice-table flex-1"
                 columns={columns}
+                initialColumnVisibility={initialColumnVisibility}
                 data={orderItems}
                 enableSorting={false}
                 translations={translations}

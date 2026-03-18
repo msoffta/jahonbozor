@@ -10,7 +10,6 @@ const mockOrderWithRelations = {
     userId: 1,
     staffId: null,
     paymentType: "CASH",
-    status: "NEW",
     comment: null,
     data: {},
     items: [
@@ -24,6 +23,7 @@ const mockOrderWithRelations = {
             product: { id: 1, name: "Test Product", price: 100 },
         },
     ],
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -83,7 +83,6 @@ const createTestApp = (userType: "user" | "staff" = "user") => {
                     sortOrder: "asc" as const,
                     searchQuery: "",
                     paymentType: query.paymentType as "CASH" | "CREDIT_CARD" | undefined,
-                    status: query.status as "NEW" | "ACCEPTED" | undefined,
                 },
                 logger,
             );
@@ -94,7 +93,7 @@ const createTestApp = (userType: "user" | "staff" = "user") => {
             }
             return await PublicOrdersService.getUserOrder(Number(params.id), user.id, logger);
         })
-        .patch("/orders/:id/cancel", async ({ params, user, type, logger, requestId }) => {
+        .delete("/orders/:id", async ({ params, user, type, logger, requestId }) => {
             if (type !== "user") {
                 return { success: false, error: "Only users can cancel orders via public API" };
             }
@@ -236,7 +235,7 @@ describe("Public Orders API Routes", () => {
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders?paymentType=CASH&status=NEW"),
+                new Request("http://localhost/orders?paymentType=CASH"),
             );
             const body = await response.json();
 
@@ -245,7 +244,7 @@ describe("Public Orders API Routes", () => {
             expect(body.success).toBe(true);
             expect(spy).toHaveBeenCalledWith(
                 1,
-                expect.objectContaining({ paymentType: "CASH", status: "NEW" }),
+                expect.objectContaining({ paymentType: "CASH" }),
                 expect.anything(),
             );
 
@@ -326,27 +325,25 @@ describe("Public Orders API Routes", () => {
         });
     });
 
-    describe("PATCH /orders/:id/cancel", () => {
-        const mockCancelledOrder = { ...mockOrderWithRelations, status: "CANCELLED" };
-
-        test("should cancel order for user", async () => {
+    describe("DELETE /orders/:id", () => {
+        test("should delete order for user", async () => {
             // Arrange
             const app = createTestApp("user");
             const spy = vi.spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
                 success: true,
-                data: mockCancelledOrder,
+                data: { orderId: 1, deleted: true },
             });
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/1", { method: "DELETE" }),
             );
             const body = await response.json();
 
             // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
-            expect(body.data.status).toBe("CANCELLED");
+            expect(body.data).toEqual({ orderId: 1, deleted: true });
 
             spy.mockRestore();
         });
@@ -357,7 +354,7 @@ describe("Public Orders API Routes", () => {
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/1", { method: "DELETE" }),
             );
             const body = await response.json();
 
@@ -376,7 +373,7 @@ describe("Public Orders API Routes", () => {
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/999/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/999", { method: "DELETE" }),
             );
             const body = await response.json();
 
@@ -397,7 +394,7 @@ describe("Public Orders API Routes", () => {
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/1", { method: "DELETE" }),
             );
             const body = await response.json();
 
@@ -408,23 +405,23 @@ describe("Public Orders API Routes", () => {
             spy.mockRestore();
         });
 
-        test("should return error when order status is not NEW", async () => {
+        test("should return error when order is already deleted", async () => {
             // Arrange
             const app = createTestApp("user");
             const spy = vi.spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
                 success: false,
-                error: "Only NEW orders can be cancelled",
+                error: "Order not found",
             });
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/1", { method: "DELETE" }),
             );
             const body = await response.json();
 
             // Assert
             expect(body.success).toBe(false);
-            expect(body.error).toBe("Only NEW orders can be cancelled");
+            expect(body.error).toBe("Order not found");
 
             spy.mockRestore();
         });
@@ -434,11 +431,11 @@ describe("Public Orders API Routes", () => {
             const app = createTestApp("user");
             const spy = vi.spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
                 success: true,
-                data: mockCancelledOrder,
+                data: { orderId: 42, deleted: true },
             });
 
             // Act
-            await app.handle(new Request("http://localhost/orders/42/cancel", { method: "PATCH" }));
+            await app.handle(new Request("http://localhost/orders/42", { method: "DELETE" }));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(

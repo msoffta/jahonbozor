@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { OrderStatus, PaymentType } from "../common/enums";
+import { PaymentType } from "../common/enums";
 import { PaginationQuery } from "../common/pagination.model";
 import { Order, OrderItem } from "./orders.model";
 
@@ -18,7 +18,6 @@ export const CreateOrderBody = Order.omit({
     createdAt: true,
     updatedAt: true,
     staffId: true,
-    status: true,
     items: true,
 }).extend({
     userId: z.number().nullish(),
@@ -29,7 +28,6 @@ export const CreateOrderBody = Order.omit({
 
 export const UpdateOrderBody = Order.pick({
     paymentType: true,
-    status: true,
     comment: true,
     data: true,
 }).partial();
@@ -38,7 +36,6 @@ export const OrdersPagination = PaginationQuery.extend({
     userId: z.coerce.number().optional(),
     staffId: z.coerce.number().optional(),
     paymentType: PaymentType.optional(),
-    status: OrderStatus.optional(),
     dateFrom: z.string().datetime().optional(),
     dateTo: z.string().datetime().optional(),
     itemsCount: z.coerce.number().optional(),
@@ -73,7 +70,6 @@ export interface OrderItemResponse {
 export interface UserOrderItem {
     id: number;
     paymentType: string;
-    status: string;
     comment: string | null;
     createdAt: Date | string;
     updatedAt: Date | string;
@@ -86,7 +82,10 @@ export type UserOrdersListResponse = ReturnSchema<{
 }>;
 export type UserOrderDetailResponse = ReturnSchema<UserOrderItem>;
 export type UserOrderCreateResponse = ReturnSchema<UserOrderItem>;
-export type UserOrderCancelResponse = ReturnSchema<UserOrderItem>;
+export type UserOrderDeleteResponse = ReturnSchema<{
+    orderId: number;
+    deleted: boolean;
+}>;
 
 // Admin API responses
 export interface AdminOrderItem extends UserOrderItem {

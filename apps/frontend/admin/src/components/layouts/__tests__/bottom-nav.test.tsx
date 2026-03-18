@@ -89,7 +89,7 @@ describe("BottomNav", () => {
             "orders:list:all": true,
         };
 
-        const { getAllByRole, getByText } = render(<BottomNav />);
+        const { getAllByRole, getAllByText } = render(<BottomNav />);
         const links = getAllByRole("link");
         const hrefs = links.map((l) => l.getAttribute("href"));
 
@@ -102,9 +102,9 @@ describe("BottomNav", () => {
         expect(hrefs).toContain("/products");
         expect(hrefs).toContain("/summary");
 
-        // Action buttons should be visible
-        expect(getByText("list")).toBeDefined();
-        expect(getByText("+")).toBeDefined();
+        // Action buttons should be visible (nav pills render twice: mobile + desktop rows)
+        expect(getAllByText("list").length).toBeGreaterThanOrEqual(1);
+        expect(getAllByText("+").length).toBeGreaterThanOrEqual(1);
     });
 
     test("should have correct link paths with all permissions", () => {
@@ -145,12 +145,13 @@ describe("BottomNav", () => {
             "products:list": true,
         };
 
-        const { getByText, queryByText } = render(<BottomNav />);
+        const { getAllByText, queryByText } = render(<BottomNav />);
 
-        expect(getByText("income")).toBeDefined();
-        expect(getByText("clients")).toBeDefined();
-        expect(getByText("expense")).toBeDefined();
-        expect(getByText("warehouse")).toBeDefined();
+        // Nav pills render in both mobile and desktop rows
+        expect(getAllByText("income").length).toBeGreaterThanOrEqual(1);
+        expect(getAllByText("clients").length).toBeGreaterThanOrEqual(1);
+        expect(getAllByText("expense").length).toBeGreaterThanOrEqual(1);
+        expect(getAllByText("warehouse").length).toBeGreaterThanOrEqual(1);
         // Summary is hidden without ANALYTICS_VIEW permission
         expect(queryByText("summary")).toBeNull();
     });
@@ -184,8 +185,8 @@ describe("BottomNav", () => {
 
     test("should show income nav with PRODUCT_HISTORY_LIST permission", () => {
         permissionMocks = { "product-history:list": true };
-        const { getByText } = render(<BottomNav />);
-        expect(getByText("income")).toBeDefined();
+        const { getAllByText } = render(<BottomNav />);
+        expect(getAllByText("income").length).toBeGreaterThanOrEqual(1);
     });
 
     test("should hide users nav without USERS_LIST permission", () => {
@@ -195,8 +196,8 @@ describe("BottomNav", () => {
 
     test("should show users nav with USERS_LIST permission", () => {
         permissionMocks = { "users:list": true };
-        const { getByText } = render(<BottomNav />);
-        expect(getByText("clients")).toBeDefined();
+        const { getAllByText } = render(<BottomNav />);
+        expect(getAllByText("clients").length).toBeGreaterThanOrEqual(1);
     });
 
     test("should hide expenses nav without EXPENSES_LIST permission", () => {
@@ -206,8 +207,8 @@ describe("BottomNav", () => {
 
     test("should show expenses nav with EXPENSES_LIST permission", () => {
         permissionMocks = { "expenses:list": true };
-        const { getByText } = render(<BottomNav />);
-        expect(getByText("expense")).toBeDefined();
+        const { getAllByText } = render(<BottomNav />);
+        expect(getAllByText("expense").length).toBeGreaterThanOrEqual(1);
     });
 
     test("should hide products nav without PRODUCTS_LIST permission", () => {
@@ -217,8 +218,8 @@ describe("BottomNav", () => {
 
     test("should show products nav with PRODUCTS_LIST permission", () => {
         permissionMocks = { "products:list": true };
-        const { getByText } = render(<BottomNav />);
-        expect(getByText("warehouse")).toBeDefined();
+        const { getAllByText } = render(<BottomNav />);
+        expect(getAllByText("warehouse").length).toBeGreaterThanOrEqual(1);
     });
 
     test("should hide summary nav without ANALYTICS_VIEW permission", () => {
@@ -228,8 +229,8 @@ describe("BottomNav", () => {
 
     test("should show summary nav with ANALYTICS_VIEW permission", () => {
         permissionMocks = { "analytics:view": true };
-        const { getByText } = render(<BottomNav />);
-        expect(getByText("summary")).toBeDefined();
+        const { getAllByText } = render(<BottomNav />);
+        expect(getAllByText("summary").length).toBeGreaterThanOrEqual(1);
     });
 
     test("should apply active styles to home when on /", () => {

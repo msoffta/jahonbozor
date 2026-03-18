@@ -4,19 +4,12 @@ enum PaymentType {
   DEBT
 }
 
-enum OrderStatus {
-  NEW
-  ACCEPTED
-  CANCELLED
-}
-
 model Order {
   id          Int         @id @default(autoincrement())
   userId      Int?
   staffId     Int?
   items       OrderItem[]
   paymentType PaymentType
-  status      OrderStatus @default(NEW)
   comment     String?
   data        Json
   deletedAt   DateTime?
@@ -30,7 +23,6 @@ model Order {
 
   @@index([userId])
   @@index([staffId])
-  @@index([status])
   @@index([deletedAt])
 }
 

@@ -5,7 +5,6 @@ import { useCartStore } from "@/stores/cart.store";
 const mockOrder = {
     id: 1,
     paymentType: "CASH",
-    status: "NEW",
     comment: null,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
@@ -59,7 +58,7 @@ describe("orders.api", () => {
         });
 
         test("should have correct list key with params", () => {
-            const params = { page: 1, status: "NEW" };
+            const params = { page: 1 };
             expect(orderKeys.list(params)).toEqual(["orders", "list", params]);
         });
 
@@ -70,13 +69,13 @@ describe("orders.api", () => {
 
     describe("ordersListOptions", () => {
         test("should have correct queryKey with params", () => {
-            const params = { page: 2, status: "ACCEPTED" as const };
+            const params = { page: 2 };
             const options = ordersListOptions(params);
             expect([...options.queryKey]).toEqual(["orders", "list", params]);
         });
 
         test("queryFn should call api with correct query params", async () => {
-            const params = { page: 3, limit: 10, status: "NEW" as const };
+            const params = { page: 3, limit: 10 };
             const options = ordersListOptions(params);
             await options.queryFn!({} as never);
 
@@ -87,7 +86,6 @@ describe("orders.api", () => {
                     searchQuery: "",
                     sortBy: "id",
                     sortOrder: "asc",
-                    status: "NEW",
                 },
             });
         });
@@ -103,7 +101,6 @@ describe("orders.api", () => {
                     searchQuery: "",
                     sortBy: "id",
                     sortOrder: "asc",
-                    status: undefined,
                 },
             });
         });

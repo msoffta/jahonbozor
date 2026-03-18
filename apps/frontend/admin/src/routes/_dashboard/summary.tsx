@@ -30,7 +30,7 @@ function SummaryPage() {
 
     if (isLoading) {
         return (
-            <PageTransition className="p-6">
+            <PageTransition className="p-3 md:p-6">
                 <div className="text-center">{t("common:loading")}</div>
             </PageTransition>
         );
@@ -38,7 +38,7 @@ function SummaryPage() {
 
     if (error) {
         return (
-            <PageTransition className="p-6">
+            <PageTransition className="p-3 md:p-6">
                 <div className="text-destructive text-center">{t("common:error")}</div>
             </PageTransition>
         );
@@ -54,10 +54,10 @@ function SummaryPage() {
 
     return (
         <>
-            <PageTransition className="flex flex-col gap-6 p-6 pb-32">
+            <PageTransition className="flex flex-col gap-4 p-3 pb-40 md:gap-6 md:p-6 md:pb-32">
                 {/* Header with filters */}
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold">{t("analytics_dashboard")}</h1>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <h1 className="text-xl font-bold md:text-2xl">{t("analytics_dashboard")}</h1>
                     <div className="flex gap-2">
                         <DatePicker
                             value={dateFrom}
@@ -111,23 +111,27 @@ function SummaryPage() {
             </PageTransition>
 
             {/* Fixed Summary Footer (above bottom nav) */}
-            <div className="border-border bg-background fixed right-0 bottom-16 left-0 z-10 border-t px-6 py-4 shadow-lg">
-                <div className="grid grid-cols-3 gap-4">
+            <div className="border-border bg-background fixed right-0 bottom-22 left-0 z-10 border-t px-3 py-3 shadow-lg md:bottom-16 md:px-6 md:py-4">
+                <div className="grid grid-cols-3 gap-2 md:gap-4">
                     <div className="text-center">
-                        <p className="text-muted-foreground text-sm">{t("total_sales")}</p>
-                        <p className="text-foreground text-2xl font-bold">
+                        <p className="text-muted-foreground text-xs md:text-sm">
+                            {t("total_sales")}
+                        </p>
+                        <p className="text-foreground text-lg font-bold md:text-2xl">
                             {formatCurrency(overview?.totalSales ?? 0)}
                         </p>
                     </div>
                     <div className="text-center">
-                        <p className="text-muted-foreground text-sm">{t("total_expenses")}</p>
-                        <p className="text-foreground text-2xl font-bold">
+                        <p className="text-muted-foreground text-xs md:text-sm">
+                            {t("total_expenses")}
+                        </p>
+                        <p className="text-foreground text-lg font-bold md:text-2xl">
                             {formatCurrency(overview?.totalExpenses ?? 0)}
                         </p>
                     </div>
                     <div className="text-center">
-                        <p className="text-muted-foreground text-sm">{t("profit")}</p>
-                        <p className="text-foreground text-2xl font-bold">
+                        <p className="text-muted-foreground text-xs md:text-sm">{t("profit")}</p>
+                        <p className="text-foreground text-lg font-bold md:text-2xl">
                             {formatCurrency(overview?.profit ?? 0)}
                         </p>
                     </div>

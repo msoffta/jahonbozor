@@ -24,7 +24,6 @@ export abstract class PublicDebtsService {
                     JOIN "OrderItem" oi ON oi."orderId" = o.id
                     WHERE o."userId" = ${userId}
                         AND o."paymentType" = 'DEBT'
-                        AND o."status" != 'CANCELLED'
                         AND o."deletedAt" IS NULL
                 `,
                 prisma.$queryRaw<PaidTotalRow[]>`

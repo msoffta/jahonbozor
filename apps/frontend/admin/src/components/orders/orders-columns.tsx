@@ -13,7 +13,6 @@ import type { TFunction } from "i18next";
 
 export interface OrderActions {
     onDelete: (id: number) => void;
-    onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => void;
     onNavigate?: (id: number) => void;
 }
 
@@ -150,7 +149,9 @@ export function getOrderColumns(
                 },
             },
         );
-    } else {
+    }
+
+    if (!showItemColumns) {
         columns.push(
             {
                 id: "itemsCount",
@@ -174,6 +175,28 @@ export function getOrderColumns(
             },
         );
     }
+
+    // Comment column — shown in both modes, editable in showItemColumns mode
+    columns.push({
+        accessorKey: "comment",
+        header: t("order_comment"),
+        size: 150,
+        cell: ({ getValue }) => {
+            const comment = getValue<string | null>();
+            return comment ? (
+                <span className="text-muted-foreground block truncate text-sm italic">
+                    {comment}
+                </span>
+            ) : (
+                "—"
+            );
+        },
+        meta: {
+            flex: showItemColumns ? 1.5 : 2,
+            editable: showItemColumns,
+            inputType: "text" as const,
+        },
+    });
 
     columns.push(
         {

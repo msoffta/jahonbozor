@@ -5,7 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 
 import { Permission } from "@jahonbozor/schemas";
-import { AnimatePresence, Button, DataTable, DataTableSkeleton, motion } from "@jahonbozor/ui";
+import {
+    AnimatePresence,
+    Button,
+    DataTable,
+    DataTableSkeleton,
+    motion,
+    useIsMobile,
+} from "@jahonbozor/ui";
 
 import { rolesListQueryOptions } from "@/api/roles.api";
 import {
@@ -86,6 +93,13 @@ export function StaffTab() {
         [t, actions, roles, currentUser],
     );
 
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile ? { username: false, "role.permissions": false, createdAt: false } : {},
+        [isMobile],
+    );
+
     const handleCellEdit = useCallback(
         (rowIndex: number, columnId: string, value: unknown) => {
             const staffMember = staff[rowIndex];
@@ -149,6 +163,7 @@ export function StaffTab() {
                         <DataTable
                             className="flex-1"
                             columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
                             data={staff}
                             pagination
                             defaultPageSize={20}

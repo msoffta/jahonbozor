@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import {
     AnimatedList,
@@ -14,10 +14,10 @@ import {
     Skeleton,
 } from "@jahonbozor/ui";
 
-import { orderDetailOptions, useCancelOrder } from "@/api/orders.api";
+import { orderDetailOptions, useDeleteOrder } from "@/api/orders.api";
 import { ProductCard } from "@/components/catalog/product-card";
 import { PageHeader } from "@/components/layout/page-header";
-import { getPaymentTypeLabel, OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { getPaymentTypeLabel } from "@/components/orders/order-status-badge";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
 import { formatDate, formatPrice, getLocaleCode } from "@/lib/format";
 import { useUIStore } from "@/stores/ui.store";
@@ -25,12 +25,13 @@ import { useUIStore } from "@/stores/ui.store";
 function OrderDetailPage() {
     const { orderId } = Route.useParams();
     const { t } = useTranslation("orders");
+    const navigate = useNavigate();
     const [confirmOpen, setConfirmOpen] = useState(false);
 
     const locale = useUIStore((state) => state.locale);
     const localeCode = getLocaleCode(locale);
     const { data: order, isLoading } = useQuery(orderDetailOptions(Number(orderId)));
-    const cancelOrder = useCancelOrder();
+    const deleteOrder = useDeleteOrder();
 
     if (isLoading) {
         return (
@@ -74,10 +75,6 @@ function OrderDetailPage() {
                         <span>{formatDate(order.updatedAt, localeCode)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{t("status")}:</span>
-                        <OrderStatusBadge status={order.status} />
-                    </div>
-                    <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{t("payment_method")}:</span>
                         <span>{getPaymentTypeLabel(order.paymentType, t)}</span>
                     </div>
@@ -102,32 +99,26 @@ function OrderDetailPage() {
                     </div>
                 </div>
 
-                <AnimatePresence>
-                    {order.status === "NEW" && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                        >
-                            <motion.button
-                                type="button"
-                                className="bg-destructive text-destructive-foreground mt-4 w-full rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
-                                disabled={cancelOrder.isPending}
-                                onClick={() => setConfirmOpen(true)}
-                                whileTap={{ scale: 0.95 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                            >
-                                {cancelOrder.isPending ? t("loading") : t("cancel_order")}
-                            </motion.button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <motion.button
+                    type="button"
+                    className="bg-destructive text-destructive-foreground mt-4 w-full rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+                    disabled={deleteOrder.isPending}
+                    onClick={() => setConfirmOpen(true)}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                    {deleteOrder.isPending ? t("loading") : t("cancel_order")}
+                </motion.button>
 
                 <ConfirmDrawer
                     open={confirmOpen}
                     onOpenChange={setConfirmOpen}
-                    onConfirm={() => cancelOrder.mutate(order.id)}
-                    isLoading={cancelOrder.isPending}
+                    onConfirm={() =>
+                        deleteOrder.mutate(order.id, {
+                            onSuccess: () => void navigate({ to: "/orders" }),
+                        })
+                    }
+                    isLoading={deleteOrder.isPending}
                 />
 
                 <Separator className="my-4" />

@@ -80,6 +80,7 @@ export {
     TooltipProvider,
     TooltipTrigger,
 } from "./components/ui/tooltip.tsx";
+export { useIsMobile } from "./hooks/use-is-mobile.ts";
 export { cn } from "./lib/utils.ts";
 export { AnimatePresence, LayoutGroup, motion } from "motion/react";
 export { toast } from "sonner";

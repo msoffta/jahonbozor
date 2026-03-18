@@ -10,7 +10,6 @@ import type {
 interface OverviewRow {
     totalSales: number;
     ordersCount: number;
-    acceptedOrdersCount: number;
 }
 
 interface ExpenseTotalRow {
@@ -68,8 +67,7 @@ export abstract class AnalyticsService {
                 prisma.$queryRaw<OverviewRow[]>`
 						SELECT
 							COALESCE(SUM(oi.price * oi.quantity), 0)::float8 AS "totalSales",
-							COUNT(DISTINCT o.id)::integer AS "ordersCount",
-							COUNT(DISTINCT CASE WHEN o.status = 'ACCEPTED' THEN o.id END)::integer AS "acceptedOrdersCount"
+							COUNT(DISTINCT o.id)::integer AS "ordersCount"
 						FROM "Order" o
 						LEFT JOIN "OrderItem" oi ON oi."orderId" = o.id
 						WHERE o."createdAt" >= ${dateFrom}
@@ -146,7 +144,7 @@ export abstract class AnalyticsService {
 					`,
             ]);
 
-            const { totalSales, ordersCount, acceptedOrdersCount } = overview[0];
+            const { totalSales, ordersCount } = overview[0];
             const { totalExpenses } = expenseTotal[0];
             const profit = totalSales - totalExpenses;
 
@@ -197,7 +195,6 @@ export abstract class AnalyticsService {
                         totalExpenses,
                         profit,
                         ordersCount,
-                        acceptedOrdersCount,
                     },
                     dailySales,
                     topProducts,

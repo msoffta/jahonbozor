@@ -17,7 +17,6 @@ describe("Snapshot Functions", () => {
                 userId: 1,
                 staffId: 2,
                 paymentType: "CASH" as const,
-                status: "NEW" as const,
                 comment: "Rush order",
                 data: { source: "web" },
             };
@@ -26,7 +25,6 @@ describe("Snapshot Functions", () => {
                 userId: 1,
                 staffId: 2,
                 paymentType: "CASH",
-                status: "NEW",
                 comment: "Rush order",
                 data: { source: "web" },
             });
@@ -37,7 +35,6 @@ describe("Snapshot Functions", () => {
                 userId: 1,
                 staffId: null,
                 paymentType: "DEBT" as const,
-                status: "ACCEPTED" as const,
                 comment: null,
                 data: null,
                 items: [
@@ -58,7 +55,6 @@ describe("Snapshot Functions", () => {
                 userId: null,
                 staffId: 1,
                 paymentType: "CREDIT_CARD" as const,
-                status: "CANCELLED" as const,
                 comment: null,
                 data: null,
             };

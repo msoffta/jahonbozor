@@ -17,11 +17,7 @@ export const orderKeys = {
     detail: (id: number) => [...orderKeys.details(), id] as const,
 };
 
-export const ordersListOptions = (params: {
-    page?: number;
-    limit?: number;
-    status?: "NEW" | "ACCEPTED" | "CANCELLED";
-}) =>
+export const ordersListOptions = (params: { page?: number; limit?: number }) =>
     queryOptions({
         queryKey: orderKeys.list(params),
         queryFn: async (): Promise<{ count: number; orders: UserOrderItem[] }> =>
@@ -33,7 +29,6 @@ export const ordersListOptions = (params: {
                         searchQuery: "",
                         sortBy: "id",
                         sortOrder: "asc" as const,
-                        status: params.status,
                     },
                 }),
             ),
@@ -65,12 +60,12 @@ export function useCreateOrder() {
     });
 }
 
-export function useCancelOrder() {
+export function useDeleteOrder() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (orderId: number): Promise<UserOrderItem> =>
-            unwrap(await api.api.public.orders({ id: orderId }).cancel.patch()),
+        mutationFn: async (orderId: number): Promise<{ orderId: number; deleted: boolean }> =>
+            unwrap(await api.api.public.orders({ id: orderId }).delete()),
         onSuccess: (_data, orderId) => {
             void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
             void queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });

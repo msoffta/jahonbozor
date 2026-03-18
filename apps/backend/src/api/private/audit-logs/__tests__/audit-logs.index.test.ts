@@ -80,7 +80,6 @@ const createTestApp = () => {
                         | "LOGOUT"
                         | "PASSWORD_CHANGE"
                         | "PERMISSION_CHANGE"
-                        | "ORDER_STATUS_CHANGE"
                         | "INVENTORY_ADJUST"
                         | undefined,
                     requestId: query.requestId as string | undefined,

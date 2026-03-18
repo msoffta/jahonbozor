@@ -38,7 +38,7 @@ const mockDeletedUser = {
 
 const mockUserWithOrders = {
     ...mockUser,
-    orders: [{ id: 1, status: "NEW" }],
+    orders: [{ id: 1 }],
 };
 
 const mockStaffToken: Token = {

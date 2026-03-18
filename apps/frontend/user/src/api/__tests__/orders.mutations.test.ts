@@ -6,18 +6,17 @@ import { useCartStore } from "@/stores/cart.store";
 const mockOrder = {
     id: 1,
     paymentType: "CASH",
-    status: "NEW",
     comment: null,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
     items: [{ productId: 1, name: "Test", price: 100, quantity: 2 }],
 };
 
-const mockCancelledOrder = { ...mockOrder, status: "CANCELLED" };
+const mockDeletedOrder = { orderId: 1, deleted: true };
 
 type EdenFn = (...args: unknown[]) => Promise<{ data: unknown; error: unknown }>;
 
-const { mockOrderPost, mockCancelPatch, mockInvalidateQueries, mockToastError } = vi.hoisted(
+const { mockOrderPost, mockOrderDelete, mockInvalidateQueries, mockToastError } = vi.hoisted(
     () => ({
         mockOrderPost: vi.fn<EdenFn>(() =>
             Promise.resolve({
@@ -25,9 +24,9 @@ const { mockOrderPost, mockCancelPatch, mockInvalidateQueries, mockToastError } 
                 error: null,
             }),
         ),
-        mockCancelPatch: vi.fn<EdenFn>(() =>
+        mockOrderDelete: vi.fn<EdenFn>(() =>
             Promise.resolve({
-                data: { success: true, data: mockCancelledOrder },
+                data: { success: true, data: mockDeletedOrder },
                 error: null,
             }),
         ),
@@ -48,7 +47,7 @@ vi.mock("@/lib/api-client", () => ({
                                 error: null,
                             }),
                         ),
-                        cancel: { patch: mockCancelPatch },
+                        delete: mockOrderDelete,
                     }),
                     {
                         get: vi.fn(() =>
@@ -100,7 +99,7 @@ vi.mock("@tanstack/react-query", () => ({
     queryOptions: (opts: any) => opts,
 }));
 
-import { useCancelOrder, useCreateOrder } from "../orders.api";
+import { useCreateOrder, useDeleteOrder } from "../orders.api";
 
 describe("useCreateOrder", () => {
     const orderBody = {
@@ -240,23 +239,23 @@ describe("useCreateOrder", () => {
     });
 });
 
-describe("useCancelOrder", () => {
-    test("should call cancel API", async () => {
-        const { result } = renderHook(() => useCancelOrder());
+describe("useDeleteOrder", () => {
+    test("should call delete API", async () => {
+        const { result } = renderHook(() => useDeleteOrder());
         await result.current.mutate(5);
 
-        expect(mockCancelPatch).toHaveBeenCalled();
+        expect(mockOrderDelete).toHaveBeenCalled();
     });
 
-    test("should return cancelled order data", async () => {
-        const { result } = renderHook(() => useCancelOrder());
+    test("should return deleted order data", async () => {
+        const { result } = renderHook(() => useDeleteOrder());
         const data = await result.current.mutateAsync(1);
 
-        expect(data).toEqual(mockCancelledOrder);
+        expect(data).toEqual(mockDeletedOrder);
     });
 
     test("should invalidate list queries on success", async () => {
-        const { result } = renderHook(() => useCancelOrder());
+        const { result } = renderHook(() => useDeleteOrder());
         await result.current.mutate(5);
 
         expect(mockInvalidateQueries).toHaveBeenCalledWith({
@@ -265,7 +264,7 @@ describe("useCancelOrder", () => {
     });
 
     test("should invalidate detail query for specific order on success", async () => {
-        const { result } = renderHook(() => useCancelOrder());
+        const { result } = renderHook(() => useDeleteOrder());
         await result.current.mutate(42);
 
         expect(mockInvalidateQueries).toHaveBeenCalledWith({
@@ -274,39 +273,39 @@ describe("useCancelOrder", () => {
     });
 
     test("should invalidate both list and detail queries", async () => {
-        const { result } = renderHook(() => useCancelOrder());
+        const { result } = renderHook(() => useDeleteOrder());
         await result.current.mutate(10);
 
         expect(mockInvalidateQueries).toHaveBeenCalledTimes(2);
     });
 
     test("should throw on API error", async () => {
-        mockCancelPatch.mockResolvedValueOnce({
+        mockOrderDelete.mockResolvedValueOnce({
             data: null,
             error: new Error("Forbidden"),
         });
 
-        const { result } = renderHook(() => useCancelOrder());
+        const { result } = renderHook(() => useDeleteOrder());
         await expect(result.current.mutate(1)).rejects.toThrow("Forbidden");
     });
 
     test("should throw on unsuccessful response", async () => {
-        mockCancelPatch.mockResolvedValueOnce({
+        mockOrderDelete.mockResolvedValueOnce({
             data: { success: false },
             error: null,
         });
 
-        const { result } = renderHook(() => useCancelOrder());
+        const { result } = renderHook(() => useDeleteOrder());
         await expect(result.current.mutate(1)).rejects.toThrow("Request failed");
     });
 
-    test("should show error toast on cancel error", async () => {
-        mockCancelPatch.mockResolvedValueOnce({
+    test("should show error toast on delete error", async () => {
+        mockOrderDelete.mockResolvedValueOnce({
             data: null,
             error: new Error("Forbidden"),
         });
 
-        const { result } = renderHook(() => useCancelOrder());
+        const { result } = renderHook(() => useDeleteOrder());
         try {
             await result.current.mutate(1);
         } catch {
@@ -317,12 +316,12 @@ describe("useCancelOrder", () => {
     });
 
     test("should not invalidate queries on error", async () => {
-        mockCancelPatch.mockResolvedValueOnce({
+        mockOrderDelete.mockResolvedValueOnce({
             data: null,
             error: new Error("Server error"),
         });
 
-        const { result } = renderHook(() => useCancelOrder());
+        const { result } = renderHook(() => useDeleteOrder());
         try {
             await result.current.mutate(1);
         } catch {

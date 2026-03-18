@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const { mockCancelMutate, mocks } = vi.hoisted(() => ({
-    mockCancelMutate: vi.fn(),
+const { mockDeleteMutate, mocks } = vi.hoisted(() => ({
+    mockDeleteMutate: vi.fn(),
     mocks: {
         queryReturn: {} as any,
     },
@@ -9,7 +9,6 @@ const { mockCancelMutate, mocks } = vi.hoisted(() => ({
 
 const mockOrder = {
     id: 42,
-    status: "NEW",
     paymentType: "CASH",
     comment: "Deliver quickly",
     createdAt: "2025-01-15T10:30:00.000Z",
@@ -24,7 +23,7 @@ vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
-                orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), {
+                orders: Object.assign(() => ({ get: vi.fn(), delete: vi.fn() }), {
                     get: vi.fn(),
                     post: vi.fn(),
                 }),
@@ -67,7 +66,7 @@ vi.mock("@tanstack/react-query", () => ({
         hasNextPage: false,
         fetchNextPage: vi.fn(),
     }),
-    useMutation: () => ({ mutate: mockCancelMutate, isPending: false }),
+    useMutation: () => ({ mutate: mockDeleteMutate, isPending: false }),
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
     queryOptions: (opts: any) => opts,
     infiniteQueryOptions: (opts: any) => opts,
@@ -83,7 +82,7 @@ vi.mock("@/api/orders.api", () => ({
     ordersListOptions: (params: any) => ({ queryKey: ["orders", "list", params] }),
     orderDetailOptions: (id: number) => ({ queryKey: ["orders", "detail", id] }),
     useCreateOrder: () => ({ mutate: vi.fn(), isPending: false }),
-    useCancelOrder: () => ({ mutate: mockCancelMutate, isPending: false }),
+    useDeleteOrder: () => ({ mutate: mockDeleteMutate, isPending: false }),
 }));
 
 vi.mock("@/components/catalog/product-card", () => ({
@@ -129,7 +128,6 @@ vi.mock("@/components/shared/confirm-drawer", () => ({
 }));
 
 vi.mock("@/components/orders/order-status-badge", () => ({
-    OrderStatusBadge: ({ status }: any) => <span data-testid="order-status-badge">{status}</span>,
     getPaymentTypeLabel: (paymentType: string, t: any) => {
         if (paymentType === "CREDIT_CARD") return t("payment_card");
         if (paymentType === "DEBT") return t("payment_debt", { defaultValue: "Долг" });
@@ -199,12 +197,6 @@ describe("OrderDetailPage", () => {
         expect(dateElements.length).toBe(2);
     });
 
-    test("should render order status", () => {
-        const { getByTestId } = render(<OrderDetailPage />);
-        const badge = getByTestId("order-status-badge");
-        expect(badge.textContent).toBe("NEW");
-    });
-
     test("should render payment method", () => {
         const { getByText } = render(<OrderDetailPage />);
         expect(getByText("payment_cash")).toBeDefined();
@@ -220,29 +212,9 @@ describe("OrderDetailPage", () => {
         expect(getByText("payment_card")).toBeDefined();
     });
 
-    test("should render cancel button for NEW orders", () => {
+    test("should render cancel button", () => {
         const { getByText } = render(<OrderDetailPage />);
         expect(getByText("cancel_order")).toBeDefined();
-    });
-
-    test("should not render cancel button for ACCEPTED orders", () => {
-        mocks.queryReturn = {
-            data: { ...mockOrder, status: "ACCEPTED" },
-            isLoading: false,
-        };
-
-        const { queryByText } = render(<OrderDetailPage />);
-        expect(queryByText("cancel_order")).toBeNull();
-    });
-
-    test("should not render cancel button for CANCELLED orders", () => {
-        mocks.queryReturn = {
-            data: { ...mockOrder, status: "CANCELLED" },
-            isLoading: false,
-        };
-
-        const { queryByText } = render(<OrderDetailPage />);
-        expect(queryByText("cancel_order")).toBeNull();
     });
 
     test("should render order items", () => {
@@ -287,7 +259,7 @@ describe("OrderDetailPage", () => {
         expect(getByTestId("page-header")).toBeDefined();
     });
 
-    test("should open confirm drawer and call cancel on confirm", async () => {
+    test("should open confirm drawer and call delete on confirm", async () => {
         const user = userEvent.setup();
         render(<OrderDetailPage />);
 
@@ -295,9 +267,12 @@ describe("OrderDetailPage", () => {
         await user.click(screen.getByText("cancel_order"));
         expect(screen.getByTestId("confirm-drawer")).toBeDefined();
 
-        // Click confirm in the drawer — should call cancelOrder.mutate
+        // Click confirm in the drawer — should call deleteOrder.mutate
         await user.click(screen.getByText("confirm"));
-        expect(mockCancelMutate).toHaveBeenCalledWith(42);
+        expect(mockDeleteMutate).toHaveBeenCalledWith(
+            42,
+            expect.objectContaining({ onSuccess: expect.any(Function) }),
+        );
     });
 
     test("should not show confirm drawer initially", () => {

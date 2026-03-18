@@ -43,7 +43,6 @@ export interface AnalyticsSummaryData {
         totalExpenses: number;
         profit: number;
         ordersCount: number;
-        acceptedOrdersCount: number;
     };
     dailySales: DailySalesData[];
     topProducts: TopProductData[];

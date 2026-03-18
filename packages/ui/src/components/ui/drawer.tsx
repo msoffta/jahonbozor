@@ -3,10 +3,8 @@ import { createPortal } from "react-dom";
 
 import { AnimatePresence, motion } from "motion/react";
 
+import { useIsMobile } from "../../hooks/use-is-mobile";
 import { cn } from "../../lib/utils";
-
-/** Breakpoint at which drawer switches from mobile sheet to desktop modal */
-const DESKTOP_BREAKPOINT_PX = 768;
 
 interface DrawerProps {
     open: boolean;
@@ -15,14 +13,8 @@ interface DrawerProps {
 }
 
 function Drawer({ open, onOpenChange, children }: DrawerProps) {
-    const [isDesktop, setIsDesktop] = React.useState(false);
-
-    React.useEffect(() => {
-        const checkIsDesktop = () => setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT_PX);
-        checkIsDesktop();
-        window.addEventListener("resize", checkIsDesktop);
-        return () => window.removeEventListener("resize", checkIsDesktop);
-    }, []);
+    const isMobile = useIsMobile();
+    const isDesktop = !isMobile;
 
     React.useEffect(() => {
         if (open) {

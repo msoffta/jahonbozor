@@ -52,13 +52,13 @@ export function DataTableToolbar<TData>({
     const hasActiveFilters = filterColumns.some((col) => col.getFilterValue() !== undefined);
 
     return (
-        <div className="flex items-center gap-2 py-4">
+        <div className="flex flex-wrap items-center gap-2 py-4">
             {enableGlobalSearch && (
                 <Input
                     placeholder={translations?.search ?? "Search..."}
                     value={globalFilter}
                     onChange={(e) => onGlobalFilterChange(e.target.value)}
-                    className="h-9 max-w-sm"
+                    className="h-9 w-full sm:max-w-sm"
                 />
             )}
 

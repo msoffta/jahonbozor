@@ -92,9 +92,8 @@ export function BottomNav() {
         Permission.ORDERS_LIST_OWN,
     ]);
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- useParams strict:false returns unresolvable type
     const params = useParams({ strict: false });
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- orderId access on loose params
+
     const activeOrderId = params?.orderId ? Number(params.orderId) : null;
     const isOrderView = pathname.startsWith("/orders/") && activeOrderId !== null;
 
@@ -121,18 +120,110 @@ export function BottomNav() {
         return combined;
     }, [recentListsRaw, activeOrderData]);
 
+    const filteredNavKeys = useMemo(
+        () =>
+            navKeys.filter((item) => {
+                if (item.to === "/income") return hasIncomePermission;
+                if (item.to === "/users") return hasUsersPermission;
+                if (item.to === "/expense") return hasExpensesPermission;
+                if (item.to === "/products") return hasProductsPermission;
+                if (item.to === "/summary") return hasAnalyticsPermission;
+                return true;
+            }),
+        [
+            hasIncomePermission,
+            hasUsersPermission,
+            hasExpensesPermission,
+            hasProductsPermission,
+            hasAnalyticsPermission,
+        ],
+    );
+
+    const orderPills = (
+        <TooltipProvider delayDuration={200}>
+            <AnimatePresence>
+                {recentLists.map((order, index) => (
+                    <React.Fragment key={order.id}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    to="/orders/$orderId"
+                                    params={{
+                                        orderId: String(order.id),
+                                    }}
+                                >
+                                    <motion.div
+                                        className={cn(
+                                            "shrink-0 rounded-lg border px-2 py-1 text-[11px] uppercase transition-colors md:px-3 md:py-1.5 md:text-xs",
+                                            pathname === `/orders/${order.id}`
+                                                ? "bg-primary text-primary-foreground border-primary font-bold shadow-md"
+                                                : "border-border text-foreground hover:bg-accent hover:text-accent-foreground font-semibold",
+                                        )}
+                                        initial={{
+                                            scale: 0,
+                                            opacity: 0,
+                                        }}
+                                        animate={{
+                                            scale: 1,
+                                            opacity: 1,
+                                        }}
+                                        exit={{
+                                            scale: 0,
+                                            opacity: 0,
+                                        }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 17,
+                                            delay: index * 0.05,
+                                        }}
+                                        whileTap={{ scale: 0.9 }}
+                                    >
+                                        {tOrders("list_number", {
+                                            number: order.id,
+                                        })}
+                                    </motion.div>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="w-auto px-3 py-2 text-xs">
+                                <p className="font-medium">{order.user?.fullname ?? "—"}</p>
+                                <p className="text-muted-foreground">
+                                    {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </React.Fragment>
+                ))}
+            </AnimatePresence>
+        </TooltipProvider>
+    );
+
     return (
         <>
-            <nav className="border-border bg-surface fixed right-0 bottom-0 left-0 z-50 flex flex-col border-t">
-                {/* Main nav bar */}
-                <div className="flex h-14 items-center justify-between px-6">
+            <nav className="border-border bg-surface fixed right-0 bottom-0 left-0 z-50 flex flex-col border-t pb-[env(safe-area-inset-bottom)]">
+                {/* Mobile: Row 1 — Nav pills */}
+                <LayoutGroup id="bottom-navigation-mobile">
+                    <div className="scrollbar-none flex items-center gap-1 overflow-x-auto px-3 py-1.5 md:hidden">
+                        {filteredNavKeys.map((item) => (
+                            <NavPill
+                                key={item.to}
+                                item={item}
+                                isActive={pathname.startsWith(item.to)}
+                                t={t}
+                            />
+                        ))}
+                    </div>
+                </LayoutGroup>
+
+                {/* Row 2 (mobile) / Single row (desktop): Orders + Home + Desktop nav */}
+                <div className="flex h-12 items-center justify-between px-3 md:h-14 md:px-6">
                     <div className="scrollbar-none flex flex-1 items-center gap-1.5 overflow-x-auto">
                         {canListOrders && (
                             <Link to="/orders">
                                 <motion.button
                                     type="button"
                                     className={cn(
-                                        "border-border shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase",
+                                        "border-border shrink-0 rounded-lg border px-2 py-1 text-[11px] font-semibold uppercase md:px-3 md:py-1.5 md:text-xs",
                                         pathname === "/orders" || pathname === "/orders/"
                                             ? "bg-primary text-primary-foreground border-primary"
                                             : "text-foreground",
@@ -151,7 +242,7 @@ export function BottomNav() {
                         {canCreateOrders && (
                             <motion.button
                                 type="button"
-                                className="border-border text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-lg font-semibold"
+                                className="border-border text-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-base font-semibold md:h-8 md:w-8 md:text-lg"
                                 whileTap={{ scale: 0.9, rotate: 90 }}
                                 transition={{
                                     type: "spring",
@@ -164,77 +255,13 @@ export function BottomNav() {
                             </motion.button>
                         )}
 
-                        {/* Recent lists pills — inline between + and Home */}
-                        <TooltipProvider delayDuration={200}>
-                            <AnimatePresence>
-                                {recentLists.map((order, index) => (
-                                    <React.Fragment key={order.id}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Link
-                                                    to="/orders/$orderId"
-                                                    params={{
-                                                        orderId: String(order.id),
-                                                    }}
-                                                >
-                                                    <motion.div
-                                                        className={cn(
-                                                            "shrink-0 rounded-lg border px-3 py-1.5 text-xs uppercase transition-colors",
-                                                            pathname === `/orders/${order.id}`
-                                                                ? "bg-primary text-primary-foreground border-primary font-bold shadow-md"
-                                                                : "border-border text-foreground hover:bg-accent hover:text-accent-foreground font-semibold",
-                                                        )}
-                                                        initial={{
-                                                            scale: 0,
-                                                            opacity: 0,
-                                                        }}
-                                                        animate={{
-                                                            scale: 1,
-                                                            opacity: 1,
-                                                        }}
-                                                        exit={{
-                                                            scale: 0,
-                                                            opacity: 0,
-                                                        }}
-                                                        transition={{
-                                                            type: "spring",
-                                                            stiffness: 400,
-                                                            damping: 17,
-                                                            delay: index * 0.05,
-                                                        }}
-                                                        whileTap={{ scale: 0.9 }}
-                                                    >
-                                                        {tOrders("list_number", {
-                                                            number: order.id,
-                                                        })}
-                                                    </motion.div>
-                                                </Link>
-                                            </TooltipTrigger>
-                                            <TooltipContent
-                                                side="top"
-                                                className="w-auto px-3 py-2 text-xs"
-                                            >
-                                                <p className="font-medium">
-                                                    {order.user?.fullname ?? "—"}
-                                                </p>
-                                                <p className="text-muted-foreground">
-                                                    {format(
-                                                        new Date(order.createdAt),
-                                                        "dd.MM.yyyy HH:mm",
-                                                    )}
-                                                </p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </React.Fragment>
-                                ))}
-                            </AnimatePresence>
-                        </TooltipProvider>
+                        {orderPills}
                     </div>
 
-                    <Link to="/" className="mx-4 shrink-0">
+                    <Link to="/" className="mx-2 shrink-0 md:mx-4">
                         <motion.div
                             className={cn(
-                                "flex h-11 w-20 items-center justify-center rounded-xl will-change-transform",
+                                "flex h-10 w-16 items-center justify-center rounded-xl will-change-transform md:h-11 md:w-20",
                                 pathname === "/"
                                     ? "bg-primary text-primary-foreground shadow-md"
                                     : "text-muted-foreground border-border bg-background/50 border",
@@ -242,40 +269,21 @@ export function BottomNav() {
                             whileTap={{ scale: 0.92 }}
                             transition={fastTransition}
                         >
-                            <Home className="h-6 w-6" />
+                            <Home className="h-5 w-5 md:h-6 md:w-6" />
                         </motion.div>
                     </Link>
 
+                    {/* Desktop only: Nav pills on the right */}
                     <LayoutGroup id="bottom-navigation">
-                        <div className="flex flex-1 items-center justify-end gap-1.5">
-                            {navKeys
-                                .filter((item) => {
-                                    // Filter navigation items based on permissions
-                                    if (item.to === "/income") {
-                                        return hasIncomePermission;
-                                    }
-                                    if (item.to === "/users") {
-                                        return hasUsersPermission;
-                                    }
-                                    if (item.to === "/expense") {
-                                        return hasExpensesPermission;
-                                    }
-                                    if (item.to === "/products") {
-                                        return hasProductsPermission;
-                                    }
-                                    if (item.to === "/summary") {
-                                        return hasAnalyticsPermission;
-                                    }
-                                    return true;
-                                })
-                                .map((item) => (
-                                    <NavPill
-                                        key={item.to}
-                                        item={item}
-                                        isActive={pathname.startsWith(item.to)}
-                                        t={t}
-                                    />
-                                ))}
+                        <div className="hidden flex-1 items-center justify-end gap-1.5 md:flex">
+                            {filteredNavKeys.map((item) => (
+                                <NavPill
+                                    key={item.to}
+                                    item={item}
+                                    isActive={pathname.startsWith(item.to)}
+                                    t={t}
+                                />
+                            ))}
                         </div>
                     </LayoutGroup>
                 </div>

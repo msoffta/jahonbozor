@@ -1,13 +1,7 @@
 {
-  "order_history": "Tarix",
-  "active_orders": "Faol",
   "order_number": "Buyurtma #{{id}}",
   "creation_date": "Yaratilgan sana",
   "update_date": "Yangilangan sana",
-  "status": "Holat",
-  "status_new": "Yangi",
-  "status_accepted": "Qabul qilingan",
-  "status_cancelled": "Bekor qilingan",
   "payment_method": "To'lov usuli",
   "payment_cash": "Naqd",
   "payment_card": "Karta",

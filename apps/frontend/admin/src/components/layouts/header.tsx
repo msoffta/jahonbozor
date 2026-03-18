@@ -34,7 +34,7 @@ export function Header() {
     return (
         <header
             className={cn(
-                "sticky top-0 z-50 flex h-14 items-center justify-between px-6 transition-all duration-200",
+                "sticky top-0 z-50 flex h-14 items-center justify-between px-3 transition-all duration-200 md:px-6",
                 scrolled ? "bg-surface shadow-sm" : "bg-surface/80",
             )}
         >
@@ -42,7 +42,7 @@ export function Header() {
                 <img src="/logo.svg" alt="Jahon Bozor" className="h-8" />
             </Link>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <motion.button

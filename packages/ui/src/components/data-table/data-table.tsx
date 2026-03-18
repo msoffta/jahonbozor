@@ -67,6 +67,7 @@ export function DataTable<TData>({
     multiRowValidate,
 
     onRowSelectionChange,
+    initialColumnVisibility,
     onRowClick,
     className,
     translations,
@@ -74,7 +75,9 @@ export function DataTable<TData>({
     const [data, setData] = React.useState(externalData);
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(
+        initialColumnVisibility ?? {},
+    );
     const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
     const [globalFilter, setGlobalFilter] = React.useState("");
     const [paginationState, setPaginationState] = React.useState({

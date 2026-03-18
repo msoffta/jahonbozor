@@ -113,7 +113,6 @@ describe("Debts API Routes", () => {
                             orderTotal: 20000,
                             paidAmount: 5000,
                             remainingAmount: 15000,
-                            status: "ACCEPTED",
                             createdAt: new Date(),
                             payments: [],
                         },

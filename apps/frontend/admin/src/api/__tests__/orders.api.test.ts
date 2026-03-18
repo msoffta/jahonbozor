@@ -18,21 +18,21 @@ const { mockGet, mockGetById, mockPost, mockPatch, mockDelete } = vi.hoisted(() 
     mockGetById: vi.fn(
         (): Promise<MockEdenResponse> =>
             Promise.resolve({
-                data: { success: true, data: { id: 1, status: "NEW" } },
+                data: { success: true, data: { id: 1 } },
                 error: null,
             }),
     ),
     mockPost: vi.fn(
         (): Promise<MockEdenResponse> =>
             Promise.resolve({
-                data: { success: true, data: { id: 1, status: "NEW" } },
+                data: { success: true, data: { id: 1 } },
                 error: null,
             }),
     ),
     mockPatch: vi.fn(
         (): Promise<MockEdenResponse> =>
             Promise.resolve({
-                data: { success: true, data: { id: 1, status: "ACCEPTED" } },
+                data: { success: true, data: { id: 1 } },
                 error: null,
             }),
     ),
@@ -183,7 +183,7 @@ describe("orders.api", () => {
 
         test("queryFn should return order on success", async () => {
             mockGetById.mockResolvedValueOnce({
-                data: { success: true, data: { id: 7, status: "NEW" } },
+                data: { success: true, data: { id: 7 } },
                 error: null,
             });
             const result = await orderDetailQueryOptions(7).queryFn!({} as DetailCtx);
@@ -204,7 +204,7 @@ describe("orders.api", () => {
 
         test("should return data on success", async () => {
             mockPost.mockResolvedValueOnce({
-                data: { success: true, data: { id: 10, status: "NEW" } },
+                data: { success: true, data: { id: 10 } },
                 error: null,
             });
             const result = await createOrderFn({
@@ -232,8 +232,8 @@ describe("orders.api", () => {
 
     describe("updateOrderFn", () => {
         test("should call api with id and body", async () => {
-            await updateOrderFn({ id: 1, status: "ACCEPTED" });
-            expect(mockPatch).toHaveBeenCalledWith({ status: "ACCEPTED" });
+            await updateOrderFn({ id: 1, paymentType: "CASH" });
+            expect(mockPatch).toHaveBeenCalledWith({ paymentType: "CASH" });
         });
 
         test("should throw when success is false", async () => {
@@ -241,7 +241,7 @@ describe("orders.api", () => {
                 data: { success: false },
                 error: null,
             });
-            await expect(updateOrderFn({ id: 1, status: "CANCELLED" })).rejects.toThrow(
+            await expect(updateOrderFn({ id: 1, paymentType: "DEBT" })).rejects.toThrow(
                 "Request failed",
             );
         });

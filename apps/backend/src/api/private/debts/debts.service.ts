@@ -33,7 +33,6 @@ export abstract class DebtsService {
                     JOIN "OrderItem" oi ON oi."orderId" = o.id
                     WHERE o."userId" = ${userId}
                         AND o."paymentType" = 'DEBT'
-                        AND o."status" != 'CANCELLED'
                         AND o."deletedAt" IS NULL
                 `,
                 prisma.$queryRaw<PaidTotalRow[]>`
@@ -64,7 +63,6 @@ export abstract class DebtsService {
                 where: {
                     userId,
                     paymentType: "DEBT",
-                    status: { not: "CANCELLED" },
                     deletedAt: null,
                 },
                 include: {
@@ -90,7 +88,6 @@ export abstract class DebtsService {
                     orderTotal,
                     paidAmount,
                     remainingAmount: orderTotal - paidAmount,
-                    status: order.status,
                     createdAt: order.createdAt,
                     payments: order.debtPayments.map((p) => ({
                         id: p.id,

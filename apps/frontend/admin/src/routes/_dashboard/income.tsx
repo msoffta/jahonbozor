@@ -11,6 +11,7 @@ import {
     DataTableSkeleton,
     motion,
     PageTransition,
+    useIsMobile,
 } from "@jahonbozor/ui";
 
 import { incomeListQueryOptions, useCreateIncome } from "@/api/income.api";
@@ -44,6 +45,12 @@ function IncomePage() {
     const columns = useMemo(() => getIncomeColumns(t, products), [t, products]);
 
     const history = incomeData?.history ?? [];
+
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> => (isMobile ? { changeReason: false, staff: false } : {}),
+        [isMobile],
+    );
 
     const handleNewRowSave = useCallback(
         async (data: Record<string, unknown>, _rowId: string) => {
@@ -87,9 +94,9 @@ function IncomePage() {
     );
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
-            <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex items-center justify-between md:mb-6">
+                <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
             </div>
 
             <AnimatePresence mode="wait">
@@ -113,6 +120,7 @@ function IncomePage() {
                         <DataTable
                             className="flex-1"
                             columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
                             data={history}
                             pagination
                             defaultPageSize={20}

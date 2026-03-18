@@ -16,6 +16,7 @@ import {
     motion,
     PageTransition,
     toast,
+    useIsMobile,
 } from "@jahonbozor/ui";
 
 import { clientDetailQueryOptions } from "@/api/clients.api";
@@ -64,6 +65,13 @@ function NewOrderPage() {
     const columns = useMemo(
         () => getOrderItemColumns(t, products, { onDelete: handleDeleteItem }),
         [t, products, handleDeleteItem],
+    );
+
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile ? { price: false, remaining: false, costprice: false } : {},
+        [isMobile],
     );
 
     const newRowDefaultValues = useMemo(() => ({ quantity: 1 }), []);
@@ -185,21 +193,21 @@ function NewOrderPage() {
     const totalSum = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
             {/* Header */}
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
                     <motion.button
                         type="button"
                         onClick={() => navigate({ to: "/orders" })}
-                        className="border-border text-muted-foreground hover:text-foreground flex h-9 w-9 items-center justify-center rounded-lg border"
+                        className="border-border text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
                         whileTap={{ scale: 0.9 }}
                         aria-label={t("common:back")}
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </motion.button>
                     <div>
-                        <h1 className="text-2xl font-bold">{t("lists_title")}</h1>
+                        <h1 className="text-xl font-bold md:text-2xl">{t("lists_title")}</h1>
                         {clientData && (
                             <p className="text-muted-foreground text-sm">
                                 {t("order_client")}: {clientData.fullname}
@@ -208,12 +216,12 @@ function NewOrderPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
                     <Input
                         placeholder={t("order_comment")}
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        className="h-9 w-48 text-sm"
+                        className="h-9 w-full text-sm sm:w-48"
                     />
 
                     {/* Payment type toggle */}
@@ -289,6 +297,7 @@ function NewOrderPage() {
                         <DataTable
                             className="costprice-table flex-1"
                             columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
                             data={items}
                             enableMultipleNewRows
                             multiRowCount={15}

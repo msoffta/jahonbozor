@@ -25,7 +25,6 @@ const mockOrder: Order = {
     userId: null,
     staffId: 1,
     paymentType: "CASH",
-    status: "NEW",
     comment: null,
     data: {},
     deletedAt: null,
@@ -155,29 +154,6 @@ describe("Orders Service", () => {
                     sortOrder: "asc" as const,
                     searchQuery: "",
                     paymentType: "CASH",
-                },
-                1,
-                [Permission.ORDERS_LIST_ALL],
-                mockLogger,
-            );
-
-            // Assert
-            expectSuccess(result);
-        });
-
-        test("should apply status filter", async () => {
-            // Arrange
-            prismaMock.$transaction.mockResolvedValueOnce([1, [mockOrderWithRelations]]);
-
-            // Act
-            const result = await OrdersService.getAllOrders(
-                {
-                    page: 1,
-                    limit: 20,
-                    sortBy: "id",
-                    sortOrder: "asc" as const,
-                    searchQuery: "",
-                    status: "NEW",
                 },
                 1,
                 [Permission.ORDERS_LIST_ALL],
@@ -481,31 +457,6 @@ describe("Orders Service", () => {
     });
 
     describe("updateOrder", () => {
-        test("should update order status", async () => {
-            // Arrange
-            const updatedOrder = { ...mockOrderWithRelations, status: "ACCEPTED" };
-            prismaMock.order.findUnique.mockResolvedValueOnce(mockOrder);
-            prismaMock.order.update.mockResolvedValueOnce(updatedOrder as unknown as Order);
-            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
-
-            // Act
-            const result = await OrdersService.updateOrder(
-                1,
-                { status: "ACCEPTED" },
-                mockContext,
-                [Permission.ORDERS_UPDATE_OWN],
-                mockLogger,
-            );
-
-            // Assert
-            const success = expectSuccess(result);
-            expect(success.data?.status).toBe("ACCEPTED");
-            expect(mockLogger.info).toHaveBeenCalledWith("Orders: Order updated", {
-                orderId: 1,
-                staffId: 1,
-            });
-        });
-
         test("should update paymentType", async () => {
             // Arrange
             const updatedOrder = { ...mockOrderWithRelations, paymentType: "CREDIT_CARD" };
@@ -534,7 +485,7 @@ describe("Orders Service", () => {
             // Act
             const result = await OrdersService.updateOrder(
                 999,
-                { status: "ACCEPTED" },
+                { paymentType: "CREDIT_CARD" },
                 mockContext,
                 [Permission.ORDERS_UPDATE_OWN],
                 mockLogger,
@@ -556,7 +507,7 @@ describe("Orders Service", () => {
             // Act
             const result = await OrdersService.updateOrder(
                 1,
-                { status: "ACCEPTED" },
+                { paymentType: "CREDIT_CARD" },
                 mockContext,
                 [Permission.ORDERS_UPDATE_OWN],
                 mockLogger,
@@ -578,7 +529,11 @@ describe("Orders Service", () => {
         test("should allow updating any order when user has ORDERS_UPDATE_ALL permission", async () => {
             // Arrange
             const otherStaffOrder = { ...mockOrder, staffId: 2 };
-            const updatedOrder = { ...mockOrderWithRelations, staffId: 2, status: "ACCEPTED" };
+            const updatedOrder = {
+                ...mockOrderWithRelations,
+                staffId: 2,
+                paymentType: "CREDIT_CARD",
+            };
             prismaMock.order.findUnique.mockResolvedValueOnce(otherStaffOrder);
             prismaMock.order.update.mockResolvedValueOnce(updatedOrder as unknown as Order);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
@@ -586,7 +541,7 @@ describe("Orders Service", () => {
             // Act
             const result = await OrdersService.updateOrder(
                 1,
-                { status: "ACCEPTED" },
+                { paymentType: "CREDIT_CARD" },
                 mockContext,
                 [Permission.ORDERS_UPDATE_ALL],
                 mockLogger,
@@ -594,26 +549,6 @@ describe("Orders Service", () => {
 
             // Assert
             expectSuccess(result);
-        });
-
-        test("should use ORDER_STATUS_CHANGE action when status changes", async () => {
-            // Arrange
-            const updatedOrder = { ...mockOrderWithRelations, status: "ACCEPTED" };
-            prismaMock.order.findUnique.mockResolvedValueOnce(mockOrder);
-            prismaMock.order.update.mockResolvedValueOnce(updatedOrder as unknown as Order);
-            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
-
-            // Act
-            await OrdersService.updateOrder(
-                1,
-                { status: "ACCEPTED" },
-                mockContext,
-                [Permission.ORDERS_UPDATE_OWN],
-                mockLogger,
-            );
-
-            // Assert
-            expect(prismaMock.auditLog.create).toHaveBeenCalled();
         });
 
         test("should create AuditLog entry", async () => {
@@ -645,7 +580,7 @@ describe("Orders Service", () => {
             // Act
             const result = await OrdersService.updateOrder(
                 1,
-                { status: "ACCEPTED" },
+                { paymentType: "CREDIT_CARD" },
                 mockContext,
                 [Permission.ORDERS_UPDATE_OWN],
                 mockLogger,

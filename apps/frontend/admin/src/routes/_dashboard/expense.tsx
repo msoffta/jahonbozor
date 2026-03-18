@@ -12,6 +12,7 @@ import {
     DataTableSkeleton,
     motion,
     PageTransition,
+    useIsMobile,
 } from "@jahonbozor/ui";
 
 import {
@@ -63,6 +64,21 @@ function ExpensePage() {
     );
 
     const expenses = expensesData?.expenses ?? [];
+
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile
+                ? {
+                      description: false,
+                      expenseDate: false,
+                      staff: false,
+                      status: false,
+                      createdAt: false,
+                  }
+                : {},
+        [isMobile],
+    );
 
     const handleCellEdit = useCallback(
         async (rowIndex: number, columnId: string, value: unknown) => {
@@ -120,9 +136,9 @@ function ExpensePage() {
     );
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
-            <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex items-center justify-between md:mb-6">
+                <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
                 <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <Checkbox
                         checked={includeDeleted}
@@ -153,6 +169,7 @@ function ExpensePage() {
                         <DataTable
                             className="flex-1"
                             columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
                             data={expenses}
                             pagination
                             defaultPageSize={20}

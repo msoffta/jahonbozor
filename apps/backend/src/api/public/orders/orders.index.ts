@@ -7,8 +7,8 @@ import { authMiddleware } from "@backend/lib/middleware";
 import { PublicOrdersService } from "./orders.service";
 
 import type {
-    UserOrderCancelResponse,
     UserOrderCreateResponse,
+    UserOrderDeleteResponse,
     UserOrderDetailResponse,
     UserOrdersListResponse,
 } from "@jahonbozor/schemas/src/orders";
@@ -101,8 +101,8 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
             params: orderIdParams,
         },
     )
-    .patch(
-        "/:id/cancel",
+    .delete(
+        "/:id",
         async ({
             params,
             user,
@@ -110,7 +110,7 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
             set,
             logger,
             requestId,
-        }): Promise<UserOrderCancelResponse> => {
+        }): Promise<UserOrderDeleteResponse> => {
             try {
                 if (type !== "user") {
                     set.status = 403;
@@ -131,7 +131,7 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
 
                 return result;
             } catch (error) {
-                logger.error("PublicOrders: Unhandled error in PATCH /orders/:id/cancel", {
+                logger.error("PublicOrders: Unhandled error in DELETE /orders/:id", {
                     id: params.id,
                     error,
                 });

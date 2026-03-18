@@ -14,6 +14,7 @@ import {
     DatePicker,
     motion,
     PageTransition,
+    useIsMobile,
 } from "@jahonbozor/ui";
 
 import { clientsListQueryOptions } from "@/api/clients.api";
@@ -73,9 +74,6 @@ function ListsPage() {
                 setDeleteTargetId(id);
                 setDeleteConfirmOpen(true);
             },
-            onStatusChange: (_id: number, _status: string) => {
-                // Not used on lists page
-            },
             onNavigate: (id: number) => {
                 void navigate({
                     to: "/orders/$orderId",
@@ -96,21 +94,28 @@ function ListsPage() {
         );
     }, [t, actions, products, users, isReady, canDelete]);
 
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile ? { paymentType: false, user: false, costprice: false, comment: false } : {},
+        [isMobile],
+    );
+
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
-            <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-2xl font-bold">{t("lists_title")}</h1>
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-center md:justify-between">
+                <h1 className="text-xl font-bold md:text-2xl">{t("lists_title")}</h1>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
                     <div className="flex items-center gap-2">
                         <DatePicker
                             value={dateFrom}
                             onChange={(date) => {
                                 if (date) setDateFrom(startOfDay(new Date(date)).toISOString());
                             }}
-                            className="h-8 w-36 text-xs"
+                            className="h-8 w-28 text-xs sm:w-36"
                         />
                         <span className="text-muted-foreground text-xs">—</span>
                         <DatePicker
@@ -118,7 +123,7 @@ function ListsPage() {
                             onChange={(date) => {
                                 if (date) setDateTo(endOfDay(new Date(date)).toISOString());
                             }}
-                            className="h-8 w-36 text-xs"
+                            className="h-8 w-28 text-xs sm:w-36"
                         />
                     </div>
                     <Button
@@ -155,6 +160,7 @@ function ListsPage() {
                         <DataTable
                             className="costprice-table flex-1"
                             columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
                             data={orders}
                             pagination
                             defaultPageSize={20}

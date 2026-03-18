@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => ({
               count: number;
               orders: {
                   id: number;
-                  status: string;
                   paymentType: string;
                   createdAt: string;
                   items: {
@@ -25,7 +24,7 @@ vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
-                orders: Object.assign(() => ({ get: vi.fn(), cancel: { patch: vi.fn() } }), {
+                orders: Object.assign(() => ({ get: vi.fn(), delete: vi.fn() }), {
                     get: vi.fn(),
                     post: vi.fn(),
                 }),
@@ -48,7 +47,6 @@ vi.mock("react-i18next", () => ({
 vi.mock("@tanstack/react-router", () => ({
     createFileRoute: () => (config: any) => ({
         ...config,
-        useSearch: () => ({ tab: "active" as const }),
     }),
     lazyRouteComponent: (component: any) => component,
 }));
@@ -90,15 +88,11 @@ vi.mock("@/api/orders.api", () => ({
     ordersListOptions: (params: any) => ({ queryKey: ["orders", params] }),
     orderDetailOptions: (id: number) => ({ queryKey: ["orders", "detail", id] }),
     useCreateOrder: () => ({ mutate: vi.fn(), isPending: false }),
-    useCancelOrder: () => ({ mutate: vi.fn(), isPending: false }),
+    useDeleteOrder: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock("@/components/orders/order-card", () => ({
-    OrderCard: ({ id, status }: any) => (
-        <div data-testid={`order-card-${id}`}>
-            Order #{id} - {status}
-        </div>
-    ),
+    OrderCard: ({ id }: any) => <div data-testid={`order-card-${id}`}>Order #{id}</div>,
 }));
 
 import { render } from "@testing-library/react";
@@ -113,26 +107,18 @@ describe("OrdersPage", () => {
         mocks.isLoading = false;
     });
 
-    test("should render active and history tabs", () => {
-        const { getByText } = render(<OrdersPage />);
-        expect(getByText("active_orders")).toBeDefined();
-        expect(getByText("order_history")).toBeDefined();
-    });
-
     test("should show orders when loaded", () => {
         mocks.ordersData = {
             count: 2,
             orders: [
                 {
                     id: 1,
-                    status: "NEW",
                     paymentType: "CASH",
                     createdAt: "2025-01-15T10:30:00.000Z",
                     items: [{ id: 1, quantity: 2, price: 5000, product: { name: "Item A" } }],
                 },
                 {
                     id: 2,
-                    status: "NEW",
                     paymentType: "CREDIT_CARD",
                     createdAt: "2025-01-16T12:00:00.000Z",
                     items: [{ id: 2, quantity: 1, price: 3000, product: { name: "Item B" } }],

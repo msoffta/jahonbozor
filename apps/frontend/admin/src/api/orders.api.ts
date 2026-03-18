@@ -22,7 +22,6 @@ export const ordersListQueryOptions = (params?: {
     userId?: number;
     staffId?: number;
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
-    status?: "NEW" | "ACCEPTED" | "CANCELLED";
     dateFrom?: string;
     dateTo?: string;
     itemsCount?: number;
@@ -67,7 +66,6 @@ export const updateOrderFn = async ({
     ...body
 }: {
     id: number;
-    status?: "NEW" | "ACCEPTED" | "CANCELLED";
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
     comment?: string | null;
     userId?: number | null;

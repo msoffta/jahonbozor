@@ -7,8 +7,8 @@ import type { Logger } from "@jahonbozor/logger";
 import type { Token } from "@jahonbozor/schemas";
 import type { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
 import type {
-    UserOrderCancelResponse,
     UserOrderCreateResponse,
+    UserOrderDeleteResponse,
     UserOrderDetailResponse,
     UserOrdersListResponse,
 } from "@jahonbozor/schemas/src/orders";
@@ -83,7 +83,6 @@ export abstract class PublicOrdersService {
                         userId,
                         staffId: null,
                         paymentType: orderData.paymentType,
-                        status: "NEW",
                         comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
@@ -168,12 +167,12 @@ export abstract class PublicOrdersService {
         logger: Logger,
     ): Promise<UserOrdersListResponse> {
         try {
-            const { page, limit, sortBy, sortOrder, paymentType, status, dateFrom, dateTo } = query;
+            const { page, limit, sortBy, sortOrder, paymentType, dateFrom, dateTo } = query;
 
             const whereClause: Prisma.OrderWhereInput = {
                 userId,
+                deletedAt: null,
                 ...(paymentType && { paymentType }),
-                ...(status && { status }),
                 ...((dateFrom ?? dateTo) && {
                     createdAt: {
                         ...(dateFrom && { gte: dateFrom }),
@@ -263,12 +262,12 @@ export abstract class PublicOrdersService {
         orderId: number,
         context: ServiceContext,
         logger: Logger,
-    ): Promise<UserOrderCancelResponse> {
+    ): Promise<UserOrderDeleteResponse> {
         try {
             const { userId, user, requestId } = context;
 
             const existingOrder = await prisma.order.findUnique({
-                where: { id: orderId },
+                where: { id: orderId, deletedAt: null },
                 include: {
                     items: {
                         include: {
@@ -292,16 +291,7 @@ export abstract class PublicOrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
-            if (existingOrder.status !== "NEW") {
-                logger.warn("PublicOrders: Order cannot be cancelled", {
-                    orderId,
-                    userId,
-                    currentStatus: existingOrder.status,
-                });
-                return { success: false, error: "Only NEW orders can be cancelled" };
-            }
-
-            const [updatedOrder] = await prisma.$transaction(async (transaction) => {
+            await prisma.$transaction(async (transaction) => {
                 for (const item of existingOrder.items) {
                     if (!item.product.deletedAt) {
                         const previousRemaining = item.product.remaining;
@@ -326,16 +316,9 @@ export abstract class PublicOrdersService {
                     }
                 }
 
-                const order = await transaction.order.update({
+                await transaction.order.update({
                     where: { id: orderId },
-                    data: { status: "CANCELLED" },
-                    include: {
-                        items: {
-                            include: {
-                                product: { select: { id: true, name: true, price: true } },
-                            },
-                        },
-                    },
+                    data: { deletedAt: new Date() },
                 });
 
                 await auditInTransaction(
@@ -344,13 +327,10 @@ export abstract class PublicOrdersService {
                     {
                         entityType: "order",
                         entityId: orderId,
-                        action: "ORDER_STATUS_CHANGE",
+                        action: "DELETE",
                         previousData: createOrderSnapshot(existingOrder),
-                        newData: createOrderSnapshot(order),
                     },
                 );
-
-                return [order];
             });
 
             logger.info("PublicOrders: Order cancelled and stock restored", {
@@ -359,13 +339,7 @@ export abstract class PublicOrdersService {
                 itemsRestored: existingOrder.items.length,
             });
 
-            const mappedItems = updatedOrder.items.map((item) => ({
-                ...item,
-                price: Number(item.price),
-                product: { ...item.product, price: Number(item.product.price) },
-            }));
-
-            return { success: true, data: { ...updatedOrder, items: mappedItems } };
+            return { success: true, data: { orderId, deleted: true } };
         } catch (error) {
             logger.error("PublicOrders: Error in cancelOrder", {
                 orderId,

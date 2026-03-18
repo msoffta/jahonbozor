@@ -44,7 +44,7 @@ const mockAuditLog3: AuditLog = {
     entityId: 200,
     action: "CREATE",
     previousData: null,
-    newData: { status: "NEW" },
+    newData: { paymentType: "CASH" },
     metadata: { ipAddress: "192.168.1.1" },
     createdAt: new Date("2024-01-02T10:00:00Z"),
 };

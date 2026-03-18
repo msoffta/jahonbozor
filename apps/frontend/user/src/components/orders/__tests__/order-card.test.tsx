@@ -39,7 +39,6 @@ import { OrderCard } from "../order-card";
 describe("OrderCard", () => {
     const defaultProps = {
         id: 42,
-        status: "NEW",
         paymentType: "CASH",
         createdAt: "2025-01-15T10:30:00.000Z",
         items: [
@@ -56,16 +55,6 @@ describe("OrderCard", () => {
     test("should render formatted date", () => {
         const { getByText } = render(<OrderCard {...defaultProps} />);
         expect(getByText(/2025/)).toBeDefined();
-    });
-
-    test("should render status badge for NEW order", () => {
-        const { getByText } = render(<OrderCard {...defaultProps} />);
-        expect(getByText("status_new")).toBeDefined();
-    });
-
-    test("should render status badge for ACCEPTED order", () => {
-        const { getByText } = render(<OrderCard {...{ ...defaultProps, status: "ACCEPTED" }} />);
-        expect(getByText("status_accepted")).toBeDefined();
     });
 
     test("should render payment method", () => {

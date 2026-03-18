@@ -25,15 +25,15 @@ function SettingsPage() {
 
     if (!defaultTab) {
         return (
-            <PageTransition className="p-6">
+            <PageTransition className="p-3 md:p-6">
                 <div className="text-muted-foreground text-center">{t("no_permissions")}</div>
             </PageTransition>
         );
     }
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-6">
-            <h1 className="mb-6 text-2xl font-bold">{t("title")}</h1>
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <h1 className="mb-4 text-xl font-bold md:mb-6 md:text-2xl">{t("title")}</h1>
 
             <Tabs defaultValue={defaultTab} className="flex min-h-0 flex-1 flex-col">
                 <TabsList className="bg-muted/50 mb-6 inline-grid h-auto w-full grid-cols-2 rounded-lg p-1 sm:w-auto sm:max-w-100">

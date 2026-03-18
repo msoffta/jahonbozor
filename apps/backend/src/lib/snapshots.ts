@@ -6,7 +6,7 @@ import type { UsersModel } from "@backend/generated/prisma/models/Users";
 
 interface OrderWithItems extends Pick<
     Order,
-    "userId" | "staffId" | "paymentType" | "status" | "comment" | "data"
+    "userId" | "staffId" | "paymentType" | "comment" | "data"
 > {
     items?: { productId: number; quantity: number; price: unknown }[];
 }
@@ -16,7 +16,6 @@ export function createOrderSnapshot(order: OrderWithItems) {
         userId: order.userId,
         staffId: order.staffId,
         paymentType: order.paymentType,
-        status: order.status,
         comment: order.comment,
         data: order.data,
         ...(order.items && {

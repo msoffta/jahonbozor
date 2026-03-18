@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
@@ -9,7 +8,6 @@ import {
     AnimatedList,
     AnimatedListItem,
     AnimatePresence,
-    cn,
     motion,
     PageTransition,
     Skeleton,
@@ -18,63 +16,14 @@ import {
 import { ordersListOptions } from "@/api/orders.api";
 import { OrderCard } from "@/components/orders/order-card";
 
-interface OrdersSearch {
-    tab?: "active" | "history";
-}
-
 function OrdersPage() {
     const { t } = useTranslation("orders");
-    const { tab: initialTab } = Route.useSearch();
-    const [activeTab, setActiveTab] = useState<"active" | "history">(initialTab ?? "active");
 
-    const { data: activeData, isLoading: activeLoading } = useQuery(
-        ordersListOptions({ status: "NEW" }),
-    );
-    const { data: historyData, isLoading: historyLoading } = useQuery(ordersListOptions({}));
-
-    const orders =
-        activeTab === "active"
-            ? (activeData?.orders ?? [])
-            : (historyData?.orders ?? []).filter((order) => order.status !== "NEW");
-    const isLoading = activeTab === "active" ? activeLoading : historyLoading;
+    const { data, isLoading } = useQuery(ordersListOptions({}));
+    const orders = data?.orders ?? [];
 
     return (
         <PageTransition>
-            <div className="flex border-b" role="tablist">
-                <motion.button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === "active"}
-                    onClick={() => setActiveTab("active")}
-                    className={cn(
-                        "flex-1 py-3 text-center text-sm font-medium transition-colors",
-                        activeTab === "active"
-                            ? "border-primary text-primary border-b-2"
-                            : "text-muted-foreground",
-                    )}
-                    whileTap={{ scale: 0.97 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
-                    {t("active_orders")}
-                </motion.button>
-                <motion.button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === "history"}
-                    onClick={() => setActiveTab("history")}
-                    className={cn(
-                        "flex-1 py-3 text-center text-sm font-medium transition-colors",
-                        activeTab === "history"
-                            ? "border-primary text-primary border-b-2"
-                            : "text-muted-foreground",
-                    )}
-                    whileTap={{ scale: 0.97 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
-                    {t("order_history")}
-                </motion.button>
-            </div>
-
             <AnimatePresence mode="wait">
                 {isLoading && (
                     <motion.div
@@ -109,7 +58,6 @@ function OrdersPage() {
                             <AnimatedListItem key={order.id}>
                                 <OrderCard
                                     id={order.id}
-                                    status={order.status}
                                     paymentType={order.paymentType}
                                     createdAt={order.createdAt}
                                     items={order.items}
@@ -125,10 +73,7 @@ function OrdersPage() {
 
 export const Route = createFileRoute("/_user/orders/")({
     component: OrdersPage,
-    validateSearch: (search: Record<string, unknown>): OrdersSearch => ({
-        tab: search.tab === "history" ? "history" : "active",
-    }),
     loader: ({ context }) => {
-        void context.queryClient.ensureQueryData(ordersListOptions({ status: "NEW" }));
+        void context.queryClient.ensureQueryData(ordersListOptions({}));
     },
 });

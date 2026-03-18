@@ -1,13 +1,7 @@
 {
-  "order_history": "История",
-  "active_orders": "Активные",
   "order_number": "Заказ #{{id}}",
   "creation_date": "Дата создания",
   "update_date": "Дата обновления",
-  "status": "Статус",
-  "status_new": "Новый",
-  "status_accepted": "Принят",
-  "status_cancelled": "Отменён",
   "payment_method": "Способ оплаты",
   "payment_cash": "Наличные",
   "payment_card": "Карта",

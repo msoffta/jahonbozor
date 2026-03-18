@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 
 import { motion } from "@jahonbozor/ui";
 
-import { getPaymentTypeLabel, OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { getPaymentTypeLabel } from "@/components/orders/order-status-badge";
 import { formatDate, formatPrice, getLocaleCode } from "@/lib/format";
 import { useUIStore } from "@/stores/ui.store";
 
@@ -17,13 +17,12 @@ interface OrderItem {
 
 interface OrderCardProps {
     id: number;
-    status: string;
     paymentType: string;
     createdAt: Date | string;
     items: OrderItem[];
 }
 
-export function OrderCard({ id, status, paymentType, createdAt, items }: OrderCardProps) {
+export function OrderCard({ id, paymentType, createdAt, items }: OrderCardProps) {
     const { t } = useTranslation("orders");
     const locale = useUIStore((state) => state.locale);
     const localeCode = getLocaleCode(locale);
@@ -46,7 +45,6 @@ export function OrderCard({ id, status, paymentType, createdAt, items }: OrderCa
                             {formatDate(createdAt, localeCode)}
                         </p>
                     </div>
-                    <OrderStatusBadge status={status} />
                 </div>
                 <div className="text-muted-foreground mt-2 flex items-center justify-between text-xs">
                     <span>

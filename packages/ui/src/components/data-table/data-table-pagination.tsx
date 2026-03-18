@@ -90,10 +90,10 @@ export function DataTablePagination<TData>({
                 </AnimatePresence>
             </div>
 
-            <div className="ml-auto flex items-center gap-6 lg:gap-8">
+            <div className="ml-auto flex items-center gap-2 sm:gap-6 lg:gap-8">
                 {/* Page size selector */}
                 <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">
+                    <p className="hidden text-sm font-medium sm:block">
                         {translations?.rowsPerPage ?? "Rows per page"}
                     </p>
                     <Select
