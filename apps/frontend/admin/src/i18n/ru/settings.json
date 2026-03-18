@@ -55,6 +55,11 @@
   "permission_group_producthistory": "История товаров",
   "permission_group_auditlogs": "Журнал аудита",
 
+  "permission_section_people": "Управление людьми",
+  "permission_section_catalog": "Каталог",
+  "permission_section_sales_finance": "Продажи и финансы",
+  "permission_section_system": "Система",
+
   "perm_users": {
     "create": { "title": "Создание", "desc": "Регистрация новых клиентов в системе" },
     "read": {

@@ -54,6 +54,11 @@
   "permission_group_debts": "Qarzlar",
   "permission_group_analytics": "Analitika",
 
+  "permission_section_people": "Odamlarni boshqarish",
+  "permission_section_catalog": "Katalog",
+  "permission_section_sales_finance": "Savdo va moliya",
+  "permission_section_system": "Tizim",
+
   "perm_users": {
     "create": { "title": "Yaratish", "desc": "Tizimda yangi mijozlarni ro'yxatdan o'tkazish" },
     "read": {

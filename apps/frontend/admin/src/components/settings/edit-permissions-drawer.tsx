@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -38,6 +38,13 @@ import {
 
 import type { RoleItem } from "@jahonbozor/schemas/src/roles";
 
+const PERMISSION_SECTIONS = [
+    { key: "people", groupKeys: ["users", "staff", "roles"] },
+    { key: "catalog", groupKeys: ["products", "categories", "producthistory"] },
+    { key: "sales_finance", groupKeys: ["orders", "debts", "expenses"] },
+    { key: "system", groupKeys: ["auditlogs", "analytics"] },
+];
+
 interface EditPermissionsDrawerProps {
     role: RoleItem | null;
     open: boolean;
@@ -57,15 +64,11 @@ export function EditPermissionsDrawer({
     const [searchQuery, setSearchQuery] = useState("");
     const [isRendered, setIsRendered] = useState(false);
 
-    // Откладываем тяжелый рендеринг контента до открытия модалки
     useEffect(() => {
-        const DRAWER_ANIMATION_DELAY_MS = 150;
         if (open) {
             setSelectedPermissions(role?.permissions ?? []);
             setSearchQuery("");
-            // Небольшая задержка, чтобы анимация Drawer завершилась плавно
-            const timer = setTimeout(() => setIsRendered(true), DRAWER_ANIMATION_DELAY_MS);
-            return () => clearTimeout(timer);
+            startTransition(() => setIsRendered(true));
         } else {
             setIsRendered(false);
         }
@@ -109,14 +112,14 @@ export function EditPermissionsDrawer({
             { key: "roles", icon: Key, permissions: PermissionGroups.ROLES_ALL },
             { key: "products", icon: Package, permissions: PermissionGroups.PRODUCTS_ALL },
             { key: "categories", icon: Layers, permissions: PermissionGroups.CATEGORIES_ALL },
-            { key: "orders", icon: ShoppingCart, permissions: PermissionGroups.ORDERS_ALL },
-            { key: "debts", icon: CreditCard, permissions: PermissionGroups.DEBTS_ALL },
-            { key: "expenses", icon: DollarSign, permissions: PermissionGroups.EXPENSES_ALL },
             {
                 key: "producthistory",
                 icon: History,
                 permissions: PermissionGroups.PRODUCT_HISTORY_ALL ?? [],
             },
+            { key: "orders", icon: ShoppingCart, permissions: PermissionGroups.ORDERS_ALL },
+            { key: "debts", icon: CreditCard, permissions: PermissionGroups.DEBTS_ALL },
+            { key: "expenses", icon: DollarSign, permissions: PermissionGroups.EXPENSES_ALL },
             {
                 key: "auditlogs",
                 icon: FileSearch,
@@ -201,100 +204,141 @@ export function EditPermissionsDrawer({
                                 ))}
                             </div>
                         ) : (
-                            <div className="space-y-8 py-6">
-                                {filteredGroups.map((group) => {
-                                    const groupPerms = group.permissions;
-                                    const allSelected =
-                                        groupPerms.length > 0 &&
-                                        groupPerms.every((p) => selectedPermissions.includes(p));
-                                    const Icon = group.icon;
+                            <div className="space-y-2 py-6">
+                                {PERMISSION_SECTIONS.map((section, sectionIndex) => {
+                                    const sectionGroups = filteredGroups.filter((g) =>
+                                        section.groupKeys.includes(g.key),
+                                    );
+                                    if (sectionGroups.length === 0) return null;
 
                                     return (
-                                        <div key={group.key} className="space-y-4">
-                                            <div className="bg-background/95 sticky top-0 z-10 flex items-center gap-3 py-2 backdrop-blur-sm">
-                                                <div className="bg-primary/10 text-primary rounded-lg p-2">
-                                                    <Icon className="h-5 w-5" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h3 className="text-sm font-bold">
-                                                        {t(`permission_group_${group.key}`)}
-                                                    </h3>
-                                                    <p className="text-muted-foreground text-xs">
-                                                        {
-                                                            groupPerms.filter((p) =>
-                                                                selectedPermissions.includes(p),
-                                                            ).length
-                                                        }{" "}
-                                                        / {groupPerms.length}
-                                                    </p>
-                                                </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="hover:bg-primary/5 text-primary h-8 text-xs font-medium"
-                                                    onClick={() => handleToggleGroup(groupPerms)}
-                                                >
-                                                    {allSelected
-                                                        ? t("deselect_all")
-                                                        : t("select_all")}
-                                                </Button>
+                                        <div key={section.key}>
+                                            <div
+                                                className={`flex items-center gap-2 pb-2 ${sectionIndex === 0 ? "pt-0" : "pt-4"}`}
+                                            >
+                                                <h2 className="text-muted-foreground text-xs font-semibold tracking-wider whitespace-nowrap uppercase">
+                                                    {t(`permission_section_${section.key}`)}
+                                                </h2>
+                                                <Separator className="flex-1" />
                                             </div>
 
-                                            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                                                {groupPerms.map((permission) => {
-                                                    const isSelected =
-                                                        selectedPermissions.includes(permission);
-                                                    const dotKey = permission.replaceAll(":", ".");
-                                                    const title = t(
-                                                        `settings:perm_${dotKey}.title`,
-                                                    );
-                                                    const description = t(
-                                                        `settings:perm_${dotKey}.desc`,
-                                                    );
+                                            <div className="space-y-8">
+                                                {sectionGroups.map((group) => {
+                                                    const groupPerms = group.permissions;
+                                                    const allSelected =
+                                                        groupPerms.length > 0 &&
+                                                        groupPerms.every((p) =>
+                                                            selectedPermissions.includes(p),
+                                                        );
+                                                    const Icon = group.icon;
 
                                                     return (
-                                                        <Tooltip key={permission}>
-                                                            <TooltipTrigger asChild>
-                                                                <label
-                                                                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-all duration-200 ${
-                                                                        isSelected
-                                                                            ? "border-primary/40 bg-primary/3 shadow-sm"
-                                                                            : "hover:bg-muted/50 border-transparent"
-                                                                    }`}
+                                                        <div key={group.key} className="space-y-4">
+                                                            <div className="bg-background/95 sticky top-0 z-10 flex items-center gap-3 py-2 backdrop-blur-sm">
+                                                                <div className="bg-primary/10 text-primary rounded-lg p-2">
+                                                                    <Icon className="h-5 w-5" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <h3 className="text-sm font-bold">
+                                                                        {t(
+                                                                            `permission_group_${group.key}`,
+                                                                        )}
+                                                                    </h3>
+                                                                    <p className="text-muted-foreground text-xs">
+                                                                        {
+                                                                            groupPerms.filter((p) =>
+                                                                                selectedPermissions.includes(
+                                                                                    p,
+                                                                                ),
+                                                                            ).length
+                                                                        }{" "}
+                                                                        / {groupPerms.length}
+                                                                    </p>
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="hover:bg-primary/5 text-primary h-8 text-xs font-medium"
+                                                                    onClick={() =>
+                                                                        handleToggleGroup(
+                                                                            groupPerms,
+                                                                        )
+                                                                    }
                                                                 >
-                                                                    <div className="mt-0.5">
-                                                                        <Checkbox
-                                                                            checked={isSelected}
-                                                                            onCheckedChange={() =>
-                                                                                handleToggle(
-                                                                                    permission,
-                                                                                )
-                                                                            }
-                                                                        />
-                                                                    </div>
-                                                                    <div className="flex-1 space-y-0.5">
-                                                                        <span
-                                                                            className={`text-sm leading-none font-medium ${isSelected ? "text-primary" : ""}`}
-                                                                        >
-                                                                            {title}
-                                                                        </span>
-                                                                        <p className="text-muted-foreground/60 font-mono text-[10px]">
-                                                                            {permission}
-                                                                        </p>
-                                                                    </div>
-                                                                </label>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent
-                                                                side="top"
-                                                                className="max-w-75 text-xs"
-                                                            >
-                                                                {description}
-                                                            </TooltipContent>
-                                                        </Tooltip>
+                                                                    {allSelected
+                                                                        ? t("deselect_all")
+                                                                        : t("select_all")}
+                                                                </Button>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                                                {groupPerms.map((permission) => {
+                                                                    const isSelected =
+                                                                        selectedPermissions.includes(
+                                                                            permission,
+                                                                        );
+                                                                    const dotKey =
+                                                                        permission.replaceAll(
+                                                                            ":",
+                                                                            ".",
+                                                                        );
+                                                                    const title = t(
+                                                                        `settings:perm_${dotKey}.title`,
+                                                                    );
+                                                                    const description = t(
+                                                                        `settings:perm_${dotKey}.desc`,
+                                                                    );
+
+                                                                    return (
+                                                                        <Tooltip key={permission}>
+                                                                            <TooltipTrigger asChild>
+                                                                                <label
+                                                                                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-all duration-200 ${
+                                                                                        isSelected
+                                                                                            ? "border-primary/40 bg-primary/3 shadow-sm"
+                                                                                            : "hover:bg-muted/50 border-transparent"
+                                                                                    }`}
+                                                                                >
+                                                                                    <div className="mt-0.5">
+                                                                                        <Checkbox
+                                                                                            checked={
+                                                                                                isSelected
+                                                                                            }
+                                                                                            onCheckedChange={() =>
+                                                                                                handleToggle(
+                                                                                                    permission,
+                                                                                                )
+                                                                                            }
+                                                                                        />
+                                                                                    </div>
+                                                                                    <div className="flex-1 space-y-0.5">
+                                                                                        <span
+                                                                                            className={`text-sm leading-none font-medium ${isSelected ? "text-primary" : ""}`}
+                                                                                        >
+                                                                                            {title}
+                                                                                        </span>
+                                                                                        <p className="text-muted-foreground/60 font-mono text-[10px]">
+                                                                                            {
+                                                                                                permission
+                                                                                            }
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </label>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent
+                                                                                side="top"
+                                                                                className="max-w-75 text-xs"
+                                                                            >
+                                                                                {description}
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
                                                     );
                                                 })}
                                             </div>
-                                            <Separator className="mt-6 opacity-40" />
                                         </div>
                                     );
                                 })}
