@@ -208,8 +208,7 @@ jobs:
           name: node_modules
 
       - name: Run UI package tests
-        run: cd packages/ui && bun test
-        working-directory: ${{ github.workspace }}
+        run: bun run --cwd packages/ui test
 
   test-frontend-admin:
     name: Test Frontend Admin
@@ -230,8 +229,7 @@ jobs:
           name: node_modules
 
       - name: Run admin tests
-        run: cd apps/frontend/admin && bun test
-        working-directory: ${{ github.workspace }}
+        run: bun run --cwd apps/frontend/admin test
 
   test-frontend-user:
     name: Test Frontend User
@@ -252,8 +250,7 @@ jobs:
           name: node_modules
 
       - name: Run user tests
-        run: cd apps/frontend/user && bun test
-        working-directory: ${{ github.workspace }}
+        run: bun run --cwd apps/frontend/user test
 
   build-images:
     name: Build Docker Images
