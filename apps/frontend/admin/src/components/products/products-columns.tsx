@@ -2,6 +2,8 @@ import { RotateCcw, Trash2 } from "lucide-react";
 
 import { Badge, Button, motion } from "@jahonbozor/ui";
 
+import { formatCurrency } from "@/lib/format";
+
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
@@ -53,7 +55,7 @@ export function getProductColumns(
             accessorKey: "price",
             header: t("product_price"),
             size: 120,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
             meta: {
                 flex: 1,
                 align: "left" as const,
@@ -65,7 +67,7 @@ export function getProductColumns(
             accessorKey: "costprice",
             header: t("product_costprice"),
             size: 120,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
             meta: {
                 flex: 1,
                 align: "left" as const,

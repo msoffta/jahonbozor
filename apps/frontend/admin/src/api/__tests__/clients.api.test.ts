@@ -130,6 +130,8 @@ describe("clients.api", () => {
                     page: 1,
                     limit: 20,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     includeDeleted: false,
                 },
             });
@@ -146,6 +148,8 @@ describe("clients.api", () => {
                     page: 1,
                     limit: 100,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     includeDeleted: true,
                 },
             });

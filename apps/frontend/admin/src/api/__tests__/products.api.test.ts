@@ -205,7 +205,14 @@ describe("products.api", () => {
             const options = productsListQueryOptions();
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 1, limit: 100, searchQuery: "", includeDeleted: false },
+                query: {
+                    page: 1,
+                    limit: 100,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
+                    includeDeleted: false,
+                },
             });
         });
 
@@ -217,6 +224,8 @@ describe("products.api", () => {
                     page: 3,
                     limit: 50,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     includeDeleted: false,
                     categoryIds: "1,2",
                 },

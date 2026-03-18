@@ -22,6 +22,7 @@ import { getOrderItemColumns } from "@/components/orders/order-items-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { useHasPermission } from "@/hooks/use-permissions";
+import { formatCurrency } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth.store";
 
 function OrderDetailPage() {
@@ -137,7 +138,7 @@ function OrderDetailPage() {
                 animate={{ opacity: 1, y: 0 }}
             >
                 <span className="text-muted-foreground">{t("total_sum")}:</span>
-                <span>{totalSum.toLocaleString()}</span>
+                <span>{formatCurrency(totalSum, t("common:sum"))}</span>
                 <span className="text-muted-foreground text-sm">
                     ({order.items.length} {t("order_items_count").toLowerCase()})
                 </span>

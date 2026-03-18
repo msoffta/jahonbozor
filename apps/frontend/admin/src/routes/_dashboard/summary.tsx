@@ -16,7 +16,7 @@ import { TopProductsChart } from "@/components/analytics/top-products-chart";
 import { useAuthStore } from "@/stores/auth.store";
 
 function SummaryPage() {
-    const { t } = useTranslation("analytics");
+    const { t, i18n } = useTranslation("analytics");
 
     const [dateFrom, setDateFrom] = useState<Date | undefined>();
     const [dateTo, setDateTo] = useState<Date | undefined>();
@@ -46,9 +46,10 @@ function SummaryPage() {
 
     const overview = data?.overview;
     const formatCurrency = (value: number) =>
-        new Intl.NumberFormat("uz-UZ", {
+        new Intl.NumberFormat(i18n.language === "ru" ? "ru-RU" : "uz-UZ", {
             style: "currency",
             currency: "UZS",
+            maximumFractionDigits: 0,
         }).format(value);
 
     return (

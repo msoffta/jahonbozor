@@ -3,6 +3,8 @@ import { RotateCcw, Trash2 } from "lucide-react";
 
 import { Badge, Button, motion } from "@jahonbozor/ui";
 
+import { formatCurrency } from "@/lib/format";
+
 import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
@@ -40,7 +42,7 @@ export function getExpenseColumns(
             accessorKey: "amount",
             header: t("expense_amount"),
             size: 120,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
             meta: {
                 flex: 1,
                 align: "right" as const,

@@ -3,6 +3,8 @@ import { Trash2 } from "lucide-react";
 
 import { Button, motion } from "@jahonbozor/ui";
 
+import { formatCurrency } from "@/lib/format";
+
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
@@ -110,7 +112,9 @@ export function getOrderColumns(
                 cell: ({ getValue }) => {
                     const price = getValue<number>();
                     return (
-                        <span className="font-medium">{price ? price.toLocaleString() : "—"}</span>
+                        <span className="font-medium">
+                            {price ? formatCurrency(price, t("common:sum")) : "—"}
+                        </span>
                     );
                 },
                 meta: {
@@ -138,7 +142,7 @@ export function getOrderColumns(
                 },
                 header: t("order_total"),
                 size: 130,
-                cell: ({ getValue }) => getValue<number>().toLocaleString(),
+                cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
                 meta: {
                     flex: 1.5,
                     align: "left" as const,
@@ -165,7 +169,7 @@ export function getOrderColumns(
                     ),
                 header: t("order_total"),
                 size: 130,
-                cell: ({ getValue }) => getValue<number>().toLocaleString(),
+                cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
                 meta: { flex: 1.5, align: "left" as const },
             },
         );
@@ -219,7 +223,7 @@ export function getOrderColumns(
                 const costprice = getValue<number>();
                 return (
                     <span className="costprice-value">
-                        {costprice ? costprice.toLocaleString() : "—"}
+                        {costprice ? formatCurrency(costprice, t("common:sum")) : "—"}
                     </span>
                 );
             },

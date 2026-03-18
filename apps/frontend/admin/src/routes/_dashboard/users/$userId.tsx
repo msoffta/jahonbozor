@@ -24,6 +24,7 @@ import { StatCard } from "@/components/analytics/stat-card";
 import { PaymentDrawer } from "@/components/debts/payment-drawer";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { useHasPermission } from "@/hooks/use-permissions";
+import { formatCurrency } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth.store";
 
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
@@ -72,7 +73,7 @@ function getSimpleOrderColumns(t: TFunction): ColumnDef<AdminOrderItem, unknown>
             size: 120,
             accessorFn: (row) =>
                 row.items?.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0) ?? 0,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
         },
         {
             id: "itemsCount",
@@ -193,7 +194,7 @@ function UserDetailPage() {
                 />
                 <StatCard
                     title={t("detail_total_spent")}
-                    value={totalSpent.toLocaleString()}
+                    value={formatCurrency(totalSpent, t("common:sum"))}
                     icon={Wallet}
                     iconColor="text-emerald-500"
                 />
@@ -205,7 +206,11 @@ function UserDetailPage() {
                 />
                 <StatCard
                     title={t("detail_debt_balance")}
-                    value={debtSummary?.balance?.toLocaleString() ?? "0"}
+                    value={
+                        debtSummary?.balance
+                            ? formatCurrency(debtSummary.balance, t("common:sum"))
+                            : "0"
+                    }
                     icon={CreditCard}
                     iconColor={
                         debtSummary && debtSummary.balance > 0
@@ -233,11 +238,11 @@ function UserDetailPage() {
                                     <div>
                                         <div className="text-sm font-medium">
                                             {t("debt_order_total")}:{" "}
-                                            {debtOrder.orderTotal.toLocaleString()}
+                                            {formatCurrency(debtOrder.orderTotal, t("common:sum"))}
                                         </div>
                                         <div className="text-muted-foreground text-xs">
                                             {t("debt_paid")}:{" "}
-                                            {debtOrder.paidAmount.toLocaleString()}
+                                            {formatCurrency(debtOrder.paidAmount, t("common:sum"))}
                                             {" · "}
                                             {t("debt_remaining")}:{" "}
                                             <span
@@ -247,7 +252,10 @@ function UserDetailPage() {
                                                         : "text-emerald-600"
                                                 }
                                             >
-                                                {debtOrder.remainingAmount.toLocaleString()}
+                                                {formatCurrency(
+                                                    debtOrder.remainingAmount,
+                                                    t("common:sum"),
+                                                )}
                                             </span>
                                         </div>
                                     </div>

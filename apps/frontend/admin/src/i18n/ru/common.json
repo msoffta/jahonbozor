@@ -75,6 +75,7 @@
   "read_only_access": "Режим только для чтения",
   "no_access_title": "Нет доступа",
   "no_access_message": "У вас недостаточно прав для доступа к этой странице",
+  "sum": "сум",
   "validation": {
     "required": "Обязательное поле",
     "invalid_string": "Неверный формат",

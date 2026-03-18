@@ -128,7 +128,7 @@ describe("orders.api", () => {
             const options = ordersListQueryOptions();
             await options.queryFn!({} as ListCtx);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 1, limit: 20, searchQuery: "" },
+                query: { page: 1, limit: 20, searchQuery: "", sortBy: "id", sortOrder: "asc" },
             });
         });
 
@@ -136,7 +136,7 @@ describe("orders.api", () => {
             const options = ordersListQueryOptions({ page: 2, limit: 50 });
             await options.queryFn!({} as ListCtx);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 2, limit: 50, searchQuery: "" },
+                query: { page: 2, limit: 50, searchQuery: "", sortBy: "id", sortOrder: "asc" },
             });
         });
 

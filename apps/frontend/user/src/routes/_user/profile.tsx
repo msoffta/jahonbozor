@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage, motion, PageTransition } from "@ja
 import { profileOptions } from "@/api/auth.api";
 import { myDebtSummaryOptions } from "@/api/debts.api";
 import { useLogout, useUpdateLanguage } from "@/hooks/use-auth";
-import { formatDate, getLocaleCode } from "@/lib/format";
+import { formatDate, formatPrice, getLocaleCode } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
 
@@ -98,12 +98,14 @@ function ProfilePage() {
                         </span>
                     </div>
                     <p className="mt-1 text-2xl font-bold text-red-700 dark:text-red-300">
-                        {debtSummary.balance.toLocaleString()}
+                        {formatPrice(debtSummary.balance, localeCode)} {t("sum")}
                     </p>
                     <p className="text-xs text-red-500 dark:text-red-400">
-                        {t("debt_total")}: {debtSummary.totalDebt.toLocaleString()}
+                        {t("debt_total")}: {formatPrice(debtSummary.totalDebt, localeCode)}{" "}
+                        {t("sum")}
                         {" · "}
-                        {t("debt_paid")}: {debtSummary.totalPaid.toLocaleString()}
+                        {t("debt_paid")}: {formatPrice(debtSummary.totalPaid, localeCode)}{" "}
+                        {t("sum")}
                     </p>
                 </motion.div>
             )}

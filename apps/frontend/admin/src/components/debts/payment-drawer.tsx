@@ -15,6 +15,7 @@ import {
 } from "@jahonbozor/ui";
 
 import { useCreateDebtPayment } from "@/api/debts.api";
+import { formatCurrency } from "@/lib/format";
 
 interface PaymentDrawerProps {
     open: boolean;
@@ -72,7 +73,8 @@ export function PaymentDrawer({
 
                     {remainingAmount !== undefined && (
                         <p className="text-muted-foreground text-sm">
-                            {t("debt_remaining")}: {remainingAmount.toLocaleString()}
+                            {t("debt_remaining")}:{" "}
+                            {formatCurrency(remainingAmount, t("common:sum"))}
                         </p>
                     )}
 

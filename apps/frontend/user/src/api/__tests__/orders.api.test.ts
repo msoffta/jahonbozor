@@ -85,6 +85,8 @@ describe("orders.api", () => {
                     page: 3,
                     limit: 10,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     status: "NEW",
                 },
             });
@@ -99,6 +101,8 @@ describe("orders.api", () => {
                     page: 1,
                     limit: 20,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     status: undefined,
                 },
             });

@@ -191,7 +191,13 @@ describe("roles.api", () => {
             const options = rolesListQueryOptions();
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 1, limit: 100, includeStaffCount: true },
+                query: {
+                    page: 1,
+                    limit: 100,
+                    sortBy: "id",
+                    sortOrder: "asc",
+                    includeStaffCount: true,
+                },
             });
         });
 
@@ -206,6 +212,8 @@ describe("roles.api", () => {
                 query: {
                     page: 3,
                     limit: 50,
+                    sortBy: "id",
+                    sortOrder: "asc",
                     includeStaffCount: true,
                     searchQuery: "admin",
                 },

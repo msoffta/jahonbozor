@@ -196,7 +196,7 @@ describe("staff.api", () => {
             const options = staffListQueryOptions();
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 1, limit: 100 },
+                query: { page: 1, limit: 100, sortBy: "id", sortOrder: "asc" },
             });
         });
 
@@ -208,7 +208,7 @@ describe("staff.api", () => {
             });
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 3, limit: 50, roleId: 2 },
+                query: { page: 3, limit: 50, roleId: 2, sortBy: "id", sortOrder: "asc" },
             });
         });
 

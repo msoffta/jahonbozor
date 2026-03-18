@@ -23,6 +23,7 @@ import { useCreateOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { formatCurrency } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth.store";
 
 const newOrderSearchSchema = z.object({
@@ -262,7 +263,7 @@ function NewOrderPage() {
                     animate={{ opacity: 1, y: 0 }}
                 >
                     <span className="text-muted-foreground">{t("total_sum")}:</span>
-                    <span>{totalSum.toLocaleString()}</span>
+                    <span>{formatCurrency(totalSum, t("common:sum"))}</span>
                 </motion.div>
             )}
 

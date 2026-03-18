@@ -205,7 +205,14 @@ describe("expenses.api", () => {
             const options = expensesListQueryOptions();
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                query: {
+                    page: 1,
+                    limit: 20,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
+                    includeDeleted: false,
+                },
             });
         });
 
@@ -213,7 +220,15 @@ describe("expenses.api", () => {
             const options = expensesListQueryOptions({ page: 3, limit: 50, staffId: 1 });
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 3, limit: 50, searchQuery: "", includeDeleted: false, staffId: 1 },
+                query: {
+                    page: 3,
+                    limit: 50,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
+                    includeDeleted: false,
+                    staffId: 1,
+                },
             });
         });
 

@@ -81,6 +81,8 @@ describe("categories.api", () => {
                     page: 1,
                     limit: 100,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     depth: 1,
                 },
             });
@@ -94,6 +96,8 @@ describe("categories.api", () => {
                     page: 1,
                     limit: 50,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     depth: 1,
                 },
             });
