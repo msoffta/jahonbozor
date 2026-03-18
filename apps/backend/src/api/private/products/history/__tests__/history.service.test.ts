@@ -1,8 +1,11 @@
-import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { HistoryService } from "../history.service";
+
+import type { AuditLog, Product, ProductHistory } from "@backend/generated/prisma/client";
 import type { Token } from "@jahonbozor/schemas";
-import type { Product, ProductHistory, AuditLog } from "@backend/generated/prisma/client";
 
 const mockUser: Token = {
     id: 1,
@@ -83,7 +86,7 @@ describe("HistoryService", () => {
 
             // Act
             const result = await HistoryService.getAllHistory(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -99,7 +102,16 @@ describe("HistoryService", () => {
 
             // Act
             await HistoryService.getAllHistory(
-                { page: 1, limit: 20, searchQuery: "", productId: 1, operation: "CREATE", staffId: 1 },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    productId: 1,
+                    operation: "CREATE",
+                    staffId: 1,
+                },
                 mockLogger,
             );
 
@@ -114,7 +126,7 @@ describe("HistoryService", () => {
 
             // Act
             const result = await HistoryService.getAllHistory(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -127,7 +139,11 @@ describe("HistoryService", () => {
     describe("getHistoryEntry", () => {
         test("should return history entry by id", async () => {
             // Arrange
-            const mockEntry = createMockProductHistory({ id: 1, productId: 1, operation: "CREATE" });
+            const mockEntry = createMockProductHistory({
+                id: 1,
+                productId: 1,
+                operation: "CREATE",
+            });
 
             prismaMock.productHistory.findUnique.mockResolvedValue(mockEntry);
 
@@ -165,7 +181,7 @@ describe("HistoryService", () => {
             // Act
             const result = await HistoryService.getProductHistory(
                 1,
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 
@@ -190,7 +206,9 @@ describe("HistoryService", () => {
             prismaMock.product.findUnique.mockResolvedValue(mockProduct);
             prismaMock.product.update.mockResolvedValue(mockUpdatedProduct);
             prismaMock.productHistory.create.mockResolvedValue(mockHistoryEntry);
-            prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "INVENTORY_ADJUST" }));
+            prismaMock.auditLog.create.mockResolvedValue(
+                createMockAuditLog({ action: "INVENTORY_ADJUST" }),
+            );
 
             // Act
             const result = await HistoryService.createInventoryAdjustment(
@@ -219,7 +237,9 @@ describe("HistoryService", () => {
             prismaMock.product.findUnique.mockResolvedValue(mockProduct);
             prismaMock.product.update.mockResolvedValue(mockUpdatedProduct);
             prismaMock.productHistory.create.mockResolvedValue(mockHistoryEntry);
-            prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "INVENTORY_ADJUST" }));
+            prismaMock.auditLog.create.mockResolvedValue(
+                createMockAuditLog({ action: "INVENTORY_ADJUST" }),
+            );
 
             // Act
             const result = await HistoryService.createInventoryAdjustment(
@@ -253,7 +273,11 @@ describe("HistoryService", () => {
 
         test("should return error when product is deleted", async () => {
             // Arrange
-            const deletedProduct = createMockProduct({ id: 1, remaining: 10, deletedAt: new Date() });
+            const deletedProduct = createMockProduct({
+                id: 1,
+                remaining: 10,
+                deletedAt: new Date(),
+            });
             prismaMock.product.findUnique.mockResolvedValue(deletedProduct);
 
             // Act
@@ -301,7 +325,9 @@ describe("HistoryService", () => {
             prismaMock.product.findUnique.mockResolvedValue(mockProduct);
             prismaMock.product.update.mockResolvedValue(mockUpdatedProduct);
             prismaMock.productHistory.create.mockResolvedValue(mockHistoryEntry);
-            prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "INVENTORY_ADJUST" }));
+            prismaMock.auditLog.create.mockResolvedValue(
+                createMockAuditLog({ action: "INVENTORY_ADJUST" }),
+            );
 
             // Act
             const result = await HistoryService.createInventoryAdjustment(
@@ -359,7 +385,7 @@ describe("HistoryService", () => {
             prismaMock.productHistory.findMany.mockResolvedValue([]);
 
             const result = await HistoryService.getAllHistory(
-                { page: 1, limit: 20, searchQuery: "" },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
                 mockLogger,
             );
 

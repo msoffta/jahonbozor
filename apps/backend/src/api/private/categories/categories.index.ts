@@ -1,13 +1,21 @@
-import type { AdminCategoriesListResponse, AdminCategoryDetailResponse, AdminCategoryTreeResponse } from "@jahonbozor/schemas/src/categories";
+import { Elysia, t } from "elysia";
+
 import { Permission } from "@jahonbozor/schemas";
 import {
+    CategoriesPagination,
     CreateCategoryBody,
     UpdateCategoryBody,
-    CategoriesPagination,
 } from "@jahonbozor/schemas/src/categories";
+
 import { authMiddleware } from "@backend/lib/middleware";
-import { Elysia, t } from "elysia";
+
 import { CategoriesService } from "./categories.service";
+
+import type {
+    AdminCategoriesListResponse,
+    AdminCategoryDetailResponse,
+    AdminCategoryTreeResponse,
+} from "@jahonbozor/schemas/src/categories";
 
 const categoryIdParams = t.Object({
     id: t.Numeric(),
@@ -104,7 +112,14 @@ export const categories = new Elysia({ prefix: "/categories" })
     )
     .patch(
         "/:id",
-        async ({ params, body, user, set, logger, requestId }): Promise<AdminCategoryDetailResponse> => {
+        async ({
+            params,
+            body,
+            user,
+            set,
+            logger,
+            requestId,
+        }): Promise<AdminCategoryDetailResponse> => {
             try {
                 const result = await CategoriesService.updateCategory(
                     params.id,
@@ -145,7 +160,46 @@ export const categories = new Elysia({ prefix: "/categories" })
 
                 return result;
             } catch (error) {
-                logger.error("Categories: Unhandled error in DELETE /:id", { id: params.id, error });
+                logger.error("Categories: Unhandled error in DELETE /:id", {
+                    id: params.id,
+                    error,
+                });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.CATEGORIES_DELETE],
+            params: categoryIdParams,
+        },
+    )
+    .post(
+        "/:id/restore",
+        async ({ params, user, set, logger, requestId }): Promise<AdminCategoryDetailResponse> => {
+            try {
+                const result = await CategoriesService.restoreCategory(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    const error = typeof result.error === "string" ? result.error : "";
+                    if (error.includes("not found")) {
+                        set.status = 404;
+                    } else if (error.includes("not deleted")) {
+                        set.status = 400;
+                    } else {
+                        set.status = 500;
+                    }
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Categories: Unhandled error in POST /:id/restore", {
+                    id: params.id,
+                    error,
+                });
+                set.status = 500;
                 return { success: false, error };
             }
         },

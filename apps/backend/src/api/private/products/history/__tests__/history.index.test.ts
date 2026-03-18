@@ -1,7 +1,10 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { HistoryService } from "../history.service";
 
 // Mock history data
@@ -43,10 +46,7 @@ const createTestApp = () => {
     return new Elysia()
         .derive(() => ({
             user: mockUser,
-            permissions: [
-                Permission.PRODUCT_HISTORY_LIST,
-                Permission.PRODUCT_HISTORY_READ,
-            ],
+            permissions: [Permission.PRODUCT_HISTORY_LIST, Permission.PRODUCT_HISTORY_READ],
             logger: mockLogger,
             requestId: "test-request-id",
         }))
@@ -55,9 +55,18 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery,
                     productId: query.productId ? Number(query.productId) : undefined,
-                    operation: query.operation as "CREATE" | "UPDATE" | "DELETE" | "RESTORE" | "INVENTORY_ADD" | "INVENTORY_REMOVE" | undefined,
+                    operation: query.operation as
+                        | "CREATE"
+                        | "UPDATE"
+                        | "DELETE"
+                        | "RESTORE"
+                        | "INVENTORY_ADD"
+                        | "INVENTORY_REMOVE"
+                        | undefined,
                     staffId: query.staffId ? Number(query.staffId) : undefined,
                 },
                 logger,
@@ -78,7 +87,7 @@ describe("History API Routes", () => {
     describe("GET /history", () => {
         test("should return paginated history list", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 2, history: [mockHistoryEntry] },
             });
@@ -99,15 +108,13 @@ describe("History API Routes", () => {
 
         test("should apply productId filter", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 1, history: [mockHistoryEntry] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/history?productId=1"),
-            );
+            await app.handle(new Request("http://localhost/history?productId=1"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -120,15 +127,13 @@ describe("History API Routes", () => {
 
         test("should apply operation filter", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 1, history: [mockHistoryEntry] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/history?operation=CREATE"),
-            );
+            await app.handle(new Request("http://localhost/history?operation=CREATE"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -141,15 +146,13 @@ describe("History API Routes", () => {
 
         test("should apply staffId filter", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 1, history: [mockHistoryEntry] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/history?staffId=1"),
-            );
+            await app.handle(new Request("http://localhost/history?staffId=1"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -162,15 +165,13 @@ describe("History API Routes", () => {
 
         test("should return empty list when no history found", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 0, history: [] },
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/history"),
-            );
+            const response = await app.handle(new Request("http://localhost/history"));
             const body = await response.json();
 
             // Assert
@@ -184,19 +185,22 @@ describe("History API Routes", () => {
 
         test("should handle pagination parameters", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 0, history: [] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/history?page=3&limit=15"),
-            );
+            await app.handle(new Request("http://localhost/history?page=3&limit=15"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
-                expect.objectContaining({ page: 3, limit: 15 }),
+                expect.objectContaining({
+                    page: 3,
+                    limit: 15,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                }),
                 expect.anything(),
             );
 
@@ -207,15 +211,13 @@ describe("History API Routes", () => {
     describe("GET /history/:historyId", () => {
         test("should return history entry by id", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: true,
                 data: mockHistoryEntry,
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/history/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/history/1"));
             const body = await response.json();
 
             // Assert
@@ -228,15 +230,13 @@ describe("History API Routes", () => {
 
         test("should return error when history entry not found", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: false,
                 error: "History entry not found",
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/history/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/history/999"));
             const body = await response.json();
 
             // Assert
@@ -248,7 +248,7 @@ describe("History API Routes", () => {
 
         test("should call service with correct id", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: true,
                 data: mockHistoryEntry,
             });
@@ -265,14 +265,12 @@ describe("History API Routes", () => {
 
     describe("edge cases", () => {
         test("GET /history with empty results should return empty list", async () => {
-            const spy = spyOn(HistoryService, "getAllHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getAllHistory").mockResolvedValue({
                 success: true,
                 data: { count: 0, history: [] },
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/history"),
-            );
+            const response = await app.handle(new Request("http://localhost/history"));
             const body = await response.json();
 
             expect(response.status).toBe(200);
@@ -284,14 +282,12 @@ describe("History API Routes", () => {
         });
 
         test("GET /history/:historyId with id=0 should call service with 0", async () => {
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: false,
                 error: "History entry not found",
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/history/0"),
-            );
+            const response = await app.handle(new Request("http://localhost/history/0"));
             const body = await response.json();
 
             expect(body.success).toBe(false);
@@ -301,14 +297,12 @@ describe("History API Routes", () => {
         });
 
         test("GET /history/:historyId when service fails should return error", async () => {
-            const spy = spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getHistoryEntry").mockResolvedValue({
                 success: false,
                 error: "History entry not found",
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/history/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/history/999"));
             const body = await response.json();
 
             expect(body.success).toBe(false);

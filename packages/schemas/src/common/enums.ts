@@ -1,10 +1,7 @@
 import z from "zod";
 
-export const PaymentType = z.enum(["CASH", "CREDIT_CARD"]);
+export const PaymentType = z.enum(["CASH", "CREDIT_CARD", "DEBT"]);
 export type PaymentType = z.infer<typeof PaymentType>;
-
-export const OrderStatus = z.enum(["NEW", "ACCEPTED", "CANCELLED"]);
-export type OrderStatus = z.infer<typeof OrderStatus>;
 
 export const Operation = z.enum([
     "CREATE",
@@ -25,8 +22,8 @@ export const AuditAction = z.enum([
     "LOGOUT",
     "PASSWORD_CHANGE",
     "PERMISSION_CHANGE",
-    "ORDER_STATUS_CHANGE",
     "INVENTORY_ADJUST",
+    "DEBT_PAYMENT",
 ]);
 export type AuditAction = z.infer<typeof AuditAction>;
 

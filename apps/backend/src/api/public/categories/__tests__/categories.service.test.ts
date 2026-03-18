@@ -1,12 +1,16 @@
-import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import type { Category } from "@backend/generated/prisma/client";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { PublicCategoriesService } from "../categories.service";
+
+import type { Category } from "@backend/generated/prisma/client";
 
 const mockCategory: Category = {
     id: 1,
     name: "РћС‚РІРµСЂС‚РєРё",
     parentId: null,
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -41,9 +45,7 @@ describe("PublicCategories Service", () => {
     describe("getAllCategories", () => {
         test("should return all root categories with children", async () => {
             // Arrange
-            prismaMock.category.findMany.mockResolvedValueOnce([
-                mockCategoryWithChildren,
-            ] as unknown as Category[]);
+            prismaMock.category.findMany.mockResolvedValueOnce([mockCategoryWithChildren]);
 
             // Act
             const result = await PublicCategoriesService.getAllCategories(mockLogger);
@@ -82,9 +84,7 @@ describe("PublicCategories Service", () => {
     describe("getCategory", () => {
         test("should return single category with children", async () => {
             // Arrange
-            prismaMock.category.findFirst.mockResolvedValueOnce(
-                mockCategoryWithChildren as unknown as Category,
-            );
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategoryWithChildren);
 
             // Act
             const result = await PublicCategoriesService.getCategory(1, mockLogger);

@@ -39,3 +39,9 @@ routeTree.gen.ts
 certs
 certbot
 .playwright-mcp
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Windows artifact
+nul

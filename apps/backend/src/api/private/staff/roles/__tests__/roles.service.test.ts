@@ -1,13 +1,18 @@
-import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import type { Role, AuditLog } from "@backend/generated/prisma/client";
-import { type Token, Permission } from "@jahonbozor/schemas";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { Permission, type Token } from "@jahonbozor/schemas";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { RolesService } from "../roles.service";
+
+import type { AuditLog, Role } from "@backend/generated/prisma/client";
 
 const mockRole: Role = {
     id: 1,
     name: "Admin",
     permissions: [Permission.USERS_CREATE, Permission.USERS_READ_ALL, Permission.USERS_UPDATE_ALL],
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -46,7 +51,7 @@ describe("Roles Service", () => {
 
             // Act
             const result = await RolesService.getAllRoles(
-                { page: 1, limit: 20 },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const },
                 mockLogger,
             );
 
@@ -61,7 +66,13 @@ describe("Roles Service", () => {
 
             // Act
             const result = await RolesService.getAllRoles(
-                { page: 1, limit: 20, searchQuery: "Admin" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "Admin",
+                },
                 mockLogger,
             );
 
@@ -76,7 +87,13 @@ describe("Roles Service", () => {
 
             // Act
             const result = await RolesService.getAllRoles(
-                { page: 1, limit: 20, includeStaffCount: true },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeStaffCount: true,
+                },
                 mockLogger,
             );
 
@@ -92,7 +109,13 @@ describe("Roles Service", () => {
 
             // Act
             const result = await RolesService.getAllRoles(
-                { page: 1, limit: 20, searchQuery: "nonexistent" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "nonexistent",
+                },
                 mockLogger,
             );
 
@@ -108,7 +131,7 @@ describe("Roles Service", () => {
 
             // Act
             const result = await RolesService.getAllRoles(
-                { page: 1, limit: 20 },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const },
                 mockLogger,
             );
 
@@ -122,7 +145,7 @@ describe("Roles Service", () => {
     describe("getRole", () => {
         test("should return role by id", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRole);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
 
             // Act
             const result = await RolesService.getRole(1, false, mockLogger);
@@ -130,15 +153,15 @@ describe("Roles Service", () => {
             // Assert
             const success = expectSuccess(result);
             expect(success.data).toEqual(mockRole);
-            expect(prismaMock.role.findUnique).toHaveBeenCalledWith({
-                where: { id: 1 },
+            expect(prismaMock.role.findFirst).toHaveBeenCalledWith({
+                where: { id: 1, deletedAt: null },
                 include: undefined,
             });
         });
 
         test("should include staff count when requested", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRoleWithCount);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRoleWithCount);
 
             // Act
             const result = await RolesService.getRole(1, true, mockLogger);
@@ -146,15 +169,15 @@ describe("Roles Service", () => {
             // Assert
             const success = expectSuccess(result);
             expect(success.data?._count).toBeDefined();
-            expect(prismaMock.role.findUnique).toHaveBeenCalledWith({
-                where: { id: 1 },
+            expect(prismaMock.role.findFirst).toHaveBeenCalledWith({
+                where: { id: 1, deletedAt: null },
                 include: { _count: { select: { staffs: true } } },
             });
         });
 
         test("should return error when role not found", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+            prismaMock.role.findFirst.mockResolvedValueOnce(null);
 
             // Act
             const result = await RolesService.getRole(999, false, mockLogger);
@@ -168,7 +191,7 @@ describe("Roles Service", () => {
         test("should handle database error", async () => {
             // Arrange
             const dbError = new Error("Database error");
-            prismaMock.role.findUnique.mockRejectedValueOnce(dbError);
+            prismaMock.role.findFirst.mockRejectedValueOnce(dbError);
 
             // Act
             const result = await RolesService.getRole(1, false, mockLogger);
@@ -191,6 +214,7 @@ describe("Roles Service", () => {
             const createdRole = {
                 id: 2,
                 ...validRoleData,
+                deletedAt: null,
                 createdAt: new Date("2024-01-01"),
                 updatedAt: new Date("2024-01-01"),
             };
@@ -236,6 +260,7 @@ describe("Roles Service", () => {
             const createdRole = {
                 id: 3,
                 ...roleWithNoPerms,
+                deletedAt: null,
                 createdAt: new Date("2024-01-01"),
                 updatedAt: new Date("2024-01-01"),
             };
@@ -320,6 +345,7 @@ describe("Roles Service", () => {
                 id: 2,
                 name: "Existing",
                 permissions: [],
+                deletedAt: null,
                 createdAt: new Date("2024-01-01"),
                 updatedAt: new Date("2024-01-01"),
             };
@@ -410,11 +436,12 @@ describe("Roles Service", () => {
     });
 
     describe("deleteRole", () => {
-        test("should delete role when no staff assigned", async () => {
+        test("should soft delete role when no staff assigned", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRole);
+            const deletedRole = { ...mockRole, deletedAt: new Date() };
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
             prismaMock.staff.count.mockResolvedValueOnce(0);
-            prismaMock.role.delete.mockResolvedValueOnce(mockRole);
+            prismaMock.role.update.mockResolvedValueOnce(deletedRole);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
 
             // Act
@@ -422,7 +449,7 @@ describe("Roles Service", () => {
 
             // Assert
             const success = expectSuccess(result);
-            expect(success.data).toEqual(mockRole);
+            expect(success.data).toEqual(deletedRole);
             expect(mockLogger.info).toHaveBeenCalledWith("Roles: Role deleted", {
                 roleId: 1,
                 name: "Admin",
@@ -432,7 +459,7 @@ describe("Roles Service", () => {
 
         test("should return error when role not found", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+            prismaMock.role.findFirst.mockResolvedValueOnce(null);
 
             // Act
             const result = await RolesService.deleteRole(999, mockContext, mockLogger);
@@ -447,7 +474,7 @@ describe("Roles Service", () => {
 
         test("should return error when staff are assigned to role", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRole);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
             prismaMock.staff.count.mockResolvedValueOnce(5);
 
             // Act
@@ -456,15 +483,18 @@ describe("Roles Service", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("Cannot delete role with 5 assigned staff member(s)");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Roles: Cannot delete role with assigned staff", {
-                roleId: 1,
-                staffCount: 5,
-            });
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                "Roles: Cannot delete role with assigned staff",
+                {
+                    roleId: 1,
+                    staffCount: 5,
+                },
+            );
         });
 
         test("should return error when single staff is assigned", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRole);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
             prismaMock.staff.count.mockResolvedValueOnce(1);
 
             // Act
@@ -477,7 +507,7 @@ describe("Roles Service", () => {
 
         test("should handle database error", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRole);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
             prismaMock.staff.count.mockResolvedValueOnce(0);
             const dbError = new Error("Database error");
             prismaMock.$transaction.mockRejectedValueOnce(dbError);
@@ -494,7 +524,7 @@ describe("Roles Service", () => {
 
     describe("edge cases", () => {
         test("getRole with id=0 should return not found", async () => {
-            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+            prismaMock.role.findFirst.mockResolvedValueOnce(null);
 
             const result = await RolesService.getRole(0, false, mockLogger);
 
@@ -503,7 +533,7 @@ describe("Roles Service", () => {
         });
 
         test("getRole with negative id should return not found", async () => {
-            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+            prismaMock.role.findFirst.mockResolvedValueOnce(null);
 
             const result = await RolesService.getRole(-1, false, mockLogger);
 
@@ -525,7 +555,7 @@ describe("Roles Service", () => {
         });
 
         test("deleteRole with id=0 should return not found", async () => {
-            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+            prismaMock.role.findFirst.mockResolvedValueOnce(null);
 
             const result = await RolesService.deleteRole(0, mockContext, mockLogger);
 

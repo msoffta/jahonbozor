@@ -1,14 +1,20 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { CategoriesService } from "../categories.service";
+
 import type { Category } from "@backend/generated/prisma/client";
 
 describe("CategoriesService", () => {
     let mockLogger: ReturnType<typeof createMockLogger>;
 
     // Factory for creating mock category with required fields
-    const createMockCategory = (overrides: Partial<Category> & { id: number; name: string }): Category => ({
+    const createMockCategory = (
+        overrides: Partial<Category> & { id: number; name: string },
+    ): Category => ({
         parentId: null,
+        deletedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
         ...overrides,
@@ -46,7 +52,14 @@ describe("CategoriesService", () => {
 
             // Act
             const result = await CategoriesService.getAllCategories(
-                { page: 1, limit: 10, searchQuery: "", depth: 1 },
+                {
+                    page: 1,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    depth: 1,
+                },
                 mockLogger,
             );
 
@@ -59,14 +72,20 @@ describe("CategoriesService", () => {
 
         test("should filter by parentId=null for root categories", async () => {
             // Arrange
-            const mockCategories = [
-                createMockCategory({ id: 1, name: "Electronics" }),
-            ];
+            const mockCategories = [createMockCategory({ id: 1, name: "Electronics" })];
             prismaMock.$transaction.mockResolvedValueOnce([1, mockCategories]);
 
             // Act
             const result = await CategoriesService.getAllCategories(
-                { page: 1, limit: 10, searchQuery: "", parentId: null, depth: 1 },
+                {
+                    page: 1,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    parentId: null,
+                    depth: 1,
+                },
                 mockLogger,
             );
 
@@ -85,7 +104,15 @@ describe("CategoriesService", () => {
 
             // Act
             const result = await CategoriesService.getAllCategories(
-                { page: 1, limit: 10, searchQuery: "", parentId: 1, depth: 1 },
+                {
+                    page: 1,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    parentId: 1,
+                    depth: 1,
+                },
                 mockLogger,
             );
 
@@ -98,14 +125,19 @@ describe("CategoriesService", () => {
 
         test("should search by name", async () => {
             // Arrange
-            const mockCategories = [
-                createMockCategory({ id: 1, name: "Electronics" }),
-            ];
+            const mockCategories = [createMockCategory({ id: 1, name: "Electronics" })];
             prismaMock.$transaction.mockResolvedValueOnce([1, mockCategories]);
 
             // Act
             const result = await CategoriesService.getAllCategories(
-                { page: 1, limit: 10, searchQuery: "Electr", depth: 1 },
+                {
+                    page: 1,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "Electr",
+                    depth: 1,
+                },
                 mockLogger,
             );
 
@@ -118,10 +150,17 @@ describe("CategoriesService", () => {
         test("should return category by id", async () => {
             // Arrange
             const mockCategory = createMockCategory({ id: 1, name: "Electronics" });
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
 
             // Act
-            const result = await CategoriesService.getCategory(1, false, false, false, 1, mockLogger);
+            const result = await CategoriesService.getCategory(
+                1,
+                false,
+                false,
+                false,
+                1,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -132,10 +171,17 @@ describe("CategoriesService", () => {
 
         test("should return error when category not found", async () => {
             // Arrange
-            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+            prismaMock.category.findFirst.mockResolvedValueOnce(null);
 
             // Act
-            const result = await CategoriesService.getCategory(999, false, false, false, 1, mockLogger);
+            const result = await CategoriesService.getCategory(
+                999,
+                false,
+                false,
+                false,
+                1,
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -148,10 +194,17 @@ describe("CategoriesService", () => {
                 ...createMockCategory({ id: 1, name: "Electronics" }),
                 children: [createMockCategory({ id: 5, name: "Smartphones", parentId: 1 })],
             };
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
 
             // Act
-            const result = await CategoriesService.getCategory(1, true, false, false, 1, mockLogger);
+            const result = await CategoriesService.getCategory(
+                1,
+                true,
+                false,
+                false,
+                1,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -167,8 +220,8 @@ describe("CategoriesService", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
             prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
-                    category: { create: mock(() => Promise.resolve(mockCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { create: vi.fn(() => Promise.resolve(mockCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return callback(mockTransaction);
             });
@@ -195,8 +248,8 @@ describe("CategoriesService", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
             prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
-                    category: { create: mock(() => Promise.resolve(mockCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { create: vi.fn(() => Promise.resolve(mockCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return callback(mockTransaction);
             });
@@ -258,8 +311,8 @@ describe("CategoriesService", () => {
             prismaMock.category.findFirst.mockResolvedValueOnce(null);
             prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
-                    category: { update: mock(() => Promise.resolve(updatedCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { update: vi.fn(() => Promise.resolve(updatedCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return callback(mockTransaction);
             });
@@ -335,22 +388,27 @@ describe("CategoriesService", () => {
     });
 
     describe("deleteCategory", () => {
-        test("should delete category without children or products", async () => {
+        test("should soft delete category without children or products", async () => {
             // Arrange
             const mockCategory = createMockCategory({ id: 1, name: "Electronics" });
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            const deletedCategory = { ...mockCategory, deletedAt: new Date() };
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
             prismaMock.category.count.mockResolvedValueOnce(0);
             prismaMock.product.count.mockResolvedValueOnce(0);
             prismaMock.$transaction.mockImplementationOnce(async (callback: any) => {
                 const mockTransaction = {
-                    category: { delete: mock(() => Promise.resolve(mockCategory)) },
-                    auditLog: { create: mock(() => Promise.resolve({})) },
+                    category: { update: vi.fn(() => Promise.resolve(deletedCategory)) },
+                    auditLog: { create: vi.fn(() => Promise.resolve({})) },
                 };
                 return callback(mockTransaction);
             });
 
             // Act
-            const result = await CategoriesService.deleteCategory(1, createMockContext(), mockLogger);
+            const result = await CategoriesService.deleteCategory(
+                1,
+                createMockContext(),
+                mockLogger,
+            );
 
             // Assert
             expectSuccess(result);
@@ -358,10 +416,14 @@ describe("CategoriesService", () => {
 
         test("should return error when category not found", async () => {
             // Arrange
-            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+            prismaMock.category.findFirst.mockResolvedValueOnce(null);
 
             // Act
-            const result = await CategoriesService.deleteCategory(999, createMockContext(), mockLogger);
+            const result = await CategoriesService.deleteCategory(
+                999,
+                createMockContext(),
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -371,11 +433,15 @@ describe("CategoriesService", () => {
         test("should return error when category has children", async () => {
             // Arrange
             const mockCategory = createMockCategory({ id: 1, name: "Electronics" });
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
             prismaMock.category.count.mockResolvedValueOnce(3);
 
             // Act
-            const result = await CategoriesService.deleteCategory(1, createMockContext(), mockLogger);
+            const result = await CategoriesService.deleteCategory(
+                1,
+                createMockContext(),
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -385,12 +451,16 @@ describe("CategoriesService", () => {
         test("should return error when category has products", async () => {
             // Arrange
             const mockCategory = createMockCategory({ id: 1, name: "Electronics" });
-            prismaMock.category.findUnique.mockResolvedValueOnce(mockCategory);
+            prismaMock.category.findFirst.mockResolvedValueOnce(mockCategory);
             prismaMock.category.count.mockResolvedValueOnce(0);
             prismaMock.product.count.mockResolvedValueOnce(5);
 
             // Act
-            const result = await CategoriesService.deleteCategory(1, createMockContext(), mockLogger);
+            const result = await CategoriesService.deleteCategory(
+                1,
+                createMockContext(),
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -405,7 +475,10 @@ describe("CategoriesService", () => {
                 {
                     ...createMockCategory({ id: 1, name: "Electronics" }),
                     children: [
-                        { ...createMockCategory({ id: 5, name: "Smartphones", parentId: 1 }), children: [] },
+                        {
+                            ...createMockCategory({ id: 5, name: "Smartphones", parentId: 1 }),
+                            children: [],
+                        },
                     ],
                 },
             ];
@@ -416,7 +489,7 @@ describe("CategoriesService", () => {
 
             // Assert
             const success = expectSuccess(result);
-            const data = success.data as { categories: Array<Category & { children: Category[] }> };
+            const data = success.data as { categories: (Category & { children: Category[] })[] };
             expect(data.categories).toHaveLength(1);
             expect(data.categories[0].children).toHaveLength(1);
         });
@@ -424,18 +497,32 @@ describe("CategoriesService", () => {
 
     describe("edge cases", () => {
         test("getCategory with id=0 should return not found", async () => {
-            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+            prismaMock.category.findFirst.mockResolvedValueOnce(null);
 
-            const result = await CategoriesService.getCategory(0, false, false, false, 1, mockLogger);
+            const result = await CategoriesService.getCategory(
+                0,
+                false,
+                false,
+                false,
+                1,
+                mockLogger,
+            );
 
             const failure = expectFailure(result);
             expect(failure.error).toBe("Category not found");
         });
 
         test("getCategory with negative id should return not found", async () => {
-            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+            prismaMock.category.findFirst.mockResolvedValueOnce(null);
 
-            const result = await CategoriesService.getCategory(-1, false, false, false, 1, mockLogger);
+            const result = await CategoriesService.getCategory(
+                -1,
+                false,
+                false,
+                false,
+                1,
+                mockLogger,
+            );
 
             const failure = expectFailure(result);
             expect(failure.error).toBe("Category not found");
@@ -455,9 +542,13 @@ describe("CategoriesService", () => {
         });
 
         test("deleteCategory with id=0 should return not found", async () => {
-            prismaMock.category.findUnique.mockResolvedValueOnce(null);
+            prismaMock.category.findFirst.mockResolvedValueOnce(null);
 
-            const result = await CategoriesService.deleteCategory(0, createMockContext(), mockLogger);
+            const result = await CategoriesService.deleteCategory(
+                0,
+                createMockContext(),
+                mockLogger,
+            );
 
             const failure = expectFailure(result);
             expect(failure.error).toBe("Category not found");

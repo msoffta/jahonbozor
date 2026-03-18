@@ -1,2 +1,2 @@
-export * from "./roles.model";
 export * from "./roles.dto";
+export * from "./roles.model";

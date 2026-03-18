@@ -1,9 +1,13 @@
-import { describe, test, expect, beforeEach } from "bun:test";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import type { Users as UsersType } from "@backend/generated/prisma/client";
+import { beforeEach, describe, expect, test } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
-import { Users } from "../users.service";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
+import { UsersService } from "../users.service";
+
+import type { Users as UsersType } from "@backend/generated/prisma/client";
 
 // Mock user data
 const mockUser: UsersType = {
@@ -63,10 +67,12 @@ const createTestApp = () => {
             requestId: "test-request-id",
         }))
         .get("/users", async ({ query, logger }) => {
-            return await Users.getAllUsers(
+            return await UsersService.getAllUsers(
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery as string | undefined,
                     includeOrders: query.includeOrders === "true",
                     includeDeleted: query.includeDeleted === "true",
@@ -75,19 +81,26 @@ const createTestApp = () => {
             );
         })
         .get("/users/:id", async ({ params, set, logger }) => {
-            const result = await Users.getUser(Number(params.id), logger);
+            const result = await UsersService.getUser(Number(params.id), logger);
             if (!result.success) set.status = 404;
             return result;
         })
         .post("/users", async ({ body, logger, requestId }) => {
-            return await Users.createUser(
-                body as { fullname: string; username: string; phone: string; photo: string | null; telegramId: string | null; language: "uz" | "ru" },
+            return await UsersService.createUser(
+                body as {
+                    fullname: string;
+                    username: string;
+                    phone: string;
+                    photo: string | null;
+                    telegramId: string | null;
+                    language: "uz" | "ru";
+                },
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
                 logger,
             );
         })
         .put("/users/:id", async ({ params, body, set, logger, requestId }) => {
-            const result = await Users.updateUser(
+            const result = await UsersService.updateUser(
                 Number(params.id),
                 body as { fullname?: string; username?: string; phone?: string },
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
@@ -99,7 +112,7 @@ const createTestApp = () => {
             return result;
         })
         .delete("/users/:id", async ({ params, set, logger, requestId }) => {
-            const result = await Users.deleteUser(
+            const result = await UsersService.deleteUser(
                 Number(params.id),
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
                 logger,
@@ -110,7 +123,7 @@ const createTestApp = () => {
             return result;
         })
         .post("/users/:id/restore", async ({ params, set, logger, requestId }) => {
-            const result = await Users.restoreUser(
+            const result = await UsersService.restoreUser(
                 Number(params.id),
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
                 logger,
@@ -184,9 +197,7 @@ describe("Users API Endpoints", () => {
             prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/users/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/users/1"));
 
             // Assert
             expect(response.status).toBe(200);
@@ -200,9 +211,7 @@ describe("Users API Endpoints", () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/users/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/users/999"));
 
             // Assert
             expect(response.status).toBe(404);
@@ -222,7 +231,13 @@ describe("Users API Endpoints", () => {
                 photo: null,
                 telegramId: null,
             };
-            const createdUser = { id: 2, ...newUserData, createdAt: new Date(), updatedAt: new Date(), deletedAt: null };
+            const createdUser = {
+                id: 2,
+                ...newUserData,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+            };
 
             mockTransaction({
                 users: { create: () => Promise.resolve(createdUser) },
@@ -424,9 +439,7 @@ describe("Users API Endpoints", () => {
         test("GET /users/:id with id=0 should return 404", async () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
-            const response = await app.handle(
-                new Request("http://localhost/users/0"),
-            );
+            const response = await app.handle(new Request("http://localhost/users/0"));
 
             expect(response.status).toBe(404);
             const body = await response.json();
@@ -437,9 +450,7 @@ describe("Users API Endpoints", () => {
             prismaMock.users.count.mockResolvedValue(0);
             prismaMock.users.findMany.mockResolvedValue([]);
 
-            const response = await app.handle(
-                new Request("http://localhost/users"),
-            );
+            const response = await app.handle(new Request("http://localhost/users"));
 
             expect(response.status).toBe(200);
             const body = await response.json();

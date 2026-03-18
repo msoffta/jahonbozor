@@ -1,81 +1,55 @@
-import { mock, beforeEach } from "bun:test";
+import { beforeEach, vi } from "vitest";
+import { mockDeep, mockReset } from "vitest-mock-extended";
+
+import type { AuditLog, PrismaClient, Users } from "@backend/generated/prisma/client";
 import type { Logger } from "@jahonbozor/logger";
-import type { Users } from "@backend/generated/prisma/client";
 
 // Set env vars before any module imports
 process.env.TELEGRAM_BOT_TOKEN ??= "test-token-for-tests";
 
-// Generic mock type for Prisma model methods
-type MockedModel<T> = {
-    findUnique: ReturnType<typeof mock<(args: unknown) => Promise<T | null>>>;
-    findFirst: ReturnType<typeof mock<(args: unknown) => Promise<T | null>>>;
-    findMany: ReturnType<typeof mock<(args: unknown) => Promise<T[]>>>;
-    create: ReturnType<typeof mock<(args: unknown) => Promise<T>>>;
-    update: ReturnType<typeof mock<(args: unknown) => Promise<T>>>;
-    delete: ReturnType<typeof mock<(args: unknown) => Promise<T>>>;
-    count: ReturnType<typeof mock<(args: unknown) => Promise<number>>>;
-};
+export const prismaMock = mockDeep<PrismaClient>();
 
-const createModelMock = <T>(): MockedModel<T> => ({
-    findUnique: mock(() => Promise.resolve(null)),
-    findFirst: mock(() => Promise.resolve(null)),
-    findMany: mock(() => Promise.resolve([])),
-    create: mock(() => Promise.resolve({} as T)),
-    update: mock(() => Promise.resolve({} as T)),
-    delete: mock(() => Promise.resolve({} as T)),
-    count: mock(() => Promise.resolve(0)),
-});
-
-const defaultModelImplementations = {
-    findUnique: () => Promise.resolve(null),
-    findFirst: () => Promise.resolve(null),
-    findMany: () => Promise.resolve([]),
-    create: () => Promise.resolve({}),
-    update: () => Promise.resolve({}),
-    delete: () => Promise.resolve({}),
-    count: () => Promise.resolve(0),
-};
-
-const resetModelMocks = <T>(model: MockedModel<T>) => {
-    Object.entries(model).forEach(([methodName, method]) => {
-        if (typeof method?.mockReset === "function") {
-            method.mockReset();
-            const defaultImpl = defaultModelImplementations[methodName as keyof typeof defaultModelImplementations];
-            if (defaultImpl) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (method as any).mockImplementation(defaultImpl);
-            }
-        }
-    });
-};
-
-export const prismaMock = {
-    users: createModelMock<Users>(),
-    $connect: mock(() => Promise.resolve()),
-    $disconnect: mock(() => Promise.resolve()),
-};
-
-mock.module("@bot/lib/prisma", () => ({ prisma: prismaMock }));
+vi.mock("@bot/lib/prisma", () => ({ prisma: prismaMock }));
 
 beforeEach(() => {
-    Object.entries(prismaMock).forEach(([key, value]) => {
-        if (key.startsWith("$")) {
-            if (typeof (value as { mockReset?: () => void })?.mockReset === "function") {
-                (value as { mockReset: () => void }).mockReset();
-            }
-        } else if (typeof value === "object" && value !== null) {
-            resetModelMocks(value as MockedModel<unknown>);
-        }
+    mockReset(prismaMock);
+    // Restore $transaction callback mode
+    prismaMock.$transaction.mockImplementation(async (callback: any) => {
+        if (typeof callback === "function") return callback(prismaMock);
+        return Promise.all(callback as Promise<unknown>[]);
     });
-
-    prismaMock.$connect.mockImplementation(() => Promise.resolve());
-    prismaMock.$disconnect.mockImplementation(() => Promise.resolve());
 });
 
-export const createMockLogger = (): Logger =>
-    ({
-        info: mock(() => {}),
-        warn: mock(() => {}),
-        error: mock(() => {}),
-        debug: mock(() => {}),
-    }) as unknown as Logger;
+export const createMockLogger = (): Logger => mockDeep<Logger>();
+
+// Typed mock factories — avoid `as any` in tests
+const now = new Date("2024-01-01");
+
+export const mockUser = (overrides: Partial<Users> = {}): Users => ({
+    id: 1,
+    fullname: "Test User",
+    username: "testuser",
+    phone: null,
+    photo: null,
+    telegramId: "123456",
+    language: "uz",
+    deletedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+});
+
+export const mockAuditLog = (overrides: Partial<AuditLog> = {}): AuditLog => ({
+    id: 1,
+    requestId: null,
+    actorId: 1,
+    actorType: "USER",
+    entityType: "Users",
+    entityId: 1,
+    action: "UPDATE",
+    previousData: null,
+    newData: null,
+    metadata: null,
+    createdAt: now,
+    ...overrides,
+});

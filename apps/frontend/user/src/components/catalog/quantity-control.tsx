@@ -1,5 +1,6 @@
 import { Minus, Plus } from "lucide-react";
-import { motion, AnimatePresence } from "@jahonbozor/ui";
+
+import { AnimatePresence, motion } from "@jahonbozor/ui";
 
 interface QuantityControlProps {
     quantity: number;
@@ -9,11 +10,11 @@ interface QuantityControlProps {
 
 export function QuantityControl({ quantity, onIncrement, onDecrement }: QuantityControlProps) {
     return (
-        <div className="flex h-11 items-center gap-3 bg-accent rounded-xl px-2 overflow-hidden">
+        <div className="bg-accent flex h-11 items-center gap-3 overflow-hidden rounded-xl px-2">
             <motion.button
                 type="button"
                 onClick={onDecrement}
-                className="flex size-6 items-center justify-center text-accent-foreground"
+                className="text-accent-foreground flex size-6 items-center justify-center"
                 whileTap={{ scale: 0.8 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
@@ -26,7 +27,7 @@ export function QuantityControl({ quantity, onIncrement, onDecrement }: Quantity
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -10, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    className="w-6 text-center text-base font-medium text-accent-foreground"
+                    className="text-accent-foreground w-6 text-center text-base font-medium"
                 >
                     {quantity}
                 </motion.span>
@@ -34,7 +35,7 @@ export function QuantityControl({ quantity, onIncrement, onDecrement }: Quantity
             <motion.button
                 type="button"
                 onClick={onIncrement}
-                className="flex size-6 items-center justify-center text-accent-foreground"
+                className="text-accent-foreground flex size-6 items-center justify-center"
                 whileTap={{ scale: 0.8 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >

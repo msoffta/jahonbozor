@@ -1,33 +1,46 @@
-import { clientsListQueryOptions } from "@/api/clients.api";
-import { ordersListQueryOptions, useDeleteOrder } from "@/api/orders.api";
-import { productsListQueryOptions } from "@/api/products.api";
-import { getOrderColumns } from "@/components/orders/orders-columns";
-import type { DataTableTranslations } from "@jahonbozor/ui";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { endOfDay, startOfDay } from "date-fns";
+
+import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
 import {
+    AnimatePresence,
     Button,
     DataTable,
     DataTableSkeleton,
     DatePicker,
+    motion,
     PageTransition,
+    useIsMobile,
 } from "@jahonbozor/ui";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import dayjs from "dayjs";
-import { useMemo, useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+
+import { clientsListQueryOptions } from "@/api/clients.api";
+import { ordersListQueryOptions, useDeleteOrder } from "@/api/orders.api";
+import { productsListQueryOptions } from "@/api/products.api";
+import { getOrderColumns } from "@/components/orders/orders-columns";
+import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function ListsPage() {
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
-    const [isReady, setIsReady] = useState(false);
+    const isReady = useDeferredReady(300);
+    const translations = useDataTableTranslations("lists_empty");
 
-    useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 300);
-        return () => clearTimeout(timer);
-    }, []);
+    // Permission check for delete action
+    const canDelete = useHasPermission(Permission.ORDERS_DELETE);
 
-    const todayStart = dayjs().startOf("day").toISOString();
-    const todayEnd = dayjs().endOf("day").toISOString();
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
+    const todayStart = startOfDay(new Date()).toISOString();
+    const todayEnd = endOfDay(new Date()).toISOString();
 
     const [dateFrom, setDateFrom] = useState(todayStart);
     const [dateTo, setDateTo] = useState(todayEnd);
@@ -58,21 +71,17 @@ function ListsPage() {
     const actions = useMemo(
         () => ({
             onDelete: (id: number) => {
-                if (confirm(t("common:confirm_delete"))) {
-                    deleteOrder.mutate(id);
-                }
-            },
-            onStatusChange: (_id: number, _status: string) => {
-                // Not used on lists page
+                setDeleteTargetId(id);
+                setDeleteConfirmOpen(true);
             },
             onNavigate: (id: number) => {
-                navigate({
+                void navigate({
                     to: "/orders/$orderId",
                     params: { orderId: String(id) },
                 });
             },
         }),
-        [t, deleteOrder, navigate],
+        [navigate],
     );
 
     const columns = useMemo(() => {
@@ -81,51 +90,40 @@ function ListsPage() {
             t,
             actions,
             { products, users },
-            { showItemColumns: false },
+            { showItemColumns: false, canDelete },
         );
-    }, [t, actions, products, users, isReady]);
+    }, [t, actions, products, users, isReady, canDelete]);
 
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("lists_empty"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile ? { paymentType: false, user: false, costprice: false, comment: false } : {},
+        [isMobile],
+    );
 
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold">{t("lists_title")}</h1>
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-center md:justify-between">
+                <h1 className="text-xl font-bold md:text-2xl">{t("lists_title")}</h1>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
                     <div className="flex items-center gap-2">
                         <DatePicker
                             value={dateFrom}
-                            onChange={(date) =>
-                                setDateFrom(
-                                    dayjs(date).startOf("day").toISOString(),
-                                )
-                            }
-                            className="h-8 w-36 text-xs"
+                            onChange={(date) => {
+                                if (date) setDateFrom(startOfDay(new Date(date)).toISOString());
+                            }}
+                            className="h-8 w-28 text-xs sm:w-36"
                         />
                         <span className="text-muted-foreground text-xs">—</span>
                         <DatePicker
                             value={dateTo}
-                            onChange={(date) =>
-                                setDateTo(
-                                    dayjs(date).endOf("day").toISOString(),
-                                )
-                            }
-                            className="h-8 w-36 text-xs"
+                            onChange={(date) => {
+                                if (date) setDateTo(endOfDay(new Date(date)).toISOString());
+                            }}
+                            className="h-8 w-28 text-xs sm:w-36"
                         />
                     </div>
                     <Button
@@ -141,30 +139,69 @@ function ListsPage() {
                 </div>
             </div>
 
-            {isLoading ? (
-                <DataTableSkeleton columns={8} rows={10} className="flex-1" />
-            ) : (
-                <DataTable
-                    className="flex-1 costprice-table"
-                    columns={columns}
-                    data={orders}
-                    pagination
-                    defaultPageSize={20}
-                    pageSizeOptions={[10, 20, 50]}
-                    enableShowAll
-                    enableSorting
-                    enableGlobalSearch
-                    enableFiltering
-                    enableColumnVisibility
-                    enableColumnResizing
-                    translations={translations}
-                    onRowClick={(row) => actions.onNavigate(row.id)}
-                />
-            )}
+            <AnimatePresence mode="wait">
+                {isLoading ? (
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <DataTableSkeleton columns={8} rows={10} className="flex-1" />
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
+                        <DataTable
+                            className="costprice-table flex-1"
+                            columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
+                            data={orders}
+                            pagination
+                            defaultPageSize={20}
+                            pageSizeOptions={[10, 20, 50]}
+                            enableShowAll
+                            enableSorting
+                            enableGlobalSearch
+                            enableFiltering
+                            enableColumnVisibility
+                            enableColumnResizing
+                            translations={translations}
+                            onRowClick={(row) => actions.onNavigate(row.id)}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <ConfirmDrawer
+                open={deleteConfirmOpen}
+                onOpenChange={setDeleteConfirmOpen}
+                onConfirm={() => {
+                    if (deleteTargetId !== null) {
+                        deleteOrder.mutate(deleteTargetId);
+                    }
+                }}
+                isLoading={deleteOrder.isPending}
+            />
         </PageTransition>
     );
 }
 
 export const Route = createFileRoute("/_dashboard/orders/")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        const canListOrders = hasAnyPermission(permissions, [
+            Permission.ORDERS_LIST_ALL,
+            Permission.ORDERS_LIST_OWN,
+        ]);
+        if (!canListOrders) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: ListsPage,
 });

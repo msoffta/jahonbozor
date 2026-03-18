@@ -1,4 +1,5 @@
 import z from "zod";
+
 import { PaginationQuery } from "../common/pagination.model";
 import { Category } from "./categories.model";
 
@@ -56,6 +57,9 @@ export interface AdminCategoryItem {
     updatedAt: Date | string;
 }
 
-export type AdminCategoriesListResponse = ReturnSchema<{ count: number; categories: AdminCategoryItem[] }>;
+export type AdminCategoriesListResponse = ReturnSchema<{
+    count: number;
+    categories: AdminCategoryItem[];
+}>;
 export type AdminCategoryDetailResponse = ReturnSchema<AdminCategoryItem>;
 export type AdminCategoryTreeResponse = ReturnSchema<{ categories: AdminCategoryItem[] }>;

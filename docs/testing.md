@@ -3,100 +3,143 @@
 > See [CLAUDE.md](../CLAUDE.md) for core project rules and quick reference.
 
 ## Quick Commands
-```bash
-# IMPORTANT: Run from apps/backend directory!
-cd apps/backend
 
-bun test                          # Run all tests
-bun test --watch                  # Watch mode
-bun test --coverage               # With coverage report
-bun test --bail                   # Stop after first failure
-bun test --test-name-pattern "X"  # Filter by test name
+```bash
+bun run test:backend                 # Run all backend tests
+bun run test:backend -- --watch      # Watch mode
+bun run test:backend -- --coverage   # With coverage report
 ```
 
-> **Note:** Tests must be run from `apps/backend/` directory where `bunfig.toml` is located. Running from monorepo root will skip the preload and mocks won't work.
-
 ## Test Structure
+
 ```
 apps/backend/
 ├── test/
-│   └── setup.ts              # Preload file with Prisma mocks
-├── bunfig.toml               # Test configuration
+│   └── setup.ts              # Setup file with Prisma mockDeep
+├── vitest.config.ts           # Vitest configuration
 └── src/api/{domain}/__tests__/
     ├── {domain}.service.test.ts  # Service tests
     └── {domain}.index.test.ts    # Endpoint tests
 ```
 
-## Mocking with Bun (Native)
+## Mocking with Vitest
 
 ```typescript
-import { mock, spyOn, beforeEach, afterEach } from "bun:test";
+import { vi, describe, test, expect, beforeEach } from "vitest";
 
-// mock() — create mock functions
-const mockFn = mock((x: number) => x * 2);
+// vi.fn() — create mock functions
+const mockFn = vi.fn((x: number) => x * 2);
 mockFn.mockReturnValue(42);
 mockFn.mockResolvedValue({ id: 1 });
 mockFn.mockRejectedValue(new Error("fail"));
 
-// spyOn() — spy on object methods
-const spy = spyOn(service, "method").mockResolvedValue({});
+// vi.spyOn() — spy on object methods
+const spy = vi.spyOn(service, "method").mockResolvedValue({});
 
-// mock.module() — mock modules
-mock.module("@lib/prisma", () => ({ prisma: prismaMock }));
+// vi.mock() — mock modules (hoisted automatically, order doesn't matter)
+vi.mock("@backend/lib/prisma", () => ({ prisma: prismaMock }));
 
-// Cleanup
-afterEach(() => {
-    mock.restore();        // Restore spyOn
-    mock.clearAllMocks();  // Clear history
-});
+// Cleanup — automatic with mockReset: true in vitest.config.ts
 ```
 
-## Prisma Mocking
+### Key Differences from Bun test
 
-Mocks are automatically loaded via `bunfig.toml` preload:
+| Bun test            | Vitest                 | Benefit                                        |
+| ------------------- | ---------------------- | ---------------------------------------------- |
+| `mock()`            | `vi.fn()`              | Same API                                       |
+| `mock.module()`     | `vi.mock()`            | **Hoisted automatically** — no import ordering |
+| `spyOn()`           | `vi.spyOn()`           | Same API                                       |
+| `mock.restore()`    | `vi.restoreAllMocks()` | Configurable in vitest.config.ts               |
+| Global module cache | Per-file isolation     | **Mocks don't leak between files**             |
+
+## Prisma Mocking with mockDeep
+
+Type-safe Prisma mocks using `vitest-mock-extended`:
 
 ```typescript
-// In test files
-import { prismaMock, createMockLogger } from "@test/setup";
+// test/setup.ts
+import { vi, beforeEach } from "vitest";
+import { mockDeep, mockReset } from "vitest-mock-extended";
+import type { PrismaClient } from "@backend/generated/prisma/client";
+import type { Logger } from "@jahonbozor/logger";
+import type { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
 
-const mockLogger = createMockLogger();
+// Type-safe Prisma mock — all models and methods auto-generated
+export const prismaMock = mockDeep<PrismaClient>();
 
-describe("Users.createUser", () => {
-    test("should create user", async () => {
-        prismaMock.users.create.mockResolvedValue({ id: 1, name: "John" });
+vi.mock("@backend/lib/prisma", () => ({ prisma: prismaMock }));
 
-        const result = await Users.createUser({ name: "John" }, mockLogger);
+// Mock Bun's password module (used in auth.service.ts)
+vi.mock("bun", () => ({
+    password: {
+        verify: vi.fn(() => Promise.resolve(false)),
+        hash: vi.fn(() => Promise.resolve("$argon2id$mocked")),
+    },
+}));
 
-        expect(result.success).toBe(true);
-        expect(prismaMock.users.create).toHaveBeenCalled();
+// Reset mocks before each test
+beforeEach(() => {
+    mockReset(prismaMock);
+    // Restore $transaction callback mode
+    prismaMock.$transaction.mockImplementation(async (callback) => {
+        if (typeof callback === "function") return callback(prismaMock);
+        return Promise.all(callback as Promise<unknown>[]);
     });
 });
+
+// Type-safe logger mock
+export const createMockLogger = () => mockDeep<Logger>();
+
+// Type guard helpers for ReturnSchema
+export const expectSuccess = (result: ReturnSchema) => {
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error("Expected success");
+    return result;
+};
+
+export const expectFailure = (result: ReturnSchema) => {
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error("Expected failure");
+    return result;
+};
 ```
 
-## Mock Isolation (IMPORTANT)
+### Type-Safe Mock Usage
 
-**`mockClear()` vs `mockReset()`:**
-- `mockClear()` — clears call history ONLY (calls count, arguments)
-- `mockReset()` — clears history AND `mockResolvedValueOnce` queue
-
-**Problem:** If a test sets `mockResolvedValueOnce(value)` and doesn't consume it (e.g., errors early), that value stays in queue for the next test, causing unpredictable failures.
-
-**Solution in `test/setup.ts`:**
 ```typescript
-beforeEach(() => {
-    method.mockReset();  // Clear BOTH history and queue
-    method.mockImplementation(defaultImpl);  // Restore default
+// TypeScript ENFORCES all required fields — no more `as any`:
+prismaMock.users.create.mockResolvedValue({
+    id: 1,
+    fullname: "John",
+    phone: "+998901234567",
+    telegramId: "12345",
+    language: "uz",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
 });
+
+// Partial objects are caught at compile time:
+prismaMock.users.create.mockResolvedValue({ id: 1 });
+// ❌ TypeScript Error: missing required properties
 ```
 
-**Rules:**
-- `setup.ts` handles mock reset globally — DON'T duplicate in test files
-- DON'T call `mock.clearAllMocks()` in test `beforeEach` — it's redundant
-- Test files should only create `mockLogger` and set up test-specific data in `beforeEach`
+> **Note:** `mockDeep<Logger>()` replaces `as unknown as Logger` — all 100+ Logger properties are auto-mocked.
+
+## Mock Isolation (Automatic)
+
+Vitest isolates mocks per-file automatically. `vi.mock()` in file A does **not** affect file B.
+
+- No centralized mock files needed for isolation
+- No manual `mockReset()` between tests — configured in `vitest.config.ts`: `mockReset: true`
+- `beforeEach` in `test/setup.ts` resets Prisma mock and restores `$transaction`
 
 ## Testing Elysia Endpoints
 
+Elysia's `app.handle()` uses Web Standard `Request`/`Response` API — works under Vitest:
+
 ```typescript
+import { describe, test, expect } from "vitest";
 import { Elysia } from "elysia";
 import { users } from "../users.index";
 
@@ -105,9 +148,7 @@ describe("Users API", () => {
 
     test("GET /users", async () => {
         // URL must be fully qualified!
-        const response = await app.handle(
-            new Request("http://localhost/users")
-        );
+        const response = await app.handle(new Request("http://localhost/users"));
 
         expect(response.status).toBe(200);
         const body = await response.json();
@@ -134,15 +175,12 @@ test("should calculate total correctly", () => {
 ## Test Modifiers
 
 ```typescript
-test.skip("incomplete", () => {});        // Skip test
-test.todo("implement later", () => {});   // Mark as TODO
-test.only("debug this", () => {});        // Run only this test
+test.skip("incomplete", () => {}); // Skip test
+test.todo("implement later"); // Mark as TODO
+test.only("debug this", () => {}); // Run only this test
 
-test.skipIf(isCI)("slow", () => {});      // Conditional skip
-test.if(isMacOS)("mac only", () => {});   // Conditional run
-
-test("timeout", () => {}, 10000);         // 10s timeout
-test("retry", () => {}, { retry: 3 });    // Retry up to 3 times
+test("timeout", () => {}, { timeout: 10000 }); // 10s timeout
+test("retry", () => {}, { retry: 3 }); // Retry up to 3 times
 ```
 
 ## Parameterized Tests
@@ -164,12 +202,14 @@ test.each(cases)("add(%i, %i) = %i", (a, b, expected) => {
 Каждый тест должен покрывать **все** сценарии:
 
 **1. Happy Path (основной сценарий)**
+
 ```typescript
 test("should create user with valid data", async () => { ... });
 test("should return product by id", async () => { ... });
 ```
 
 **2. Edge Cases (граничные случаи)**
+
 ```typescript
 test("should handle empty array", async () => { ... });
 test("should handle maximum allowed value", async () => { ... });
@@ -179,6 +219,7 @@ test("should handle whitespace-only strings", async () => { ... });
 ```
 
 **3. Error Cases (ошибки)**
+
 ```typescript
 test("should return error when user not found", async () => { ... });
 test("should return error when database fails", async () => { ... });
@@ -188,6 +229,7 @@ test("should return 403 when permission denied", async () => { ... });
 ```
 
 **4. Boundary Conditions (пограничные значения)**
+
 ```typescript
 test("should handle id = 0", async () => { ... });
 test("should handle negative id", async () => { ... });
@@ -196,6 +238,7 @@ test("should handle special characters in input", async () => { ... });
 ```
 
 **5. State Transitions (изменения состояния)**
+
 ```typescript
 test("should handle already deleted record", async () => { ... });
 test("should handle concurrent updates", async () => { ... });
@@ -205,6 +248,7 @@ test("should handle restore of active record", async () => { ... });
 ## Checklist для каждого метода
 
 При написании тестов проверь:
+
 - [ ] Успешный сценарий работает
 - [ ] Возвращает ошибку при невалидных данных
 - [ ] Обрабатывает отсутствующие записи (404)
@@ -216,80 +260,47 @@ test("should handle restore of active record", async () => { ... });
 ## Best Practices
 
 **DO:**
-- Isolate tests (`beforeEach` + `mock.clearAllMocks()`)
+
 - Test behavior, not implementation
 - Use AAA pattern (Arrange-Act-Assert)
 - Group related tests with `describe`
 - Use descriptive test names: `"should return null when user not found"`
 - Cover ALL edge cases and error scenarios
 - Test boundary values (0, negative, max, empty)
+- Use `mockDeep` for type-safe mocks
 
 **DON'T:**
+
 - Don't rely on test execution order
 - Don't leave `.only` in commits
 - Don't test internal implementation details
 - Don't use real external services
 - Don't skip edge cases — they catch real bugs
+- Don't use `as any` in mock return values — use full objects with `mockDeep`
 
 ## Note: $transaction Mock
 
 `prismaMock.$transaction` supports both modes:
+
 - **Callback**: `prisma.$transaction(async (tx) => { ... })`
 - **Array**: `prisma.$transaction([promise1, promise2])`
 
-The `test/setup.ts` automatically restores the original implementation in `beforeEach`, so tests using `mockResolvedValue()` for array-based transactions don't affect subsequent tests.
-
-## Strict Typing for Mocks
-
-Prisma mocks use generics with model types from `@generated/prisma/client`:
-
-```typescript
-// test/setup.ts
-import type { Users, Staff, ... } from "@generated/prisma/client";
-
-type MockedModel<T> = {
-    findUnique: ReturnType<typeof mock<(args: unknown) => Promise<T | null>>>;
-    create: ReturnType<typeof mock<(args: unknown) => Promise<T>>>;
-    // ...
-};
-
-const createModelMock = <T>(): MockedModel<T> => ({...});
-
-export const prismaMock = {
-    users: createModelMock<Users>(),
-    staff: createModelMock<Staff>(),
-    // ...
-};
-```
+The `test/setup.ts` automatically restores the callback implementation in `beforeEach`, so tests using `mockResolvedValue()` for array-based transactions don't affect subsequent tests.
 
 ## Type Guards for ReturnSchema
 
 `ReturnSchema` — discriminated union, `expect()` не сужает типы. Используй helpers из setup:
 
 ```typescript
-import { expectSuccess, expectFailure } from "@test/setup";
+import { expectSuccess, expectFailure } from "@backend/test/setup";
 
 // Success case
 const success = expectSuccess(result);
-expect(success.data).toEqual(expected);  // TS knows data exists
+expect(success.data).toEqual(expected); // TS knows data exists
 
 // Failure case
 const failure = expectFailure(result);
-expect(failure.error).toBe("Error");     // TS knows error exists
-```
-
-## Mock Logger
-
-`createMockLogger()` возвращает typed mock, но Winston `Logger` имеет 100+ свойств. Используем `as unknown as Logger` **только** в setup.ts:
-
-```typescript
-export const createMockLogger = (): Logger =>
-    ({
-        info: mock(() => {}),
-        warn: mock(() => {}),
-        error: mock(() => {}),
-        debug: mock(() => {}),
-    }) as unknown as Logger;
+expect(failure.error).toBe("Error"); // TS knows error exists
 ```
 
 ## Testing Elysia Error Responses
@@ -307,8 +318,8 @@ test("should return 422 for invalid body", async () => {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${validToken}`,
             },
-            body: JSON.stringify({ name: "" }),  // fails min length
-        })
+            body: JSON.stringify({ name: "" }), // fails min length
+        }),
     );
     expect(response.status).toBe(422);
 });
@@ -320,9 +331,7 @@ When `authMiddleware` returns `status(401)` or `status(403)`, test the response 
 
 ```typescript
 test("should return 401 without bearer token", async () => {
-    const response = await app.handle(
-        new Request("http://localhost/api/private/products")
-    );
+    const response = await app.handle(new Request("http://localhost/api/private/products"));
     expect(response.status).toBe(401);
 });
 
@@ -332,7 +341,7 @@ test("should return 403 with insufficient permissions", async () => {
             headers: {
                 Authorization: `Bearer ${tokenWithoutPermissions}`,
             },
-        })
+        }),
     );
     expect(response.status).toBe(403);
 });
@@ -341,6 +350,7 @@ test("should return 403 with insufficient permissions", async () => {
 ### Testing onError Hook Behavior
 
 The global `onError` hook in `index.ts` handles uncaught exceptions. In endpoint tests, verify that:
+
 - `VALIDATION` errors (422) are returned to the client properly
 - `NOT_FOUND` (404) is silently ignored in logs
 - Unhandled errors are caught and logged as `error` level

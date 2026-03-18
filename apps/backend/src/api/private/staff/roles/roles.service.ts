@@ -1,40 +1,35 @@
-import type { RolesListResponse, RoleDetailResponse } from "@jahonbozor/schemas/src/roles";
-import { CreateRoleBody, UpdateRoleBody } from "@jahonbozor/schemas/src/roles";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@backend/lib/prisma";
 import { auditInTransaction } from "@backend/lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import { createRoleSnapshot } from "@backend/lib/snapshots";
 
-interface AuditContext {
-    staffId: number;
-    user: Token;
-    requestId?: string;
-}
+import type { Prisma } from "@backend/generated/prisma/client";
+import type { ServiceContext } from "@backend/lib/audit";
+import type { Logger } from "@jahonbozor/logger";
+import type {
+    CreateRoleBody,
+    RoleDetailResponse,
+    RolesListResponse,
+    UpdateRoleBody,
+} from "@jahonbozor/schemas/src/roles";
 
 interface RolesPagination {
     page: number;
     limit: number;
+    sortBy: string;
+    sortOrder: string;
     searchQuery?: string;
     includeStaffCount?: boolean;
 }
 
-function createRoleSnapshot(role: { name: string; permissions: string[] }) {
-    return {
-        name: role.name,
-        permissions: role.permissions,
-    };
-}
-
 export abstract class RolesService {
-    static async getAllRoles(
-        params: RolesPagination,
-        logger: Logger,
-    ): Promise<RolesListResponse> {
+    static async getAllRoles(params: RolesPagination, logger: Logger): Promise<RolesListResponse> {
         try {
-            const { page, limit, searchQuery, includeStaffCount } = params;
-            const whereClause = searchQuery
-                ? { name: { contains: searchQuery } }
-                : {};
+            const { page, limit, sortBy, sortOrder, searchQuery, includeStaffCount } = params;
+            const whereClause: Prisma.RoleWhereInput = { deletedAt: null };
+
+            if (searchQuery) {
+                whereClause.name = { contains: searchQuery };
+            }
 
             const [count, roles] = await prisma.$transaction([
                 prisma.role.count({ where: whereClause }),
@@ -45,7 +40,7 @@ export abstract class RolesService {
                     include: includeStaffCount
                         ? { _count: { select: { staffs: true } } }
                         : undefined,
-                    orderBy: { name: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
@@ -70,11 +65,9 @@ export abstract class RolesService {
         logger: Logger,
     ): Promise<RoleDetailResponse> {
         try {
-            const role = await prisma.role.findUnique({
-                where: { id: roleId },
-                include: includeStaffCount
-                    ? { _count: { select: { staffs: true } } }
-                    : undefined,
+            const role = await prisma.role.findFirst({
+                where: { id: roleId, deletedAt: null },
+                include: includeStaffCount ? { _count: { select: { staffs: true } } } : undefined,
             });
 
             if (!role) {
@@ -91,7 +84,7 @@ export abstract class RolesService {
 
     static async createRole(
         roleData: CreateRoleBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<RoleDetailResponse> {
         try {
@@ -141,7 +134,7 @@ export abstract class RolesService {
     static async updateRole(
         roleId: number,
         roleData: UpdateRoleBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<RoleDetailResponse> {
         try {
@@ -170,7 +163,8 @@ export abstract class RolesService {
 
             const permissionsChanged =
                 roleData.permissions !== undefined &&
-                JSON.stringify(roleData.permissions) !== JSON.stringify(existingRole.permissions);
+                JSON.stringify([...roleData.permissions].sort()) !==
+                    JSON.stringify([...existingRole.permissions].sort());
             const auditAction = permissionsChanged ? "PERMISSION_CHANGE" : "UPDATE";
 
             const [updatedRole] = await prisma.$transaction(async (transaction) => {
@@ -208,12 +202,12 @@ export abstract class RolesService {
 
     static async deleteRole(
         roleId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<RoleDetailResponse> {
         try {
-            const existingRole = await prisma.role.findUnique({
-                where: { id: roleId },
+            const existingRole = await prisma.role.findFirst({
+                where: { id: roleId, deletedAt: null },
             });
 
             if (!existingRole) {
@@ -222,7 +216,7 @@ export abstract class RolesService {
             }
 
             const staffCount = await prisma.staff.count({
-                where: { roleId },
+                where: { roleId, deletedAt: null },
             });
 
             if (staffCount > 0) {
@@ -237,8 +231,9 @@ export abstract class RolesService {
             }
 
             const [deletedRole] = await prisma.$transaction(async (transaction) => {
-                const role = await transaction.role.delete({
+                const role = await transaction.role.update({
                     where: { id: roleId },
+                    data: { deletedAt: new Date() },
                 });
 
                 await auditInTransaction(
@@ -263,6 +258,54 @@ export abstract class RolesService {
             return { success: true, data: deletedRole };
         } catch (error) {
             logger.error("Roles: Error in deleteRole", { roleId, error });
+            return { success: false, error };
+        }
+    }
+
+    static async restoreRole(
+        roleId: number,
+        context: ServiceContext,
+        logger: Logger,
+    ): Promise<RoleDetailResponse> {
+        try {
+            const deletedRole = await prisma.role.findFirst({
+                where: { id: roleId, deletedAt: { not: null } },
+            });
+
+            if (!deletedRole) {
+                logger.warn("Roles: Deleted role not found for restore", { roleId });
+                return { success: false, error: "Deleted role not found" };
+            }
+
+            const [restoredRole] = await prisma.$transaction(async (transaction) => {
+                const role = await transaction.role.update({
+                    where: { id: roleId },
+                    data: { deletedAt: null },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "role",
+                        entityId: roleId,
+                        action: "RESTORE",
+                        previousData: createRoleSnapshot(deletedRole),
+                        newData: createRoleSnapshot(role),
+                    },
+                );
+
+                return [role];
+            });
+
+            logger.info("Roles: Role restored", {
+                roleId,
+                name: restoredRole.name,
+                staffId: context.staffId,
+            });
+            return { success: true, data: restoredRole };
+        } catch (error) {
+            logger.error("Roles: Error in restoreRole", { roleId, error });
             return { success: false, error };
         }
     }

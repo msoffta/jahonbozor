@@ -1,92 +1,79 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { ClipboardList } from "lucide-react";
+
+import {
+    AnimatedList,
+    AnimatedListItem,
+    AnimatePresence,
+    motion,
+    PageTransition,
+    Skeleton,
+} from "@jahonbozor/ui";
+
 import { ordersListOptions } from "@/api/orders.api";
 import { OrderCard } from "@/components/orders/order-card";
-import { Skeleton } from "@jahonbozor/ui";
-import { cn } from "@jahonbozor/ui";
-
-interface OrdersSearch {
-    tab?: "active" | "history";
-}
 
 function OrdersPage() {
-    const { t } = useTranslation();
-    const { tab: initialTab } = Route.useSearch();
-    const [activeTab, setActiveTab] = useState<"active" | "history">(initialTab ?? "active");
+    const { t } = useTranslation("orders");
 
-    const status = activeTab === "active" ? "NEW" as const : undefined;
-    const { data, isLoading } = useQuery(ordersListOptions({ status }));
-
-    const orders = activeTab === "active"
-        ? (data?.orders ?? [])
-        : (data?.orders ?? []).filter(o => o.status !== "NEW");
+    const { data, isLoading } = useQuery(ordersListOptions({}));
+    const orders = data?.orders ?? [];
 
     return (
-        <div>
-            <div className="flex border-b">
-                <button
-                    onClick={() => setActiveTab("active")}
-                    className={cn(
-                        "flex-1 py-3 text-center text-sm font-medium transition-colors",
-                        activeTab === "active"
-                            ? "border-b-2 border-primary text-primary"
-                            : "text-muted-foreground",
-                    )}
-                >
-                    {t("active_orders")}
-                </button>
-                <button
-                    onClick={() => setActiveTab("history")}
-                    className={cn(
-                        "flex-1 py-3 text-center text-sm font-medium transition-colors",
-                        activeTab === "history"
-                            ? "border-b-2 border-primary text-primary"
-                            : "text-muted-foreground",
-                    )}
-                >
-                    {t("order_history")}
-                </button>
-            </div>
+        <PageTransition>
+            <AnimatePresence mode="wait">
+                {isLoading && (
+                    <motion.div
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-3 p-4"
+                    >
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                        ))}
+                    </motion.div>
+                )}
 
-            {isLoading && (
-                <div className="space-y-3 p-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <Skeleton key={i} className="h-20 w-full rounded-lg" />
-                    ))}
-                </div>
-            )}
+                {!isLoading && orders.length === 0 && (
+                    <motion.div
+                        key="empty"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex flex-col items-center justify-center px-4 py-16"
+                    >
+                        <ClipboardList className="text-muted-foreground h-16 w-16" />
+                        <p className="text-muted-foreground mt-4">{t("no_data")}</p>
+                    </motion.div>
+                )}
 
-            {!isLoading && orders.length === 0 && (
-                <div className="flex flex-col items-center justify-center px-4 py-16">
-                    <ClipboardList className="h-16 w-16 text-muted-foreground" />
-                    <p className="mt-4 text-muted-foreground">{t("no_data")}</p>
-                </div>
-            )}
-
-            {!isLoading && orders.length > 0 && (
-                <div>
-                    {orders.map((order) => (
-                        <OrderCard
-                            key={order.id}
-                            id={order.id}
-                            status={order.status}
-                            paymentType={order.paymentType}
-                            createdAt={order.createdAt}
-                            items={order.items}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
+                {!isLoading && orders.length > 0 && (
+                    <AnimatedList key="orders">
+                        {orders.map((order) => (
+                            <AnimatedListItem key={order.id}>
+                                <OrderCard
+                                    id={order.id}
+                                    paymentType={order.paymentType}
+                                    createdAt={order.createdAt}
+                                    items={order.items}
+                                />
+                            </AnimatedListItem>
+                        ))}
+                    </AnimatedList>
+                )}
+            </AnimatePresence>
+        </PageTransition>
     );
 }
 
 export const Route = createFileRoute("/_user/orders/")({
     component: OrdersPage,
-    validateSearch: (search: Record<string, unknown>): OrdersSearch => ({
-        tab: search.tab === "history" ? "history" : "active",
-    }),
+    loader: ({ context }) => {
+        void context.queryClient.ensureQueryData(ordersListOptions({}));
+    },
 });

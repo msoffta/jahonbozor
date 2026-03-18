@@ -1,40 +1,47 @@
-import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import type { Product, Category } from "@backend/generated/prisma/client";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { PublicProductsService } from "../products.service";
 
-const mockCategory = {
+import type { Category, Product } from "@backend/generated/prisma/client";
+
+const _mockCategory = {
     id: 1,
     name: "Инструменты",
     parentId: null,
     parent: null,
 };
 
-const mockProduct = {
+const mockProduct: Product = {
     id: 1,
     name: "Отвертка",
     price: 15000 as unknown as Product["price"],
+    costprice: 10000 as unknown as Product["costprice"],
     categoryId: 1,
     remaining: 10,
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
-    category: mockCategory,
 };
 
-const mockProduct2 = {
+const mockProduct2: Product = {
     id: 2,
     name: "Молоток",
     price: 25000 as unknown as Product["price"],
+    costprice: 20000 as unknown as Product["costprice"],
     categoryId: 2,
     remaining: 5,
+    deletedAt: null,
     createdAt: new Date("2024-01-02"),
     updatedAt: new Date("2024-01-02"),
-    category: { id: 2, name: "Молотки", parentId: 1, parent: { id: 1, name: "Инструменты" } },
 };
 
 const defaultParams = {
     page: 1,
     limit: 20,
+    sortBy: "id",
+    sortOrder: "asc" as const,
     searchQuery: "",
     includeDeleted: false,
 };
@@ -108,7 +115,16 @@ describe("PublicProducts Service", () => {
         test("should filter by category IDs with hierarchical descendants", async () => {
             // Arrange — category 1 has child category 2, which has no children
             prismaMock.category.findMany
-                .mockResolvedValueOnce([{ id: 2 }] as unknown as Category[])
+                .mockResolvedValueOnce([
+                    {
+                        id: 2,
+                        name: "Child",
+                        parentId: 1,
+                        deletedAt: null,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    },
+                ])
                 .mockResolvedValueOnce([] as Category[]);
             prismaMock.$transaction.mockResolvedValueOnce([1, [mockProduct]]);
 
@@ -127,9 +143,27 @@ describe("PublicProducts Service", () => {
         test("should handle deep category hierarchy (3+ levels)", async () => {
             // Arrange — category 1 → 2 → 3 (three levels)
             prismaMock.category.findMany
-                .mockResolvedValueOnce([{ id: 2 }] as unknown as Category[])   // children of 1
-                .mockResolvedValueOnce([{ id: 3 }] as unknown as Category[])   // children of 2
-                .mockResolvedValueOnce([] as Category[]);                       // children of 3
+                .mockResolvedValueOnce([
+                    {
+                        id: 2,
+                        name: "Cat2",
+                        parentId: 1,
+                        deletedAt: null,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    },
+                ]) // children of 1
+                .mockResolvedValueOnce([
+                    {
+                        id: 3,
+                        name: "Cat3",
+                        parentId: 2,
+                        deletedAt: null,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    },
+                ]) // children of 2
+                .mockResolvedValueOnce([] as Category[]); // children of 3
             prismaMock.$transaction.mockResolvedValueOnce([1, [mockProduct]]);
 
             // Act
@@ -220,7 +254,13 @@ describe("PublicProducts Service", () => {
 
             // Act
             const result = await PublicProductsService.getAllProducts(
-                { ...defaultParams, searchQuery: "Отвертка", categoryIds: "1", minPrice: 10000, maxPrice: 20000 },
+                {
+                    ...defaultParams,
+                    searchQuery: "Отвертка",
+                    categoryIds: "1",
+                    minPrice: 10000,
+                    maxPrice: 20000,
+                },
                 mockLogger,
             );
 
@@ -276,7 +316,7 @@ describe("PublicProducts Service", () => {
     describe("getProduct", () => {
         test("should return single product by id", async () => {
             // Arrange
-            prismaMock.product.findFirst.mockResolvedValueOnce(mockProduct as unknown as Product);
+            prismaMock.product.findFirst.mockResolvedValueOnce(mockProduct);
 
             // Act
             const result = await PublicProductsService.getProduct(1, mockLogger);
@@ -289,7 +329,7 @@ describe("PublicProducts Service", () => {
 
         test("should convert Decimal price to Number", async () => {
             // Arrange
-            prismaMock.product.findFirst.mockResolvedValueOnce(mockProduct as unknown as Product);
+            prismaMock.product.findFirst.mockResolvedValueOnce(mockProduct);
 
             // Act
             const result = await PublicProductsService.getProduct(1, mockLogger);
@@ -301,14 +341,33 @@ describe("PublicProducts Service", () => {
 
         test("should include category with parent relation in response", async () => {
             // Arrange
-            prismaMock.product.findFirst.mockResolvedValueOnce(mockProduct2 as unknown as Product);
+            const productWithCategory = {
+                ...mockProduct2,
+                category: {
+                    id: 2,
+                    name: "Молотки",
+                    parentId: 1,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    parent: {
+                        id: 1,
+                        name: "Инструменты",
+                        parentId: null,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    },
+                },
+            };
+            prismaMock.product.findFirst.mockResolvedValueOnce(productWithCategory as any);
 
             // Act
             const result = await PublicProductsService.getProduct(2, mockLogger);
 
             // Assert
             const success = expectSuccess(result);
-            const data = success.data as { category: { name: string; parent: { name: string } | null } };
+            const data = success.data as {
+                category: { name: string; parent: { name: string } | null };
+            };
             expect(data.category.name).toBe("Молотки");
             expect(data.category.parent?.name).toBe("Инструменты");
         });

@@ -1,8 +1,12 @@
-import type { AuditLogsListResponse, AuditLogDetailResponse } from "@jahonbozor/schemas/src/audit-logs";
-import { AuditLogPagination } from "@jahonbozor/schemas/src/audit-logs";
-import type { Logger } from "@jahonbozor/logger";
 import { prisma } from "@backend/lib/prisma";
+
 import type { Prisma } from "@backend/generated/prisma/client";
+import type { Logger } from "@jahonbozor/logger";
+import type { AuditLogPagination } from "@jahonbozor/schemas/src/audit-logs";
+import type {
+    AuditLogDetailResponse,
+    AuditLogsListResponse,
+} from "@jahonbozor/schemas/src/audit-logs";
 
 export abstract class AuditLogService {
     static async getAll(
@@ -13,6 +17,8 @@ export abstract class AuditLogService {
             const {
                 page,
                 limit,
+                sortBy,
+                sortOrder,
                 entityType,
                 entityId,
                 actorId,
@@ -46,7 +52,7 @@ export abstract class AuditLogService {
                     skip: (page - 1) * limit,
                     take: limit,
                     where: whereClause,
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
@@ -61,10 +67,7 @@ export abstract class AuditLogService {
         }
     }
 
-    static async getById(
-        auditLogId: number,
-        logger: Logger,
-    ): Promise<AuditLogDetailResponse> {
+    static async getById(auditLogId: number, logger: Logger): Promise<AuditLogDetailResponse> {
         try {
             const auditLog = await prisma.auditLog.findUnique({
                 where: { id: auditLogId },
@@ -82,10 +85,7 @@ export abstract class AuditLogService {
         }
     }
 
-    static async getByRequestId(
-        requestId: string,
-        logger: Logger,
-    ): Promise<AuditLogsListResponse> {
+    static async getByRequestId(requestId: string, logger: Logger): Promise<AuditLogsListResponse> {
         try {
             const auditLogs = await prisma.auditLog.findMany({
                 where: { requestId },

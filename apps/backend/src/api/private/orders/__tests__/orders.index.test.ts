@@ -1,7 +1,10 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { OrdersService } from "../orders.service";
 
 const mockOrderWithRelations = {
@@ -9,7 +12,7 @@ const mockOrderWithRelations = {
     userId: null,
     staffId: 1,
     paymentType: "CASH",
-    status: "NEW",
+    comment: null,
     data: {},
     items: [
         {
@@ -61,11 +64,12 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     userId: query.userId ? Number(query.userId) : undefined,
                     staffId: query.staffId ? Number(query.staffId) : undefined,
                     paymentType: query.paymentType as "CASH" | "CREDIT_CARD" | undefined,
-                    status: query.status as "NEW" | "ACCEPTED" | undefined,
                 },
                 user.id,
                 permissions,
@@ -77,7 +81,10 @@ const createTestApp = () => {
         })
         .post("/orders", async ({ body, user, logger, requestId }) => {
             return await OrdersService.createOrder(
-                body as { paymentType: "CASH" | "CREDIT_CARD"; items: Array<{ productId: number; quantity: number; price: number }> },
+                body as {
+                    paymentType: "CASH" | "CREDIT_CARD";
+                    items: { productId: number; quantity: number; price: number }[];
+                },
                 { staffId: user.id, user, requestId },
                 logger,
             );
@@ -85,7 +92,7 @@ const createTestApp = () => {
         .patch("/orders/:id", async ({ params, body, user, permissions, logger, requestId }) => {
             return await OrdersService.updateOrder(
                 Number(params.id),
-                body as { paymentType?: "CASH" | "CREDIT_CARD"; status?: "NEW" | "ACCEPTED" },
+                body as { paymentType?: "CASH" | "CREDIT_CARD" },
                 { staffId: user.id, user, requestId },
                 permissions,
                 logger,
@@ -110,7 +117,7 @@ describe("Orders API Routes", () => {
     describe("GET /orders", () => {
         test("should return paginated orders list", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
                 success: true,
                 data: { count: 2, orders: [mockOrderWithRelations] },
             });
@@ -132,7 +139,7 @@ describe("Orders API Routes", () => {
 
         test("should apply paymentType filter", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
                 success: true,
                 data: { count: 1, orders: [mockOrderWithRelations] },
             });
@@ -156,43 +163,15 @@ describe("Orders API Routes", () => {
             spy.mockRestore();
         });
 
-        test("should apply status filter", async () => {
-            // Arrange
-            const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
-                success: true,
-                data: { count: 1, orders: [mockOrderWithRelations] },
-            });
-
-            // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders?status=NEW"),
-            );
-            const body = await response.json();
-
-            // Assert
-            expect(response.status).toBe(200);
-            expect(body.success).toBe(true);
-            expect(spy).toHaveBeenCalledWith(
-                expect.objectContaining({ status: "NEW" }),
-                expect.any(Number),
-                expect.any(Array),
-                expect.anything(),
-            );
-
-            spy.mockRestore();
-        });
-
         test("should return empty list when no orders found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
                 success: true,
                 data: { count: 0, orders: [] },
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders"));
             const body = await response.json();
 
             // Assert
@@ -208,15 +187,13 @@ describe("Orders API Routes", () => {
     describe("GET /orders/:id", () => {
         test("should return order by id", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
                 success: true,
                 data: mockOrderWithRelations,
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -229,15 +206,13 @@ describe("Orders API Routes", () => {
 
         test("should return error when order not found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
                 success: false,
                 error: "Order not found",
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/999"));
             const body = await response.json();
 
             // Assert
@@ -249,15 +224,13 @@ describe("Orders API Routes", () => {
 
         test("should return Forbidden when access denied", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
                 success: false,
                 error: "Forbidden",
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -271,7 +244,7 @@ describe("Orders API Routes", () => {
     describe("POST /orders", () => {
         test("should create order with valid data", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
                 success: true,
                 data: mockOrderWithRelations,
             });
@@ -299,7 +272,7 @@ describe("Orders API Routes", () => {
 
         test("should return error when products not found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
                 success: false,
                 error: "Products not found: 999",
             });
@@ -326,10 +299,10 @@ describe("Orders API Routes", () => {
     });
 
     describe("PATCH /orders/:id", () => {
-        test("should update order status", async () => {
+        test("should update order paymentType", async () => {
             // Arrange
-            const updatedOrder = { ...mockOrderWithRelations, status: "ACCEPTED" };
-            const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+            const updatedOrder = { ...mockOrderWithRelations, paymentType: "CREDIT_CARD" };
+            const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
                 success: true,
                 data: updatedOrder,
             });
@@ -339,7 +312,7 @@ describe("Orders API Routes", () => {
                 new Request("http://localhost/orders/1", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "ACCEPTED" }),
+                    body: JSON.stringify({ paymentType: "CREDIT_CARD" }),
                 }),
             );
             const body = await response.json();
@@ -347,14 +320,14 @@ describe("Orders API Routes", () => {
             // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
-            expect(body.data.status).toBe("ACCEPTED");
+            expect(body.data.paymentType).toBe("CREDIT_CARD");
 
             spy.mockRestore();
         });
 
         test("should return error when order not found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
                 success: false,
                 error: "Order not found",
             });
@@ -364,7 +337,7 @@ describe("Orders API Routes", () => {
                 new Request("http://localhost/orders/999", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "ACCEPTED" }),
+                    body: JSON.stringify({ paymentType: "CREDIT_CARD" }),
                 }),
             );
             const body = await response.json();
@@ -378,7 +351,7 @@ describe("Orders API Routes", () => {
 
         test("should return Forbidden when access denied", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
                 success: false,
                 error: "Forbidden",
             });
@@ -388,7 +361,7 @@ describe("Orders API Routes", () => {
                 new Request("http://localhost/orders/1", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "ACCEPTED" }),
+                    body: JSON.stringify({ paymentType: "CREDIT_CARD" }),
                 }),
             );
             const body = await response.json();
@@ -404,7 +377,7 @@ describe("Orders API Routes", () => {
     describe("DELETE /orders/:id", () => {
         test("should delete order successfully", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
                 success: true,
                 data: { orderId: 1, deleted: true },
             });
@@ -425,7 +398,7 @@ describe("Orders API Routes", () => {
 
         test("should return error when order not found", async () => {
             // Arrange
-            const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+            const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
                 success: false,
                 error: "Order not found",
             });
@@ -448,7 +421,7 @@ describe("Orders API Routes", () => {
 describe("Orders Service Integration", () => {
     test("getAllOrders should be called with correct pagination", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
             success: true,
             data: { count: 0, orders: [] },
         });
@@ -459,7 +432,12 @@ describe("Orders Service Integration", () => {
 
         // Assert
         expect(spy).toHaveBeenCalledWith(
-            expect.objectContaining({ page: 3, limit: 15 }),
+            expect.objectContaining({
+                page: 3,
+                limit: 15,
+                sortBy: "id",
+                sortOrder: "asc" as const,
+            }),
             expect.any(Number),
             expect.any(Array),
             expect.anything(),
@@ -470,7 +448,7 @@ describe("Orders Service Integration", () => {
 
     test("getOrder should be called with correct id", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -480,14 +458,19 @@ describe("Orders Service Integration", () => {
         await app.handle(new Request("http://localhost/orders/42"));
 
         // Assert
-        expect(spy).toHaveBeenCalledWith(42, expect.any(Number), expect.any(Array), expect.anything());
+        expect(spy).toHaveBeenCalledWith(
+            42,
+            expect.any(Number),
+            expect.any(Array),
+            expect.anything(),
+        );
 
         spy.mockRestore();
     });
 
     test("createOrder should be called with context", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -517,7 +500,7 @@ describe("Orders Service Integration", () => {
 
     test("updateOrder should be called with context", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -528,14 +511,14 @@ describe("Orders Service Integration", () => {
             new Request("http://localhost/orders/1", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "ACCEPTED" }),
+                body: JSON.stringify({ paymentType: "CREDIT_CARD" }),
             }),
         );
 
         // Assert
         expect(spy).toHaveBeenCalledWith(
             1,
-            { status: "ACCEPTED" },
+            { paymentType: "CREDIT_CARD" },
             expect.objectContaining({ staffId: 1, requestId: "test-request-id" }),
             expect.any(Array),
             expect.anything(),
@@ -546,7 +529,7 @@ describe("Orders Service Integration", () => {
 
     test("deleteOrder should be called with context", async () => {
         // Arrange
-        const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
             success: true,
             data: { orderId: 1, deleted: true },
         });
@@ -574,7 +557,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("GET /orders with no results should return empty list", async () => {
-        const spy = spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
             success: true,
             data: { count: 0, orders: [] },
         });
@@ -590,7 +573,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("GET /orders/:id with id=0 should call service", async () => {
-        const spy = spyOn(OrdersService, "getOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
             success: false,
             error: "Order not found",
         });
@@ -605,7 +588,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("POST /orders should handle insufficient stock error", async () => {
-        const spy = spyOn(OrdersService, "createOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
             success: false,
             error: {
                 code: "INSUFFICIENT_STOCK",
@@ -633,7 +616,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("PATCH /orders/:id with empty body should call service", async () => {
-        const spy = spyOn(OrdersService, "updateOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -653,7 +636,7 @@ describe("Orders API edge cases", () => {
     });
 
     test("DELETE /orders/:id should handle service error", async () => {
-        const spy = spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+        const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
             success: false,
             error: "Database error",
         });

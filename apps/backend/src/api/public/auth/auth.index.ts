@@ -1,16 +1,33 @@
-import { SignInBody } from "@jahonbozor/schemas";
-import type { LoginResponse, RefreshResponse, LogoutResponse, ProfileResponse } from "@jahonbozor/schemas/src/auth";
-import { Elysia, t } from "elysia";
-import Auth from "./auth.service";
 import jwt from "@elysiajs/jwt";
-import dayjs from "dayjs";
+import { Elysia, t } from "elysia";
+
+import { SignInBody } from "@jahonbozor/schemas";
+
+import { audit } from "@backend/lib/audit";
 import { authMiddleware } from "@backend/lib/middleware";
 import { requestContext } from "@backend/lib/request-context";
-import { audit } from "@backend/lib/audit";
+
+import { AuthService } from "./auth.service";
+
+import type { Token } from "@jahonbozor/schemas";
+import type {
+    LoginResponse,
+    LogoutResponse,
+    ProfileResponse,
+    RefreshResponse,
+} from "@jahonbozor/schemas/src/auth";
 
 const authCookieSchema = t.Cookie({
     auth: t.Optional(t.String()),
 });
+
+const COOKIE_OPTIONS = {
+    path: "/api/public/auth",
+    secure: process.env.NODE_ENV !== "development",
+    httpOnly: true,
+    maxAge: 30 * 24 * 60 * 60,
+    sameSite: true,
+} as const;
 
 export const auth = new Elysia({ prefix: "/auth" })
     .use(requestContext)
@@ -24,61 +41,19 @@ export const auth = new Elysia({ prefix: "/auth" })
         "/login",
         async ({ body, cookie: { auth }, jwt, set, logger, requestId }): Promise<LoginResponse> => {
             try {
-                const username = body.username;
-                const password = body.password;
+                const result = await AuthService.login(body, jwt, logger);
 
-                const staff = await Auth.checkIfStaffExists(
-                    { username, password },
-                    logger,
-                );
-
-                if (!staff) {
-                    set.status = 401;
-                    return { success: false, error: "Unauthorized" };
+                if (!result.success) {
+                    set.status = result.error === "Unauthorized" ? 401 : 500;
+                    return { success: false, error: result.error };
                 }
 
-                const refreshTokenExp = dayjs().add(30, "day");
+                const { staff, accessToken, refreshToken, refreshTokenExp } = result.data;
 
-                const refreshToken = await jwt.sign({
-                    id: staff.id,
-                    type: staff.type,
-                    exp: refreshTokenExp.unix(),
-                });
-
-                const accessToken = await jwt.sign({
-                    id: staff.id,
-                    fullname: staff.fullname,
-                    username: staff.username,
-                    roleId: staff.roleId,
-                    type: staff.type,
-                    exp: dayjs().add(15, "minute").unix(),
-                });
-
-                const isRefreshTokenSaved = await Auth.saveRefreshToken(
-                    { token: refreshToken, exp: refreshTokenExp.toDate(), staffId: staff.id },
-                    logger,
-                );
-
-                if (!isRefreshTokenSaved) {
-                    logger.error("Auth: Refresh token not saved", {
-                        staffId: staff.id,
-                    });
-                    set.status = 500;
-                    return { success: false, error: "Internal Server Error" };
-                }
-
-                auth.set({
-                    path: "/api/public/auth",
-                    secure: process.env.NODE_ENV !== "development",
-                    httpOnly: true,
-                    expires: refreshTokenExp.toDate(),
-                    maxAge: 30 * 24 * 60 * 60,
-                    value: refreshToken,
-                    sameSite: true,
-                });
+                auth.set({ ...COOKIE_OPTIONS, expires: refreshTokenExp, value: refreshToken });
 
                 await audit(
-                    { requestId, user: { id: staff.id, type: "staff" } as import("@jahonbozor/schemas").Token, logger },
+                    { requestId, user: { id: staff.id, type: "staff" } as Token, logger },
                     {
                         entityType: "staff",
                         entityId: staff.id,
@@ -87,14 +62,7 @@ export const auth = new Elysia({ prefix: "/auth" })
                     },
                 );
 
-                logger.info("Auth: Staff logged in", {
-                    staffId: staff.id,
-                    username,
-                });
-                return {
-                    success: true,
-                    data: { staff, token: accessToken },
-                };
+                return { success: true, data: { staff, token: accessToken } };
             } catch (error) {
                 logger.error("Auth: Unhandled error in POST /login", {
                     username: body.username,
@@ -119,134 +87,35 @@ export const auth = new Elysia({ prefix: "/auth" })
                     return { success: false, error: "Unauthorized" };
                 }
 
-                const refreshTokenValue = auth.value;
+                const result = await AuthService.refresh(auth.value, jwt, logger);
 
-                const tokenRecord = await Auth.validateRefreshToken(refreshTokenValue, logger);
-                if (!tokenRecord || (!tokenRecord.staffId && !tokenRecord.userId)) {
-                    auth.remove();
-                    logger.warn("Auth: Invalid refresh token");
-                    set.status = 401;
-                    return { success: false, error: "Unauthorized" };
-                }
-
-                await Auth.revokeRefreshToken(refreshTokenValue, logger);
-
-                const newRefreshTokenExpiration = dayjs().add(30, "day");
-
-                let newAccessToken: string;
-                let newRefreshTokenValue: string;
-                let auditEntityId: number;
-                let auditType: "staff" | "user";
-
-                if (tokenRecord.staffId) {
-                    const staffData = await Auth.getStaffById(tokenRecord.staffId, logger);
-                    if (!staffData) {
+                if (!result.success) {
+                    if (result.error === "Unauthorized") {
                         auth.remove();
                         set.status = 401;
-                        return { success: false, error: "Unauthorized" };
-                    }
-
-                    newRefreshTokenValue = await jwt.sign({
-                        id: staffData.id,
-                        type: "staff",
-                        exp: newRefreshTokenExpiration.unix(),
-                    });
-
-                    newAccessToken = await jwt.sign({
-                        id: staffData.id,
-                        fullname: staffData.fullname,
-                        username: staffData.username,
-                        roleId: staffData.roleId,
-                        type: "staff",
-                        exp: dayjs().add(15, "minute").unix(),
-                    });
-
-                    const isRefreshTokenSaved = await Auth.saveRefreshToken(
-                        {
-                            token: newRefreshTokenValue,
-                            exp: newRefreshTokenExpiration.toDate(),
-                            staffId: staffData.id,
-                        },
-                        logger,
-                    );
-
-                    if (!isRefreshTokenSaved) {
-                        logger.error("Auth: Failed to save new refresh token", { staffId: staffData.id });
+                    } else {
                         set.status = 500;
-                        return { success: false, error: "Internal Server Error" };
                     }
-
-                    auditEntityId = staffData.id;
-                    auditType = "staff";
-                    logger.info("Auth: Token refreshed", { staffId: staffData.id });
-                } else {
-                    const userData = await Auth.getUserById(tokenRecord.userId!, logger);
-                    if (!userData) {
-                        auth.remove();
-                        set.status = 401;
-                        return { success: false, error: "Unauthorized" };
-                    }
-
-                    newRefreshTokenValue = await jwt.sign({
-                        id: userData.id,
-                        type: "user",
-                        exp: newRefreshTokenExpiration.unix(),
-                    });
-
-                    newAccessToken = await jwt.sign({
-                        id: userData.id,
-                        fullname: userData.fullname,
-                        username: userData.username,
-                        phone: userData.phone,
-                        telegramId: String(userData.telegramId),
-                        type: "user",
-                        exp: dayjs().add(15, "minute").unix(),
-                    });
-
-                    const isRefreshTokenSaved = await Auth.saveRefreshToken(
-                        {
-                            token: newRefreshTokenValue,
-                            exp: newRefreshTokenExpiration.toDate(),
-                            userId: userData.id,
-                        },
-                        logger,
-                    );
-
-                    if (!isRefreshTokenSaved) {
-                        logger.error("Auth: Failed to save new refresh token", { userId: userData.id });
-                        set.status = 500;
-                        return { success: false, error: "Internal Server Error" };
-                    }
-
-                    auditEntityId = userData.id;
-                    auditType = "user";
-                    logger.info("Auth: Token refreshed", { userId: userData.id });
+                    return { success: false, error: result.error };
                 }
 
-                auth.set({
-                    path: "/api/public/auth",
-                    secure: process.env.NODE_ENV !== "development",
-                    httpOnly: true,
-                    expires: newRefreshTokenExpiration.toDate(),
-                    maxAge: 30 * 24 * 60 * 60,
-                    value: newRefreshTokenValue,
-                    sameSite: true,
-                });
+                const { accessToken, refreshToken, refreshTokenExp, entityId, entityType } =
+                    result.data;
+
+                auth.set({ ...COOKIE_OPTIONS, expires: refreshTokenExp, value: refreshToken });
 
                 await audit(
-                    { requestId, user: { id: auditEntityId, type: auditType } as import("@jahonbozor/schemas").Token, logger },
+                    { requestId, user: { id: entityId, type: entityType } as Token, logger },
                     {
                         entityType: "refreshToken",
-                        entityId: auditEntityId,
+                        entityId,
                         action: "UPDATE",
                     },
                 );
 
-                return { success: true, data: { token: newAccessToken } };
+                return { success: true, data: { token: accessToken } };
             } catch (error) {
-                logger.error("Auth: Unhandled error in POST /refresh", {
-                    error,
-                });
+                logger.error("Auth: Unhandled error in POST /refresh", { error });
                 set.status = 500;
                 return { success: false, error: "Internal Server Error" };
             }
@@ -263,36 +132,25 @@ export const auth = new Elysia({ prefix: "/auth" })
                     return { success: false, error: "Unauthorized" };
                 }
 
-                const refreshTokenValue = auth.value;
-
-                const tokenRecord = await Auth.validateRefreshToken(refreshTokenValue, logger);
-
-                await Auth.revokeRefreshToken(refreshTokenValue, logger);
-
+                const result = await AuthService.logout(auth.value, logger);
                 auth.remove();
 
-                if (tokenRecord?.staffId) {
+                if (result.success && result.data.entityId && result.data.entityType) {
                     await audit(
-                        { requestId, user: { id: tokenRecord.staffId, type: "staff" } as import("@jahonbozor/schemas").Token, logger },
                         {
-                            entityType: "staff",
-                            entityId: tokenRecord.staffId,
+                            requestId,
+                            user: {
+                                id: result.data.entityId,
+                                type: result.data.entityType,
+                            } as Token,
+                            logger,
+                        },
+                        {
+                            entityType: result.data.entityType === "staff" ? "staff" : "user",
+                            entityId: result.data.entityId,
                             action: "LOGOUT",
                         },
                     );
-                    logger.info("Auth: Staff logged out", { staffId: tokenRecord.staffId });
-                } else if (tokenRecord?.userId) {
-                    await audit(
-                        { requestId, user: { id: tokenRecord.userId, type: "user" } as import("@jahonbozor/schemas").Token, logger },
-                        {
-                            entityType: "user",
-                            entityId: tokenRecord.userId,
-                            action: "LOGOUT",
-                        },
-                    );
-                    logger.info("Auth: User logged out", { userId: tokenRecord.userId });
-                } else {
-                    logger.info("Auth: Token revoked (no valid session)");
                 }
 
                 return { success: true, data: null };
@@ -311,8 +169,8 @@ export const auth = new Elysia({ prefix: "/auth" })
             try {
                 const profileData =
                     type === "staff"
-                        ? await Auth.getStaffById(user.id, logger)
-                        : await Auth.getUserById(user.id, logger);
+                        ? await AuthService.getStaffById(user.id, logger)
+                        : await AuthService.getUserById(user.id, logger);
 
                 if (!profileData) {
                     logger.warn("Auth: Profile not found", {

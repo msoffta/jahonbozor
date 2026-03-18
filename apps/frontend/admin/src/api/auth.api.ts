@@ -1,6 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { StaffProfileData } from "@jahonbozor/schemas";
+
 import { api } from "@/api/client";
+
+import type { StaffProfileData } from "@jahonbozor/schemas";
 
 export const authKeys = {
     all: ["auth"] as const,

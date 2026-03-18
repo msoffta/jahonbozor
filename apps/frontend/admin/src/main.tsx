@@ -1,16 +1,24 @@
-import { CalendarLocaleProvider } from "@jahonbozor/ui";
-import * as Sentry from "@sentry/react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
-import { ru } from "date-fns/locale/ru";
-import { uz } from "date-fns/locale/uz";
-import { StrictMode, Suspense, lazy, useMemo } from "react";
+import "./i18n/config";
+import "./index.css";
+
+import { lazy, StrictMode, Suspense, useMemo } from "react";
 import ReactDOM from "react-dom/client";
 
-import "@/i18n/config";
-import "@/index.css";
+import * as Sentry from "@sentry/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { ru } from "date-fns/locale/ru";
+import { uz } from "date-fns/locale/uz";
+
+import { CalendarLocaleProvider } from "@jahonbozor/ui";
+
+import { initZodI18n } from "./lib/zod-i18n";
+
+initZodI18n();
+
 import { queryClient } from "@/lib/query-client";
 import { useUIStore } from "@/stores/ui.store";
+
 import { routeTree } from "./routeTree.gen";
 
 const dateFnsLocales = { ru, uz } as const;
@@ -72,11 +80,7 @@ const TanStackDevtools = import.meta.env.PROD
                               },
                               {
                                   name: "TanStack Router",
-                                  render: (
-                                      <TanStackRouterDevtoolsPanel
-                                          router={router}
-                                      />
-                                  ),
+                                  render: <TanStackRouterDevtoolsPanel router={router} />,
                                   defaultOpen: false,
                               },
                           ]}
@@ -88,10 +92,7 @@ const TanStackDevtools = import.meta.env.PROD
 
 function App() {
     const locale = useUIStore((s) => s.locale);
-    const calendarLocale = useMemo(
-        () => dateFnsLocales[locale] ?? uz,
-        [locale],
-    );
+    const calendarLocale = useMemo(() => dateFnsLocales[locale] ?? uz, [locale]);
 
     return (
         <CalendarLocaleProvider value={calendarLocale}>

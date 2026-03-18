@@ -1,8 +1,11 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import { Users } from "../users.service";
-import type { Token } from "@jahonbozor/schemas";
 import crypto from "crypto";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
+import { UsersService } from "../users.service";
+
+import type { Token } from "@jahonbozor/schemas";
 
 // Helper to create transaction mock with callback support
 const mockTransaction = (mockTx: unknown) => {
@@ -35,7 +38,7 @@ const mockDeletedUser = {
 
 const mockUserWithOrders = {
     ...mockUser,
-    orders: [{ id: 1, status: "NEW" }],
+    orders: [{ id: 1 }],
 };
 
 const mockStaffToken: Token = {
@@ -65,8 +68,15 @@ describe("Users Service", () => {
             prismaMock.$transaction.mockResolvedValue([5, [mockUser]]);
 
             // Act
-            const result = await Users.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "", includeOrders: false },
+            const result = await UsersService.getAllUsers(
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeOrders: false,
+                },
                 mockLogger,
             );
 
@@ -80,8 +90,16 @@ describe("Users Service", () => {
             prismaMock.$transaction.mockResolvedValue([6, [mockUser, mockDeletedUser]]);
 
             // Act
-            const result = await Users.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "", includeOrders: false, includeDeleted: true },
+            const result = await UsersService.getAllUsers(
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeOrders: false,
+                    includeDeleted: true,
+                },
                 mockLogger,
             );
 
@@ -96,8 +114,15 @@ describe("Users Service", () => {
             prismaMock.$transaction.mockResolvedValue([1, [mockUser]]);
 
             // Act
-            const result = await Users.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "John", includeOrders: false },
+            const result = await UsersService.getAllUsers(
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "John",
+                    includeOrders: false,
+                },
                 mockLogger,
             );
 
@@ -111,8 +136,15 @@ describe("Users Service", () => {
             prismaMock.$transaction.mockResolvedValue([1, [mockUserWithOrders]]);
 
             // Act
-            const result = await Users.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "", includeOrders: true },
+            const result = await UsersService.getAllUsers(
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeOrders: true,
+                },
                 mockLogger,
             );
 
@@ -126,8 +158,15 @@ describe("Users Service", () => {
             prismaMock.$transaction.mockResolvedValue([0, []]);
 
             // Act
-            const result = await Users.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "nonexistent", includeOrders: false },
+            const result = await UsersService.getAllUsers(
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "nonexistent",
+                    includeOrders: false,
+                },
                 mockLogger,
             );
 
@@ -142,8 +181,15 @@ describe("Users Service", () => {
             prismaMock.$transaction.mockRejectedValue(dbError);
 
             // Act
-            const result = await Users.getAllUsers(
-                { page: 1, limit: 20, searchQuery: "", includeOrders: false },
+            const result = await UsersService.getAllUsers(
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeOrders: false,
+                },
                 mockLogger,
             );
 
@@ -160,7 +206,7 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
             // Act
-            const result = await Users.getUser(1, mockLogger);
+            const result = await UsersService.getUser(1, mockLogger);
 
             // Assert
             const success = expectSuccess(result);
@@ -172,7 +218,7 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
             // Act
-            const result = await Users.getUser(999, mockLogger);
+            const result = await UsersService.getUser(999, mockLogger);
 
             // Assert
             const failure = expectFailure(result);
@@ -186,7 +232,7 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockRejectedValue(dbError);
 
             // Act
-            const result = await Users.getUser(1, mockLogger);
+            const result = await UsersService.getUser(1, mockLogger);
 
             // Assert
             const failure = expectFailure(result);
@@ -206,15 +252,21 @@ describe("Users Service", () => {
                 telegramId: null,
                 language: "uz" as const,
             };
-            const createdUser = { id: 2, ...userData, createdAt: new Date(), updatedAt: new Date(), deletedAt: null };
+            const createdUser = {
+                id: 2,
+                ...userData,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+            };
 
             mockTransaction({
-                users: { create: mock(() => Promise.resolve(createdUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { create: vi.fn(() => Promise.resolve(createdUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.createUser(userData, mockAuditContext, mockLogger);
+            const result = await UsersService.createUser(userData, mockAuditContext, mockLogger);
 
             // Assert
             const success = expectSuccess(result);
@@ -239,7 +291,7 @@ describe("Users Service", () => {
             prismaMock.$transaction.mockRejectedValue(dbError);
 
             // Act
-            const result = await Users.createUser(userData, mockAuditContext, mockLogger);
+            const result = await UsersService.createUser(userData, mockAuditContext, mockLogger);
 
             // Assert
             const failure = expectFailure(result);
@@ -256,12 +308,17 @@ describe("Users Service", () => {
 
             prismaMock.users.findUnique.mockResolvedValue(mockUser);
             mockTransaction({
-                users: { update: mock(() => Promise.resolve(updatedUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { update: vi.fn(() => Promise.resolve(updatedUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.updateUser(1, updateData, mockAuditContext, mockLogger);
+            const result = await UsersService.updateUser(
+                1,
+                updateData,
+                mockAuditContext,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -277,7 +334,12 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
             // Act
-            const result = await Users.updateUser(999, { fullname: "Test" }, mockAuditContext, mockLogger);
+            const result = await UsersService.updateUser(
+                999,
+                { fullname: "Test" },
+                mockAuditContext,
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
@@ -289,12 +351,19 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(mockDeletedUser);
 
             // Act
-            const result = await Users.updateUser(1, { fullname: "Test" }, mockAuditContext, mockLogger);
+            const result = await UsersService.updateUser(
+                1,
+                { fullname: "Test" },
+                mockAuditContext,
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("Cannot update deleted user");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Users: Cannot update deleted user", { userId: 1 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Users: Cannot update deleted user", {
+                userId: 1,
+            });
         });
     });
 
@@ -305,12 +374,12 @@ describe("Users Service", () => {
 
             prismaMock.users.findUnique.mockResolvedValue(mockUser);
             mockTransaction({
-                users: { update: mock(() => Promise.resolve(softDeletedUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { update: vi.fn(() => Promise.resolve(softDeletedUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.deleteUser(1, mockAuditContext, mockLogger);
+            const result = await UsersService.deleteUser(1, mockAuditContext, mockLogger);
 
             // Assert
             const success = expectSuccess(result);
@@ -326,12 +395,14 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
             // Act
-            const result = await Users.deleteUser(999, mockAuditContext, mockLogger);
+            const result = await UsersService.deleteUser(999, mockAuditContext, mockLogger);
 
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("User not found");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User not found for delete", { userId: 999 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User not found for delete", {
+                userId: 999,
+            });
         });
 
         test("should return error when user already deleted", async () => {
@@ -339,12 +410,14 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(mockDeletedUser);
 
             // Act
-            const result = await Users.deleteUser(1, mockAuditContext, mockLogger);
+            const result = await UsersService.deleteUser(1, mockAuditContext, mockLogger);
 
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("User already deleted");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User already deleted", { userId: 1 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User already deleted", {
+                userId: 1,
+            });
         });
     });
 
@@ -355,12 +428,12 @@ describe("Users Service", () => {
 
             prismaMock.users.findUnique.mockResolvedValue(mockDeletedUser);
             mockTransaction({
-                users: { update: mock(() => Promise.resolve(restoredUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { update: vi.fn(() => Promise.resolve(restoredUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.restoreUser(1, mockAuditContext, mockLogger);
+            const result = await UsersService.restoreUser(1, mockAuditContext, mockLogger);
 
             // Assert
             const success = expectSuccess(result);
@@ -376,7 +449,7 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
             // Act
-            const result = await Users.restoreUser(999, mockAuditContext, mockLogger);
+            const result = await UsersService.restoreUser(999, mockAuditContext, mockLogger);
 
             // Assert
             const failure = expectFailure(result);
@@ -388,12 +461,14 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
             // Act
-            const result = await Users.restoreUser(1, mockAuditContext, mockLogger);
+            const result = await UsersService.restoreUser(1, mockAuditContext, mockLogger);
 
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("User is not deleted");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User is not deleted", { userId: 1 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Users: User is not deleted", {
+                userId: 1,
+            });
         });
     });
 
@@ -420,12 +495,15 @@ describe("Users Service", () => {
                 .join("\n");
 
             const secretKey = crypto.createHash("sha256").update(botToken).digest();
-            const validHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+            const validHash = crypto
+                .createHmac("sha256", secretKey)
+                .update(dataCheckString)
+                .digest("hex");
 
             telegramData.hash = validHash;
 
             // Act
-            const result = Users.validateTelegramHash(telegramData, botToken);
+            const result = UsersService.validateTelegramHash(telegramData, botToken);
 
             // Assert
             expect(result).toBe(true);
@@ -444,7 +522,7 @@ describe("Users Service", () => {
             };
 
             // Act
-            const result = Users.validateTelegramHash(telegramData, botToken);
+            const result = UsersService.validateTelegramHash(telegramData, botToken);
 
             // Assert
             expect(result).toBe(false);
@@ -465,16 +543,20 @@ describe("Users Service", () => {
         test("should update existing user by telegramId with audit log", async () => {
             // Arrange
             const existingUser = { ...mockUser, telegramId: "123456789" };
-            const updatedUser = { ...existingUser, fullname: "John Doe", photo: "https://photo.url/avatar.jpg" };
+            const updatedUser = {
+                ...existingUser,
+                fullname: "John Doe",
+                photo: "https://photo.url/avatar.jpg",
+            };
 
             prismaMock.users.findUnique.mockResolvedValue(existingUser);
             mockTransaction({
-                users: { update: mock(() => Promise.resolve(updatedUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { update: vi.fn(() => Promise.resolve(updatedUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger);
+            const result = await UsersService.createOrUpdateFromTelegram(telegramData, mockLogger);
 
             // Assert
             const success = expectSuccess(result);
@@ -494,20 +576,27 @@ describe("Users Service", () => {
                 .mockResolvedValueOnce(existingUserByPhone); // found by phone
 
             mockTransaction({
-                users: { update: mock(() => Promise.resolve(linkedUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { update: vi.fn(() => Promise.resolve(linkedUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger, "+998901234567");
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramData,
+                mockLogger,
+                "+998901234567",
+            );
 
             // Assert
             const success = expectSuccess(result);
             expect(success.data).toEqual(linkedUser);
-            expect(mockLogger.info).toHaveBeenCalledWith("Users: Linked Telegram to existing user", {
-                userId: linkedUser.id,
-                telegramId: "123456789",
-            });
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                "Users: Linked Telegram to existing user",
+                {
+                    userId: linkedUser.id,
+                    telegramId: "123456789",
+                },
+            );
         });
 
         test("should create new user when not found with audit log", async () => {
@@ -526,12 +615,12 @@ describe("Users Service", () => {
 
             prismaMock.users.findUnique.mockResolvedValue(null);
             mockTransaction({
-                users: { create: mock(() => Promise.resolve(newUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { create: vi.fn(() => Promise.resolve(newUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger);
+            const result = await UsersService.createOrUpdateFromTelegram(telegramData, mockLogger);
 
             // Assert
             const success = expectSuccess(result);
@@ -564,12 +653,15 @@ describe("Users Service", () => {
 
             prismaMock.users.findUnique.mockResolvedValue(null);
             mockTransaction({
-                users: { create: mock(() => Promise.resolve(newUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { create: vi.fn(() => Promise.resolve(newUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.createOrUpdateFromTelegram(telegramDataWithLastName, mockLogger);
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramDataWithLastName,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -597,12 +689,15 @@ describe("Users Service", () => {
 
             prismaMock.users.findUnique.mockResolvedValue(null);
             mockTransaction({
-                users: { create: mock(() => Promise.resolve(newUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { create: vi.fn(() => Promise.resolve(newUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.createOrUpdateFromTelegram(telegramDataNoUsername, mockLogger);
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramDataNoUsername,
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -624,15 +719,21 @@ describe("Users Service", () => {
                 deletedAt: null,
             };
 
-            const createMock = mock(() => Promise.resolve(newUser));
+            const createMock = vi.fn(() => Promise.resolve(newUser));
             prismaMock.users.findUnique.mockResolvedValue(null);
             mockTransaction({
                 users: { create: createMock },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger, undefined, "req-1", "ru");
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramData,
+                mockLogger,
+                undefined,
+                "req-1",
+                "ru",
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -649,15 +750,21 @@ describe("Users Service", () => {
             const existingUser = { ...mockUser, telegramId: "123456789", language: "uz" };
             const updatedUser = { ...existingUser, language: "ru" };
 
-            const updateMock = mock(() => Promise.resolve(updatedUser));
+            const updateMock = vi.fn(() => Promise.resolve(updatedUser));
             prismaMock.users.findUnique.mockResolvedValue(existingUser);
             mockTransaction({
                 users: { update: updateMock },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act
-            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger, undefined, "req-1", "ru");
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramData,
+                mockLogger,
+                undefined,
+                "req-1",
+                "ru",
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -686,12 +793,12 @@ describe("Users Service", () => {
 
             prismaMock.users.findUnique.mockResolvedValue(null);
             mockTransaction({
-                users: { create: mock(() => Promise.resolve(newUser)) },
-                auditLog: { create: mock(() => Promise.resolve({})) },
+                users: { create: vi.fn(() => Promise.resolve(newUser)) },
+                auditLog: { create: vi.fn(() => Promise.resolve({})) },
             });
 
             // Act — no language parameter
-            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger);
+            const result = await UsersService.createOrUpdateFromTelegram(telegramData, mockLogger);
 
             // Assert
             const success = expectSuccess(result);
@@ -704,7 +811,7 @@ describe("Users Service", () => {
             prismaMock.users.findUnique.mockRejectedValue(dbError);
 
             // Act
-            const result = await Users.createOrUpdateFromTelegram(telegramData, mockLogger);
+            const result = await UsersService.createOrUpdateFromTelegram(telegramData, mockLogger);
 
             // Assert
             const failure = expectFailure(result);
@@ -717,7 +824,7 @@ describe("Users Service", () => {
         test("getUser with id=0 should return not found", async () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
-            const result = await Users.getUser(0, mockLogger);
+            const result = await UsersService.getUser(0, mockLogger);
 
             const failure = expectFailure(result);
             expect(failure.error).toBe("User not found");
@@ -726,7 +833,7 @@ describe("Users Service", () => {
         test("getUser with negative id should return not found", async () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
-            const result = await Users.getUser(-1, mockLogger);
+            const result = await UsersService.getUser(-1, mockLogger);
 
             const failure = expectFailure(result);
             expect(failure.error).toBe("User not found");
@@ -737,7 +844,7 @@ describe("Users Service", () => {
             prismaMock.users.update.mockResolvedValue(mockUser);
             prismaMock.auditLog.create.mockResolvedValue({} as never);
 
-            const result = await Users.updateUser(1, {}, mockAuditContext, mockLogger);
+            const result = await UsersService.updateUser(1, {}, mockAuditContext, mockLogger);
 
             expectSuccess(result);
         });
@@ -745,7 +852,7 @@ describe("Users Service", () => {
         test("deleteUser with id=0 should return not found", async () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
-            const result = await Users.deleteUser(0, mockAuditContext, mockLogger);
+            const result = await UsersService.deleteUser(0, mockAuditContext, mockLogger);
 
             const failure = expectFailure(result);
             expect(failure.error).toBe("User not found");
@@ -754,7 +861,7 @@ describe("Users Service", () => {
         test("restoreUser with id=0 should return not found", async () => {
             prismaMock.users.findUnique.mockResolvedValue(null);
 
-            const result = await Users.restoreUser(0, mockAuditContext, mockLogger);
+            const result = await UsersService.restoreUser(0, mockAuditContext, mockLogger);
 
             const failure = expectFailure(result);
             expect(failure.error).toBe("User not found");

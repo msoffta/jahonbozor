@@ -1,12 +1,10 @@
-import { describe, test, expect, beforeEach } from "bun:test";
 import { renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, test } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
 import { useAuthStore } from "../../stores/auth.store";
-import {
-    useHasPermission,
-    useHasAnyPermission,
-    useHasAllPermissions,
-} from "../use-permissions";
+import { useHasAllPermissions, useHasAnyPermission, useHasPermission } from "../use-permissions";
 
 const staffPermissions: Permission[] = [
     Permission.PRODUCTS_LIST,
@@ -72,9 +70,7 @@ describe("useHasAnyPermission", () => {
 
     test("should return false with empty user permissions", () => {
         useAuthStore.setState({ permissions: [] });
-        const { result } = renderHook(() =>
-            useHasAnyPermission([Permission.PRODUCTS_LIST]),
-        );
+        const { result } = renderHook(() => useHasAnyPermission([Permission.PRODUCTS_LIST]));
         expect(result.current).toBe(false);
     });
 
@@ -113,9 +109,7 @@ describe("useHasAllPermissions", () => {
 
     test("should return false with empty user permissions", () => {
         useAuthStore.setState({ permissions: [] });
-        const { result } = renderHook(() =>
-            useHasAllPermissions([Permission.PRODUCTS_LIST]),
-        );
+        const { result } = renderHook(() => useHasAllPermissions([Permission.PRODUCTS_LIST]));
         expect(result.current).toBe(false);
     });
 

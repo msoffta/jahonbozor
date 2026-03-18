@@ -1,25 +1,22 @@
-import type { UserOrderCreateResponse, UserOrdersListResponse, UserOrderDetailResponse, UserOrderCancelResponse } from "@jahonbozor/schemas/src/orders";
-import { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@backend/lib/prisma";
 import { auditInTransaction } from "@backend/lib/audit";
-import type { Prisma, Order } from "@backend/generated/prisma/client";
+import { prisma } from "@backend/lib/prisma";
+import { createOrderSnapshot } from "@backend/lib/snapshots";
+
+import type { Prisma } from "@backend/generated/prisma/client";
+import type { Logger } from "@jahonbozor/logger";
+import type { Token } from "@jahonbozor/schemas";
+import type { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
+import type {
+    UserOrderCreateResponse,
+    UserOrderDeleteResponse,
+    UserOrderDetailResponse,
+    UserOrdersListResponse,
+} from "@jahonbozor/schemas/src/orders";
 
 interface ServiceContext {
     userId: number;
     user: Token;
     requestId?: string;
-}
-
-function createOrderSnapshot(order: Pick<Order, "userId" | "staffId" | "paymentType" | "status" | "data">) {
-    return {
-        userId: order.userId,
-        staffId: order.staffId,
-        paymentType: order.paymentType,
-        status: order.status,
-        data: order.data,
-    };
 }
 
 export abstract class PublicOrdersService {
@@ -30,7 +27,7 @@ export abstract class PublicOrdersService {
     ): Promise<UserOrderCreateResponse> {
         try {
             const { userId, user, requestId } = context;
-            const productIds = orderData.items.map(item => item.productId);
+            const productIds = orderData.items.map((item) => item.productId);
 
             const products = await prisma.product.findMany({
                 where: {
@@ -41,15 +38,21 @@ export abstract class PublicOrdersService {
             });
 
             if (products.length !== productIds.length) {
-                const foundIds = products.map(product => product.id);
-                const missingIds = productIds.filter(id => !foundIds.includes(id));
+                const foundIds = products.map((product) => product.id);
+                const missingIds = productIds.filter((id) => !foundIds.includes(id));
                 logger.warn("PublicOrders: Products not found or deleted", { missingIds, userId });
                 return { success: false, error: `Products not found: ${missingIds.join(", ")}` };
             }
 
-            const productMap = new Map(products.map(product => [product.id, product]));
+            // All productIds are guaranteed to exist in the map (validated by length check above)
+            const productMap = new Map(products.map((product) => [product.id, product]));
 
-            const insufficientStock: Array<{ productId: number; productName: string; requested: number; available: number }> = [];
+            const insufficientStock: {
+                productId: number;
+                productName: string;
+                requested: number;
+                available: number;
+            }[] = [];
             for (const item of orderData.items) {
                 const product = productMap.get(item.productId)!;
                 if (product.remaining < item.quantity) {
@@ -80,10 +83,10 @@ export abstract class PublicOrdersService {
                         userId,
                         staffId: null,
                         paymentType: orderData.paymentType,
-                        status: "NEW",
+                        comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
-                            create: orderData.items.map(item => {
+                            create: orderData.items.map((item) => {
                                 const product = productMap.get(item.productId)!;
                                 return {
                                     productId: item.productId,
@@ -146,7 +149,7 @@ export abstract class PublicOrdersService {
                 itemCount: order.items.length,
             });
 
-            const mappedItems = order.items.map(item => ({
+            const mappedItems = order.items.map((item) => ({
                 ...item,
                 price: Number(item.price),
             }));
@@ -164,14 +167,18 @@ export abstract class PublicOrdersService {
         logger: Logger,
     ): Promise<UserOrdersListResponse> {
         try {
-            const { page, limit, paymentType, status, dateFrom, dateTo } = query;
+            const { page, limit, sortBy, sortOrder, paymentType, dateFrom, dateTo } = query;
 
             const whereClause: Prisma.OrderWhereInput = {
                 userId,
+                deletedAt: null,
                 ...(paymentType && { paymentType }),
-                ...(status && { status }),
-                ...(dateFrom && { createdAt: { gte: dateFrom } }),
-                ...(dateTo && { createdAt: { lte: dateTo } }),
+                ...((dateFrom ?? dateTo) && {
+                    createdAt: {
+                        ...(dateFrom && { gte: dateFrom }),
+                        ...(dateTo && { lte: dateTo }),
+                    },
+                }),
             };
 
             const [count, orders] = await prisma.$transaction([
@@ -187,13 +194,13 @@ export abstract class PublicOrdersService {
                             },
                         },
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
-            const mappedOrders = orders.map(order => ({
+            const mappedOrders = orders.map((order) => ({
                 ...order,
-                items: order.items.map(item => ({
+                items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
                     product: { ...item.product, price: Number(item.product.price) },
@@ -238,7 +245,7 @@ export abstract class PublicOrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
-            const mappedItems = order.items.map(item => ({
+            const mappedItems = order.items.map((item) => ({
                 ...item,
                 price: Number(item.price),
                 product: { ...item.product, price: Number(item.product.price) },
@@ -255,12 +262,12 @@ export abstract class PublicOrdersService {
         orderId: number,
         context: ServiceContext,
         logger: Logger,
-    ): Promise<UserOrderCancelResponse> {
+    ): Promise<UserOrderDeleteResponse> {
         try {
             const { userId, user, requestId } = context;
 
             const existingOrder = await prisma.order.findUnique({
-                where: { id: orderId },
+                where: { id: orderId, deletedAt: null },
                 include: {
                     items: {
                         include: {
@@ -284,16 +291,7 @@ export abstract class PublicOrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
-            if (existingOrder.status !== "NEW") {
-                logger.warn("PublicOrders: Order cannot be cancelled", {
-                    orderId,
-                    userId,
-                    currentStatus: existingOrder.status,
-                });
-                return { success: false, error: "Only NEW orders can be cancelled" };
-            }
-
-            const [updatedOrder] = await prisma.$transaction(async (transaction) => {
+            await prisma.$transaction(async (transaction) => {
                 for (const item of existingOrder.items) {
                     if (!item.product.deletedAt) {
                         const previousRemaining = item.product.remaining;
@@ -318,16 +316,9 @@ export abstract class PublicOrdersService {
                     }
                 }
 
-                const order = await transaction.order.update({
+                await transaction.order.update({
                     where: { id: orderId },
-                    data: { status: "CANCELLED" },
-                    include: {
-                        items: {
-                            include: {
-                                product: { select: { id: true, name: true, price: true } },
-                            },
-                        },
-                    },
+                    data: { deletedAt: new Date() },
                 });
 
                 await auditInTransaction(
@@ -336,13 +327,10 @@ export abstract class PublicOrdersService {
                     {
                         entityType: "order",
                         entityId: orderId,
-                        action: "ORDER_STATUS_CHANGE",
+                        action: "DELETE",
                         previousData: createOrderSnapshot(existingOrder),
-                        newData: createOrderSnapshot(order),
                     },
                 );
-
-                return [order];
             });
 
             logger.info("PublicOrders: Order cancelled and stock restored", {
@@ -351,15 +339,13 @@ export abstract class PublicOrdersService {
                 itemsRestored: existingOrder.items.length,
             });
 
-            const mappedItems = updatedOrder.items.map(item => ({
-                ...item,
-                price: Number(item.price),
-                product: { ...item.product, price: Number(item.product.price) },
-            }));
-
-            return { success: true, data: { ...updatedOrder, items: mappedItems } };
+            return { success: true, data: { orderId, deleted: true } };
         } catch (error) {
-            logger.error("PublicOrders: Error in cancelOrder", { orderId, userId: context.userId, error });
+            logger.error("PublicOrders: Error in cancelOrder", {
+                orderId,
+                userId: context.userId,
+                error,
+            });
             return { success: false, error };
         }
     }

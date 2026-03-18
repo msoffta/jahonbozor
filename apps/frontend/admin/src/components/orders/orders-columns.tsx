@@ -1,15 +1,18 @@
+import { format } from "date-fns";
+import { Trash2 } from "lucide-react";
+
+import { Button, motion } from "@jahonbozor/ui";
+
+import { formatCurrency } from "@/lib/format";
+
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
-import { Badge, Button, motion } from "@jahonbozor/ui";
 import type { ColumnDef } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import type { TFunction } from "i18next";
-import { Trash2 } from "lucide-react";
 
 export interface OrderActions {
     onDelete: (id: number) => void;
-    onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => void;
     onNavigate?: (id: number) => void;
 }
 
@@ -20,6 +23,7 @@ interface OrderColumnsData {
 
 interface OrderColumnsOptions {
     showItemColumns?: boolean;
+    canDelete?: boolean;
 }
 
 export function getOrderColumns(
@@ -27,8 +31,8 @@ export function getOrderColumns(
     actions: OrderActions,
     data: OrderColumnsData,
     options?: OrderColumnsOptions,
-): ColumnDef<AdminOrderItem, any>[] {
-    const { showItemColumns = true } = options ?? {};
+): ColumnDef<AdminOrderItem, unknown>[] {
+    const { showItemColumns = true, canDelete = true } = options ?? {};
     const productOptions = data.products.map((p) => ({
         label: p.name,
         value: String(p.id),
@@ -45,15 +49,10 @@ export function getOrderColumns(
     const paymentOptions = [
         { label: t("payment_cash"), value: "CASH" },
         { label: t("payment_credit_card"), value: "CREDIT_CARD" },
+        { label: t("payment_debt"), value: "DEBT" },
     ];
 
-    const statusOptions = [
-        { label: t("status_new"), value: "NEW" },
-        { label: t("status_accepted"), value: "ACCEPTED" },
-        { label: t("status_cancelled"), value: "CANCELLED" },
-    ];
-
-    const columns: ColumnDef<AdminOrderItem, any>[] = [
+    const columns: ColumnDef<AdminOrderItem, unknown>[] = [
         {
             accessorKey: "id",
             header: t("order_id"),
@@ -65,7 +64,7 @@ export function getOrderColumns(
                     return (
                         <button
                             type="button"
-                            className="font-medium text-primary underline-offset-2 hover:underline"
+                            className="text-primary font-medium underline-offset-2 hover:underline"
                             onClick={() => actions.onNavigate!(id)}
                         >
                             {id}
@@ -113,7 +112,7 @@ export function getOrderColumns(
                     const price = getValue<number>();
                     return (
                         <span className="font-medium">
-                            {price ? price.toLocaleString() : "—"}
+                            {price ? formatCurrency(price, t("common:sum")) : "—"}
                         </span>
                     );
                 },
@@ -142,14 +141,17 @@ export function getOrderColumns(
                 },
                 header: t("order_total"),
                 size: 130,
-                cell: ({ getValue }) => getValue<number>().toLocaleString(),
+                cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
                 meta: {
                     flex: 1.5,
                     align: "left" as const,
+                    enableDragSum: true,
                 },
             },
         );
-    } else {
+    }
+
+    if (!showItemColumns) {
         columns.push(
             {
                 id: "itemsCount",
@@ -168,19 +170,40 @@ export function getOrderColumns(
                     ),
                 header: t("order_total"),
                 size: 130,
-                cell: ({ getValue }) => getValue<number>().toLocaleString(),
+                cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
                 meta: { flex: 1.5, align: "left" as const },
             },
         );
     }
+
+    // Comment column — shown in both modes, editable in showItemColumns mode
+    columns.push({
+        accessorKey: "comment",
+        header: t("order_comment"),
+        size: 150,
+        cell: ({ getValue }) => {
+            const comment = getValue<string | null>();
+            return comment ? (
+                <span className="text-muted-foreground block truncate text-sm italic">
+                    {comment}
+                </span>
+            ) : (
+                "—"
+            );
+        },
+        meta: {
+            flex: showItemColumns ? 1.5 : 2,
+            editable: showItemColumns,
+            inputType: "text" as const,
+        },
+    });
 
     columns.push(
         {
             accessorKey: "paymentType",
             header: t("order_payment"),
             size: 120,
-            cell: ({ getValue }) =>
-                t(`payment_${getValue<string>().toLowerCase()}`),
+            cell: ({ getValue }) => t(`payment_${getValue<string>().toLowerCase()}`),
             meta: {
                 flex: 1,
                 editable: showItemColumns,
@@ -201,38 +224,10 @@ export function getOrderColumns(
             },
         },
         {
-            accessorKey: "status",
-            header: t("order_status"),
-            size: 120,
-            cell: ({ row }) => {
-                const status = row.original.status;
-                const variant =
-                    status === "ACCEPTED"
-                        ? "default"
-                        : status === "CANCELLED"
-                          ? "destructive"
-                          : "outline";
-                return (
-                    <Badge variant={variant}>
-                        {t(`status_${status.toLowerCase()}`)}
-                    </Badge>
-                );
-            },
-            meta: {
-                flex: 1,
-                editable: true,
-                inputType: "select" as const,
-                selectOptions: statusOptions,
-                filterVariant: "select" as const,
-                filterOptions: statusOptions,
-            },
-        },
-        {
             accessorKey: "createdAt",
             header: t("order_date"),
             size: 140,
-            cell: ({ getValue }) =>
-                dayjs(getValue<Date | string>()).format("DD.MM.YYYY HH:mm"),
+            cell: ({ getValue }) => format(new Date(getValue<Date | string>()), "dd.MM.yyyy HH:mm"),
             meta: { flex: 1.5 },
         },
         {
@@ -242,9 +237,7 @@ export function getOrderColumns(
                     ? (row.items[0]?.product?.costprice ?? 0)
                     : row.items.reduce(
                           (sum, item) =>
-                              sum +
-                              (item.product?.costprice ?? 0) *
-                                  (item.quantity ?? 1),
+                              sum + (item.product?.costprice ?? 0) * (item.quantity ?? 1),
                           0,
                       ),
             header: t("order_costprice"),
@@ -253,7 +246,7 @@ export function getOrderColumns(
                 const costprice = getValue<number>();
                 return (
                     <span className="costprice-value">
-                        {costprice ? costprice.toLocaleString() : "—"}
+                        {costprice ? formatCurrency(costprice, t("common:sum")) : "—"}
                     </span>
                 );
             },
@@ -265,20 +258,21 @@ export function getOrderColumns(
                 className: "costprice-hover-target",
             },
         },
-        {
+    );
+
+    // Only add actions column if user has delete permission
+    if (canDelete) {
+        columns.push({
             id: "actions",
             header: t("order_actions"),
             size: 80,
             meta: { align: "center" as const },
             cell: ({ row }) => (
-                <motion.div
-                    whileTap={{ scale: 0.9 }}
-                    className="inline-flex justify-center w-full"
-                >
+                <motion.div whileTap={{ scale: 0.9 }} className="inline-flex w-full justify-center">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="text-muted-foreground hover:text-destructive h-8 w-8"
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -290,8 +284,8 @@ export function getOrderColumns(
                     </Button>
                 </motion.div>
             ),
-        },
-    );
+        });
+    }
 
     return columns;
 }

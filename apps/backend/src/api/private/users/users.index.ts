@@ -1,13 +1,16 @@
-import type { AdminUsersListResponse, AdminUserDetailResponse } from "@jahonbozor/schemas/src/users";
-import { Permission } from "@jahonbozor/schemas";
-import {
-    CreateUserBody,
-    UpdateUserBody,
-    UsersPagination,
-} from "@jahonbozor/schemas/src/users";
-import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
-import { Users } from "./users.service";
+
+import { Permission } from "@jahonbozor/schemas";
+import { CreateUserBody, UpdateUserBody, UsersPagination } from "@jahonbozor/schemas/src/users";
+
+import { authMiddleware } from "@backend/lib/middleware";
+
+import { UsersService } from "./users.service";
+
+import type {
+    AdminUserDetailResponse,
+    AdminUsersListResponse,
+} from "@jahonbozor/schemas/src/users";
 
 const userIdParams = t.Object({
     id: t.Numeric(),
@@ -19,7 +22,7 @@ export const users = new Elysia({ prefix: "/users" })
         "/",
         async ({ query, logger }): Promise<AdminUsersListResponse> => {
             try {
-                return await Users.getAllUsers(query, logger);
+                return await UsersService.getAllUsers(query, logger);
             } catch (error) {
                 logger.error("Users: Unhandled error in GET /users", { error });
                 return { success: false, error };
@@ -34,7 +37,7 @@ export const users = new Elysia({ prefix: "/users" })
         "/:id",
         async ({ params, set, logger }): Promise<AdminUserDetailResponse> => {
             try {
-                const result = await Users.getUser(params.id, logger);
+                const result = await UsersService.getUser(params.id, logger);
 
                 if (!result.success) {
                     set.status = 404;
@@ -58,7 +61,7 @@ export const users = new Elysia({ prefix: "/users" })
         "/",
         async ({ body, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
             try {
-                const result = await Users.createUser(
+                const result = await UsersService.createUser(
                     body,
                     { staffId: user.id, user, requestId },
                     logger,
@@ -77,9 +80,16 @@ export const users = new Elysia({ prefix: "/users" })
     )
     .put(
         "/:id",
-        async ({ params, body, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
+        async ({
+            params,
+            body,
+            user,
+            set,
+            logger,
+            requestId,
+        }): Promise<AdminUserDetailResponse> => {
             try {
-                const result = await Users.updateUser(
+                const result = await UsersService.updateUser(
                     params.id,
                     body,
                     { staffId: user.id, user, requestId },
@@ -109,7 +119,7 @@ export const users = new Elysia({ prefix: "/users" })
         "/:id",
         async ({ params, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
             try {
-                const result = await Users.deleteUser(
+                const result = await UsersService.deleteUser(
                     params.id,
                     { staffId: user.id, user, requestId },
                     logger,
@@ -137,7 +147,7 @@ export const users = new Elysia({ prefix: "/users" })
         "/:id/restore",
         async ({ params, user, set, logger, requestId }): Promise<AdminUserDetailResponse> => {
             try {
-                const result = await Users.restoreUser(
+                const result = await UsersService.restoreUser(
                     params.id,
                     { staffId: user.id, user, requestId },
                     logger,

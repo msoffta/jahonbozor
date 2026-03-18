@@ -1,0 +1,19 @@
+model DebtPayment {
+  id      Int     @id @default(autoincrement())
+  orderId Int
+  userId  Int
+  amount  Decimal @db.Decimal(10, 2)
+  paidAt  DateTime @default(now())
+  staffId Int
+  comment String?
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  Users @relation(fields: [userId], references: [id])
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([userId])
+}

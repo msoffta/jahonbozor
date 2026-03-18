@@ -1,8 +1,12 @@
-import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
+import { Trash2 } from "lucide-react";
+
 import { Button, motion } from "@jahonbozor/ui";
+
+import { formatCurrency } from "@/lib/format";
+
+import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { Trash2 } from "lucide-react";
 
 export interface OrderItemRow {
     id: number;
@@ -66,7 +70,7 @@ export function getOrderItemColumns(
                 const price = getValue<number>();
                 return (
                     <span className="font-medium">
-                        {price ? price.toLocaleString() : "—"}
+                        {price ? formatCurrency(price, t("common:sum")) : "—"}
                     </span>
                 );
             },
@@ -91,7 +95,7 @@ export function getOrderItemColumns(
             header: t("order_total"),
             size: 120,
             accessorFn: (row) => row.price * row.quantity,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
             meta: {
                 flex: 1,
                 align: "left" as const,
@@ -106,7 +110,7 @@ export function getOrderItemColumns(
                 const costprice = getValue<number>();
                 return (
                     <span className="costprice-value">
-                        {costprice ? costprice.toLocaleString() : "—"}
+                        {costprice ? formatCurrency(costprice, t("common:sum")) : "—"}
                     </span>
                 );
             },
@@ -127,14 +131,11 @@ export function getOrderItemColumns(
             size: 70,
             meta: { align: "center" as const },
             cell: ({ row }) => (
-                <motion.div
-                    whileTap={{ scale: 0.9 }}
-                    className="inline-flex justify-center w-full"
-                >
+                <motion.div whileTap={{ scale: 0.9 }} className="inline-flex w-full justify-center">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="text-muted-foreground hover:text-destructive h-8 w-8"
                         onClick={() => actions.onDelete!(row.index)}
                         title={t("action_delete")}
                     >

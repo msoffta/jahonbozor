@@ -1,7 +1,21 @@
+import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
+import { hasPermission, Permission } from "@jahonbozor/schemas";
 import {
-    categoriesListQueryOptions,
-    useCreateCategory,
-} from "@/api/categories.api";
+    AnimatePresence,
+    Checkbox,
+    DataTable,
+    DataTableSkeleton,
+    motion,
+    PageTransition,
+    useIsMobile,
+} from "@jahonbozor/ui";
+
+import { categoriesListQueryOptions, useCreateCategory } from "@/api/categories.api";
 import {
     productsListQueryOptions,
     useCreateProduct,
@@ -10,35 +24,27 @@ import {
     useUpdateProduct,
 } from "@/api/products.api";
 import { getProductColumns } from "@/components/products/products-columns";
-import type { DataTableTranslations } from "@jahonbozor/ui";
-import {
-    Checkbox,
-    DataTable,
-    DataTableSkeleton,
-    PageTransition,
-} from "@jahonbozor/ui";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useMemo, useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
-    const [isReady, setIsReady] = useState(false);
+    const isReady = useDeferredReady();
+    const translations = useDataTableTranslations("products_empty");
 
-    useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 150);
-        return () => clearTimeout(timer);
-    }, []);
+    // Permission checks for component-level actions
+    const canCreate = useHasPermission(Permission.PRODUCTS_CREATE);
+    const canUpdate = useHasPermission(Permission.PRODUCTS_UPDATE);
+    const canDelete = useHasPermission(Permission.PRODUCTS_DELETE);
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
         productsListQueryOptions({ limit: 100, includeDeleted }),
     );
 
-    const { data: categoriesData } = useQuery(
-        categoriesListQueryOptions({ limit: 100 }),
-    );
+    const { data: categoriesData } = useQuery(categoriesListQueryOptions({ limit: 100 }));
 
     const createProduct = useCreateProduct();
     const updateProduct = useUpdateProduct();
@@ -76,11 +82,18 @@ function ProductsPage() {
     );
 
     const columns = useMemo(
-        () => getProductColumns(t, categories, actions),
-        [t, categories, actions],
+        () => getProductColumns(t, categories, actions, { canDelete }),
+        [t, categories, actions, canDelete],
     );
 
     const products = productsData?.products ?? [];
+
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile ? { costprice: false, category: false, status: false, createdAt: false } : {},
+        [isMobile],
+    );
 
     const handleCellEdit = useCallback(
         async (rowIndex: number, columnId: string, value: unknown) => {
@@ -100,22 +113,15 @@ function ProductsPage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (
-            data: Record<string, unknown>,
-            _rowId: string,
-            linkedId?: unknown,
-        ) => {
+        async (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
             // If already created, we can update any field individually
             if (linkedId) {
                 const body: Record<string, unknown> = {};
-                if (data.name) body.name = String(data.name);
+                if (data.name != null) body.name = String(data.name as string);
                 if (data.price !== undefined) body.price = Number(data.price);
-                if (data.costprice !== undefined)
-                    body.costprice = Number(data.costprice);
-                if (data.remaining !== undefined)
-                    body.remaining = Number(data.remaining);
-                if (data.category)
-                    body.categoryId = await resolveCategoryId(data.category);
+                if (data.costprice !== undefined) body.costprice = Number(data.costprice);
+                if (data.remaining !== undefined) body.remaining = Number(data.remaining);
+                if (data.category) body.categoryId = await resolveCategoryId(data.category);
 
                 const result = await updateProduct.mutateAsync({
                     id: linkedId as number,
@@ -131,7 +137,7 @@ function ProductsPage() {
 
             const categoryId = await resolveCategoryId(data.category);
             const result = await createProduct.mutateAsync({
-                name: String(data.name),
+                name: String(data.name as string),
                 price: Number(data.price),
                 costprice: Number(data.costprice) || 0,
                 categoryId,
@@ -142,65 +148,73 @@ function ProductsPage() {
         [createProduct, updateProduct, resolveCategoryId],
     );
 
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("products_empty"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
-
     const isLoading = isProductsLoading || !isReady;
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold">{t("common:products")}</h1>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex items-center justify-between md:mb-6">
+                <h1 className="text-xl font-bold md:text-2xl">{t("common:products")}</h1>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <Checkbox
                         checked={includeDeleted}
-                        onCheckedChange={(checked) =>
-                            setIncludeDeleted(checked === true)
-                        }
+                        onCheckedChange={(checked) => setIncludeDeleted(checked === true)}
                     />
                     {t("common:show_deleted")}
                 </label>
             </div>
 
-            {isLoading ? (
-                <DataTableSkeleton columns={9} rows={10} className="flex-1" />
-            ) : (
-                <DataTable
-                    className="flex-1 costprice-table"
-                    columns={columns}
-                    data={products}
-                    pagination
-                    defaultPageSize={20}
-                    pageSizeOptions={[10, 20, 50]}
-                    enableShowAll
-                    enableSorting
-                    enableGlobalSearch
-                    enableFiltering
-                    enableColumnVisibility
-                    enableColumnResizing
-                    enableEditing
-                    enableMultipleNewRows
-                    multiRowCount={15}
-                    onCellEdit={handleCellEdit}
-                    onMultiRowSave={handleNewRowSave}
-                    translations={translations}
-                />
-            )}
+            <AnimatePresence mode="wait">
+                {isLoading ? (
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <DataTableSkeleton columns={9} rows={10} className="flex-1" />
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
+                        <DataTable
+                            className="costprice-table flex-1"
+                            columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
+                            data={products}
+                            pagination
+                            defaultPageSize={20}
+                            pageSizeOptions={[10, 20, 50]}
+                            enableShowAll
+                            enableSorting
+                            enableGlobalSearch
+                            enableFiltering
+                            enableColumnVisibility
+                            enableColumnResizing
+                            enableEditing={canUpdate}
+                            enableMultipleNewRows={canCreate}
+                            multiRowCount={15}
+                            onCellEdit={handleCellEdit}
+                            onMultiRowSave={handleNewRowSave}
+                            translations={translations}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </PageTransition>
     );
 }
 
 export const Route = createFileRoute("/_dashboard/products/")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        if (!hasPermission(permissions, Permission.PRODUCTS_LIST)) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: ProductsPage,
 });

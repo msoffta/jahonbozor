@@ -1,10 +1,16 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AdminCategoryItem } from "@jahonbozor/schemas/src/categories";
+
+import { toast } from "@jahonbozor/ui";
+
 import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
+import type { AdminCategoryItem } from "@jahonbozor/schemas/src/categories";
 
 export const categoryKeys = {
     all: ["categories"] as const,
-    list: (params?: Record<string, unknown>) => [...categoryKeys.all, "list", params] as const,
+    lists: () => [...categoryKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...categoryKeys.lists(), params] as const,
 };
 
 export const categoriesListQueryOptions = (params?: {
@@ -16,7 +22,15 @@ export const categoriesListQueryOptions = (params?: {
         queryKey: categoryKeys.list(params),
         queryFn: async (): Promise<{ count: number; categories: AdminCategoryItem[] }> => {
             const { data, error } = await api.api.private.categories.get({
-                query: { page: 1, limit: 100, searchQuery: "", depth: 1, ...params },
+                query: {
+                    page: 1,
+                    limit: 100,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    depth: 1,
+                    ...params,
+                },
             });
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
@@ -38,6 +52,9 @@ export const useCreateCategory = () => {
         mutationFn: createCategoryFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 };

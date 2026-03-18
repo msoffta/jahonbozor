@@ -1,11 +1,18 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
+
+import { toast } from "@jahonbozor/ui";
+
 import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
+import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
 
 export const expenseKeys = {
     all: ["expenses"] as const,
-    list: (params?: Record<string, unknown>) => [...expenseKeys.all, "list", params] as const,
-    detail: (id: number) => [...expenseKeys.all, "detail", id] as const,
+    lists: () => [...expenseKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...expenseKeys.lists(), params] as const,
+    details: () => [...expenseKeys.all, "detail"] as const,
+    detail: (id: number) => [...expenseKeys.details(), id] as const,
 };
 
 export const expensesListQueryOptions = (params?: {
@@ -21,7 +28,15 @@ export const expensesListQueryOptions = (params?: {
         queryKey: expenseKeys.list(params),
         queryFn: async (): Promise<{ count: number; expenses: ExpenseItem[] }> => {
             const { data, error } = await api.api.private.expenses.get({
-                query: { page: 1, limit: 20, searchQuery: "", includeDeleted: false, ...params },
+                query: {
+                    page: 1,
+                    limit: 20,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeDeleted: false,
+                    ...params,
+                },
             });
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
@@ -43,14 +58,28 @@ export const expenseDetailQueryOptions = (id: number) =>
 
 // --- Mutation functions (exported for testing) ---
 
-export const createExpenseFn = async (body: { name: string; amount: number; description: string | null; expenseDate: string }) => {
+export const createExpenseFn = async (body: {
+    name: string;
+    amount: number;
+    description: string | null;
+    expenseDate: string;
+}) => {
     const { data, error } = await api.api.private.expenses.post(body);
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
     return data.data as ExpenseItem;
 };
 
-export const updateExpenseFn = async ({ id, ...body }: { id: number; name?: string; amount?: number; description?: string | null; expenseDate?: string }) => {
+export const updateExpenseFn = async ({
+    id,
+    ...body
+}: {
+    id: number;
+    name?: string;
+    amount?: number;
+    description?: string | null;
+    expenseDate?: string;
+}) => {
     const { data, error } = await api.api.private.expenses({ id }).patch(body);
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
@@ -81,6 +110,9 @@ export const useCreateExpense = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
     });
 };
 
@@ -91,6 +123,9 @@ export const useUpdateExpense = () => {
         mutationFn: updateExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -103,6 +138,9 @@ export const useDeleteExpense = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
         },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
     });
 };
 
@@ -113,6 +151,9 @@ export const useRestoreExpense = () => {
         mutationFn: restoreExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 };

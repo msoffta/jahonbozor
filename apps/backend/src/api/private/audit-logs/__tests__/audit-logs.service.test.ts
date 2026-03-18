@@ -1,6 +1,9 @@
-import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { AuditLogService } from "../audit-logs.service";
+
 import type { AuditLog } from "@backend/generated/prisma/client";
 
 // Mock audit log data
@@ -41,7 +44,7 @@ const mockAuditLog3: AuditLog = {
     entityId: 200,
     action: "CREATE",
     previousData: null,
-    newData: { status: "NEW" },
+    newData: { paymentType: "CASH" },
     metadata: { ipAddress: "192.168.1.1" },
     createdAt: new Date("2024-01-02T10:00:00Z"),
 };
@@ -56,10 +59,16 @@ describe("AuditLogService", () => {
     describe("getAll", () => {
         test("should return paginated audit logs", async () => {
             // Arrange
-            prismaMock.$transaction.mockResolvedValue([3, [mockAuditLog, mockAuditLog2, mockAuditLog3]]);
+            prismaMock.$transaction.mockResolvedValue([
+                3,
+                [mockAuditLog, mockAuditLog2, mockAuditLog3],
+            ]);
 
             // Act
-            const result = await AuditLogService.getAll({ page: 1, limit: 20, searchQuery: "" }, mockLogger);
+            const result = await AuditLogService.getAll(
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
+                mockLogger,
+            );
 
             // Assert
             const success = expectSuccess(result);
@@ -75,7 +84,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", entityType: "product" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    entityType: "product",
+                },
                 mockLogger,
             );
 
@@ -91,7 +107,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", entityId: 100 },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    entityId: 100,
+                },
                 mockLogger,
             );
 
@@ -106,7 +129,15 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", actorId: 10, actorType: "STAFF" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    actorId: 10,
+                    actorType: "STAFF",
+                },
                 mockLogger,
             );
 
@@ -121,7 +152,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", action: "CREATE" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    action: "CREATE",
+                },
                 mockLogger,
             );
 
@@ -136,7 +174,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", dateFrom: "2024-01-02T00:00:00Z" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    dateFrom: "2024-01-02T00:00:00Z",
+                },
                 mockLogger,
             );
 
@@ -151,7 +196,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", dateTo: "2024-01-01T23:59:59Z" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    dateTo: "2024-01-01T23:59:59Z",
+                },
                 mockLogger,
             );
 
@@ -166,7 +218,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", requestId: "req-123" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    requestId: "req-123",
+                },
                 mockLogger,
             );
 
@@ -181,7 +240,14 @@ describe("AuditLogService", () => {
 
             // Act
             const result = await AuditLogService.getAll(
-                { page: 1, limit: 20, searchQuery: "", entityType: "nonexistent" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    entityType: "nonexistent",
+                },
                 mockLogger,
             );
 
@@ -196,7 +262,10 @@ describe("AuditLogService", () => {
             prismaMock.$transaction.mockRejectedValue(dbError);
 
             // Act
-            const result = await AuditLogService.getAll({ page: 1, limit: 20, searchQuery: "" }, mockLogger);
+            const result = await AuditLogService.getAll(
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, searchQuery: "" },
+                mockLogger,
+            );
 
             // Assert
             const failure = expectFailure(result);

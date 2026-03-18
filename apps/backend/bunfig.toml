@@ -1,8 +1,3 @@
 preload = ["./env.ts"]
 
-[test]
-# Load mocks before tests run
-preload = ["./env.ts", "./test/setup.ts"]
-
-# Default timeout per test (5 seconds)
-timeout = 5000
+# [test] section removed — Vitest uses vitest.config.ts instead

@@ -1,4 +1,5 @@
 import z from "zod";
+
 import { BaseModel } from "../common/base.model";
 import { PermissionsArraySchema } from "../permissions";
 

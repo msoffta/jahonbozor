@@ -1,6 +1,8 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { createMockLogger } from "@backend/test/setup";
+
 import { PublicCategoriesService } from "../categories.service";
 
 const mockCategories = [
@@ -58,10 +60,12 @@ describe("PublicCategories Endpoints", () => {
     describe("GET /categories", () => {
         test("should return categories list", async () => {
             // Arrange
-            const spy = spyOn(PublicCategoriesService, "getAllCategories").mockResolvedValueOnce({
-                success: true,
-                data: { categories: mockCategories },
-            });
+            const spy = vi
+                .spyOn(PublicCategoriesService, "getAllCategories")
+                .mockResolvedValueOnce({
+                    success: true,
+                    data: { categories: mockCategories },
+                });
 
             // Act
             const response = await app.handle(new Request("http://localhost/categories"));
@@ -77,10 +81,12 @@ describe("PublicCategories Endpoints", () => {
 
         test("should handle service error", async () => {
             // Arrange
-            const spy = spyOn(PublicCategoriesService, "getAllCategories").mockResolvedValueOnce({
-                success: false,
-                error: "DB error",
-            });
+            const spy = vi
+                .spyOn(PublicCategoriesService, "getAllCategories")
+                .mockResolvedValueOnce({
+                    success: false,
+                    error: "DB error",
+                });
 
             // Act
             const response = await app.handle(new Request("http://localhost/categories"));
@@ -96,7 +102,7 @@ describe("PublicCategories Endpoints", () => {
     describe("GET /categories/:id", () => {
         test("should return single category", async () => {
             // Arrange
-            const spy = spyOn(PublicCategoriesService, "getCategory").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicCategoriesService, "getCategory").mockResolvedValueOnce({
                 success: true,
                 data: mockCategory,
             });
@@ -115,7 +121,7 @@ describe("PublicCategories Endpoints", () => {
 
         test("should return failure when category not found", async () => {
             // Arrange
-            const spy = spyOn(PublicCategoriesService, "getCategory").mockResolvedValueOnce({
+            const spy = vi.spyOn(PublicCategoriesService, "getCategory").mockResolvedValueOnce({
                 success: false,
                 error: "Category not found",
             });
@@ -126,6 +132,79 @@ describe("PublicCategories Endpoints", () => {
 
             // Assert
             expect(body.success).toBe(false);
+
+            spy.mockRestore();
+        });
+
+        test("should call service with 0 when id param is 0", async () => {
+            // Arrange
+            const spy = vi.spyOn(PublicCategoriesService, "getCategory").mockResolvedValueOnce({
+                success: false,
+                error: "Category not found",
+            });
+
+            // Act
+            await app.handle(new Request("http://localhost/categories/0"));
+
+            // Assert
+            expect(spy).toHaveBeenCalledWith(0, expect.anything());
+
+            spy.mockRestore();
+        });
+
+        test("should call service with negative number when id is negative", async () => {
+            // Arrange
+            const spy = vi.spyOn(PublicCategoriesService, "getCategory").mockResolvedValueOnce({
+                success: false,
+                error: "Category not found",
+            });
+
+            // Act
+            await app.handle(new Request("http://localhost/categories/-1"));
+
+            // Assert
+            expect(spy).toHaveBeenCalledWith(-1, expect.anything());
+
+            spy.mockRestore();
+        });
+
+        test("should return error structure when service fails", async () => {
+            // Arrange
+            const spy = vi.spyOn(PublicCategoriesService, "getCategory").mockResolvedValueOnce({
+                success: false,
+                error: "Database error",
+            });
+
+            // Act
+            const response = await app.handle(new Request("http://localhost/categories/1"));
+            const body = await response.json();
+
+            // Assert
+            expect(body.success).toBe(false);
+            expect(body.error).toBe("Database error");
+
+            spy.mockRestore();
+        });
+    });
+
+    describe("GET /categories - edge cases", () => {
+        test("should return empty categories list", async () => {
+            // Arrange
+            const spy = vi
+                .spyOn(PublicCategoriesService, "getAllCategories")
+                .mockResolvedValueOnce({
+                    success: true,
+                    data: { categories: [] },
+                });
+
+            // Act
+            const response = await app.handle(new Request("http://localhost/categories"));
+            const body = await response.json();
+
+            // Assert
+            expect(response.status).toBe(200);
+            expect(body.success).toBe(true);
+            expect(body.data.categories).toHaveLength(0);
 
             spy.mockRestore();
         });

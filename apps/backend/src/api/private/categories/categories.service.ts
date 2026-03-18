@@ -1,28 +1,18 @@
-import type { AdminCategoriesListResponse, AdminCategoryDetailResponse, AdminCategoryTreeResponse } from "@jahonbozor/schemas/src/categories";
-import {
+import { auditInTransaction } from "@backend/lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import { createCategorySnapshot } from "@backend/lib/snapshots";
+
+import type { Prisma } from "@backend/generated/prisma/client";
+import type { ServiceContext } from "@backend/lib/audit";
+import type { Logger } from "@jahonbozor/logger";
+import type {
+    AdminCategoriesListResponse,
+    AdminCategoryDetailResponse,
+    AdminCategoryTreeResponse,
+    CategoriesPagination,
     CreateCategoryBody,
     UpdateCategoryBody,
-    CategoriesPagination,
 } from "@jahonbozor/schemas/src/categories";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@backend/lib/prisma";
-import { auditInTransaction } from "@backend/lib/audit";
-import type { Prisma } from "@backend/generated/prisma/client";
-
-interface AuditContext {
-    staffId: number;
-    user: Token;
-    requestId?: string;
-}
-
-function createCategorySnapshot(category: { id: number; name: string; parentId: number | null }) {
-    return {
-        id: category.id,
-        name: category.name,
-        parentId: category.parentId,
-    };
-}
 
 export abstract class CategoriesService {
     /**
@@ -38,7 +28,7 @@ export abstract class CategoriesService {
 
         return {
             children: nestedInclude
-                ? { include: { ...nestedInclude, products: includeProducts || undefined } }
+                ? { include: { ...nestedInclude, products: includeProducts ?? undefined } }
                 : true,
         };
     }
@@ -51,6 +41,8 @@ export abstract class CategoriesService {
             const {
                 page,
                 limit,
+                sortBy,
+                sortOrder,
                 searchQuery,
                 parentId,
                 includeChildren,
@@ -59,7 +51,7 @@ export abstract class CategoriesService {
                 depth = 1,
             } = params;
 
-            const whereClause: Prisma.CategoryWhereInput = {};
+            const whereClause: Prisma.CategoryWhereInput = { deletedAt: null };
 
             if (searchQuery) {
                 whereClause.name = { contains: searchQuery };
@@ -73,12 +65,13 @@ export abstract class CategoriesService {
             const includeClause: Prisma.CategoryInclude = {};
 
             if (includeChildren) {
-                const nestedInclude = depth > 1
-                    ? this.buildChildrenInclude(depth - 1, includeProducts || false)
-                    : undefined;
+                const nestedInclude =
+                    depth > 1
+                        ? this.buildChildrenInclude(depth - 1, includeProducts ?? false)
+                        : undefined;
 
                 includeClause.children = nestedInclude
-                    ? { include: { ...nestedInclude, products: includeProducts || undefined } }
+                    ? { include: { ...nestedInclude, products: includeProducts ?? undefined } }
                     : true;
             }
 
@@ -99,7 +92,7 @@ export abstract class CategoriesService {
                     take: limit,
                     where: whereClause,
                     include: hasIncludes ? includeClause : undefined,
-                    orderBy: { name: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
@@ -118,19 +111,20 @@ export abstract class CategoriesService {
         includeChildren: boolean | undefined,
         includeProducts: boolean | undefined,
         includeParent: boolean | undefined,
-        depth: number = 1,
+        depth = 1,
         logger: Logger,
     ): Promise<AdminCategoryDetailResponse> {
         try {
             const includeClause: Prisma.CategoryInclude = {};
 
             if (includeChildren) {
-                const nestedInclude = depth > 1
-                    ? this.buildChildrenInclude(depth - 1, includeProducts || false)
-                    : undefined;
+                const nestedInclude =
+                    depth > 1
+                        ? this.buildChildrenInclude(depth - 1, includeProducts ?? false)
+                        : undefined;
 
                 includeClause.children = nestedInclude
-                    ? { include: { ...nestedInclude, products: includeProducts || undefined } }
+                    ? { include: { ...nestedInclude, products: includeProducts ?? undefined } }
                     : true;
             }
 
@@ -144,8 +138,8 @@ export abstract class CategoriesService {
 
             const hasIncludes = Object.keys(includeClause).length > 0;
 
-            const category = await prisma.category.findUnique({
-                where: { id: categoryId },
+            const category = await prisma.category.findFirst({
+                where: { id: categoryId, deletedAt: null },
                 include: hasIncludes ? includeClause : undefined,
             });
 
@@ -163,7 +157,7 @@ export abstract class CategoriesService {
 
     static async createCategory(
         categoryData: CreateCategoryBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminCategoryDetailResponse> {
         try {
@@ -262,7 +256,7 @@ export abstract class CategoriesService {
     static async updateCategory(
         categoryId: number,
         categoryData: UpdateCategoryBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminCategoryDetailResponse> {
         try {
@@ -376,12 +370,12 @@ export abstract class CategoriesService {
 
     static async deleteCategory(
         categoryId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<AdminCategoryDetailResponse> {
         try {
-            const existingCategory = await prisma.category.findUnique({
-                where: { id: categoryId },
+            const existingCategory = await prisma.category.findFirst({
+                where: { id: categoryId, deletedAt: null },
             });
 
             if (!existingCategory) {
@@ -389,9 +383,9 @@ export abstract class CategoriesService {
                 return { success: false, error: "Category not found" };
             }
 
-            // Check for child categories
+            // Check for child categories (only non-deleted)
             const childrenCount = await prisma.category.count({
-                where: { parentId: categoryId },
+                where: { parentId: categoryId, deletedAt: null },
             });
 
             if (childrenCount > 0) {
@@ -402,9 +396,9 @@ export abstract class CategoriesService {
                 return { success: false, error: "Cannot delete category with child categories" };
             }
 
-            // Check for products
+            // Check for products (only non-deleted)
             const productsCount = await prisma.product.count({
-                where: { categoryId },
+                where: { categoryId, deletedAt: null },
             });
 
             if (productsCount > 0) {
@@ -416,8 +410,9 @@ export abstract class CategoriesService {
             }
 
             const [deletedCategory] = await prisma.$transaction(async (transaction) => {
-                const category = await transaction.category.delete({
+                const category = await transaction.category.update({
                     where: { id: categoryId },
+                    data: { deletedAt: new Date() },
                 });
 
                 await auditInTransaction(
@@ -447,10 +442,59 @@ export abstract class CategoriesService {
         }
     }
 
+    static async restoreCategory(
+        categoryId: number,
+        context: ServiceContext,
+        logger: Logger,
+    ): Promise<AdminCategoryDetailResponse> {
+        try {
+            const deletedCategory = await prisma.category.findFirst({
+                where: { id: categoryId, deletedAt: { not: null } },
+            });
+
+            if (!deletedCategory) {
+                logger.warn("Categories: Deleted category not found for restore", { categoryId });
+                return { success: false, error: "Deleted category not found" };
+            }
+
+            const [restoredCategory] = await prisma.$transaction(async (transaction) => {
+                const category = await transaction.category.update({
+                    where: { id: categoryId },
+                    data: { deletedAt: null },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "category",
+                        entityId: categoryId,
+                        action: "RESTORE",
+                        previousData: createCategorySnapshot(deletedCategory),
+                        newData: createCategorySnapshot(category),
+                    },
+                );
+
+                return [category];
+            });
+
+            logger.info("Categories: Category restored", {
+                categoryId,
+                name: restoredCategory.name,
+                staffId: context.staffId,
+            });
+
+            return { success: true, data: restoredCategory };
+        } catch (error) {
+            logger.error("Categories: Error in restoreCategory", { categoryId, error });
+            return { success: false, error };
+        }
+    }
+
     /**
      * Get full category tree (all root categories with nested children)
      */
-    static async getCategoryTree(depth: number = 3, logger: Logger): Promise<AdminCategoryTreeResponse> {
+    static async getCategoryTree(depth = 3, logger: Logger): Promise<AdminCategoryTreeResponse> {
         try {
             const nestedInclude = this.buildChildrenInclude(depth, false);
 

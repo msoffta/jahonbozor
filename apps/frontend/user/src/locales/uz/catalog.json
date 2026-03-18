@@ -1,0 +1,9 @@
+{
+  "add_to_cart": "Savatchaga qo'shish",
+  "remove_from_cart": "Savatchadan o'chirish",
+  "in_stock": "Mavjud",
+  "remaining": "Qoldiq",
+  "ordered": "Buyurtma qilingan",
+  "see_all": "Hammasini ko'rish",
+  "product_fallback": "Mahsulot #{{id}}"
+}

@@ -1,17 +1,20 @@
 import { webhookCallback } from "grammy";
+
 import { bot } from "@bot/bot";
-import logger from "@bot/lib/logger";
+import { logger } from "@bot/lib/logger";
+import { prisma } from "@bot/lib/prisma";
 
 const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
+const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
 const port = Number(process.env.BOT_PORT) || 3001;
 
 if (!webhookUrl) {
     throw new Error("TELEGRAM_WEBHOOK_URL is not configured");
 }
 
-const handleUpdate = webhookCallback(bot, "std/http");
+const handleUpdate = webhookCallback(bot, "std/http", { secretToken: webhookSecret });
 
-const server = Bun.serve({
+export const server = Bun.serve({
     port,
     async fetch(req) {
         const url = new URL(req.url);
@@ -20,18 +23,42 @@ const server = Bun.serve({
             return handleUpdate(req);
         }
 
-        return new Response("OK", { status: 200 });
+        if (url.pathname === "/health") {
+            try {
+                await prisma.$queryRaw`SELECT 1`;
+                return Response.json({ status: "ok", uptime: process.uptime() });
+            } catch (error) {
+                logger.error("Bot: Health check DB unreachable", { error });
+                return Response.json(
+                    { status: "unhealthy", uptime: process.uptime() },
+                    { status: 503 },
+                );
+            }
+        }
+
+        return new Response("Not Found", { status: 404 });
     },
 });
 
 // Register webhook with Telegram on startup
-bot.api
-    .setWebhook(`${webhookUrl}`)
+void bot.api
+    .setWebhook(webhookUrl, { secret_token: webhookSecret })
     .then(() => {
-        logger.info(`Bot webhook registered: ${webhookUrl}`);
+        logger.info("Bot: Webhook registered", { webhookUrl });
     })
-    .catch((err) => {
-        logger.error("Failed to set webhook", { error: err });
+    .catch((err: unknown) => {
+        logger.error("Bot: Webhook registration failed", { error: err });
     });
 
-logger.info(`Bot server started on port ${port}`);
+// Graceful shutdown
+const shutdown = async () => {
+    logger.info("Bot: Shutting down...");
+    void server.stop();
+    await prisma.$disconnect();
+    process.exit(0);
+};
+
+process.on("SIGTERM", () => void shutdown());
+process.on("SIGINT", () => void shutdown());
+
+logger.info("Bot: Server started", { port: server.port });

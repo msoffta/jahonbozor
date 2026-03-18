@@ -1,6 +1,8 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
+import { describe, expect, test, vi } from "vitest";
+
 import { createMockLogger } from "@backend/test/setup";
+
 import { PublicOrdersService } from "../orders.service";
 
 const mockOrderWithRelations = {
@@ -8,7 +10,7 @@ const mockOrderWithRelations = {
     userId: 1,
     staffId: null,
     paymentType: "CASH",
-    status: "NEW",
+    comment: null,
     data: {},
     items: [
         {
@@ -21,6 +23,7 @@ const mockOrderWithRelations = {
             product: { id: 1, name: "Test Product", price: 100 },
         },
     ],
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -59,7 +62,10 @@ const createTestApp = (userType: "user" | "staff" = "user") => {
                 return { success: false, error: "Only users can create orders via public API" };
             }
             return await PublicOrdersService.createOrder(
-                body as { paymentType: "CASH" | "CREDIT_CARD"; items: Array<{ productId: number; quantity: number; price: number }> },
+                body as {
+                    paymentType: "CASH" | "CREDIT_CARD";
+                    items: { productId: number; quantity: number; price: number }[];
+                },
                 { userId: user.id, user, requestId },
                 logger,
             );
@@ -73,9 +79,10 @@ const createTestApp = (userType: "user" | "staff" = "user") => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     paymentType: query.paymentType as "CASH" | "CREDIT_CARD" | undefined,
-                    status: query.status as "NEW" | "ACCEPTED" | undefined,
                 },
                 logger,
             );
@@ -86,7 +93,7 @@ const createTestApp = (userType: "user" | "staff" = "user") => {
             }
             return await PublicOrdersService.getUserOrder(Number(params.id), user.id, logger);
         })
-        .patch("/orders/:id/cancel", async ({ params, user, type, logger, requestId }) => {
+        .delete("/orders/:id", async ({ params, user, type, logger, requestId }) => {
             if (type !== "user") {
                 return { success: false, error: "Only users can cancel orders via public API" };
             }
@@ -103,7 +110,7 @@ describe("Public Orders API Routes", () => {
         test("should create order for user", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
                 success: true,
                 data: mockOrderWithRelations,
             });
@@ -154,7 +161,7 @@ describe("Public Orders API Routes", () => {
         test("should pass context with requestId", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
                 success: true,
                 data: mockOrderWithRelations,
             });
@@ -186,7 +193,7 @@ describe("Public Orders API Routes", () => {
         test("should return user's orders", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
                 success: true,
                 data: { count: 1, orders: [mockOrderWithRelations] },
             });
@@ -210,9 +217,7 @@ describe("Public Orders API Routes", () => {
             const app = createTestApp("staff");
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders"));
             const body = await response.json();
 
             // Assert
@@ -223,14 +228,14 @@ describe("Public Orders API Routes", () => {
         test("should apply filters", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
                 success: true,
                 data: { count: 1, orders: [mockOrderWithRelations] },
             });
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders?paymentType=CASH&status=NEW"),
+                new Request("http://localhost/orders?paymentType=CASH"),
             );
             const body = await response.json();
 
@@ -239,7 +244,7 @@ describe("Public Orders API Routes", () => {
             expect(body.success).toBe(true);
             expect(spy).toHaveBeenCalledWith(
                 1,
-                expect.objectContaining({ paymentType: "CASH", status: "NEW" }),
+                expect.objectContaining({ paymentType: "CASH" }),
                 expect.anything(),
             );
 
@@ -251,15 +256,13 @@ describe("Public Orders API Routes", () => {
         test("should return user's order by id", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
                 success: true,
                 data: mockOrderWithRelations,
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -275,9 +278,7 @@ describe("Public Orders API Routes", () => {
             const app = createTestApp("staff");
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -288,15 +289,13 @@ describe("Public Orders API Routes", () => {
         test("should return error when order not found", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
                 success: false,
                 error: "Order not found",
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/999"));
             const body = await response.json();
 
             // Assert
@@ -309,15 +308,13 @@ describe("Public Orders API Routes", () => {
         test("should return Forbidden when access denied", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
                 success: false,
                 error: "Forbidden",
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/orders/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/orders/1"));
             const body = await response.json();
 
             // Assert
@@ -328,27 +325,25 @@ describe("Public Orders API Routes", () => {
         });
     });
 
-    describe("PATCH /orders/:id/cancel", () => {
-        const mockCancelledOrder = { ...mockOrderWithRelations, status: "CANCELLED" };
-
-        test("should cancel order for user", async () => {
+    describe("DELETE /orders/:id", () => {
+        test("should delete order for user", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
                 success: true,
-                data: mockCancelledOrder,
+                data: { orderId: 1, deleted: true },
             });
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/1", { method: "DELETE" }),
             );
             const body = await response.json();
 
             // Assert
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
-            expect(body.data.status).toBe("CANCELLED");
+            expect(body.data).toEqual({ orderId: 1, deleted: true });
 
             spy.mockRestore();
         });
@@ -359,7 +354,7 @@ describe("Public Orders API Routes", () => {
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/1", { method: "DELETE" }),
             );
             const body = await response.json();
 
@@ -371,14 +366,14 @@ describe("Public Orders API Routes", () => {
         test("should return error when order not found", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
                 success: false,
                 error: "Order not found",
             });
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/999/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/999", { method: "DELETE" }),
             );
             const body = await response.json();
 
@@ -392,14 +387,14 @@ describe("Public Orders API Routes", () => {
         test("should return Forbidden when not owner", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
                 success: false,
                 error: "Forbidden",
             });
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/1", { method: "DELETE" }),
             );
             const body = await response.json();
 
@@ -410,23 +405,23 @@ describe("Public Orders API Routes", () => {
             spy.mockRestore();
         });
 
-        test("should return error when order status is not NEW", async () => {
+        test("should return error when order is already deleted", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
                 success: false,
-                error: "Only NEW orders can be cancelled",
+                error: "Order not found",
             });
 
             // Act
             const response = await app.handle(
-                new Request("http://localhost/orders/1/cancel", { method: "PATCH" }),
+                new Request("http://localhost/orders/1", { method: "DELETE" }),
             );
             const body = await response.json();
 
             // Assert
             expect(body.success).toBe(false);
-            expect(body.error).toBe("Only NEW orders can be cancelled");
+            expect(body.error).toBe("Order not found");
 
             spy.mockRestore();
         });
@@ -434,15 +429,13 @@ describe("Public Orders API Routes", () => {
         test("should pass context with requestId", async () => {
             // Arrange
             const app = createTestApp("user");
-            const spy = spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
+            const spy = vi.spyOn(PublicOrdersService, "cancelOrder").mockResolvedValue({
                 success: true,
-                data: mockCancelledOrder,
+                data: { orderId: 42, deleted: true },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/orders/42/cancel", { method: "PATCH" }),
-            );
+            await app.handle(new Request("http://localhost/orders/42", { method: "DELETE" }));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -460,7 +453,7 @@ describe("Public Orders Service Integration", () => {
     test("createOrder should be called with context", async () => {
         // Arrange
         const app = createTestApp("user");
-        const spy = spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
+        const spy = vi.spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -494,7 +487,7 @@ describe("Public Orders Service Integration", () => {
     test("getUserOrders should be called with correct userId", async () => {
         // Arrange
         const app = createTestApp("user");
-        const spy = spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
+        const spy = vi.spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
             success: true,
             data: { count: 0, orders: [] },
         });
@@ -505,7 +498,12 @@ describe("Public Orders Service Integration", () => {
         // Assert
         expect(spy).toHaveBeenCalledWith(
             1,
-            expect.objectContaining({ page: 2, limit: 10 }),
+            expect.objectContaining({
+                page: 2,
+                limit: 10,
+                sortBy: "id",
+                sortOrder: "asc" as const,
+            }),
             expect.anything(),
         );
 
@@ -515,7 +513,7 @@ describe("Public Orders Service Integration", () => {
     test("getUserOrder should be called with correct params", async () => {
         // Arrange
         const app = createTestApp("user");
-        const spy = spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
+        const spy = vi.spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
             success: true,
             data: mockOrderWithRelations,
         });
@@ -533,7 +531,7 @@ describe("Public Orders Service Integration", () => {
 describe("Public Orders API edge cases", () => {
     test("GET /orders with no results should return empty list", async () => {
         const app = createTestApp("user");
-        const spy = spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
+        const spy = vi.spyOn(PublicOrdersService, "getUserOrders").mockResolvedValue({
             success: true,
             data: { count: 0, orders: [] },
         });
@@ -550,7 +548,7 @@ describe("Public Orders API edge cases", () => {
 
     test("GET /orders/:id with id=0 should call service", async () => {
         const app = createTestApp("user");
-        const spy = spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
+        const spy = vi.spyOn(PublicOrdersService, "getUserOrder").mockResolvedValue({
             success: false,
             error: "Order not found",
         });
@@ -566,7 +564,7 @@ describe("Public Orders API edge cases", () => {
 
     test("POST /orders should handle insufficient stock error", async () => {
         const app = createTestApp("user");
-        const spy = spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
+        const spy = vi.spyOn(PublicOrdersService, "createOrder").mockResolvedValue({
             success: false,
             error: {
                 code: "INSUFFICIENT_STOCK",

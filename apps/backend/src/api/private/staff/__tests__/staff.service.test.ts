@@ -1,13 +1,18 @@
-import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import type { Staff, Role, AuditLog } from "@backend/generated/prisma/client";
-import { type Token, Permission } from "@jahonbozor/schemas";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { Permission, type Token } from "@jahonbozor/schemas";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { StaffService } from "../staff.service";
+
+import type { AuditLog, Role, Staff } from "@backend/generated/prisma/client";
 
 const mockRole: Role = {
     id: 1,
     name: "Admin",
     permissions: [Permission.STAFF_CREATE, Permission.STAFF_READ_ALL, Permission.STAFF_UPDATE_ALL],
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -19,8 +24,14 @@ const mockStaff: Staff = {
     passwordHash: "$argon2id$...",
     telegramId: BigInt(123456789),
     roleId: 1,
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
+};
+
+const mockDeletedStaff: Staff = {
+    ...mockStaff,
+    deletedAt: new Date("2024-01-15"),
 };
 
 const mockStaffWithRole = {
@@ -66,7 +77,7 @@ describe("Staff Service", () => {
 
             // Act
             const result = await StaffService.getAllStaff(
-                { page: 1, limit: 20 },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const },
                 mockLogger,
             );
 
@@ -81,7 +92,13 @@ describe("Staff Service", () => {
 
             // Act
             const result = await StaffService.getAllStaff(
-                { page: 1, limit: 20, searchQuery: "John" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "John",
+                },
                 mockLogger,
             );
 
@@ -96,7 +113,7 @@ describe("Staff Service", () => {
 
             // Act
             const result = await StaffService.getAllStaff(
-                { page: 1, limit: 20, roleId: 1 },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const, roleId: 1 },
                 mockLogger,
             );
 
@@ -111,7 +128,13 @@ describe("Staff Service", () => {
 
             // Act
             const result = await StaffService.getAllStaff(
-                { page: 1, limit: 20, searchQuery: "nonexistent" },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "nonexistent",
+                },
                 mockLogger,
             );
 
@@ -127,7 +150,7 @@ describe("Staff Service", () => {
 
             // Act
             const result = await StaffService.getAllStaff(
-                { page: 1, limit: 20 },
+                { page: 1, limit: 20, sortBy: "id", sortOrder: "asc" as const },
                 mockLogger,
             );
 
@@ -141,7 +164,9 @@ describe("Staff Service", () => {
     describe("getStaff", () => {
         test("should return staff by id", async () => {
             // Arrange
-            prismaMock.staff.findUnique.mockResolvedValueOnce(mockStaffWithRole as unknown as Staff);
+            prismaMock.staff.findUnique.mockResolvedValueOnce(
+                mockStaffWithRole as unknown as Staff,
+            );
 
             // Act
             const result = await StaffService.getStaff(1, mockLogger);
@@ -162,7 +187,9 @@ describe("Staff Service", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toBe("Staff not found");
-            expect(mockLogger.warn).toHaveBeenCalledWith("Staff: Staff not found", { staffId: 999 });
+            expect(mockLogger.warn).toHaveBeenCalledWith("Staff: Staff not found", {
+                staffId: 999,
+            });
         });
 
         test("should handle database error", async () => {
@@ -387,8 +414,8 @@ describe("Staff Service", () => {
         });
     });
 
-    describe("deleteStaff", () => {
-        test("should delete staff successfully", async () => {
+    describe("deleteStaff (soft delete)", () => {
+        test("should soft delete staff successfully", async () => {
             // Arrange
             const deletedStaff = {
                 id: 1,
@@ -397,7 +424,7 @@ describe("Staff Service", () => {
             };
             prismaMock.staff.findUnique.mockResolvedValueOnce(mockStaff);
             prismaMock.refreshToken.deleteMany.mockResolvedValueOnce({ count: 2 });
-            prismaMock.staff.delete.mockResolvedValueOnce(deletedStaff as unknown as Staff);
+            prismaMock.staff.update.mockResolvedValueOnce(deletedStaff as unknown as Staff);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
 
             // Act
@@ -428,7 +455,22 @@ describe("Staff Service", () => {
             });
         });
 
-        test("should delete refresh tokens before deleting staff", async () => {
+        test("should return error when staff already deleted", async () => {
+            // Arrange
+            prismaMock.staff.findUnique.mockResolvedValueOnce(mockDeletedStaff);
+
+            // Act
+            const result = await StaffService.deleteStaff(1, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Staff already deleted");
+            expect(mockLogger.warn).toHaveBeenCalledWith("Staff: Staff already deleted", {
+                staffId: 1,
+            });
+        });
+
+        test("should revoke refresh tokens before soft deleting staff", async () => {
             // Arrange
             const deletedStaff = {
                 id: 1,
@@ -437,7 +479,7 @@ describe("Staff Service", () => {
             };
             prismaMock.staff.findUnique.mockResolvedValueOnce(mockStaff);
             prismaMock.refreshToken.deleteMany.mockResolvedValueOnce({ count: 5 });
-            prismaMock.staff.delete.mockResolvedValueOnce(deletedStaff as unknown as Staff);
+            prismaMock.staff.update.mockResolvedValueOnce(deletedStaff as unknown as Staff);
             prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
 
             // Act
@@ -464,6 +506,89 @@ describe("Staff Service", () => {
         });
     });
 
+    describe("restoreStaff", () => {
+        test("should restore deleted staff successfully", async () => {
+            // Arrange
+            const restoredStaff = {
+                id: 1,
+                fullname: "John Doe",
+                username: "johndoe",
+            };
+            prismaMock.staff.findUnique.mockResolvedValueOnce(mockDeletedStaff);
+            prismaMock.staff.update.mockResolvedValueOnce(restoredStaff as unknown as Staff);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            // Act
+            const result = await StaffService.restoreStaff(1, mockContext, mockLogger);
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data).toEqual(restoredStaff);
+            expect(mockLogger.info).toHaveBeenCalledWith("Staff: Staff restored", {
+                staffId: 1,
+                username: "johndoe",
+                restoredBy: 1,
+            });
+        });
+
+        test("should return error when staff not found", async () => {
+            // Arrange
+            prismaMock.staff.findUnique.mockResolvedValueOnce(null);
+
+            // Act
+            const result = await StaffService.restoreStaff(999, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Staff not found");
+            expect(mockLogger.warn).toHaveBeenCalledWith("Staff: Staff not found for restore", {
+                staffId: 999,
+            });
+        });
+
+        test("should return error when staff is not deleted", async () => {
+            // Arrange
+            prismaMock.staff.findUnique.mockResolvedValueOnce(mockStaff);
+
+            // Act
+            const result = await StaffService.restoreStaff(1, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Staff is not deleted");
+            expect(mockLogger.warn).toHaveBeenCalledWith("Staff: Staff is not deleted", {
+                staffId: 1,
+            });
+        });
+
+        test("should handle database error", async () => {
+            // Arrange
+            prismaMock.staff.findUnique.mockResolvedValueOnce(mockDeletedStaff);
+            const dbError = new Error("Database error");
+            prismaMock.$transaction.mockRejectedValueOnce(dbError);
+
+            // Act
+            const result = await StaffService.restoreStaff(1, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe(dbError);
+            expect(mockLogger.error).toHaveBeenCalled();
+        });
+
+        test("restoreStaff with id=0 should return not found", async () => {
+            // Arrange
+            prismaMock.staff.findUnique.mockResolvedValueOnce(null);
+
+            // Act
+            const result = await StaffService.restoreStaff(0, mockContext, mockLogger);
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Staff not found");
+        });
+    });
+
     describe("edge cases", () => {
         test("getStaff with id=0 should return not found", async () => {
             prismaMock.staff.findUnique.mockResolvedValueOnce(null);
@@ -487,7 +612,13 @@ describe("Staff Service", () => {
             prismaMock.staff.findFirst.mockResolvedValueOnce(mockStaff);
 
             const result = await StaffService.createStaff(
-                { fullname: "New", username: "testadmin", password: "password123", telegramId: "999", roleId: 1 },
+                {
+                    fullname: "New",
+                    username: "testadmin",
+                    password: "password123",
+                    telegramId: "999",
+                    roleId: 1,
+                },
                 mockContext,
                 mockLogger,
             );

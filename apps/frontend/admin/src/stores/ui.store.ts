@@ -18,8 +18,7 @@ export const useUIStore = create<UIState>()(
             sidebarOpen: true,
             locale: "uz",
 
-            toggleSidebar: () =>
-                set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+            toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
             setSidebarOpen: (open) => set({ sidebarOpen: open }),
             setLocale: (locale) => set({ locale }),
         }),

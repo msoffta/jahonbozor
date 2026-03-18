@@ -1,8 +1,12 @@
-import {
-    orderDetailQueryOptions,
-    ordersListQueryOptions,
-} from "@/api/orders.api";
-import { CreateOrderDialog } from "@/components/orders/create-order-dialog";
+import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useQuery } from "@tanstack/react-query";
+import { Link, useParams, useRouterState } from "@tanstack/react-router";
+import { format, startOfDay } from "date-fns";
+import { Home } from "lucide-react";
+
+import { Permission } from "@jahonbozor/schemas";
 import {
     AnimatePresence,
     cn,
@@ -13,12 +17,10 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@jahonbozor/ui";
-import { useQuery } from "@tanstack/react-query";
-import { Link, useParams, useRouterState } from "@tanstack/react-router";
-import dayjs from "dayjs";
-import { Home } from "lucide-react";
-import React, { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+
+import { orderDetailQueryOptions, ordersListQueryOptions } from "@/api/orders.api";
+import { CreateOrderDialog } from "@/components/orders/create-order-dialog";
+import { useHasAnyPermission, useHasPermission } from "@/hooks/use-permissions";
 
 const navKeys = [
     { to: "/income", key: "income" },
@@ -36,31 +38,37 @@ const fastTransition = {
     mass: 1,
 };
 
-const NavPill = React.memo(({ item, isActive, t }: { item: typeof navKeys[number], isActive: boolean, t: any }) => (
-    <Link
-        key={item.to}
-        to={item.to}
-        className="relative"
-    >
-        {isActive && (
-            <motion.div
-                layoutId="activeNavPill"
-                className="absolute inset-0 rounded-lg bg-primary will-change-transform"
-                transition={fastTransition}
-            />
-        )}
-        <span
-            className={cn(
-                "relative z-10 block px-3 py-1.5 text-xs font-semibold uppercase transition-colors duration-200",
-                isActive
-                    ? "text-primary-foreground"
-                    : "rounded-lg border border-border text-foreground",
+const NavPill = React.memo(
+    ({
+        item,
+        isActive,
+        t,
+    }: {
+        item: (typeof navKeys)[number];
+        isActive: boolean;
+        t: (key: string) => string;
+    }) => (
+        <Link key={item.to} to={item.to} className="relative">
+            {isActive && (
+                <motion.div
+                    layoutId="activeNavPill"
+                    className="bg-primary absolute inset-0 rounded-lg will-change-transform"
+                    transition={fastTransition}
+                />
             )}
-        >
-            {t(item.key)}
-        </span>
-    </Link>
-));
+            <span
+                className={cn(
+                    "relative z-10 block px-3 py-1.5 text-xs font-semibold uppercase transition-colors duration-200",
+                    isActive
+                        ? "text-primary-foreground"
+                        : "border-border text-foreground rounded-lg border",
+                )}
+            >
+                {t(item.key)}
+            </span>
+        </Link>
+    ),
+);
 
 NavPill.displayName = "NavPill";
 
@@ -70,13 +78,27 @@ export function BottomNav() {
     const { t: tOrders } = useTranslation("orders");
     const [dialogOpen, setDialogOpen] = useState(false);
 
+    // Permission checks for navigation filtering
+    const hasAnalyticsPermission = useHasPermission(Permission.ANALYTICS_VIEW);
+    const hasIncomePermission = useHasPermission(Permission.PRODUCT_HISTORY_LIST);
+    const hasUsersPermission = useHasPermission(Permission.USERS_LIST);
+    const hasExpensesPermission = useHasPermission(Permission.EXPENSES_LIST);
+    const hasProductsPermission = useHasPermission(Permission.PRODUCTS_LIST);
+
+    // Permission checks for action buttons
+    const canCreateOrders = useHasPermission(Permission.ORDERS_CREATE);
+    const canListOrders = useHasAnyPermission([
+        Permission.ORDERS_LIST_ALL,
+        Permission.ORDERS_LIST_OWN,
+    ]);
+
     const params = useParams({ strict: false });
+
     const activeOrderId = params?.orderId ? Number(params.orderId) : null;
-    const isOrderView =
-        pathname.startsWith("/orders/") && activeOrderId !== null;
+    const isOrderView = pathname.startsWith("/orders/") && activeOrderId !== null;
 
     // Fetch today's lists (orders with >1 item)
-    const todayStart = useMemo(() => dayjs().startOf("day").toISOString(), []);
+    const todayStart = useMemo(() => startOfDay(new Date()).toISOString(), []);
     const { data: recentListsData } = useQuery(
         ordersListQueryOptions({ limit: 5, minItemsCount: 2, dateFrom: todayStart }),
     );
@@ -85,153 +107,181 @@ export function BottomNav() {
 
     // Fetch active order if it is not in recent lists
     const { data: activeOrderData } = useQuery({
-        ...orderDetailQueryOptions(activeOrderId || 0),
-        enabled:
-            isOrderView && !recentListsRaw.some((o) => o.id === activeOrderId),
+        ...orderDetailQueryOptions(activeOrderId ?? 0),
+        enabled: isOrderView && !recentListsRaw.some((o) => o.id === activeOrderId),
     });
 
     const recentLists = useMemo(() => {
         const combined = [...recentListsRaw];
-        if (
-            activeOrderData &&
-            !combined.some((o) => o.id === activeOrderData.id)
-        ) {
+        if (activeOrderData && !combined.some((o) => o.id === activeOrderData.id)) {
             // Add at the beginning
             combined.unshift(activeOrderData);
         }
         return combined;
     }, [recentListsRaw, activeOrderData]);
 
+    const filteredNavKeys = useMemo(
+        () =>
+            navKeys.filter((item) => {
+                if (item.to === "/income") return hasIncomePermission;
+                if (item.to === "/users") return hasUsersPermission;
+                if (item.to === "/expense") return hasExpensesPermission;
+                if (item.to === "/products") return hasProductsPermission;
+                if (item.to === "/summary") return hasAnalyticsPermission;
+                return true;
+            }),
+        [
+            hasIncomePermission,
+            hasUsersPermission,
+            hasExpensesPermission,
+            hasProductsPermission,
+            hasAnalyticsPermission,
+        ],
+    );
+
+    const orderPills = (
+        <TooltipProvider delayDuration={200}>
+            <AnimatePresence>
+                {recentLists.map((order, index) => (
+                    <React.Fragment key={order.id}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    to="/orders/$orderId"
+                                    params={{
+                                        orderId: String(order.id),
+                                    }}
+                                >
+                                    <motion.div
+                                        className={cn(
+                                            "shrink-0 rounded-lg border px-2 py-1 text-[11px] uppercase transition-colors md:px-3 md:py-1.5 md:text-xs",
+                                            pathname === `/orders/${order.id}`
+                                                ? "bg-primary text-primary-foreground border-primary font-bold shadow-md"
+                                                : "border-border text-foreground hover:bg-accent hover:text-accent-foreground font-semibold",
+                                        )}
+                                        initial={{
+                                            scale: 0,
+                                            opacity: 0,
+                                        }}
+                                        animate={{
+                                            scale: 1,
+                                            opacity: 1,
+                                        }}
+                                        exit={{
+                                            scale: 0,
+                                            opacity: 0,
+                                        }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 17,
+                                            delay: index * 0.05,
+                                        }}
+                                        whileTap={{ scale: 0.9 }}
+                                    >
+                                        {tOrders("list_number", {
+                                            number: order.id,
+                                        })}
+                                    </motion.div>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="w-auto px-3 py-2 text-xs">
+                                <p className="font-medium">{order.user?.fullname ?? "—"}</p>
+                                <p className="text-muted-foreground">
+                                    {format(new Date(order.createdAt), "dd.MM.yyyy HH:mm")}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </React.Fragment>
+                ))}
+            </AnimatePresence>
+        </TooltipProvider>
+    );
+
     return (
         <>
-            <nav className="fixed bottom-0 left-0 right-0 z-50 flex flex-col border-t border-border bg-surface">
-                {/* Main nav bar */}
-                <div className="flex h-14 items-center justify-between px-6">
-                    <div className="flex flex-1 items-center gap-1.5 overflow-x-auto scrollbar-none">
-                        <Link to="/orders">
+            <nav className="border-border bg-surface fixed right-0 bottom-0 left-0 z-50 flex flex-col border-t pb-[env(safe-area-inset-bottom)]">
+                {/* Mobile: Row 1 — Nav pills */}
+                <LayoutGroup id="bottom-navigation-mobile">
+                    <div className="scrollbar-none flex items-center gap-1 overflow-x-auto px-3 py-1.5 md:hidden">
+                        {filteredNavKeys.map((item) => (
+                            <NavPill
+                                key={item.to}
+                                item={item}
+                                isActive={pathname.startsWith(item.to)}
+                                t={t}
+                            />
+                        ))}
+                    </div>
+                </LayoutGroup>
+
+                {/* Row 2 (mobile) / Single row (desktop): Orders + Home + Desktop nav */}
+                <div className="flex h-12 items-center justify-between px-3 md:h-14 md:px-6">
+                    <div className="scrollbar-none flex flex-1 items-center gap-1.5 overflow-x-auto">
+                        {canListOrders && (
+                            <Link to="/orders">
+                                <motion.button
+                                    type="button"
+                                    className={cn(
+                                        "border-border shrink-0 rounded-lg border px-2 py-1 text-[11px] font-semibold uppercase md:px-3 md:py-1.5 md:text-xs",
+                                        pathname === "/orders" || pathname === "/orders/"
+                                            ? "bg-primary text-primary-foreground border-primary"
+                                            : "text-foreground",
+                                    )}
+                                    whileTap={{ scale: 0.95 }}
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 400,
+                                        damping: 17,
+                                    }}
+                                >
+                                    {t("list")}
+                                </motion.button>
+                            </Link>
+                        )}
+                        {canCreateOrders && (
                             <motion.button
                                 type="button"
-                                className={cn(
-                                    "shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold uppercase",
-                                    pathname === "/orders" ||
-                                        pathname === "/orders/"
-                                        ? "bg-primary text-primary-foreground border-primary"
-                                        : "text-foreground",
-                                )}
-                                whileTap={{ scale: 0.95 }}
+                                className="border-border text-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-base font-semibold md:h-8 md:w-8 md:text-lg"
+                                whileTap={{ scale: 0.9, rotate: 90 }}
                                 transition={{
                                     type: "spring",
                                     stiffness: 400,
                                     damping: 17,
                                 }}
+                                onClick={() => setDialogOpen(true)}
                             >
-                                {t("list")}
+                                +
                             </motion.button>
-                        </Link>
-                        <motion.button
-                            type="button"
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-lg font-semibold text-foreground"
-                            whileTap={{ scale: 0.9, rotate: 90 }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 17,
-                            }}
-                            onClick={() => setDialogOpen(true)}
-                        >
-                            +
-                        </motion.button>
+                        )}
 
-                        {/* Recent lists pills — inline between + and Home */}
-                        <TooltipProvider delayDuration={200}>
-                            <AnimatePresence>
-                                {recentLists.map((order, index) => (
-                                    <React.Fragment key={order.id}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                            <Link
-                                                to="/orders/$orderId"
-                                                params={{
-                                                    orderId: String(order.id),
-                                                }}
-                                            >
-                                                <motion.div
-                                                    className={cn(
-                                                        "shrink-0 rounded-lg border px-3 py-1.5 text-xs uppercase transition-colors",
-                                                        pathname ===
-                                                            `/orders/${order.id}`
-                                                            ? "bg-primary text-primary-foreground border-primary font-bold shadow-md"
-                                                            : "border-border text-foreground font-semibold hover:bg-accent hover:text-accent-foreground",
-                                                    )}
-                                                    initial={{
-                                                        scale: 0,
-                                                        opacity: 0,
-                                                    }}
-                                                    animate={{
-                                                        scale: 1,
-                                                        opacity: 1,
-                                                    }}
-                                                    exit={{
-                                                        scale: 0,
-                                                        opacity: 0,
-                                                    }}
-                                                    transition={{
-                                                        type: "spring",
-                                                        stiffness: 400,
-                                                        damping: 17,
-                                                        delay: index * 0.05,
-                                                    }}
-                                                    whileTap={{ scale: 0.9 }}
-                                                >
-                                                    {tOrders("list_number", {
-                                                        number: order.id,
-                                                    })}
-                                                </motion.div>
-                                            </Link>
-                                        </TooltipTrigger>
-                                        <TooltipContent
-                                            side="top"
-                                            className="w-auto px-3 py-2 text-xs"
-                                        >
-                                            <p className="font-medium">
-                                                {order.user?.fullname ?? "—"}
-                                            </p>
-                                            <p className="text-muted-foreground">
-                                                {dayjs(order.createdAt).format(
-                                                    "DD.MM.YYYY HH:mm",
-                                                )}
-                                            </p>
-                                        </TooltipContent>
-                                        </Tooltip>
-                                    </React.Fragment>
-                                ))}
-                            </AnimatePresence>
-                        </TooltipProvider>
+                        {orderPills}
                     </div>
 
-                    <Link to="/" className="shrink-0 mx-4">
+                    <Link to="/" className="mx-2 shrink-0 md:mx-4">
                         <motion.div
                             className={cn(
-                                "flex h-11 w-20 items-center justify-center rounded-xl will-change-transform",
+                                "flex h-10 w-16 items-center justify-center rounded-xl will-change-transform md:h-11 md:w-20",
                                 pathname === "/"
                                     ? "bg-primary text-primary-foreground shadow-md"
-                                    : "text-muted-foreground border border-border bg-background/50",
+                                    : "text-muted-foreground border-border bg-background/50 border",
                             )}
                             whileTap={{ scale: 0.92 }}
                             transition={fastTransition}
                         >
-                            <Home className="h-6 w-6" />
+                            <Home className="h-5 w-5 md:h-6 md:w-6" />
                         </motion.div>
                     </Link>
 
+                    {/* Desktop only: Nav pills on the right */}
                     <LayoutGroup id="bottom-navigation">
-                        <div className="flex flex-1 items-center justify-end gap-1.5">
-                            {navKeys.map((item) => (
-                                <NavPill 
-                                    key={item.to} 
-                                    item={item} 
-                                    isActive={pathname.startsWith(item.to)} 
-                                    t={t} 
+                        <div className="hidden flex-1 items-center justify-end gap-1.5 md:flex">
+                            {filteredNavKeys.map((item) => (
+                                <NavPill
+                                    key={item.to}
+                                    item={item}
+                                    isActive={pathname.startsWith(item.to)}
+                                    t={t}
                                 />
                             ))}
                         </div>

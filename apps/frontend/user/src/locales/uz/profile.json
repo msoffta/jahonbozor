@@ -1,0 +1,18 @@
+{
+  "edit_profile": "Profilni tahrirlash",
+  "change_language": "Tilni o'zgartirish",
+  "registered": "Ro'yxatdan o'tgan",
+  "notification": "Bildirishnomalar",
+  "logout": "Chiqish",
+  "uzbek": "O'zbekcha",
+  "russian": "Ruscha",
+  "login": "Kirish",
+  "login_telegram": "Telegram orqali kirish",
+  "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME sozlanmagan",
+  "orders": "Buyurtmalar",
+  "cart": "Savatcha",
+  "debt_balance": "Qarzdorlik",
+  "debt_paid": "To'langan",
+  "debt_total": "Umumiy qarz",
+  "debt_no_debts": "Qarzlar yo'q"
+}

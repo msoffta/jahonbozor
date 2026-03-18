@@ -1,16 +1,18 @@
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { toast } from "@jahonbozor/ui";
+
 import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
-import {
-    queryOptions,
-    useMutation,
-    useQueryClient,
-} from "@tanstack/react-query";
 
 export const clientKeys = {
     all: ["clients"] as const,
-    list: (params?: Record<string, unknown>) =>
-        [...clientKeys.all, "list", params] as const,
-    detail: (id: number) => [...clientKeys.all, "detail", id] as const,
+    lists: () => [...clientKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...clientKeys.lists(), params] as const,
+    details: () => [...clientKeys.all, "detail"] as const,
+    detail: (id: number) => [...clientKeys.details(), id] as const,
 };
 
 export const clientsListQueryOptions = (params?: {
@@ -31,6 +33,8 @@ export const clientsListQueryOptions = (params?: {
                     page: 1,
                     limit: 20,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     includeDeleted: false,
                     ...params,
                 },
@@ -111,6 +115,9 @@ export const useCreateClient = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
         },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
     });
 };
 
@@ -121,6 +128,9 @@ export const useUpdateClient = () => {
         mutationFn: updateClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -133,6 +143,9 @@ export const useDeleteClient = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
         },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
     });
 };
 
@@ -143,6 +156,9 @@ export const useRestoreClient = () => {
         mutationFn: restoreClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 };

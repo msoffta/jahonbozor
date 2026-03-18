@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
 const mockProduct = {
     id: 1,
@@ -10,40 +10,41 @@ const mockProduct = {
     updatedAt: new Date("2025-01-01"),
 };
 
-const mockGet = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: { count: 1, products: [mockProduct] } },
-        error: null,
-    }),
-);
+const { mockGet, mockDetailGet } = vi.hoisted(() => ({
+    mockGet: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: { count: 1, products: [mockProduct] } },
+            error: null,
+        }),
+    ),
+    mockDetailGet: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: mockProduct },
+            error: null,
+        }),
+    ),
+}));
 
-const mockDetailGet = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: mockProduct },
-        error: null,
-    }),
-);
-
-mock.module("@/lib/api-client", () => ({
+vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
-                products: Object.assign(
-                    (_params: { id: number }) => ({ get: mockDetailGet }),
-                    { get: mockGet },
-                ),
+                products: Object.assign((_params: { id: number }) => ({ get: mockDetailGet }), {
+                    get: mockGet,
+                }),
             },
         },
     },
 }));
 
-import { productKeys, productsListOptions, productDetailOptions } from "../products.api";
+import {
+    productDetailOptions,
+    productKeys,
+    productsInfiniteOptions,
+    productsListOptions,
+} from "../products.api";
 
 describe("products.api", () => {
-    beforeEach(() => {
-        mock.restore();
-    });
-
     describe("productKeys", () => {
         test("should have correct all key", () => {
             expect(productKeys.all).toEqual(["products"]);
@@ -76,6 +77,8 @@ describe("products.api", () => {
                     page: 2,
                     limit: 10,
                     searchQuery: "test",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     includeDeleted: false,
                     categoryIds: "3,5",
                 },
@@ -91,6 +94,8 @@ describe("products.api", () => {
                     page: 1,
                     limit: 20,
                     searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
                     includeDeleted: false,
                     categoryIds: undefined,
                 },
@@ -111,6 +116,69 @@ describe("products.api", () => {
 
             const options = productsListOptions({});
             await expect(options.queryFn!({} as never)).rejects.toThrow();
+        });
+    });
+
+    describe("productsInfiniteOptions", () => {
+        test("should have correct queryKey with infinite flag", () => {
+            const params = { limit: 20, searchQuery: "test" };
+            const options = productsInfiniteOptions(params);
+            expect([...options.queryKey]).toEqual([
+                "products",
+                "list",
+                { ...params, infinite: true },
+            ]);
+        });
+
+        test("should have initialPageParam of 1", () => {
+            const options = productsInfiniteOptions({});
+            expect(options.initialPageParam).toBe(1);
+        });
+
+        test("queryFn should call api with pageParam", async () => {
+            const options = productsInfiniteOptions({ limit: 10, categoryIds: [1, 2] });
+            await options.queryFn!({ pageParam: 3 } as never);
+
+            expect(mockGet).toHaveBeenCalledWith({
+                query: {
+                    page: 3,
+                    limit: 10,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
+                    includeDeleted: false,
+                    categoryIds: "1,2",
+                },
+            });
+        });
+
+        test("getNextPageParam should return next page when more data exists", () => {
+            const options = productsInfiniteOptions({ limit: 10 });
+            const lastPage = { count: 30, products: [] };
+            const result = options.getNextPageParam(lastPage as never, [] as never, 1, [] as never);
+            expect(result).toBe(2);
+        });
+
+        test("getNextPageParam should return undefined on last page", () => {
+            const options = productsInfiniteOptions({ limit: 10 });
+            const lastPage = { count: 20, products: [] };
+            const result = options.getNextPageParam(lastPage as never, [] as never, 2, [] as never);
+            expect(result).toBeUndefined();
+        });
+
+        test("getNextPageParam should return undefined when exactly at boundary", () => {
+            const options = productsInfiniteOptions({ limit: 20 });
+            const lastPage = { count: 20, products: [] };
+            const result = options.getNextPageParam(lastPage as never, [] as never, 1, [] as never);
+            expect(result).toBeUndefined();
+        });
+
+        test("queryFn should throw on error", async () => {
+            mockGet.mockReturnValueOnce(
+                Promise.resolve({ data: null, error: new Error("network") }) as never,
+            );
+            const options = productsInfiniteOptions({});
+            await expect(options.queryFn!({ pageParam: 1 } as never)).rejects.toThrow("network");
         });
     });
 

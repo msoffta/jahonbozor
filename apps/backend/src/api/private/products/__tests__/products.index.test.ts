@@ -1,9 +1,12 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
-import { ProductsService } from "../products.service";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { HistoryService } from "../history/history.service";
+import { ProductsService } from "../products.service";
 
 // Mock product data
 const mockProduct = {
@@ -70,6 +73,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery,
                     categoryIds: query.categoryIds || undefined,
                     minPrice: query.minPrice ? Number(query.minPrice) : undefined,
@@ -83,7 +88,13 @@ const createTestApp = () => {
             return await ProductsService.getProduct(Number(params.id), logger);
         })
         .post("/products", async ({ body, logger, requestId }) => {
-            const productData = body as { name: string; price: number; costprice: number; categoryId: number; remaining?: number };
+            const productData = body as {
+                name: string;
+                price: number;
+                costprice: number;
+                categoryId: number;
+                remaining?: number;
+            };
             return await ProductsService.createProduct(
                 { ...productData, remaining: productData.remaining ?? 0 },
                 { staffId: mockUser.id, user: mockUser, requestId },
@@ -118,6 +129,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery,
                 },
                 logger,
@@ -126,7 +139,11 @@ const createTestApp = () => {
         .post("/products/:id/inventory", async ({ params, body, logger, requestId }) => {
             return await HistoryService.createInventoryAdjustment(
                 Number(params.id),
-                body as { operation: "INVENTORY_ADD" | "INVENTORY_REMOVE"; quantity: number; changeReason: string | null },
+                body as {
+                    operation: "INVENTORY_ADD" | "INVENTORY_REMOVE";
+                    quantity: number;
+                    changeReason: string | null;
+                },
                 { staffId: mockUser.id, user: mockUser, requestId },
                 logger,
             );
@@ -143,7 +160,7 @@ describe("Products API Routes", () => {
     describe("GET /products", () => {
         test("should return paginated products list", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getAllProducts").mockResolvedValue({
                 success: true,
                 data: { count: 2, products: [mockProduct] },
             });
@@ -164,15 +181,13 @@ describe("Products API Routes", () => {
 
         test("should apply searchQuery filter", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getAllProducts").mockResolvedValue({
                 success: true,
                 data: { count: 1, products: [mockProduct] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products?searchQuery=Test"),
-            );
+            await app.handle(new Request("http://localhost/products?searchQuery=Test"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -185,15 +200,13 @@ describe("Products API Routes", () => {
 
         test("should apply categoryIds filter", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getAllProducts").mockResolvedValue({
                 success: true,
                 data: { count: 1, products: [mockProduct] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products?categoryIds=1,2"),
-            );
+            await app.handle(new Request("http://localhost/products?categoryIds=1,2"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -206,15 +219,13 @@ describe("Products API Routes", () => {
 
         test("should apply price range filter", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getAllProducts").mockResolvedValue({
                 success: true,
                 data: { count: 0, products: [] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products?minPrice=50&maxPrice=150"),
-            );
+            await app.handle(new Request("http://localhost/products?minPrice=50&maxPrice=150"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -227,15 +238,13 @@ describe("Products API Routes", () => {
 
         test("should include deleted products when requested", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getAllProducts").mockResolvedValue({
                 success: true,
                 data: { count: 1, products: [{ ...mockProduct, deletedAt: new Date() }] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products?includeDeleted=true"),
-            );
+            await app.handle(new Request("http://localhost/products?includeDeleted=true"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -250,15 +259,13 @@ describe("Products API Routes", () => {
     describe("GET /products/:id", () => {
         test("should return product by id", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "getProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getProduct").mockResolvedValue({
                 success: true,
                 data: mockProduct,
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/products/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/products/1"));
             const body = await response.json();
 
             // Assert
@@ -271,15 +278,13 @@ describe("Products API Routes", () => {
 
         test("should return error when product not found", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "getProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getProduct").mockResolvedValue({
                 success: false,
                 error: "Product not found",
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/products/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/products/999"));
             const body = await response.json();
 
             // Assert
@@ -293,7 +298,7 @@ describe("Products API Routes", () => {
     describe("POST /products", () => {
         test("should create product with valid data", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "createProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "createProduct").mockResolvedValue({
                 success: true,
                 data: mockProduct,
             });
@@ -323,7 +328,7 @@ describe("Products API Routes", () => {
 
         test("should return error when category not found", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "createProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "createProduct").mockResolvedValue({
                 success: false,
                 error: "Category not found",
             });
@@ -352,7 +357,7 @@ describe("Products API Routes", () => {
 
         test("should pass context to service", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "createProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "createProduct").mockResolvedValue({
                 success: true,
                 data: mockProduct,
             });
@@ -386,7 +391,7 @@ describe("Products API Routes", () => {
         test("should update product", async () => {
             // Arrange
             const updatedProduct = { ...mockProduct, name: "Updated Name" };
-            const spy = spyOn(ProductsService, "updateProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "updateProduct").mockResolvedValue({
                 success: true,
                 data: updatedProduct,
             });
@@ -411,7 +416,7 @@ describe("Products API Routes", () => {
 
         test("should return error when product not found", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "updateProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "updateProduct").mockResolvedValue({
                 success: false,
                 error: "Product not found",
             });
@@ -435,7 +440,7 @@ describe("Products API Routes", () => {
 
         test("should return error when updating deleted product", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "updateProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "updateProduct").mockResolvedValue({
                 success: false,
                 error: "Cannot update deleted product",
             });
@@ -462,7 +467,7 @@ describe("Products API Routes", () => {
         test("should soft delete product", async () => {
             // Arrange
             const deletedProduct = { ...mockProduct, deletedAt: new Date() };
-            const spy = spyOn(ProductsService, "deleteProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "deleteProduct").mockResolvedValue({
                 success: true,
                 data: deletedProduct,
             });
@@ -482,7 +487,7 @@ describe("Products API Routes", () => {
 
         test("should return error when product not found", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "deleteProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "deleteProduct").mockResolvedValue({
                 success: false,
                 error: "Product not found",
             });
@@ -502,7 +507,7 @@ describe("Products API Routes", () => {
 
         test("should return error when product already deleted", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "deleteProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "deleteProduct").mockResolvedValue({
                 success: false,
                 error: "Product already deleted",
             });
@@ -525,7 +530,7 @@ describe("Products API Routes", () => {
         test("should restore deleted product", async () => {
             // Arrange
             const restoredProduct = { ...mockProduct, deletedAt: null };
-            const spy = spyOn(ProductsService, "restoreProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "restoreProduct").mockResolvedValue({
                 success: true,
                 data: restoredProduct,
             });
@@ -545,7 +550,7 @@ describe("Products API Routes", () => {
 
         test("should return error when product not found", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "restoreProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "restoreProduct").mockResolvedValue({
                 success: false,
                 error: "Product not found",
             });
@@ -565,7 +570,7 @@ describe("Products API Routes", () => {
 
         test("should return error when product is not deleted", async () => {
             // Arrange
-            const spy = spyOn(ProductsService, "restoreProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "restoreProduct").mockResolvedValue({
                 success: false,
                 error: "Product is not deleted",
             });
@@ -587,15 +592,13 @@ describe("Products API Routes", () => {
     describe("GET /products/:id/history", () => {
         test("should return product history", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getProductHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getProductHistory").mockResolvedValue({
                 success: true,
                 data: { count: 1, history: [mockProductHistory] },
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/products/1/history"),
-            );
+            const response = await app.handle(new Request("http://localhost/products/1/history"));
             const body = await response.json();
 
             // Assert
@@ -608,20 +611,23 @@ describe("Products API Routes", () => {
 
         test("should apply pagination", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "getProductHistory").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "getProductHistory").mockResolvedValue({
                 success: true,
                 data: { count: 0, history: [] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/products/1/history?page=2&limit=10"),
-            );
+            await app.handle(new Request("http://localhost/products/1/history?page=2&limit=10"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
                 1,
-                expect.objectContaining({ page: 2, limit: 10 }),
+                expect.objectContaining({
+                    page: 2,
+                    limit: 10,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                }),
                 expect.anything(),
             );
 
@@ -632,11 +638,15 @@ describe("Products API Routes", () => {
     describe("POST /products/:id/inventory", () => {
         test("should add inventory", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
                 success: true,
                 data: {
                     product: { ...mockProduct, remaining: 15 },
-                    historyEntry: { ...mockProductHistory, operation: "INVENTORY_ADD", quantity: 5 },
+                    historyEntry: {
+                        ...mockProductHistory,
+                        operation: "INVENTORY_ADD",
+                        quantity: 5,
+                    },
                 },
             });
 
@@ -664,11 +674,15 @@ describe("Products API Routes", () => {
 
         test("should remove inventory", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
                 success: true,
                 data: {
                     product: { ...mockProduct, remaining: 5 },
-                    historyEntry: { ...mockProductHistory, operation: "INVENTORY_REMOVE", quantity: 5 },
+                    historyEntry: {
+                        ...mockProductHistory,
+                        operation: "INVENTORY_REMOVE",
+                        quantity: 5,
+                    },
                 },
             });
 
@@ -696,7 +710,7 @@ describe("Products API Routes", () => {
 
         test("should return error for insufficient stock", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
                 success: false,
                 error: "Insufficient stock",
             });
@@ -724,7 +738,7 @@ describe("Products API Routes", () => {
 
         test("should pass context to service", async () => {
             // Arrange
-            const spy = spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
                 success: true,
                 data: {
                     product: mockProduct,
@@ -759,14 +773,12 @@ describe("Products API Routes", () => {
 
     describe("edge cases", () => {
         test("GET /products with no results should return empty list", async () => {
-            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getAllProducts").mockResolvedValue({
                 success: true,
                 data: { count: 0, products: [] },
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/products"),
-            );
+            const response = await app.handle(new Request("http://localhost/products"));
             const body = await response.json();
 
             expect(response.status).toBe(200);
@@ -778,14 +790,12 @@ describe("Products API Routes", () => {
         });
 
         test("GET /products with NaN categoryIds should still call service", async () => {
-            const spy = spyOn(ProductsService, "getAllProducts").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getAllProducts").mockResolvedValue({
                 success: true,
                 data: { count: 0, products: [] },
             });
 
-            await app.handle(
-                new Request("http://localhost/products?categoryIds=abc"),
-            );
+            await app.handle(new Request("http://localhost/products?categoryIds=abc"));
 
             expect(spy).toHaveBeenCalledWith(
                 expect.objectContaining({ categoryIds: "abc" }),
@@ -796,14 +806,12 @@ describe("Products API Routes", () => {
         });
 
         test("GET /products/:id with id=0 should call service with 0", async () => {
-            const spy = spyOn(ProductsService, "getProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "getProduct").mockResolvedValue({
                 success: false,
                 error: "Product not found",
             });
 
-            const response = await app.handle(
-                new Request("http://localhost/products/0"),
-            );
+            const response = await app.handle(new Request("http://localhost/products/0"));
             const body = await response.json();
 
             expect(body.success).toBe(false);
@@ -813,7 +821,7 @@ describe("Products API Routes", () => {
         });
 
         test("POST /products should return 400 when service fails", async () => {
-            const spy = spyOn(ProductsService, "createProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "createProduct").mockResolvedValue({
                 success: false,
                 error: "Database error",
             });
@@ -838,7 +846,7 @@ describe("Products API Routes", () => {
         });
 
         test("POST /products/:id/inventory should return error for deleted product", async () => {
-            const spy = spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
+            const spy = vi.spyOn(HistoryService, "createInventoryAdjustment").mockResolvedValue({
                 success: false,
                 error: "Product is deleted",
             });
@@ -863,7 +871,7 @@ describe("Products API Routes", () => {
         });
 
         test("PATCH /products/:id with empty body should call service", async () => {
-            const spy = spyOn(ProductsService, "updateProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "updateProduct").mockResolvedValue({
                 success: true,
                 data: mockProduct,
             });
@@ -884,7 +892,7 @@ describe("Products API Routes", () => {
         });
 
         test("DELETE /products/:id should handle service error response", async () => {
-            const spy = spyOn(ProductsService, "deleteProduct").mockResolvedValue({
+            const spy = vi.spyOn(ProductsService, "deleteProduct").mockResolvedValue({
                 success: false,
                 error: "Database error",
             });

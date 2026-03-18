@@ -1,2 +1,2 @@
-export * from "./categories.model";
 export * from "./categories.dto";
+export * from "./categories.model";

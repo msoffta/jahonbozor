@@ -1,8 +1,17 @@
-import type { UserOrderCreateResponse, UserOrdersListResponse, UserOrderDetailResponse, UserOrderCancelResponse } from "@jahonbozor/schemas/src/orders";
-import { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
-import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
+
+import { CreateOrderBody, OrdersPagination } from "@jahonbozor/schemas/src/orders";
+
+import { authMiddleware } from "@backend/lib/middleware";
+
 import { PublicOrdersService } from "./orders.service";
+
+import type {
+    UserOrderCreateResponse,
+    UserOrderDeleteResponse,
+    UserOrderDetailResponse,
+    UserOrdersListResponse,
+} from "@jahonbozor/schemas/src/orders";
 
 const orderIdParams = t.Object({
     id: t.Numeric(),
@@ -32,7 +41,8 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
                 return result;
             } catch (error) {
                 logger.error("PublicOrders: Unhandled error in POST /orders", { error });
-                return { success: false, error };
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
             }
         },
         {
@@ -52,7 +62,8 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
                 return await PublicOrdersService.getUserOrders(user.id, query, logger);
             } catch (error) {
                 logger.error("PublicOrders: Unhandled error in GET /orders", { error });
-                return { success: false, error };
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
             }
         },
         {
@@ -81,7 +92,8 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
                     id: params.id,
                     error,
                 });
-                return { success: false, error };
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
             }
         },
         {
@@ -89,9 +101,16 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
             params: orderIdParams,
         },
     )
-    .patch(
-        "/:id/cancel",
-        async ({ params, user, type, set, logger, requestId }): Promise<UserOrderCancelResponse> => {
+    .delete(
+        "/:id",
+        async ({
+            params,
+            user,
+            type,
+            set,
+            logger,
+            requestId,
+        }): Promise<UserOrderDeleteResponse> => {
             try {
                 if (type !== "user") {
                     set.status = 403;
@@ -112,11 +131,12 @@ export const publicOrders = new Elysia({ prefix: "/orders" })
 
                 return result;
             } catch (error) {
-                logger.error("PublicOrders: Unhandled error in PATCH /orders/:id/cancel", {
+                logger.error("PublicOrders: Unhandled error in DELETE /orders/:id", {
                     id: params.id,
                     error,
                 });
-                return { success: false, error };
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
             }
         },
         {

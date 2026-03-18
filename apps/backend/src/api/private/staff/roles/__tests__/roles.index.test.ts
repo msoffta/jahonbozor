@@ -1,15 +1,20 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { prismaMock, createMockLogger } from "@backend/test/setup";
-import type { Role } from "@backend/generated/prisma/client";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger, prismaMock } from "@backend/test/setup";
+
 import { RolesService } from "../roles.service";
+
+import type { Role } from "@backend/generated/prisma/client";
 
 // Mock role data
 const mockRole: Role = {
     id: 1,
     name: "Admin",
     permissions: [Permission.USERS_CREATE, Permission.USERS_READ_ALL],
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -48,6 +53,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery,
                     includeStaffCount: query.includeStaffCount === "true",
                 },
@@ -125,9 +132,7 @@ describe("Roles API Routes", () => {
             prismaMock.$transaction.mockResolvedValue([0, []]);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/roles"),
-            );
+            const response = await app.handle(new Request("http://localhost/roles"));
             const body = await response.json();
 
             // Assert
@@ -141,12 +146,10 @@ describe("Roles API Routes", () => {
     describe("GET /roles/:id", () => {
         test("should return role by id", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRole);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/roles/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/roles/1"));
             const body = await response.json();
 
             // Assert
@@ -158,7 +161,7 @@ describe("Roles API Routes", () => {
 
         test("should include staff count when requested", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(mockRoleWithCount as unknown as Role);
+            prismaMock.role.findFirst.mockResolvedValueOnce(mockRoleWithCount as unknown as Role);
 
             // Act
             const response = await app.handle(
@@ -174,12 +177,10 @@ describe("Roles API Routes", () => {
 
         test("should return error when role not found", async () => {
             // Arrange
-            prismaMock.role.findUnique.mockResolvedValueOnce(null);
+            prismaMock.role.findFirst.mockResolvedValueOnce(null);
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/roles/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/roles/999"));
             const body = await response.json();
 
             // Assert
@@ -192,7 +193,7 @@ describe("Roles API Routes", () => {
 describe("Roles Service Integration", () => {
     test("getAllRoles should be called with correct pagination", async () => {
         // Arrange
-        const spy = spyOn(RolesService, "getAllRoles").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getAllRoles").mockResolvedValue({
             success: true,
             data: { count: 0, roles: [] },
         });
@@ -203,7 +204,12 @@ describe("Roles Service Integration", () => {
 
         // Assert
         expect(spy).toHaveBeenCalledWith(
-            expect.objectContaining({ page: 3, limit: 15 }),
+            expect.objectContaining({
+                page: 3,
+                limit: 15,
+                sortBy: "id",
+                sortOrder: "asc" as const,
+            }),
             expect.anything(),
         );
 
@@ -212,7 +218,7 @@ describe("Roles Service Integration", () => {
 
     test("getRole should be called with correct id and includeStaffCount", async () => {
         // Arrange
-        const spy = spyOn(RolesService, "getRole").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getRole").mockResolvedValue({
             success: true,
             data: mockRole,
         });
@@ -229,7 +235,7 @@ describe("Roles Service Integration", () => {
 
     test("getRole should pass false for includeStaffCount when not specified", async () => {
         // Arrange
-        const spy = spyOn(RolesService, "getRole").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getRole").mockResolvedValue({
             success: true,
             data: mockRole,
         });
@@ -247,7 +253,7 @@ describe("Roles Service Integration", () => {
 
 describe("Roles API edge cases", () => {
     test("GET /roles/:id with id=0 should call service", async () => {
-        const spy = spyOn(RolesService, "getRole").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getRole").mockResolvedValue({
             success: false,
             error: "Role not found",
         });
@@ -263,7 +269,7 @@ describe("Roles API edge cases", () => {
     });
 
     test("GET /roles with no results should return empty list", async () => {
-        const spy = spyOn(RolesService, "getAllRoles").mockResolvedValue({
+        const spy = vi.spyOn(RolesService, "getAllRoles").mockResolvedValue({
             success: true,
             data: { count: 0, roles: [] },
         });

@@ -1,22 +1,29 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import { motion } from "motion/react";
 import * as React from "react";
 import { NumericFormat } from "react-number-format";
+
+import { motion } from "motion/react";
+
 import { cn } from "../../lib/utils";
+import { Checkbox } from "../ui/checkbox";
 import { DatePicker } from "../ui/date-picker";
 import { Input } from "../ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "../ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { TableCell } from "../ui/table";
 import { DataTableCombobox } from "./data-table-combobox";
 
+import type { ColumnDef } from "@tanstack/react-table";
+
+/** Safely convert unknown cell value to display string */
+function toDisplayString(value: unknown): string {
+    if (value == null || value === "") return "";
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+        return String(value);
+    return JSON.stringify(value);
+}
+
 interface DataTableNewRowProps<TData> {
     id?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TanStack Table ColumnDef requires `any` for heterogeneous column value types
     columns: ColumnDef<TData, any>[];
     onSave: (data: Record<string, unknown>) => void;
     defaultValues?: Partial<TData>;
@@ -25,6 +32,7 @@ interface DataTableNewRowProps<TData> {
     onFocus?: () => void;
     onBlur?: () => void;
     onFocusNextRow?: () => void;
+    onSaveAndLoop?: () => Promise<boolean>;
     externalValues?: Record<string, unknown>;
     externalErrors?: Record<string, string>;
 }
@@ -39,6 +47,7 @@ export function DataTableNewRow<TData>({
     onFocus,
     onBlur,
     onFocusNextRow,
+    onSaveAndLoop,
     externalValues,
     externalErrors,
 }: DataTableNewRowProps<TData>) {
@@ -50,8 +59,7 @@ export function DataTableNewRow<TData>({
         for (const col of columns) {
             const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
             if (key) {
-                initial[key] =
-                    (defaultValues as Record<string, unknown>)?.[key] ?? "";
+                initial[key] = (defaultValues as Record<string, unknown>)?.[key] ?? "";
             }
         }
         return initial;
@@ -63,12 +71,24 @@ export function DataTableNewRow<TData>({
     const values = isControlled ? externalValues : internalValues;
     const errors = isControlled ? (externalErrors ?? {}) : internalErrors;
     const setValues = isControlled
-        ? (newValues: Record<string, unknown> | ((prev: Record<string, unknown>) => Record<string, unknown>)) => {
-              const resolved = typeof newValues === 'function' ? newValues(externalValues) : newValues;
+        ? (
+              newValues:
+                  | Record<string, unknown>
+                  | ((prev: Record<string, unknown>) => Record<string, unknown>),
+          ) => {
+              const resolved =
+                  typeof newValues === "function" ? newValues(externalValues) : newValues;
               onChange?.(resolved);
           }
         : setInternalValues;
+    // eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional no-op when controlled (parent manages errors)
     const setErrors = isControlled ? () => {} : setInternalErrors;
+    const clearError = (key: string) =>
+        setErrors((prev) => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+        });
     const inputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
 
     // Update internal state when defaultValues change from outside (uncontrolled mode only)
@@ -78,8 +98,7 @@ export function DataTableNewRow<TData>({
             let changed = false;
             const next = { ...prev };
             for (const col of columns) {
-                const key =
-                    "accessorKey" in col ? String(col.accessorKey) : col.id;
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
                 if (!key) continue;
                 const dv = (defaultValues as Record<string, unknown>)[key];
                 if (dv !== undefined && dv !== next[key]) {
@@ -112,12 +131,9 @@ export function DataTableNewRow<TData>({
 
                 const meta = col.meta;
                 if (meta?.validationSchema) {
-                    const result = meta.validationSchema.safeParse(
-                        currentValues[key],
-                    );
+                    const result = meta.validationSchema.safeParse(currentValues[key]);
                     if (!result.success) {
-                        newErrors[key] =
-                            result.error.issues[0]?.message ?? "Invalid";
+                        newErrors[key] = result.error.issues[0]?.message ?? "Invalid";
                         hasError = true;
                     }
                 }
@@ -146,36 +162,54 @@ export function DataTableNewRow<TData>({
         }
     };
 
+    const focusFirstEditable = () => {
+        const firstCol = editableColumns[0];
+        const firstKey =
+            firstCol && ("accessorKey" in firstCol ? String(firstCol.accessorKey) : firstCol.id);
+        const firstInput = firstKey ? inputRefs.current.get(firstKey) : null;
+        firstInput?.focus();
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent, colIndex: number) => {
         if (e.key === "Enter") {
             e.preventDefault();
             if (colIndex === editableColumns.length - 1) {
-                handleSave();
-                onFocusNextRow?.();
+                if (onSaveAndLoop) {
+                    void onSaveAndLoop().then((saved) => {
+                        if (saved) {
+                            focusFirstEditable();
+                        } else {
+                            onFocusNextRow?.();
+                        }
+                    });
+                } else {
+                    handleSave();
+                    onFocusNextRow?.();
+                }
             } else {
                 // Try to focus next editable input; if no ref registered, save
                 const nextCol = editableColumns[colIndex + 1];
                 const nextKey =
                     nextCol &&
-                    ("accessorKey" in nextCol
-                        ? String(nextCol.accessorKey)
-                        : nextCol.id);
-                const nextInput = nextKey
-                    ? inputRefs.current.get(nextKey)
-                    : null;
+                    ("accessorKey" in nextCol ? String(nextCol.accessorKey) : nextCol.id);
+                const nextInput = nextKey ? inputRefs.current.get(nextKey) : null;
                 if (nextInput) {
                     nextInput.focus();
                 } else {
                     handleSave();
                 }
             }
-        } else if (
-            e.key === "Tab" &&
-            !e.shiftKey &&
-            colIndex === editableColumns.length - 1
-        ) {
-            if (onFocusNextRow) {
-                e.preventDefault();
+        } else if (e.key === "Tab" && !e.shiftKey && colIndex === editableColumns.length - 1) {
+            e.preventDefault();
+            if (onSaveAndLoop) {
+                void onSaveAndLoop().then((saved) => {
+                    if (saved) {
+                        focusFirstEditable();
+                    } else {
+                        onFocusNextRow?.();
+                    }
+                });
+            } else if (onFocusNextRow) {
                 handleSave();
                 onFocusNextRow();
             }
@@ -202,7 +236,7 @@ export function DataTableNewRow<TData>({
 
                 // Ignore blur if focus went to a portal element (combobox/select/datepicker dropdown)
                 const targetElement = target as Element;
-                if (targetElement?.closest?.('[data-radix-popper-content-wrapper]')) return;
+                if (targetElement?.closest?.("[data-radix-popper-content-wrapper]")) return;
                 if (targetElement?.closest?.('[role="listbox"]')) return;
                 if (targetElement?.closest?.('[role="dialog"]')) return;
 
@@ -212,14 +246,16 @@ export function DataTableNewRow<TData>({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="border-b border-dashed bg-muted/30"
+            className="bg-muted/30 border-b border-dashed"
         >
-            {enableRowSelection && <TableCell />}
-            {columns.map((col) => {
-                const key =
-                    "accessorKey" in col ? String(col.accessorKey) : col.id;
-                if (!key)
-                    return <TableCell key={String(col.id ?? Math.random())} />;
+            {enableRowSelection && (
+                <TableCell>
+                    <Checkbox />
+                </TableCell>
+            )}
+            {columns.map((col, colIndex) => {
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
 
                 const meta = col.meta;
                 if (!meta?.editable) {
@@ -228,7 +264,7 @@ export function DataTableNewRow<TData>({
                         typeof val === "number"
                             ? val.toLocaleString()
                             : val !== undefined && val !== ""
-                              ? String(val)
+                              ? toDisplayString(val)
                               : "—";
 
                     return (
@@ -238,8 +274,7 @@ export function DataTableNewRow<TData>({
                                 "text-sm",
                                 meta?.align === "right" && "text-right",
                                 meta?.align === "center" && "text-center",
-                                displayVal === "—" &&
-                                    "text-muted-foreground italic",
+                                displayVal === "—" && "text-muted-foreground italic",
                                 meta?.cellClassName,
                             )}
                         >
@@ -252,78 +287,49 @@ export function DataTableNewRow<TData>({
                 const error = errors[key];
 
                 return (
-                    <TableCell
-                        key={key}
-                        className={cn("relative p-2", meta?.cellClassName)}
-                    >
+                    <TableCell key={key} className={cn("relative p-2", meta?.cellClassName)}>
                         {meta.inputType === "select" && meta.selectOptions ? (
                             <Select
-                                value={String(values[key] ?? "")}
+                                value={toDisplayString(values[key])}
                                 onValueChange={(newValue) => {
                                     setValues((prev) => ({
                                         ...prev,
                                         [key]: newValue,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
                             >
                                 <SelectTrigger
-                                    className={cn(
-                                        "h-8 text-sm",
-                                        error && "border-destructive",
-                                    )}
+                                    className={cn("h-8 text-sm", error && "border-destructive")}
                                 >
-                                    <SelectValue
-                                        placeholder={meta.placeholder}
-                                    />
+                                    <SelectValue placeholder={meta.placeholder} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {meta.selectOptions.map((option) => (
-                                        <SelectItem
-                                            key={option.value}
-                                            value={option.value}
-                                        >
+                                        <SelectItem key={option.value} value={option.value}>
                                             {option.label}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        ) : meta.inputType === "combobox" &&
-                          meta.selectOptions ? (
+                        ) : meta.inputType === "combobox" && meta.selectOptions ? (
                             <DataTableCombobox
-                                value={String(values[key] ?? "")}
+                                value={toDisplayString(values[key])}
                                 options={meta.selectOptions}
                                 onChange={(newValue) => {
                                     setValues((prev) => ({
                                         ...prev,
                                         [key]: newValue,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
                                 onSelect={(newValue) => {
-                                    const newValues = {
+                                    setValues({
                                         ...values,
                                         [key]: newValue,
-                                    };
-                                    setValues(newValues);
-                                    if (
-                                        key === "user" &&
-                                        newValue === "CREATE_NEW"
-                                    ) {
-                                        handleSave(newValues);
-                                    }
+                                    });
                                 }}
-                                onKeyDown={(e) =>
-                                    handleKeyDown(e, currentEditableIndex)
-                                }
+                                onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 inputRef={(el) => {
                                     if (el) inputRefs.current.set(key, el);
                                 }}
@@ -344,23 +350,14 @@ export function DataTableNewRow<TData>({
                                         ...prev,
                                         [key]: val,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
-                                onKeyDown={(e) =>
-                                    handleKeyDown(e, currentEditableIndex)
-                                }
+                                onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 inputRef={(el) => {
                                     if (el) inputRefs.current.set(key, el);
                                 }}
                                 placeholder={meta.placeholder}
-                                className={cn(
-                                    "h-8 text-sm w-full",
-                                    error && "border-destructive",
-                                )}
+                                className={cn("h-8 w-full text-sm", error && "border-destructive")}
                             />
                         ) : meta.inputType === "currency" ? (
                             <NumericFormat
@@ -368,11 +365,7 @@ export function DataTableNewRow<TData>({
                                     if (el) inputRefs.current.set(key, el);
                                 }}
                                 customInput={Input}
-                                value={
-                                    values[key] != null
-                                        ? Number(values[key])
-                                        : ""
-                                }
+                                value={values[key] != null ? Number(values[key]) : ""}
                                 thousandSeparator=" "
                                 decimalScale={0}
                                 allowNegative={false}
@@ -381,20 +374,11 @@ export function DataTableNewRow<TData>({
                                         ...prev,
                                         [key]: vals.floatValue ?? 0,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
-                                onKeyDown={(e) =>
-                                    handleKeyDown(e, currentEditableIndex)
-                                }
+                                onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 placeholder={meta.placeholder}
-                                className={cn(
-                                    "h-8 text-sm",
-                                    error && "border-destructive",
-                                )}
+                                className={cn("h-8 text-sm", error && "border-destructive")}
                             />
                         ) : (
                             <Input
@@ -408,7 +392,7 @@ export function DataTableNewRow<TData>({
                                           ? "date"
                                           : "text"
                                 }
-                                value={String(values[key] ?? "")}
+                                value={toDisplayString(values[key])}
                                 onChange={(e) => {
                                     const newValue =
                                         meta.inputType === "number"
@@ -418,20 +402,11 @@ export function DataTableNewRow<TData>({
                                         ...prev,
                                         [key]: newValue,
                                     }));
-                                    setErrors((prev) => {
-                                        const next = { ...prev };
-                                        delete next[key];
-                                        return next;
-                                    });
+                                    clearError(key);
                                 }}
-                                onKeyDown={(e) =>
-                                    handleKeyDown(e, currentEditableIndex)
-                                }
+                                onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 placeholder={meta.placeholder}
-                                className={cn(
-                                    "h-8 text-sm",
-                                    error && "border-destructive",
-                                )}
+                                className={cn("h-8 text-sm", error && "border-destructive")}
                             />
                         )}
                         {error && (
@@ -443,7 +418,7 @@ export function DataTableNewRow<TData>({
                                     stiffness: 400,
                                     damping: 17,
                                 }}
-                                className="absolute -bottom-1 left-2 text-xs text-destructive"
+                                className="text-destructive absolute -bottom-1 left-2 text-xs"
                             >
                                 {error}
                             </motion.p>

@@ -1,19 +1,28 @@
-import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
+import { RotateCcw, Trash2 } from "lucide-react";
+
 import { Badge, Button, motion } from "@jahonbozor/ui";
+
+import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { RotateCcw, Trash2 } from "lucide-react";
 
 export interface ClientActions {
     onDelete: (id: number) => void;
     onRestore: (id: number) => void;
 }
 
+interface ClientColumnsOptions {
+    canDelete?: boolean;
+}
+
 export function getClientColumns(
     t: TFunction,
     actions: ClientActions,
+    options?: ClientColumnsOptions,
 ): ColumnDef<AdminUserItem, unknown>[] {
-    return [
+    const { canDelete = true } = options ?? {};
+
+    const columns: ColumnDef<AdminUserItem, unknown>[] = [
         {
             accessorKey: "id",
             header: t("client_id"),
@@ -45,7 +54,7 @@ export function getClientColumns(
             size: 100,
             cell: ({ getValue }) => {
                 const lang = getValue<string>();
-                return lang === "ru" ? "Русский" : "O'zbekcha";
+                return lang === "ru" ? t("common:russian") : t("common:uzbek");
             },
             meta: { flex: 1, editable: true, inputType: "text" as const },
         },
@@ -74,10 +83,13 @@ export function getClientColumns(
             accessorKey: "createdAt",
             header: t("client_created"),
             size: 140,
-            cell: ({ getValue }) =>
-                new Date(getValue<Date | string>()).toLocaleDateString(),
+            cell: ({ getValue }) => new Date(getValue<Date | string>()).toLocaleDateString(),
         },
-        {
+    ];
+
+    // Only add actions column if user has delete permission
+    if (canDelete) {
+        columns.push({
             id: "actions",
             header: t("client_actions"),
             size: 100,
@@ -87,16 +99,14 @@ export function getClientColumns(
                 return (
                     <motion.div
                         whileTap={{ scale: 0.9 }}
-                        className="inline-flex justify-center w-full"
+                        className="inline-flex w-full justify-center"
                     >
                         {isDeleted ? (
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                onClick={() =>
-                                    actions.onRestore(row.original.id)
-                                }
+                                className="text-muted-foreground hover:text-primary h-8 w-8"
+                                onClick={() => actions.onRestore(row.original.id)}
                                 title={t("action_restore")}
                             >
                                 <RotateCcw className="h-4 w-4" />
@@ -105,10 +115,8 @@ export function getClientColumns(
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() =>
-                                    actions.onDelete(row.original.id)
-                                }
+                                className="text-muted-foreground hover:text-destructive h-8 w-8"
+                                onClick={() => actions.onDelete(row.original.id)}
                                 title={t("action_delete")}
                             >
                                 <Trash2 className="h-4 w-4" />
@@ -117,6 +125,8 @@ export function getClientColumns(
                     </motion.div>
                 );
             },
-        },
-    ];
+        });
+    }
+
+    return columns;
 }

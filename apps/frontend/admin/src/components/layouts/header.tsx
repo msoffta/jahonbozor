@@ -1,5 +1,9 @@
-import { useLogout } from "@/hooks/use-auth";
-import { useAuthStore } from "@/stores/auth.store";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { Link } from "@tanstack/react-router";
+import { Bell, LogOut, Settings, User } from "lucide-react";
+
 import {
     cn,
     DropdownMenu,
@@ -10,10 +14,9 @@ import {
     DropdownMenuTrigger,
     motion,
 } from "@jahonbozor/ui";
-import { Link } from "@tanstack/react-router";
-import { Bell, LogOut, Settings, User } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+
+import { useLogout } from "@/hooks/use-auth";
+import { useAuthStore } from "@/stores/auth.store";
 
 export function Header() {
     const [scrolled, setScrolled] = useState(false);
@@ -22,7 +25,8 @@ export function Header() {
     const { mutate: logout } = useLogout();
 
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 8);
+        const HEADER_SHADOW_SCROLL_THRESHOLD_PX = 8;
+        const onScroll = () => setScrolled(window.scrollY > HEADER_SHADOW_SCROLL_THRESHOLD_PX);
         window.addEventListener("scroll", onScroll, { passive: true });
         return () => window.removeEventListener("scroll", onScroll);
     }, []);
@@ -30,7 +34,7 @@ export function Header() {
     return (
         <header
             className={cn(
-                "sticky top-0 z-50 flex h-14 items-center justify-between px-6 transition-all duration-200",
+                "sticky top-0 z-50 flex h-14 items-center justify-between px-3 transition-all duration-200 md:px-6",
                 scrolled ? "bg-surface shadow-sm" : "bg-surface/80",
             )}
         >
@@ -38,12 +42,12 @@ export function Header() {
                 <img src="/logo.svg" alt="Jahon Bozor" className="h-8" />
             </Link>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <motion.button
                             type="button"
-                            className="relative flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/60"
+                            className="border-border hover:bg-muted/60 relative flex items-center justify-center rounded-lg border p-2"
                             whileTap={{ scale: 0.9 }}
                             transition={{
                                 type: "spring",
@@ -51,15 +55,13 @@ export function Header() {
                                 damping: 17,
                             }}
                         >
-                            <Bell className="h-5 w-5 text-foreground" />
+                            <Bell className="text-foreground h-5 w-5" />
                         </motion.button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64">
-                        <DropdownMenuLabel>
-                            {t("notifications")}
-                        </DropdownMenuLabel>
+                        <DropdownMenuLabel>{t("notifications")}</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                        <div className="text-muted-foreground px-2 py-4 text-center text-sm">
                             {t("no_notifications")}
                         </div>
                     </DropdownMenuContent>
@@ -69,7 +71,7 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                         <motion.button
                             type="button"
-                            className="flex items-center justify-center rounded-lg border border-border p-2 hover:bg-muted/60"
+                            className="border-border hover:bg-muted/60 flex items-center justify-center rounded-lg border p-2"
                             whileTap={{ scale: 0.9 }}
                             transition={{
                                 type: "spring",
@@ -77,24 +79,16 @@ export function Header() {
                                 damping: 17,
                             }}
                         >
-                            <User className="h-5 w-5 text-foreground" />
+                            <User className="text-foreground h-5 w-5" />
                         </motion.button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {user && (
                             <>
-                                <DropdownMenuLabel>
-                                    {user.fullname}
-                                </DropdownMenuLabel>
+                                <DropdownMenuLabel>{user.fullname}</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                             </>
                         )}
-                        <DropdownMenuItem asChild>
-                            <Link to="/profile">
-                                <User className="h-4 w-4" />
-                                {t("profile")}
-                            </Link>
-                        </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                             <Link to="/settings">
                                 <Settings className="h-4 w-4" />

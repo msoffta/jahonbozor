@@ -1,8 +1,12 @@
-import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
+import { RotateCcw, Trash2 } from "lucide-react";
+
 import { Badge, Button, motion } from "@jahonbozor/ui";
+
+import { formatCurrency } from "@/lib/format";
+
+import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { RotateCcw, Trash2 } from "lucide-react";
 
 interface CategoryItem {
     id: number;
@@ -14,11 +18,17 @@ export interface ProductActions {
     onRestore: (id: number) => void;
 }
 
+interface ProductColumnsOptions {
+    canDelete?: boolean;
+}
+
 export function getProductColumns(
     t: TFunction,
     categories: CategoryItem[],
     actions: ProductActions,
-): ColumnDef<AdminProductItem, any>[] {
+    options?: ProductColumnsOptions,
+): ColumnDef<AdminProductItem, unknown>[] {
+    const { canDelete = true } = options ?? {};
     const filterOptions = categories.map((c) => ({
         label: c.name,
         value: c.name,
@@ -28,7 +38,7 @@ export function getProductColumns(
         value: String(c.id),
     }));
 
-    return [
+    const columns: ColumnDef<AdminProductItem, unknown>[] = [
         {
             accessorKey: "id",
             header: t("product_id"),
@@ -45,7 +55,7 @@ export function getProductColumns(
             accessorKey: "price",
             header: t("product_price"),
             size: 120,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
             meta: {
                 flex: 1,
                 align: "left" as const,
@@ -57,7 +67,7 @@ export function getProductColumns(
             accessorKey: "costprice",
             header: t("product_costprice"),
             size: 120,
-            cell: ({ getValue }) => getValue<number>().toLocaleString(),
+            cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
             meta: {
                 flex: 1,
                 align: "left" as const,
@@ -73,9 +83,7 @@ export function getProductColumns(
             cell: ({ row }) => {
                 const cat = row.original.category;
                 if (!cat) return "—";
-                return cat.parent
-                    ? `${cat.parent.name} / ${cat.name}`
-                    : cat.name;
+                return cat.parent ? `${cat.parent.name} / ${cat.name}` : cat.name;
             },
             meta: {
                 flex: 1,
@@ -123,10 +131,13 @@ export function getProductColumns(
             accessorKey: "createdAt",
             header: t("product_created"),
             size: 140,
-            cell: ({ getValue }) =>
-                new Date(getValue<Date | string>()).toLocaleDateString(),
+            cell: ({ getValue }) => new Date(getValue<Date | string>()).toLocaleDateString(),
         },
-        {
+    ];
+
+    // Only add actions column if user has delete permission
+    if (canDelete) {
+        columns.push({
             id: "actions",
             header: t("product_actions"),
             size: 100,
@@ -136,16 +147,14 @@ export function getProductColumns(
                 return (
                     <motion.div
                         whileTap={{ scale: 0.9 }}
-                        className="inline-flex justify-center w-full"
+                        className="inline-flex w-full justify-center"
                     >
                         {isDeleted ? (
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                onClick={() =>
-                                    actions.onRestore(row.original.id)
-                                }
+                                className="text-muted-foreground hover:text-primary h-8 w-8"
+                                onClick={() => actions.onRestore(row.original.id)}
                                 title={t("action_restore")}
                             >
                                 <RotateCcw className="h-4 w-4" />
@@ -154,10 +163,8 @@ export function getProductColumns(
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() =>
-                                    actions.onDelete(row.original.id)
-                                }
+                                className="text-muted-foreground hover:text-destructive h-8 w-8"
+                                onClick={() => actions.onDelete(row.original.id)}
                                 title={t("action_delete")}
                             >
                                 <Trash2 className="h-4 w-4" />
@@ -166,6 +173,8 @@ export function getProductColumns(
                     </motion.div>
                 );
             },
-        },
-    ];
+        });
+    }
+
+    return columns;
 }

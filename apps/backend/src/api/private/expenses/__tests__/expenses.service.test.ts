@@ -1,8 +1,11 @@
-import { describe, test, expect, beforeEach } from "bun:test";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
 import { ExpensesService } from "../expenses.service";
+
+import type { AuditLog, Expense } from "@backend/generated/prisma/client";
 import type { Token } from "@jahonbozor/schemas";
-import type { Expense, AuditLog } from "@backend/generated/prisma/client";
 
 const mockUser: Token = {
     id: 1,
@@ -67,7 +70,14 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.getAllExpenses(
-                { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -83,7 +93,14 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.getAllExpenses(
-                { page: 1, limit: 20, searchQuery: "Rent", includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "Rent",
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -99,7 +116,15 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.getAllExpenses(
-                { page: 1, limit: 20, searchQuery: "", staffId: 2, includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    staffId: 2,
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -117,6 +142,8 @@ describe("ExpensesService", () => {
                 {
                     page: 1,
                     limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: "",
                     dateFrom: "2024-01-01",
                     dateTo: "2024-12-31",
@@ -137,7 +164,14 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.getAllExpenses(
-                { page: 1, limit: 20, searchQuery: "", includeDeleted: true },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeDeleted: true,
+                },
                 mockLogger,
             );
 
@@ -152,7 +186,14 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.getAllExpenses(
-                { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -168,7 +209,14 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.getAllExpenses(
-                { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                {
+                    page: 1,
+                    limit: 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    searchQuery: "",
+                    includeDeleted: false,
+                },
                 mockLogger,
             );
 
@@ -252,7 +300,12 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.createExpense(
-                { name: "New Expense", amount: 5000, description: null, expenseDate: new Date("2024-06-01") },
+                {
+                    name: "New Expense",
+                    amount: 5000,
+                    description: null,
+                    expenseDate: new Date("2024-06-01"),
+                },
                 mockContext,
                 mockLogger,
             );
@@ -270,7 +323,12 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.createExpense(
-                { name: "New Expense", amount: 5000, description: null, expenseDate: new Date("2024-06-01") },
+                {
+                    name: "New Expense",
+                    amount: 5000,
+                    description: null,
+                    expenseDate: new Date("2024-06-01"),
+                },
                 mockContext,
                 mockLogger,
             );
@@ -287,7 +345,12 @@ describe("ExpensesService", () => {
 
             // Act
             const result = await ExpensesService.createExpense(
-                { name: "Duplicate", amount: 100, description: null, expenseDate: new Date("2024-06-01") },
+                {
+                    name: "Duplicate",
+                    amount: 100,
+                    description: null,
+                    expenseDate: new Date("2024-06-01"),
+                },
                 mockContext,
                 mockLogger,
             );
@@ -365,12 +428,7 @@ describe("ExpensesService", () => {
             prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog({ action: "UPDATE" }));
 
             // Act
-            const result = await ExpensesService.updateExpense(
-                1,
-                {},
-                mockContext,
-                mockLogger,
-            );
+            const result = await ExpensesService.updateExpense(1, {}, mockContext, mockLogger);
 
             // Assert
             const success = expectSuccess(result);

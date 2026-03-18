@@ -1,0 +1,18 @@
+{
+  "edit_profile": "Редактировать профиль",
+  "change_language": "Сменить язык",
+  "registered": "Дата регистрации",
+  "notification": "Уведомления",
+  "logout": "Выйти",
+  "uzbek": "Узбекский",
+  "russian": "Русский",
+  "login": "Войти",
+  "login_telegram": "Войти через Telegram",
+  "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME не настроен",
+  "orders": "Заказы",
+  "cart": "Корзина",
+  "debt_balance": "Задолженность",
+  "debt_paid": "Оплачено",
+  "debt_total": "Общий долг",
+  "debt_no_debts": "Долгов нет"
+}

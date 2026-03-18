@@ -1,8 +1,12 @@
+import * as Sentry from "@sentry/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import * as Sentry from "@sentry/react";
+
 import { api } from "@/api/client";
 import { useAuthStore } from "@/stores/auth.store";
+
+import type { Permission } from "@jahonbozor/schemas";
+import type { ProfileResponse } from "@jahonbozor/schemas/src/auth/auth.dto";
 
 export function useLogin() {
     const setAuth = useAuthStore((state) => state.setAuth);
@@ -19,15 +23,18 @@ export function useLogin() {
         onSuccess: async (result) => {
             const { staff, token } = result;
 
+            // Raw fetch used intentionally to avoid circular dependency (auth hook ↔ auth-dependent client)
             const profileResponse = await fetch("/api/public/auth/me", {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const profileData = profileResponse.ok
-                ? await profileResponse.json()
+            const profileData: ProfileResponse | null = profileResponse.ok
+                ? ((await profileResponse.json()) as ProfileResponse)
                 : null;
-            const profile =
-                profileData?.success ? profileData.data : null;
-            const permissions = profile?.role?.permissions ?? [];
+            const profile = profileData?.success ? profileData.data : null;
+            const permissions: Permission[] =
+                profile && "role" in profile && profile.role != null
+                    ? (profile.role.permissions as Permission[])
+                    : [];
 
             setAuth(
                 token,
@@ -41,7 +48,7 @@ export function useLogin() {
                 permissions,
             );
             Sentry.setUser({ id: String(staff.id), username: staff.fullname });
-            navigate({ to: "/" });
+            void navigate({ to: "/" });
         },
     });
 }
@@ -59,7 +66,7 @@ export function useLogout() {
             clearAuth();
             Sentry.setUser(null);
             queryClient.clear();
-            navigate({ to: "/login" });
+            void navigate({ to: "/login" });
         },
     });
 }

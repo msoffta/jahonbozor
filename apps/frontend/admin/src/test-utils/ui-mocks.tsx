@@ -1,4 +1,3 @@
-import { mock } from "bun:test";
 import { createElement } from "react";
 import * as React from "react";
 
@@ -77,18 +76,22 @@ export function filterDOMProps(props: Record<string, any>): Record<string, any> 
 const motionCache = new Map<string, any>();
 function getMotionComponent(prop: string) {
     if (!motionCache.has(prop)) {
-        motionCache.set(
-            prop,
-            ({ children, className, ...rest }: any) =>
-                createElement(
-                    prop,
-                    { className, ...filterDOMProps(rest) },
-                    children,
-                ),
+        motionCache.set(prop, ({ children, className, ...rest }: any) =>
+            createElement(prop, { className, ...filterDOMProps(rest) }, children),
         );
     }
     return motionCache.get(prop);
 }
+
+/**
+ * Motion library mocks (motion/react).
+ * Use with vi.mock("motion/react", async () => { const { motionMocks } = await import("..."); return motionMocks; })
+ */
+export const motionMocks = {
+    motion: new Proxy({}, { get: (_target: any, prop: string) => getMotionComponent(prop) }),
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+    LayoutGroup: ({ children }: any) => <>{children}</>,
+};
 
 /**
  * Centralized UI component mocks for testing.
@@ -99,52 +102,30 @@ export const uiMocks = {
     cn: (...args: any[]) => args.filter(Boolean).join(" "),
 
     // Input: Supports both controlled and uncontrolled modes
-    Input: React.forwardRef(
-        (
-            {
-                className,
-                value,
-                defaultValue,
-                onChange,
-                ...props
-            }: any,
-            ref: any,
-        ) => {
-            const [internalValue, setInternalValue] = React.useState(
-                defaultValue ?? "",
-            );
-            const isControlled = value !== undefined;
-            const currentValue = isControlled ? value : internalValue;
+    Input: ({ ref, className, value, defaultValue, onChange, ...props }: any) => {
+        const [internalValue, setInternalValue] = React.useState(defaultValue ?? "");
+        const isControlled = value !== undefined;
+        const currentValue = isControlled ? value : internalValue;
 
-            return (
-                <input
-                    ref={ref}
-                    className={className}
-                    value={currentValue}
-                    onChange={(e) => {
-                        if (!isControlled) setInternalValue(e.target.value);
-                        onChange?.(e);
-                    }}
-                    {...filterDOMProps(props)}
-                />
-            );
-        },
-    ),
-
-    // Button: Filters asChild prop
-    Button: React.forwardRef(
-        (
-            { children, className, asChild, ...props }: any,
-            ref: any,
-        ) => (
-            <button
+        return (
+            <input
                 ref={ref}
                 className={className}
+                value={currentValue}
+                onChange={(e) => {
+                    if (!isControlled) setInternalValue(e.target.value);
+                    onChange?.(e);
+                }}
                 {...filterDOMProps(props)}
-            >
-                {children}
-            </button>
-        ),
+            />
+        );
+    },
+
+    // Button: Filters asChild prop
+    Button: ({ ref, children, className, asChild: _asChild, ...props }: any) => (
+        <button ref={ref} className={className} {...filterDOMProps(props)}>
+            {children}
+        </button>
     ),
 
     // Checkbox
@@ -198,9 +179,7 @@ export const uiMocks = {
     TableHeader: ({ children, ...props }: any) => (
         <thead {...filterDOMProps(props)}>{children}</thead>
     ),
-    TableRow: ({ children, ...props }: any) => (
-        <tr {...filterDOMProps(props)}>{children}</tr>
-    ),
+    TableRow: ({ children, ...props }: any) => <tr {...filterDOMProps(props)}>{children}</tr>,
 
     // Tooltip components
     Tooltip: ({ children }: any) => <>{children}</>,
@@ -220,36 +199,78 @@ export const uiMocks = {
     DropdownMenuLabel: ({ children }: any) => <span>{children}</span>,
     DropdownMenuSeparator: () => <hr />,
 
-    // Motion components
-    motion: new Proxy(
-        {},
-        { get: (_target: any, prop: string) => getMotionComponent(prop) },
+    // Card components
+    Card: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
     ),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    LayoutGroup: ({ children }: any) => <>{children}</>,
+    CardContent: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    CardHeader: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    CardTitle: ({ children, className, ...props }: any) => (
+        <h3 className={className} {...filterDOMProps(props)}>
+            {children}
+        </h3>
+    ),
+
+    // Drawer components
+    Drawer: ({ children, open }: any) => (open ? <div data-testid="drawer">{children}</div> : null),
+    DrawerContent: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    DrawerHeader: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    DrawerTitle: ({ children, className, ...props }: any) => (
+        <h2 className={className} {...filterDOMProps(props)}>
+            {children}
+        </h2>
+    ),
+    DrawerFooter: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+
+    // Layout components
+    ScrollArea: ({ children, className, ...props }: any) => (
+        <div className={className} {...filterDOMProps(props)}>
+            {children}
+        </div>
+    ),
+    Badge: ({ children, className, ...props }: any) => (
+        <span className={className} {...filterDOMProps(props)}>
+            {children}
+        </span>
+    ),
+    Skeleton: ({ className, ...props }: any) => (
+        <div className={className} data-testid="skeleton" {...filterDOMProps(props)} />
+    ),
+    Separator: ({ className, ...props }: any) => (
+        <hr className={className} {...filterDOMProps(props)} />
+    ),
+
+    // DataTable components
+    DataTable: ({ data, columns: _columns, ...props }: any) => (
+        <div data-testid="data-table" data-row-count={data?.length ?? 0} {...filterDOMProps(props)}>
+            data-table
+        </div>
+    ),
+    DataTableSkeleton: ({ columns: _columns, rows: _rows, ...props }: any) => (
+        <div data-testid="data-table-skeleton" {...filterDOMProps(props)}>
+            loading
+        </div>
+    ),
 };
-
-/**
- * Sets up all UI mocks for testing.
- * Call this at the top of your test file, BEFORE importing components.
- *
- * @example
- * ```typescript
- * import { setupUIMocks } from "../test-utils/ui-mocks";
- *
- * setupUIMocks();
- *
- * import { MyComponent } from "../my-component";
- * ```
- */
-export function setupUIMocks() {
-    // Mock motion/react - DataTable sub-components import motion directly
-    mock.module("motion/react", () => ({
-        motion: uiMocks.motion,
-        AnimatePresence: uiMocks.AnimatePresence,
-        LayoutGroup: uiMocks.LayoutGroup,
-    }));
-
-    // Mock @jahonbozor/ui - must be AFTER motion/react mock
-    mock.module("@jahonbozor/ui", () => uiMocks);
-}

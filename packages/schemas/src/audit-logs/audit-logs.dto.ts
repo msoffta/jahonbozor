@@ -1,6 +1,7 @@
 import z from "zod";
+
+import { ActorType, AuditAction } from "../common/enums";
 import { PaginationQuery } from "../common/pagination.model";
-import { AuditAction, ActorType } from "../common/enums";
 
 export const AuditLogPagination = PaginationQuery.extend({
     entityType: z.string().optional(),

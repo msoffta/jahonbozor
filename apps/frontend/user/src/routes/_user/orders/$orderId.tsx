@@ -1,121 +1,152 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { orderDetailOptions, useCancelOrder } from "@/api/orders.api";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+
+import {
+    AnimatedList,
+    AnimatedListItem,
+    AnimatePresence,
+    motion,
+    PageTransition,
+    Separator,
+    Skeleton,
+} from "@jahonbozor/ui";
+
+import { orderDetailOptions, useDeleteOrder } from "@/api/orders.api";
 import { ProductCard } from "@/components/catalog/product-card";
-import { Badge, Button, Separator, Skeleton } from "@jahonbozor/ui";
-import { useUIStore } from "@/stores/ui.store";
 import { PageHeader } from "@/components/layout/page-header";
-
-function formatPrice(price: number, locale: string): string {
-    return price.toLocaleString(locale).replace(/,/g, " ");
-}
-
-function formatDate(dateStr: Date | string, locale: string): string {
-    return new Date(dateStr).toLocaleDateString(locale, {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-}
+import { getPaymentTypeLabel } from "@/components/orders/order-status-badge";
+import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
+import { formatDate, formatPrice, getLocaleCode } from "@/lib/format";
+import { useUIStore } from "@/stores/ui.store";
 
 function OrderDetailPage() {
     const { orderId } = Route.useParams();
-    const { t } = useTranslation();
+    const { t } = useTranslation("orders");
+    const navigate = useNavigate();
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
-    const locale = useUIStore((s) => s.locale);
-    const loc = locale === "uz" ? "uz-UZ" : "ru-RU";
+    const locale = useUIStore((state) => state.locale);
+    const localeCode = getLocaleCode(locale);
     const { data: order, isLoading } = useQuery(orderDetailOptions(Number(orderId)));
-    const cancelOrder = useCancelOrder();
+    const deleteOrder = useDeleteOrder();
 
     if (isLoading) {
         return (
-            <div className="space-y-4 p-4">
+            <PageTransition className="space-y-4 p-4">
                 <Skeleton className="h-8 w-48" />
                 <Skeleton className="h-6 w-full" />
                 <Skeleton className="h-6 w-full" />
                 <Skeleton className="h-6 w-full" />
-            </div>
+            </PageTransition>
         );
     }
 
     if (!order) {
         return (
-            <div className="p-4 text-center">
+            <PageTransition className="p-4 text-center">
                 <p className="text-muted-foreground">{t("no_data")}</p>
-            </div>
+            </PageTransition>
         );
     }
 
     const total = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
-        <div>
-            <PageHeader crumbs={[{ label: t("orders"), to: "/orders" }, { label: t("order_number", { id: order.id }) }]} />
+        <PageTransition>
+            <PageHeader
+                crumbs={[
+                    { label: t("orders"), to: "/orders" },
+                    { label: t("order_number", { id: order.id }) },
+                ]}
+            />
             <div className="px-4">
+                <h1 className="text-xl font-bold">{t("order_number", { id: order.id })}</h1>
 
-            <h1 className="text-xl font-bold">{t("order_number", { id: order.id })}</h1>
+                <div className="mt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("creation_date")}:</span>
+                        <span>{formatDate(order.createdAt, localeCode)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("update_date")}:</span>
+                        <span>{formatDate(order.updatedAt, localeCode)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("payment_method")}:</span>
+                        <span>{getPaymentTypeLabel(order.paymentType, t)}</span>
+                    </div>
+                    <AnimatePresence>
+                        {order.comment && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="flex justify-between text-sm"
+                            >
+                                <span className="text-muted-foreground">{t("order_comment")}:</span>
+                                <span className="text-right italic">{order.comment}</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("total")}:</span>
+                        <span className="font-bold">
+                            {formatPrice(total, localeCode)} {t("sum")}
+                        </span>
+                    </div>
+                </div>
 
-            <div className="mt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("creation_date")}:</span>
-                    <span>{formatDate(order.createdAt, loc)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("update_date")}:</span>
-                    <span>{formatDate(order.updatedAt, loc)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("status")}:</span>
-                    <Badge
-                        variant={order.status === "NEW" ? "default" : order.status === "CANCELLED" ? "destructive" : "secondary"}
-                        className={order.status === "NEW" ? "bg-primary" : order.status === "CANCELLED" ? "" : "bg-green-600 text-white"}
-                    >
-                        {order.status === "NEW" ? t("status_new") : order.status === "CANCELLED" ? t("status_cancelled") : t("status_accepted")}
-                    </Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("payment_method")}:</span>
-                    <span>{order.paymentType === "CREDIT_CARD" ? t("payment_card") : t("payment_cash")}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t("total")}:</span>
-                    <span className="font-bold">{formatPrice(total, loc)} {t("sum")}</span>
-                </div>
-            </div>
-
-            {order.status === "NEW" && (
-                <Button
-                    variant="destructive"
-                    className="mt-4 w-full"
-                    disabled={cancelOrder.isPending}
-                    onClick={() => cancelOrder.mutate(order.id)}
+                <motion.button
+                    type="button"
+                    className="bg-destructive text-destructive-foreground mt-4 w-full rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+                    disabled={deleteOrder.isPending}
+                    onClick={() => setConfirmOpen(true)}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
-                    {cancelOrder.isPending ? t("loading") : t("cancel_order")}
-                </Button>
-            )}
+                    {deleteOrder.isPending ? t("loading") : t("cancel_order")}
+                </motion.button>
 
-            <Separator className="my-4" />
+                <ConfirmDrawer
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    onConfirm={() =>
+                        deleteOrder.mutate(order.id, {
+                            onSuccess: () => void navigate({ to: "/orders" }),
+                        })
+                    }
+                    isLoading={deleteOrder.isPending}
+                />
 
-            <h2 className="mb-3 text-sm font-semibold">{t("order_items")}:</h2>
-            <div className="space-y-3">
-                {order.items.map((item) => (
-                    <ProductCard
-                        key={item.id}
-                        variant="order"
-                        name={item.product?.name ?? `Product #${item.productId}`}
-                        price={item.price}
-                        quantity={item.quantity}
-                    />
-                ))}
+                <Separator className="my-4" />
+
+                <h2 className="mb-3 text-sm font-semibold">{t("order_items")}:</h2>
+                <AnimatedList className="space-y-3">
+                    {order.items.map((item) => (
+                        <AnimatedListItem key={item.id}>
+                            <ProductCard
+                                variant="order"
+                                name={
+                                    item.product?.name ??
+                                    t("product_fallback", { id: item.productId })
+                                }
+                                price={item.price}
+                                quantity={item.quantity}
+                            />
+                        </AnimatedListItem>
+                    ))}
+                </AnimatedList>
             </div>
-            </div>
-        </div>
+        </PageTransition>
     );
 }
 
 export const Route = createFileRoute("/_user/orders/$orderId")({
+    loader: ({ context, params }) => {
+        void context.queryClient.ensureQueryData(orderDetailOptions(Number(params.orderId)));
+    },
     component: OrderDetailPage,
 });

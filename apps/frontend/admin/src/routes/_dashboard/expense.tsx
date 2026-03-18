@@ -1,22 +1,43 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import dayjs from "dayjs";
-import { PageTransition, DataTable, DataTableSkeleton, Checkbox } from "@jahonbozor/ui";
-import type { DataTableTranslations } from "@jahonbozor/ui";
-import { expensesListQueryOptions, useCreateExpense, useUpdateExpense, useDeleteExpense, useRestoreExpense } from "@/api/expenses.api";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
+import { hasPermission, Permission } from "@jahonbozor/schemas";
+import {
+    AnimatePresence,
+    Checkbox,
+    DataTable,
+    DataTableSkeleton,
+    motion,
+    PageTransition,
+    useIsMobile,
+} from "@jahonbozor/ui";
+
+import {
+    expensesListQueryOptions,
+    useCreateExpense,
+    useDeleteExpense,
+    useRestoreExpense,
+    useUpdateExpense,
+} from "@/api/expenses.api";
 import { getExpenseColumns } from "@/components/expenses/expenses-columns";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function ExpensePage() {
     const { t } = useTranslation("expenses");
     const [includeDeleted, setIncludeDeleted] = useState(false);
-    const [isReady, setIsReady] = useState(false);
+    const isReady = useDeferredReady();
+    const translations = useDataTableTranslations("expenses_empty");
 
-    useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 150);
-        return () => clearTimeout(timer);
-    }, []);
+    // Permission checks for expense actions
+    const canCreate = useHasPermission(Permission.EXPENSES_CREATE);
+    const canUpdate = useHasPermission(Permission.EXPENSES_UPDATE);
+    const canDelete = useHasPermission(Permission.EXPENSES_DELETE);
 
     const { data: expensesData, isLoading: isExpensesLoading } = useQuery(
         expensesListQueryOptions({ limit: 100, includeDeleted }),
@@ -29,17 +50,35 @@ function ExpensePage() {
 
     const isLoading = isExpensesLoading || !isReady;
 
-    const actions = useMemo(() => ({
-        onDelete: (id: number) => deleteExpense.mutate(id),
-        onRestore: (id: number) => restoreExpense.mutate(id),
-    }), [deleteExpense, restoreExpense]);
+    const actions = useMemo(
+        () => ({
+            onDelete: (id: number) => deleteExpense.mutate(id),
+            onRestore: (id: number) => restoreExpense.mutate(id),
+        }),
+        [deleteExpense, restoreExpense],
+    );
 
     const columns = useMemo(
-        () => getExpenseColumns(t, actions),
-        [t, actions],
+        () => getExpenseColumns(t, actions, { canDelete }),
+        [t, actions, canDelete],
     );
 
     const expenses = expensesData?.expenses ?? [];
+
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile
+                ? {
+                      description: false,
+                      expenseDate: false,
+                      staff: false,
+                      status: false,
+                      createdAt: false,
+                  }
+                : {},
+        [isMobile],
+    );
 
     const handleCellEdit = useCallback(
         async (rowIndex: number, columnId: string, value: unknown) => {
@@ -55,23 +94,17 @@ function ExpensePage() {
     );
 
     const handleNewRowSave = useCallback(
-        async (
-            data: Record<string, unknown>,
-            _rowId: string,
-            linkedId?: unknown,
-        ) => {
+        async (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
             // If already linked, update any field
             if (linkedId) {
                 const result = await updateExpense.mutateAsync({
                     id: linkedId as number,
-                    name: data.name ? String(data.name) : undefined,
+                    name: data.name != null ? String(data.name as string) : undefined,
                     amount: data.amount ? Number(data.amount) : undefined,
-                    description: data.description
-                        ? String(data.description)
-                        : undefined,
-                    expenseDate: data.expenseDate
-                        ? String(data.expenseDate)
-                        : undefined,
+                    description:
+                        data.description != null ? String(data.description as string) : undefined,
+                    expenseDate:
+                        data.expenseDate != null ? String(data.expenseDate as string) : undefined,
                 });
                 return result?.id;
             }
@@ -82,40 +115,31 @@ function ExpensePage() {
             }
 
             const result = await createExpense.mutateAsync({
-                name: String(data.name),
+                name: String(data.name as string),
                 amount: Number(data.amount),
-                description: data.description ? String(data.description) : null,
-                expenseDate: String(data.expenseDate) || dayjs().toISOString(),
+                description: data.description != null ? String(data.description as string) : null,
+                expenseDate:
+                    data.expenseDate != null
+                        ? String(data.expenseDate as string)
+                        : new Date().toISOString(),
             });
             return result?.id;
         },
         [createExpense, updateExpense],
     );
 
-
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("expenses_empty"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
-
-    const multiRowDefaultValues = useMemo(() => ({
-        expenseDate: dayjs().toISOString()
-    }), []);
+    const multiRowDefaultValues = useMemo(
+        () => ({
+            expenseDate: new Date().toISOString(),
+        }),
+        [],
+    );
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold">{t("title")}</h1>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex items-center justify-between md:mb-6">
+                <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <Checkbox
                         checked={includeDeleted}
                         onCheckedChange={(checked) => setIncludeDeleted(checked === true)}
@@ -124,35 +148,59 @@ function ExpensePage() {
                 </label>
             </div>
 
-            {isLoading ? (
-                <DataTableSkeleton columns={9} rows={10} className="flex-1" />
-            ) : (
-                <DataTable
-                    className="flex-1"
-                    columns={columns}
-                    data={expenses}
-                    pagination
-                    defaultPageSize={20}
-                    pageSizeOptions={[10, 20, 50]}
-                    enableShowAll
-                    enableSorting
-                    enableGlobalSearch
-                    enableFiltering
-                    enableColumnVisibility
-                    enableColumnResizing
-                    enableEditing
-                    enableMultipleNewRows
-                    multiRowCount={15}
-                    onCellEdit={handleCellEdit}
-                    onMultiRowSave={handleNewRowSave}
-                    multiRowDefaultValues={multiRowDefaultValues}
-                    translations={translations}
-                />
-            )}
+            <AnimatePresence mode="wait">
+                {isLoading ? (
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <DataTableSkeleton columns={9} rows={10} className="flex-1" />
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
+                        <DataTable
+                            className="flex-1"
+                            columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
+                            data={expenses}
+                            pagination
+                            defaultPageSize={20}
+                            pageSizeOptions={[10, 20, 50]}
+                            enableShowAll
+                            enableSorting
+                            enableGlobalSearch
+                            enableFiltering
+                            enableColumnVisibility
+                            enableColumnResizing
+                            enableEditing={canUpdate}
+                            enableMultipleNewRows={canCreate}
+                            multiRowCount={15}
+                            onCellEdit={handleCellEdit}
+                            onMultiRowSave={handleNewRowSave}
+                            multiRowDefaultValues={multiRowDefaultValues}
+                            translations={translations}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </PageTransition>
     );
 }
 
 export const Route = createFileRoute("/_dashboard/expense")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+        if (!hasPermission(permissions, Permission.EXPENSES_LIST)) {
+            throw redirect({ to: "/" });
+        }
+    },
     component: ExpensePage,
 });

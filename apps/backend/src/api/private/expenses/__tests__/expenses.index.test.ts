@@ -1,7 +1,10 @@
-import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { createMockLogger } from "@backend/test/setup";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { createMockLogger } from "@backend/test/setup";
+
 import { ExpensesService } from "../expenses.service";
 
 // Mock expense data
@@ -53,6 +56,8 @@ const createTestApp = () => {
                 {
                     page: Number(query.page) || 1,
                     limit: Number(query.limit) || 20,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     searchQuery: query.searchQuery,
                     staffId: query.staffId ? Number(query.staffId) : undefined,
                     dateFrom: query.dateFrom || undefined,
@@ -66,7 +71,12 @@ const createTestApp = () => {
             return await ExpensesService.getExpense(Number(params.id), logger);
         })
         .post("/expenses", async ({ body, logger, requestId }) => {
-            const expenseData = body as { name: string; amount: number; description: string | null; expenseDate: string };
+            const expenseData = body as {
+                name: string;
+                amount: number;
+                description: string | null;
+                expenseDate: string;
+            };
             return await ExpensesService.createExpense(
                 { ...expenseData, expenseDate: new Date(expenseData.expenseDate) },
                 { staffId: mockUser.id, user: mockUser, requestId },
@@ -76,7 +86,12 @@ const createTestApp = () => {
         .patch("/expenses/:id", async ({ params, body, logger, requestId }) => {
             return await ExpensesService.updateExpense(
                 Number(params.id),
-                body as { name?: string; amount?: number; description?: string | null; expenseDate?: Date },
+                body as {
+                    name?: string;
+                    amount?: number;
+                    description?: string | null;
+                    expenseDate?: Date;
+                },
                 { staffId: mockUser.id, user: mockUser, requestId },
                 logger,
             );
@@ -107,7 +122,7 @@ describe("Expenses API Routes", () => {
     describe("GET /expenses", () => {
         test("should return paginated expenses list", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 2, expenses: [mockExpense] },
             });
@@ -128,15 +143,13 @@ describe("Expenses API Routes", () => {
 
         test("should apply searchQuery filter", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 1, expenses: [mockExpense] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/expenses?searchQuery=Rent"),
-            );
+            await app.handle(new Request("http://localhost/expenses?searchQuery=Rent"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -149,15 +162,13 @@ describe("Expenses API Routes", () => {
 
         test("should apply staffId filter", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 1, expenses: [mockExpense] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/expenses?staffId=2"),
-            );
+            await app.handle(new Request("http://localhost/expenses?staffId=2"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -170,7 +181,7 @@ describe("Expenses API Routes", () => {
 
         test("should apply date range filter", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 0, expenses: [] },
             });
@@ -191,15 +202,13 @@ describe("Expenses API Routes", () => {
 
         test("should include deleted expenses when requested", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 1, expenses: [{ ...mockExpense, deletedAt: new Date() }] },
             });
 
             // Act
-            await app.handle(
-                new Request("http://localhost/expenses?includeDeleted=true"),
-            );
+            await app.handle(new Request("http://localhost/expenses?includeDeleted=true"));
 
             // Assert
             expect(spy).toHaveBeenCalledWith(
@@ -212,15 +221,13 @@ describe("Expenses API Routes", () => {
 
         test("should return empty list when no expenses exist", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getAllExpenses").mockResolvedValue({
                 success: true,
                 data: { count: 0, expenses: [] },
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/expenses"),
-            );
+            const response = await app.handle(new Request("http://localhost/expenses"));
             const body = await response.json();
 
             // Assert
@@ -236,15 +243,13 @@ describe("Expenses API Routes", () => {
     describe("GET /expenses/:id", () => {
         test("should return expense by id", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getExpense").mockResolvedValue({
                 success: true,
                 data: mockExpense,
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/expenses/1"),
-            );
+            const response = await app.handle(new Request("http://localhost/expenses/1"));
             const body = await response.json();
 
             // Assert
@@ -257,15 +262,13 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense not found", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/expenses/999"),
-            );
+            const response = await app.handle(new Request("http://localhost/expenses/999"));
             const body = await response.json();
 
             // Assert
@@ -277,15 +280,13 @@ describe("Expenses API Routes", () => {
 
         test("should call service with id=0", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "getExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "getExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
 
             // Act
-            const response = await app.handle(
-                new Request("http://localhost/expenses/0"),
-            );
+            const response = await app.handle(new Request("http://localhost/expenses/0"));
             const body = await response.json();
 
             // Assert
@@ -299,7 +300,7 @@ describe("Expenses API Routes", () => {
     describe("POST /expenses", () => {
         test("should create expense with valid data", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "createExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "createExpense").mockResolvedValue({
                 success: true,
                 data: mockExpense,
             });
@@ -329,7 +330,7 @@ describe("Expenses API Routes", () => {
 
         test("should pass context to service", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "createExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "createExpense").mockResolvedValue({
                 success: true,
                 data: mockExpense,
             });
@@ -360,7 +361,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when service fails", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "createExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "createExpense").mockResolvedValue({
                 success: false,
                 error: "Database error",
             });
@@ -391,7 +392,7 @@ describe("Expenses API Routes", () => {
         test("should update expense", async () => {
             // Arrange
             const updatedExpense = { ...mockExpense, name: "Updated Rent" };
-            const spy = spyOn(ExpensesService, "updateExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "updateExpense").mockResolvedValue({
                 success: true,
                 data: updatedExpense,
             });
@@ -416,7 +417,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense not found", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "updateExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "updateExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
@@ -440,7 +441,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when updating deleted expense", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "updateExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "updateExpense").mockResolvedValue({
                 success: false,
                 error: "Cannot update deleted expense",
             });
@@ -464,7 +465,7 @@ describe("Expenses API Routes", () => {
 
         test("should handle empty body update", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "updateExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "updateExpense").mockResolvedValue({
                 success: true,
                 data: mockExpense,
             });
@@ -491,7 +492,7 @@ describe("Expenses API Routes", () => {
         test("should soft delete expense", async () => {
             // Arrange
             const deletedExpense = { ...mockExpense, deletedAt: new Date() };
-            const spy = spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
                 success: true,
                 data: deletedExpense,
             });
@@ -511,7 +512,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense not found", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
@@ -531,7 +532,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense already deleted", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "deleteExpense").mockResolvedValue({
                 success: false,
                 error: "Expense already deleted",
             });
@@ -554,7 +555,7 @@ describe("Expenses API Routes", () => {
         test("should restore deleted expense", async () => {
             // Arrange
             const restoredExpense = { ...mockExpense, deletedAt: null };
-            const spy = spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
                 success: true,
                 data: restoredExpense,
             });
@@ -574,7 +575,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense not found", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
                 success: false,
                 error: "Expense not found",
             });
@@ -594,7 +595,7 @@ describe("Expenses API Routes", () => {
 
         test("should return error when expense is not deleted", async () => {
             // Arrange
-            const spy = spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
+            const spy = vi.spyOn(ExpensesService, "restoreExpense").mockResolvedValue({
                 success: false,
                 error: "Expense is not deleted",
             });

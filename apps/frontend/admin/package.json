@@ -1,14 +1,14 @@
 {
   "name": "admin",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "bun --bun vite",
     "build": "bun vite build",
-    "test": "bun test",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "lint": "eslint .",
     "preview": "bun --bun vite preview"
   },
   "dependencies": {
@@ -16,22 +16,21 @@
     "@jahonbozor/schemas": "workspace:*",
     "@jahonbozor/ui": "workspace:*",
     "@sentry/react": "^10.39.0",
+    "@tanstack/react-form": "^1.28.5",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-router": "^1.159.4",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.18",
-    "@tanstack/zod-form-adapter": "^0.42.1",
     "date-fns": "^4.1.0",
-    "dayjs": "^1.11.19",
     "i18next": "^25.2.0",
     "lucide-react": "^0.575.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-i18next": "^16.5.4",
+    "recharts": "^3.8.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
     "@jahonbozor/backend": "workspace:*",
     "@sentry/vite-plugin": "^5.0.0",
     "@tailwindcss/vite": "^4.1.7",
@@ -47,16 +46,12 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react-swc": "^4.2.2",
     "elysia": "^1.4.25",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
     "@happy-dom/global-registrator": "^20.6.1",
     "happy-dom": "^20.6.1",
     "tailwindcss": "^4.1.7",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.48.0",
     "vite": "^7.3.1",
-    "vite-tsconfig-paths": "^6.1.1"
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^3.2.1"
   }
 }

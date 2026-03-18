@@ -16,7 +16,11 @@ const messages = {
  * Called by the backend after Telegram auth when user has no phone.
  * Fire-and-forget: does not block the auth response.
  */
-export async function sendContactRequest(telegramChatId: string, language: string, logger: Logger): Promise<boolean> {
+export async function sendContactRequest(
+    telegramChatId: string,
+    language: string,
+    logger: Logger,
+): Promise<boolean> {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
         logger.error("Telegram: BOT_TOKEN not configured");
@@ -34,9 +38,7 @@ export async function sendContactRequest(telegramChatId: string, language: strin
                 chat_id: telegramChatId,
                 text: msg.text,
                 reply_markup: {
-                    keyboard: [
-                        [{ text: msg.button, request_contact: true }],
-                    ],
+                    keyboard: [[{ text: msg.button, request_contact: true }]],
                     resize_keyboard: true,
                     one_time_keyboard: true,
                 },
@@ -53,7 +55,7 @@ export async function sendContactRequest(telegramChatId: string, language: strin
             return false;
         }
 
-        const responseBody = await response.json();
+        const responseBody: unknown = await response.json();
         logger.info("Telegram: Contact request sent", { telegramChatId, response: responseBody });
         return true;
     } catch (error) {

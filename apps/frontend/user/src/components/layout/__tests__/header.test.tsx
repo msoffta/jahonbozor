@@ -1,8 +1,7 @@
-import { describe, test, expect, mock } from "bun:test";
 import { render } from "@testing-library/react";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
+import { describe, expect, test, vi } from "vitest";
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, ...props }: any) => (
         <a href={to} {...props}>
             {children}
@@ -10,8 +9,14 @@ mock.module("@tanstack/react-router", () => ({
     ),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
+vi.mock("motion/react", async () => {
+    const { motionReactMock } = await import("@/test-utils/ui-mocks");
+    return motionReactMock();
+});
+vi.mock("@jahonbozor/ui", async () => {
+    const { jahonbozorUIMock } = await import("@/test-utils/ui-mocks");
+    return jahonbozorUIMock();
+});
 
 import { Header } from "../header";
 

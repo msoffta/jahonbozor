@@ -1,55 +1,55 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useCartStore } from "@/stores/cart.store";
 
 const mockOrder = {
     id: 1,
     paymentType: "CASH",
-    status: "NEW",
+    comment: null,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
     items: [],
 };
 
-const mockGet = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: { count: 1, orders: [mockOrder] } },
-        error: null,
-    }),
-);
+const { mockGet, mockDetailGet, mockPost } = vi.hoisted(() => ({
+    mockGet: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: { count: 1, orders: [mockOrder] } },
+            error: null,
+        }),
+    ),
+    mockDetailGet: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: mockOrder },
+            error: null,
+        }),
+    ),
+    mockPost: vi.fn(() =>
+        Promise.resolve({
+            data: { success: true, data: mockOrder },
+            error: null,
+        }),
+    ),
+}));
 
-const mockDetailGet = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: mockOrder },
-        error: null,
-    }),
-);
-
-const mockPost = mock(() =>
-    Promise.resolve({
-        data: { success: true, data: mockOrder },
-        error: null,
-    }),
-);
-
-mock.module("@/lib/api-client", () => ({
+vi.mock("@/lib/api-client", () => ({
     api: {
         api: {
             public: {
-                orders: Object.assign(
-                    (_params: { id: number }) => ({ get: mockDetailGet }),
-                    { get: mockGet, post: mockPost },
-                ),
+                orders: Object.assign((_params: { id: number }) => ({ get: mockDetailGet }), {
+                    get: mockGet,
+                    post: mockPost,
+                }),
             },
         },
     },
 }));
 
-import { orderKeys, ordersListOptions, orderDetailOptions } from "../orders.api";
+import { orderDetailOptions, orderKeys, ordersListOptions } from "../orders.api";
 
 describe("orders.api", () => {
     beforeEach(() => {
         useCartStore.setState({ items: [] });
-        mock.restore();
     });
 
     describe("orderKeys", () => {
@@ -58,7 +58,7 @@ describe("orders.api", () => {
         });
 
         test("should have correct list key with params", () => {
-            const params = { page: 1, status: "NEW" };
+            const params = { page: 1 };
             expect(orderKeys.list(params)).toEqual(["orders", "list", params]);
         });
 
@@ -69,13 +69,13 @@ describe("orders.api", () => {
 
     describe("ordersListOptions", () => {
         test("should have correct queryKey with params", () => {
-            const params = { page: 2, status: "ACCEPTED" as const };
+            const params = { page: 2 };
             const options = ordersListOptions(params);
             expect([...options.queryKey]).toEqual(["orders", "list", params]);
         });
 
         test("queryFn should call api with correct query params", async () => {
-            const params = { page: 3, limit: 10, status: "NEW" as const };
+            const params = { page: 3, limit: 10 };
             const options = ordersListOptions(params);
             await options.queryFn!({} as never);
 
@@ -84,7 +84,8 @@ describe("orders.api", () => {
                     page: 3,
                     limit: 10,
                     searchQuery: "",
-                    status: "NEW",
+                    sortBy: "id",
+                    sortOrder: "asc",
                 },
             });
         });
@@ -98,7 +99,8 @@ describe("orders.api", () => {
                     page: 1,
                     limit: 20,
                     searchQuery: "",
-                    status: undefined,
+                    sortBy: "id",
+                    sortOrder: "asc",
                 },
             });
         });

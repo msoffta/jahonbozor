@@ -1,30 +1,17 @@
-import type { ExpensesListResponse, ExpenseDetailResponse } from "@jahonbozor/schemas/src/expenses";
+import { auditInTransaction } from "@backend/lib/audit";
+import { prisma } from "@backend/lib/prisma";
+import { createExpenseSnapshot } from "@backend/lib/snapshots";
+
+import type { Prisma } from "@backend/generated/prisma/client";
+import type { ServiceContext } from "@backend/lib/audit";
+import type { Logger } from "@jahonbozor/logger";
 import type {
     CreateExpenseBody,
-    UpdateExpenseBody,
+    ExpenseDetailResponse,
+    ExpensesListResponse,
     ExpensesPagination,
+    UpdateExpenseBody,
 } from "@jahonbozor/schemas/src/expenses";
-import type { Token } from "@jahonbozor/schemas";
-import type { Logger } from "@jahonbozor/logger";
-import { prisma } from "@backend/lib/prisma";
-import { auditInTransaction } from "@backend/lib/audit";
-import type { ExpenseModel } from "@backend/generated/prisma/models/Expense";
-
-interface AuditContext {
-    staffId: number;
-    user: Token;
-    requestId?: string;
-}
-
-function createExpenseSnapshot(expense: ExpenseModel) {
-    return {
-        name: expense.name,
-        amount: Number(expense.amount),
-        description: expense.description,
-        expenseDate: expense.expenseDate,
-        staffId: expense.staffId,
-    };
-}
 
 export abstract class ExpensesService {
     static async getAllExpenses(
@@ -32,9 +19,19 @@ export abstract class ExpensesService {
         logger: Logger,
     ): Promise<ExpensesListResponse> {
         try {
-            const { page, limit, searchQuery, staffId, dateFrom, dateTo, includeDeleted } = params;
+            const {
+                page,
+                limit,
+                sortBy,
+                sortOrder,
+                searchQuery,
+                staffId,
+                dateFrom,
+                dateTo,
+                includeDeleted,
+            } = params;
 
-            const whereClause: Record<string, unknown> = {};
+            const whereClause: Prisma.ExpenseWhereInput = {};
 
             if (!includeDeleted) {
                 whereClause.deletedAt = null;
@@ -73,15 +70,19 @@ export abstract class ExpensesService {
                             },
                         },
                     },
-                    orderBy: { id: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
-            const mapped = expenses.map(e => ({ ...e, amount: Number(e.amount) }));
+            const mapped = expenses.map((e) => ({ ...e, amount: Number(e.amount) }));
 
             return { success: true, data: { count, expenses: mapped } };
         } catch (error) {
-            logger.error("Expenses: Error in getAllExpenses", { page: params.page, limit: params.limit, error });
+            logger.error("Expenses: Error in getAllExpenses", {
+                page: params.page,
+                limit: params.limit,
+                error,
+            });
             return { success: false, error };
         }
     }
@@ -116,7 +117,7 @@ export abstract class ExpensesService {
 
     static async createExpense(
         expenseData: CreateExpenseBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<ExpenseDetailResponse> {
         try {
@@ -145,7 +146,11 @@ export abstract class ExpensesService {
                 return [expense];
             });
 
-            logger.info("Expenses: Expense created", { expenseId: newExpense.id, name: expenseData.name, staffId: context.staffId });
+            logger.info("Expenses: Expense created", {
+                expenseId: newExpense.id,
+                name: expenseData.name,
+                staffId: context.staffId,
+            });
             const mapped = { ...newExpense, amount: Number(newExpense.amount) };
             return { success: true, data: mapped };
         } catch (error) {
@@ -157,7 +162,7 @@ export abstract class ExpensesService {
     static async updateExpense(
         expenseId: number,
         expenseData: UpdateExpenseBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<ExpenseDetailResponse> {
         try {
@@ -207,7 +212,7 @@ export abstract class ExpensesService {
 
     static async deleteExpense(
         expenseId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<ExpenseDetailResponse> {
         try {
@@ -245,7 +250,11 @@ export abstract class ExpensesService {
                 return [expense];
             });
 
-            logger.info("Expenses: Expense deleted", { expenseId, name: existingExpense.name, staffId: context.staffId });
+            logger.info("Expenses: Expense deleted", {
+                expenseId,
+                name: existingExpense.name,
+                staffId: context.staffId,
+            });
             const mapped = { ...deletedExpense, amount: Number(deletedExpense.amount) };
             return { success: true, data: mapped };
         } catch (error) {
@@ -256,7 +265,7 @@ export abstract class ExpensesService {
 
     static async restoreExpense(
         expenseId: number,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<ExpenseDetailResponse> {
         try {
@@ -295,7 +304,11 @@ export abstract class ExpensesService {
                 return [expense];
             });
 
-            logger.info("Expenses: Expense restored", { expenseId, name: existingExpense.name, staffId: context.staffId });
+            logger.info("Expenses: Expense restored", {
+                expenseId,
+                name: existingExpense.name,
+                staffId: context.staffId,
+            });
             const mapped = { ...restoredExpense, amount: Number(restoredExpense.amount) };
             return { success: true, data: mapped };
         } catch (error) {

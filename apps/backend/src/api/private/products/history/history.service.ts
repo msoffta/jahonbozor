@@ -1,22 +1,15 @@
 import { auditInTransaction } from "@backend/lib/audit";
 import { prisma } from "@backend/lib/prisma";
+
+import type { ServiceContext } from "@backend/lib/audit";
 import type { Logger } from "@jahonbozor/logger";
-import type { Token } from "@jahonbozor/schemas";
 import type {
+    CreateInventoryAdjustmentBody,
     HistoryDetailResponse,
     HistoryListResponse,
     InventoryAdjustmentResponse,
-} from "@jahonbozor/schemas/src/products";
-import {
-    CreateInventoryAdjustmentBody,
     ProductHistoryPagination,
 } from "@jahonbozor/schemas/src/products";
-
-interface AuditContext {
-    staffId: number;
-    user: Token;
-    requestId?: string;
-}
 
 export abstract class HistoryService {
     static async getAllHistory(
@@ -27,6 +20,8 @@ export abstract class HistoryService {
             const {
                 page,
                 limit,
+                sortBy,
+                sortOrder,
                 searchQuery,
                 productId,
                 operation,
@@ -62,15 +57,13 @@ export abstract class HistoryService {
                         },
                         staff: { select: { id: true, fullname: true } },
                     },
-                    orderBy: { id: "asc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
             const mapped = history.map((h) => ({
                 ...h,
-                product: h.product
-                    ? { ...h.product, price: Number(h.product.price) }
-                    : undefined,
+                product: h.product ? { ...h.product, price: Number(h.product.price) } : undefined,
             }));
 
             return { success: true, data: { count, history: mapped } };
@@ -135,8 +128,7 @@ export abstract class HistoryService {
         logger: Logger,
     ): Promise<HistoryListResponse> {
         try {
-            const { page, limit, operation, staffId, dateFrom, dateTo } =
-                params;
+            const { page, limit, sortBy, sortOrder, operation, staffId, dateFrom, dateTo } = params;
             const whereClause = {
                 productId,
                 ...(operation && { operation }),
@@ -154,7 +146,7 @@ export abstract class HistoryService {
                     include: {
                         staff: { select: { id: true, fullname: true } },
                     },
-                    orderBy: { createdAt: "desc" },
+                    orderBy: { [sortBy]: sortOrder },
                 }),
             ]);
 
@@ -171,7 +163,7 @@ export abstract class HistoryService {
     static async createInventoryAdjustment(
         productId: number,
         adjustmentData: CreateInventoryAdjustmentBody,
-        context: AuditContext,
+        context: ServiceContext,
         logger: Logger,
     ): Promise<InventoryAdjustmentResponse> {
         try {
@@ -180,18 +172,12 @@ export abstract class HistoryService {
             });
 
             if (!product) {
-                logger.warn(
-                    "History: Product not found for inventory adjustment",
-                    { productId },
-                );
+                logger.warn("History: Product not found for inventory adjustment", { productId });
                 return { success: false, error: "Product not found" };
             }
 
             if (product.deletedAt) {
-                logger.warn(
-                    "History: Cannot adjust inventory for deleted product",
-                    { productId },
-                );
+                logger.warn("History: Cannot adjust inventory for deleted product", { productId });
                 return {
                     success: false,
                     error: "Cannot adjust inventory for deleted product",

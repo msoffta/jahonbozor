@@ -21,6 +21,12 @@ RUN bun install --frozen-lockfile
 # Now copy the actual frontend source code
 COPY apps/frontend ./apps/frontend
 
+# Vite inlines VITE_* env vars at build time
+ARG VITE_TELEGRAM_BOT_USERNAME
+ARG VITE_SENTRY_DSN
+ENV VITE_TELEGRAM_BOT_USERNAME=$VITE_TELEGRAM_BOT_USERNAME
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
+
 # Build both frontends
 RUN bun run --cwd apps/frontend/admin build
 RUN bun run --cwd apps/frontend/user build

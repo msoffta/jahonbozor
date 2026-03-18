@@ -1,14 +1,18 @@
-import type { StaffListResponse, StaffDetailResponse, StaffDeleteResponse } from "@jahonbozor/schemas/src/staff";
-import { Permission, hasAnyPermission } from "@jahonbozor/schemas";
-import {
-    CreateStaffBody,
-    UpdateStaffBody,
-    StaffPagination,
-} from "@jahonbozor/schemas/src/staff";
-import { authMiddleware } from "@backend/lib/middleware";
 import { Elysia, t } from "elysia";
-import { StaffService } from "./staff.service";
+
+import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
+import { CreateStaffBody, StaffPagination, UpdateStaffBody } from "@jahonbozor/schemas/src/staff";
+
+import { authMiddleware } from "@backend/lib/middleware";
+
 import { roles } from "./roles/roles.index";
+import { StaffService } from "./staff.service";
+
+import type {
+    StaffDeleteResponse,
+    StaffDetailResponse,
+    StaffListResponse,
+} from "@jahonbozor/schemas/src/staff";
 
 const staffIdParams = t.Object({
     id: t.Numeric(),
@@ -16,6 +20,8 @@ const staffIdParams = t.Object({
 
 export const staff = new Elysia({ prefix: "/staff" })
     .use(authMiddleware)
+    .use(roles)
+    // --- Static & Root routes first ---
     .get(
         "/",
         async ({ query, logger }): Promise<StaffListResponse> => {
@@ -31,6 +37,32 @@ export const staff = new Elysia({ prefix: "/staff" })
             query: StaffPagination,
         },
     )
+    .post(
+        "/",
+        async ({ body, user, set, logger, requestId }): Promise<StaffDetailResponse> => {
+            try {
+                const result = await StaffService.createStaff(
+                    body,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    set.status = 400;
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Staff: Unhandled error in POST /staff", { error });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.STAFF_CREATE],
+            body: CreateStaffBody,
+        },
+    )
+    // --- Dynamic routes last to avoid capturing sub-routers ---
     .get(
         "/:id",
         async ({ params, user, permissions, set, logger }): Promise<StaffDetailResponse> => {
@@ -70,34 +102,17 @@ export const staff = new Elysia({ prefix: "/staff" })
             params: staffIdParams,
         },
     )
-    .post(
-        "/",
-        async ({ body, user, set, logger, requestId }): Promise<StaffDetailResponse> => {
-            try {
-                const result = await StaffService.createStaff(
-                    body,
-                    { staffId: user.id, user, requestId },
-                    logger,
-                );
-
-                if (!result.success) {
-                    set.status = 400;
-                }
-
-                return result;
-            } catch (error) {
-                logger.error("Staff: Unhandled error in POST /staff", { error });
-                return { success: false, error };
-            }
-        },
-        {
-            permissions: [Permission.STAFF_CREATE],
-            body: CreateStaffBody,
-        },
-    )
     .patch(
         "/:id",
-        async ({ params, body, user, permissions, set, logger, requestId }): Promise<StaffDetailResponse> => {
+        async ({
+            params,
+            body,
+            user,
+            permissions,
+            set,
+            logger,
+            requestId,
+        }): Promise<StaffDetailResponse> => {
             try {
                 const targetStaffId = params.id;
                 const requestingStaffId = user.id;
@@ -176,4 +191,39 @@ export const staff = new Elysia({ prefix: "/staff" })
             params: staffIdParams,
         },
     )
-    .use(roles);
+    .post(
+        "/:id/restore",
+        async ({ params, user, set, logger, requestId }): Promise<StaffDeleteResponse> => {
+            try {
+                const result = await StaffService.restoreStaff(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    const error = typeof result.error === "string" ? result.error : "";
+                    if (error.includes("not found")) {
+                        set.status = 404;
+                    } else if (error.includes("not deleted")) {
+                        set.status = 400;
+                    } else {
+                        set.status = 500;
+                    }
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Staff: Unhandled error in POST /:id/restore", {
+                    id: params.id,
+                    error,
+                });
+                set.status = 500;
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.STAFF_DELETE],
+            params: staffIdParams,
+        },
+    );

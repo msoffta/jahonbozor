@@ -1,15 +1,15 @@
 {
-    "title": "Приходы",
-    "income_id": "ID",
-    "income_product": "Товар",
-    "income_quantity": "Количество",
-    "income_reason": "Причина",
-    "income_staff": "Сотрудник",
-    "income_date": "Дата",
-    "income_empty": "Приходы не найдены",
-    "status_deleted": "удален",
-    "table_columns": "Столбцы",
-    "table_show_all": "Все",
-    "table_previous": "Назад",
-    "table_next": "Вперёд"
+  "title": "Приходы",
+  "income_id": "ID",
+  "income_product": "Товар",
+  "income_quantity": "Количество",
+  "income_reason": "Причина",
+  "income_staff": "Сотрудник",
+  "income_date": "Дата",
+  "income_empty": "Приходы не найдены",
+  "status_deleted": "удален",
+  "table_columns": "Столбцы",
+  "table_show_all": "Все",
+  "table_previous": "Назад",
+  "table_next": "Вперёд"
 }

@@ -1,25 +1,21 @@
-import type { Column, Table } from "@tanstack/react-table";
-import { Settings2, X } from "lucide-react";
+import { Check, Settings2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+
 import { cn } from "../../lib/utils";
-import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "../ui/select";
-import {
     DropdownMenu,
-    DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { Input } from "../ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+
 import type { DataTableTranslations } from "./types";
+import type { Column, Table } from "@tanstack/react-table";
 
 interface DataTableToolbarProps<TData> {
     table: Table<TData>;
@@ -45,6 +41,7 @@ export function DataTableToolbar<TData>({
     enableFiltering,
     translations,
 }: DataTableToolbarProps<TData>) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean OR logic, not nullish coalescing
     const hasToolbar = enableGlobalSearch || enableColumnVisibility || enableFiltering;
     if (!hasToolbar) return null;
 
@@ -55,13 +52,13 @@ export function DataTableToolbar<TData>({
     const hasActiveFilters = filterColumns.some((col) => col.getFilterValue() !== undefined);
 
     return (
-        <div className="flex items-center gap-2 py-4">
+        <div className="flex flex-wrap items-center gap-2 py-4">
             {enableGlobalSearch && (
                 <Input
                     placeholder={translations?.search ?? "Search..."}
                     value={globalFilter}
                     onChange={(e) => onGlobalFilterChange(e.target.value)}
-                    className="max-w-sm h-9"
+                    className="h-9 w-full sm:max-w-sm"
                 />
             )}
 
@@ -84,7 +81,9 @@ export function DataTableToolbar<TData>({
                                 <Select
                                     value={currentValue || "__all__"}
                                     onValueChange={(value) =>
-                                        column.setFilterValue(value === "__all__" ? undefined : value)
+                                        column.setFilterValue(
+                                            value === "__all__" ? undefined : value,
+                                        )
                                     }
                                 >
                                     <SelectTrigger className="h-9 min-w-[130px]">
@@ -106,7 +105,10 @@ export function DataTableToolbar<TData>({
                     }
 
                     if (meta.filterVariant === "range") {
-                        const filterValue = (column.getFilterValue() as [number, number]) ?? [undefined, undefined];
+                        const filterValue = (column.getFilterValue() as [number, number]) ?? [
+                            undefined,
+                            undefined,
+                        ];
                         return (
                             <motion.div
                                 key={column.id}
@@ -118,7 +120,12 @@ export function DataTableToolbar<TData>({
                                 <Input
                                     type="number"
                                     value={filterValue[0] ?? ""}
-                                    onChange={(e) => column.setFilterValue((old: [number, number]) => [e.target.value ? Number(e.target.value) : undefined, old?.[1]])}
+                                    onChange={(e) =>
+                                        column.setFilterValue((old: [number, number]) => [
+                                            e.target.value ? Number(e.target.value) : undefined,
+                                            old?.[1],
+                                        ])
+                                    }
                                     placeholder={`${label} ${translations?.filterMin ?? "min"}`}
                                     className="h-9 w-24"
                                 />
@@ -126,7 +133,12 @@ export function DataTableToolbar<TData>({
                                 <Input
                                     type="number"
                                     value={filterValue[1] ?? ""}
-                                    onChange={(e) => column.setFilterValue((old: [number, number]) => [old?.[0], e.target.value ? Number(e.target.value) : undefined])}
+                                    onChange={(e) =>
+                                        column.setFilterValue((old: [number, number]) => [
+                                            old?.[0],
+                                            e.target.value ? Number(e.target.value) : undefined,
+                                        ])
+                                    }
                                     placeholder={translations?.filterMax ?? "max"}
                                     className="h-9 w-24"
                                 />
@@ -196,11 +208,18 @@ export function DataTableToolbar<TData>({
                                 return (
                                     <DropdownMenuItem
                                         key={column.id}
-                                        onClick={() => column.toggleVisibility(!column.getIsVisible())}
+                                        onClick={() =>
+                                            column.toggleVisibility(!column.getIsVisible())
+                                        }
                                     >
-                                        <span className={cn("mr-2", column.getIsVisible() ? "opacity-100" : "opacity-30")}>
-                                            ✓
-                                        </span>
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                column.getIsVisible()
+                                                    ? "opacity-100"
+                                                    : "opacity-30",
+                                            )}
+                                        />
                                         {label}
                                     </DropdownMenuItem>
                                 );

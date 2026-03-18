@@ -1,2 +1,2 @@
-export * from "./staff.model";
 export * from "./staff.dto";
+export * from "./staff.model";

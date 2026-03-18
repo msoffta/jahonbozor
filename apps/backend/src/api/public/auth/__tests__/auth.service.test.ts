@@ -1,16 +1,20 @@
-import { describe, test, expect, beforeEach, mock, spyOn } from "bun:test";
-import { prismaMock, createMockLogger } from "@backend/test/setup";
-import type { Staff, RefreshToken, Users } from "@backend/generated/prisma/client";
 import { password } from "bun";
-import Auth from "../auth.service";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const mockStaff: Staff = {
+import { createMockLogger, prismaMock } from "@backend/test/setup";
+
+import { AuthService } from "../auth.service";
+
+import type { RefreshToken, Staff, Users } from "@backend/generated/prisma/client";
+
+const _mockStaff: Staff = {
     id: 1,
     fullname: "John Doe",
     username: "johndoe",
     passwordHash: "$argon2id$v=19$m=65536,t=2,p=1$hash",
     telegramId: BigInt(123456789),
     roleId: 1,
+    deletedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
 };
@@ -49,7 +53,7 @@ const mockStaffWithRole = {
     },
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
-} as unknown as Awaited<ReturnType<typeof Auth.getStaffById>>;
+} as unknown as Awaited<ReturnType<typeof AuthService.getStaffById>>;
 
 const mockUserDb: Users = {
     id: 1,
@@ -79,11 +83,11 @@ const mockUserResult = {
 
 describe("Auth Service", () => {
     let mockLogger: ReturnType<typeof createMockLogger>;
-    let passwordVerifySpy: ReturnType<typeof spyOn>;
+    let passwordVerifySpy: any;
 
     beforeEach(() => {
         mockLogger = createMockLogger();
-        passwordVerifySpy = spyOn(password, "verify");
+        passwordVerifySpy = vi.spyOn(password, "verify");
     });
 
     describe("checkIfStaffExists", () => {
@@ -93,7 +97,7 @@ describe("Auth Service", () => {
             passwordVerifySpy.mockResolvedValueOnce(true);
 
             // Act
-            const result = await Auth.checkIfStaffExists(
+            const result = await AuthService.checkIfStaffExists(
                 { username: "johndoe", password: "correctpassword" },
                 mockLogger,
             );
@@ -114,7 +118,7 @@ describe("Auth Service", () => {
             prismaMock.staff.findFirst.mockResolvedValueOnce(null);
 
             // Act
-            const result = await Auth.checkIfStaffExists(
+            const result = await AuthService.checkIfStaffExists(
                 { username: "nonexistent", password: "anypassword" },
                 mockLogger,
             );
@@ -132,7 +136,7 @@ describe("Auth Service", () => {
             passwordVerifySpy.mockResolvedValueOnce(false);
 
             // Act
-            const result = await Auth.checkIfStaffExists(
+            const result = await AuthService.checkIfStaffExists(
                 { username: "johndoe", password: "wrongpassword" },
                 mockLogger,
             );
@@ -144,18 +148,19 @@ describe("Auth Service", () => {
             });
         });
 
-        test("should throw error when database fails", async () => {
+        test("should return null when database fails", async () => {
             // Arrange
             const dbError = new Error("Database connection failed");
             prismaMock.staff.findFirst.mockRejectedValueOnce(dbError);
 
-            // Act & Assert
-            await expect(
-                Auth.checkIfStaffExists(
-                    { username: "johndoe", password: "anypassword" },
-                    mockLogger,
-                ),
-            ).rejects.toThrow("Auth: Failed to login user");
+            // Act
+            const result = await AuthService.checkIfStaffExists(
+                { username: "johndoe", password: "anypassword" },
+                mockLogger,
+            );
+
+            // Assert
+            expect(result).toBeNull();
             expect(mockLogger.error).toHaveBeenCalledWith("Auth: Error in checkIfStaffExists", {
                 username: "johndoe",
                 error: dbError,
@@ -169,7 +174,7 @@ describe("Auth Service", () => {
             prismaMock.refreshToken.create.mockResolvedValueOnce(mockRefreshToken);
 
             // Act
-            const result = await Auth.saveRefreshToken(
+            const result = await AuthService.saveRefreshToken(
                 {
                     token: "new-token",
                     exp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -199,7 +204,7 @@ describe("Auth Service", () => {
             prismaMock.refreshToken.create.mockResolvedValueOnce(userRefreshToken);
 
             // Act
-            const result = await Auth.saveRefreshToken(
+            const result = await AuthService.saveRefreshToken(
                 {
                     token: "user-token",
                     exp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -229,7 +234,7 @@ describe("Auth Service", () => {
             prismaMock.refreshToken.create.mockRejectedValueOnce(dbError);
 
             // Act
-            const result = await Auth.saveRefreshToken(
+            const result = await AuthService.saveRefreshToken(
                 {
                     token: "new-token",
                     exp: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -258,10 +263,12 @@ describe("Auth Service", () => {
                 revoked: false,
                 expiredAt: new Date(Date.now() + 1000 * 60 * 60),
             };
-            prismaMock.refreshToken.findUnique.mockResolvedValueOnce(validToken as unknown as RefreshToken);
+            prismaMock.refreshToken.findUnique.mockResolvedValueOnce(
+                validToken as unknown as RefreshToken,
+            );
 
             // Act
-            const result = await Auth.validateRefreshToken("valid-token", mockLogger);
+            const result = await AuthService.validateRefreshToken("valid-token", mockLogger);
 
             // Assert
             expect(result).toEqual(validToken);
@@ -272,7 +279,7 @@ describe("Auth Service", () => {
             prismaMock.refreshToken.findUnique.mockResolvedValueOnce(null);
 
             // Act
-            const result = await Auth.validateRefreshToken("nonexistent-token", mockLogger);
+            const result = await AuthService.validateRefreshToken("nonexistent-token", mockLogger);
 
             // Assert
             expect(result).toBeNull();
@@ -288,10 +295,12 @@ describe("Auth Service", () => {
                 revoked: true,
                 expiredAt: new Date(Date.now() + 1000 * 60 * 60),
             };
-            prismaMock.refreshToken.findUnique.mockResolvedValueOnce(revokedToken as unknown as RefreshToken);
+            prismaMock.refreshToken.findUnique.mockResolvedValueOnce(
+                revokedToken as unknown as RefreshToken,
+            );
 
             // Act
-            const result = await Auth.validateRefreshToken("revoked-token", mockLogger);
+            const result = await AuthService.validateRefreshToken("revoked-token", mockLogger);
 
             // Assert
             expect(result).toBeNull();
@@ -309,10 +318,12 @@ describe("Auth Service", () => {
                 revoked: false,
                 expiredAt: new Date(Date.now() - 1000),
             };
-            prismaMock.refreshToken.findUnique.mockResolvedValueOnce(expiredToken as unknown as RefreshToken);
+            prismaMock.refreshToken.findUnique.mockResolvedValueOnce(
+                expiredToken as unknown as RefreshToken,
+            );
 
             // Act
-            const result = await Auth.validateRefreshToken("expired-token", mockLogger);
+            const result = await AuthService.validateRefreshToken("expired-token", mockLogger);
 
             // Assert
             expect(result).toBeNull();
@@ -327,7 +338,7 @@ describe("Auth Service", () => {
             prismaMock.refreshToken.findUnique.mockRejectedValueOnce(dbError);
 
             // Act
-            const result = await Auth.validateRefreshToken("any-token", mockLogger);
+            const result = await AuthService.validateRefreshToken("any-token", mockLogger);
 
             // Assert
             expect(result).toBeNull();
@@ -346,7 +357,7 @@ describe("Auth Service", () => {
             });
 
             // Act
-            await Auth.revokeRefreshToken("valid-token", mockLogger);
+            await AuthService.revokeRefreshToken("valid-token", mockLogger);
 
             // Assert
             expect(prismaMock.refreshToken.update).toHaveBeenCalledWith({
@@ -362,7 +373,7 @@ describe("Auth Service", () => {
             prismaMock.refreshToken.update.mockRejectedValueOnce(dbError);
 
             // Act
-            await Auth.revokeRefreshToken("any-token", mockLogger);
+            await AuthService.revokeRefreshToken("any-token", mockLogger);
 
             // Assert
             expect(mockLogger.error).toHaveBeenCalledWith("Auth: Error in revokeRefreshToken", {
@@ -374,10 +385,12 @@ describe("Auth Service", () => {
     describe("getStaffById", () => {
         test("should return staff with role when found", async () => {
             // Arrange
-            prismaMock.staff.findUnique.mockResolvedValueOnce(mockStaffWithRole as unknown as Staff);
+            prismaMock.staff.findUnique.mockResolvedValueOnce(
+                mockStaffWithRole as unknown as Staff,
+            );
 
             // Act
-            const result = await Auth.getStaffById(1, mockLogger);
+            const result = await AuthService.getStaffById(1, mockLogger);
 
             // Assert
             expect(result).toEqual(mockStaffWithRole);
@@ -388,7 +401,7 @@ describe("Auth Service", () => {
             prismaMock.staff.findUnique.mockResolvedValueOnce(null);
 
             // Act
-            const result = await Auth.getStaffById(999, mockLogger);
+            const result = await AuthService.getStaffById(999, mockLogger);
 
             // Assert
             expect(result).toBeNull();
@@ -403,7 +416,7 @@ describe("Auth Service", () => {
             prismaMock.staff.findUnique.mockRejectedValueOnce(dbError);
 
             // Act
-            const result = await Auth.getStaffById(1, mockLogger);
+            const result = await AuthService.getStaffById(1, mockLogger);
 
             // Assert
             expect(result).toBeNull();
@@ -420,7 +433,7 @@ describe("Auth Service", () => {
             prismaMock.users.findUnique.mockResolvedValueOnce(mockUserDb);
 
             // Act
-            const result = await Auth.getUserById(1, mockLogger);
+            const result = await AuthService.getUserById(1, mockLogger);
 
             // Assert
             expect(result).toEqual(mockUserResult);
@@ -431,7 +444,7 @@ describe("Auth Service", () => {
             prismaMock.users.findUnique.mockResolvedValueOnce(null);
 
             // Act
-            const result = await Auth.getUserById(999, mockLogger);
+            const result = await AuthService.getUserById(999, mockLogger);
 
             // Assert
             expect(result).toBeNull();
@@ -446,7 +459,7 @@ describe("Auth Service", () => {
             prismaMock.users.findUnique.mockRejectedValueOnce(dbError);
 
             // Act
-            const result = await Auth.getUserById(1, mockLogger);
+            const result = await AuthService.getUserById(1, mockLogger);
 
             // Assert
             expect(result).toBeNull();
@@ -461,7 +474,10 @@ describe("Auth Service", () => {
         test("checkIfStaffExists with empty username should return null", async () => {
             prismaMock.staff.findFirst.mockResolvedValueOnce(null);
 
-            const result = await Auth.checkIfStaffExists({ username: "", password: "password123" }, mockLogger);
+            const result = await AuthService.checkIfStaffExists(
+                { username: "", password: "password123" },
+                mockLogger,
+            );
 
             expect(result).toBeNull();
         });
@@ -469,7 +485,7 @@ describe("Auth Service", () => {
         test("validateRefreshToken with empty string should return null", async () => {
             prismaMock.refreshToken.findUnique.mockResolvedValueOnce(null);
 
-            const result = await Auth.validateRefreshToken("", mockLogger);
+            const result = await AuthService.validateRefreshToken("", mockLogger);
 
             expect(result).toBeNull();
         });
@@ -477,7 +493,7 @@ describe("Auth Service", () => {
         test("getStaffById with id=0 should return null", async () => {
             prismaMock.staff.findUnique.mockResolvedValueOnce(null);
 
-            const result = await Auth.getStaffById(0, mockLogger);
+            const result = await AuthService.getStaffById(0, mockLogger);
 
             expect(result).toBeNull();
         });
@@ -485,7 +501,7 @@ describe("Auth Service", () => {
         test("getUserById with id=0 should return null", async () => {
             prismaMock.users.findUnique.mockResolvedValueOnce(null);
 
-            const result = await Auth.getUserById(0, mockLogger);
+            const result = await AuthService.getUserById(0, mockLogger);
 
             expect(result).toBeNull();
         });
@@ -493,7 +509,7 @@ describe("Auth Service", () => {
         test("getStaffById with negative id should return null", async () => {
             prismaMock.staff.findUnique.mockResolvedValueOnce(null);
 
-            const result = await Auth.getStaffById(-1, mockLogger);
+            const result = await AuthService.getStaffById(-1, mockLogger);
 
             expect(result).toBeNull();
         });

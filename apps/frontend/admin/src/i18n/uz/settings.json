@@ -1,0 +1,205 @@
+{
+  "title": "Sozlamalar",
+  "tab_staff": "Xodimlar",
+  "tab_roles": "Rollar",
+  "no_permissions": "Sozlamalarga kirishingiz yo'q",
+
+  "staff_id": "ID",
+  "staff_fullname": "F.I.O.",
+  "staff_username": "Login",
+  "staff_role": "Rol",
+  "staff_permissions_count": "Huquqlar",
+  "staff_created": "Yaratilgan",
+  "staff_actions": "Amallar",
+  "staff_delete": "Xodimni o'chirish",
+  "staff_cannot_delete_self": "O'zingizni o'chirib bo'lmaydi",
+  "staff_empty": "Xodimlar topilmadi",
+  "staff_description": "Xodimlar hisoblarini va ularning rollarini boshqarish",
+  "create_staff": "Xodim qo'shish",
+  "create_staff_title": "Yangi xodim",
+  "staff_password": "Parol",
+  "staff_fullname_placeholder": "Ism Familiya",
+
+  "role_id": "ID",
+  "role_name": "Nomi",
+  "role_permissions": "Huquqlar",
+  "role_staff_count": "Xodimlar",
+  "role_created": "Yaratilgan",
+  "role_actions": "Amallar",
+  "role_edit_permissions": "Huquqlarni tahrirlash",
+  "role_delete": "Rolni o'chirish",
+  "role_cannot_delete_higher": "Ko'proq huquqli rolni o'chirib bo'lmaydi",
+  "roles_empty": "Rollar topilmadi",
+  "roles_description": "Xodimlar rollari va huquqlarini boshqarish",
+  "create_role": "Rol yaratish",
+  "create_role_title": "Yangi rol",
+  "role_name_placeholder": "Menejer",
+  "select_role": "Rolni tanlang",
+  "permissions_selected": "tanlangan",
+  "search_permissions_placeholder": "Huquqlarni qidirish...",
+  "select_all": "Hammasini tanlash",
+  "deselect_all": "Hammasini bekor qilish",
+  "no_permissions_found": "Huquqlar topilmadi",
+  "permission_group_producthistory": "Mahsulotlar tarixi",
+  "permission_group_auditlogs": "Audit jurnali",
+
+  "edit_permissions_title": "Huquqlar: {{roleName}}",
+  "permission_group_users": "Mijozlar",
+  "permission_group_staff": "Xodimlar",
+  "permission_group_roles": "Rollar",
+  "permission_group_products": "Mahsulotlar",
+  "permission_group_categories": "Kategoriyalar",
+  "permission_group_orders": "Buyurtmalar",
+  "permission_group_expenses": "Chiqimlar",
+  "permission_group_debts": "Qarzlar",
+  "permission_group_analytics": "Analitika",
+
+  "permission_section_people": "Odamlarni boshqarish",
+  "permission_section_catalog": "Katalog",
+  "permission_section_sales_finance": "Savdo va moliya",
+  "permission_section_system": "Tizim",
+
+  "perm_users": {
+    "create": { "title": "Yaratish", "desc": "Tizimda yangi mijozlarni ro'yxatdan o'tkazish" },
+    "read": {
+      "own": {
+        "title": "O'z profili",
+        "desc": "Faqat o'z shaxsiy ma'lumotlariga kirish (mijozlar uchun)"
+      },
+      "all": {
+        "title": "Barcha profillar",
+        "desc": "Barcha ro'yxatdan o'tgan mijozlar ma'lumotlarini ko'rish"
+      }
+    },
+    "update": {
+      "own": {
+        "title": "O'zini tahrirlash",
+        "desc": "O'z shaxsiy ma'lumotlarini o'zgartirish imkoniyati"
+      },
+      "all": {
+        "title": "Hammasini tahrirlash",
+        "desc": "Istalgan mijoz ma'lumotlarini o'zgartirish uchun to'liq ruxsat"
+      }
+    },
+    "delete": { "title": "O'chirish", "desc": "Mijozlar hisoblarini butunlay o'chirish" },
+    "list": { "title": "Ro'yxat", "desc": "Mijozlarning umumiy ro'yxatini ko'rish" }
+  },
+  "perm_staff": {
+    "create": { "title": "Yaratish", "desc": "Admin panelga yangi xodimlar qo'shish" },
+    "read": {
+      "own": { "title": "O'z profili", "desc": "O'z hisob ma'lumotlarini ko'rish" },
+      "all": {
+        "title": "Barcha profillar",
+        "desc": "Tizimdagi barcha xodimlar haqida ma'lumot ko'rish"
+      }
+    },
+    "update": {
+      "own": { "title": "O'zini tahrirlash", "desc": "O'z ma'lumotlari va parolini o'zgartirish" },
+      "all": {
+        "title": "Hammasini tahrirlash",
+        "desc": "Istalgan xodimning ma'lumotlari va rollarini o'zgartirish"
+      }
+    },
+    "delete": {
+      "title": "O'chirish",
+      "desc": "Xodimlar hisoblarini o'chirish (ishdan bo'shatish)"
+    },
+    "list": { "title": "Ro'yxat", "desc": "Barcha xodimlar ro'yxatini ko'rish" }
+  },
+  "perm_roles": {
+    "create": { "title": "Yaratish", "desc": "Huquqlar to'plami bilan yangi rollar yaratish" },
+    "read": { "title": "Ko'rish", "desc": "Muayyan rolning huquqlarini batafsil ko'rish" },
+    "update": { "title": "Tahrirlash", "desc": "Rol nomlari va ruxsatlarini o'zgartirish" },
+    "delete": { "title": "O'chirish", "desc": "Tizimdan rollarni o'chirish" },
+    "list": { "title": "Ro'yxat", "desc": "Mavjud rollar ro'yxatini ko'rish" }
+  },
+  "perm_products": {
+    "create": { "title": "Yaratish", "desc": "Katalogga yangi mahsulotlar qo'shish" },
+    "read": { "title": "Ko'rish", "desc": "Mahsulot haqida batafsil ma'lumot ko'rish" },
+    "update": {
+      "title": "Tahrirlash",
+      "desc": "Mahsulot narxlari, xususiyatlari va qoldiqlarini o'zgartirish"
+    },
+    "delete": { "title": "O'chirish", "desc": "Katalogdan mahsulotlarni o'chirish" },
+    "list": { "title": "Ro'yxat", "desc": "Umumiy mahsulotlar ro'yxatiga kirish" }
+  },
+  "perm_categories": {
+    "create": { "title": "Yaratish", "desc": "Mahsulotlar uchun yangi kategoriyalar yaratish" },
+    "read": { "title": "Ko'rish", "desc": "Kategoriya ma'lumotlarini ko'rish" },
+    "update": {
+      "title": "Tahrirlash",
+      "desc": "Kategoriya nomlari va parametrlarini o'zgartirish"
+    },
+    "delete": {
+      "title": "O'chirish",
+      "desc": "Kategoriyalarni o'chirish (mahsulotlar kategoriyasiz qolishi mumkin)"
+    },
+    "list": { "title": "Ro'yxat", "desc": "Barcha kategoriyalar ro'yxatini ko'rish" }
+  },
+  "perm_orders": {
+    "create": { "title": "Yaratish", "desc": "Admin panel orqali qo'lda buyurtma yaratish" },
+    "read": {
+      "own": {
+        "title": "O'z buyurtmalari",
+        "desc": "Faqat xodim mas'ul bo'lgan buyurtmalarni ko'rish"
+      },
+      "all": { "title": "Barcha buyurtmalar", "desc": "Tizimdagi barcha buyurtmalarni ko'rish" }
+    },
+    "update": {
+      "own": {
+        "title": "O'zinkini tahrirlash",
+        "desc": "O'z buyurtmalaridagi ma'lumotlarni o'zgartirish"
+      },
+      "all": {
+        "title": "Hammasini tahrirlash",
+        "desc": "Istalgan buyurtma va uning holatlarini to'liq boshqarish"
+      }
+    },
+    "delete": { "title": "O'chirish", "desc": "Buyurtmalarni o'chirish (bekor qilish)" },
+    "list": {
+      "own": { "title": "O'z ro'yxati", "desc": "Faqat o'z buyurtmalari jurnalini ko'rish" },
+      "all": {
+        "title": "Barcha ro'yxat",
+        "desc": "Tizimdagi barcha buyurtmalarning umumiy jurnalini ko'rish"
+      }
+    }
+  },
+  "perm_expenses": {
+    "create": { "title": "Yaratish", "desc": "Yangi moliyaviy chiqimlarni qayd etish" },
+    "read": { "title": "Ko'rish", "desc": "Muayyan chiqim tafsilotlarini ko'rish" },
+    "update": { "title": "Tahrirlash", "desc": "Chiqim summasi yoki tavsifini o'zgartirish" },
+    "delete": { "title": "O'chirish", "desc": "Chiqim yozuvini o'chirish" },
+    "list": { "title": "Ro'yxat", "desc": "Barcha chiqimlarning umumiy ro'yxatini ko'rish" }
+  },
+  "perm_product-history": {
+    "create": { "title": "Yozuv yaratish", "desc": "Mahsulot tarixiga qo'lda yozuv qo'shish" },
+    "read": { "title": "Ko'rish", "desc": "Muayyan mahsulot o'zgarishlarini ko'rish" },
+    "list": {
+      "title": "Ro'yxat",
+      "desc": "Mahsulotlar harakati tarixining umumiy jurnalini ko'rish"
+    }
+  },
+  "perm_audit-logs": {
+    "list": {
+      "title": "Loglar ro'yxati",
+      "desc": "Tizimdagi barcha foydalanuvchi harakatlarining jurnalini ko'rish"
+    },
+    "read": { "title": "Logni ko'rish", "desc": "Muayyan tizim hodisasini batafsil ko'rish" }
+  },
+  "perm_debts": {
+    "list": {
+      "title": "Qarzlarni ko'rish",
+      "desc": "Foydalanuvchilarning qarz buyurtmalarini ko'rish"
+    },
+    "read": { "title": "Qarz xulosasi", "desc": "Foydalanuvchining qarz ma'lumotlarini ko'rish" },
+    "create": {
+      "payment": { "title": "To'lov yozish", "desc": "Buyurtma bo'yicha qarz to'lovini yozish" }
+    }
+  },
+  "perm_analytics": {
+    "view": {
+      "title": "Hisobotlarni ko'rish",
+      "desc": "Moliyaviy tahlil, grafiklar va savdo statistikasiga kirish"
+    }
+  }
+}

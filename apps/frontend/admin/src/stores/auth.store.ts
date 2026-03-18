@@ -1,4 +1,5 @@
 import { create } from "zustand";
+
 import type { Permission, TokenStaff } from "@jahonbozor/schemas";
 
 interface AuthState {
@@ -17,9 +18,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     permissions: [],
     isAuthenticated: false,
 
-    setAuth: (token, user, permissions) =>
-        set({ token, user, permissions, isAuthenticated: true }),
+    setAuth: (token, user, permissions) => set({ token, user, permissions, isAuthenticated: true }),
 
-    clearAuth: () =>
-        set({ token: null, user: null, permissions: [], isAuthenticated: false }),
+    clearAuth: () => set({ token: null, user: null, permissions: [], isAuthenticated: false }),
 }));

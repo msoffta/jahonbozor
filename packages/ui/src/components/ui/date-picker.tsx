@@ -1,14 +1,13 @@
 import * as React from "react";
-import dayjs from "dayjs";
-import customParseFormat from "dayjs/plugin/customParseFormat";
+
+import { addDays, format, isValid, parse, subDays } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
+
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
-import { Input } from "./input";
-import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "./popover";
 import { Calendar } from "./calendar";
-
-dayjs.extend(customParseFormat);
+import { Input } from "./input";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./popover";
 
 export interface DatePickerProps {
     value?: Date | string;
@@ -20,6 +19,8 @@ export interface DatePickerProps {
     disabled?: boolean;
     showTime?: boolean;
     inputRef?: (el: HTMLInputElement | null) => void;
+    /** Label for the confirm button in showTime mode */
+    confirmLabel?: string;
 }
 
 function DatePicker({
@@ -32,26 +33,31 @@ function DatePicker({
     disabled,
     showTime,
     inputRef: externalRef,
+    confirmLabel,
 }: DatePickerProps) {
     const [open, setOpen] = React.useState(false);
     const innerRef = React.useRef<HTMLInputElement>(null);
 
-    const displayFormat = showTime ? "DD.MM.YYYY HH:mm" : "DD.MM.YYYY";
+    const displayFormat = showTime ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy";
+
+    /** Parse value (Date | string) into a Date, or undefined if invalid */
+    const toDate = (v: Date | string): Date | undefined => {
+        const d = v instanceof Date ? v : new Date(v);
+        return isValid(d) ? d : undefined;
+    };
 
     // Local text state — synced from value, allows free typing
     const [inputText, setInputText] = React.useState(() => {
         if (!value) return "";
-        const parsed = dayjs(value);
-        return parsed.isValid() ? parsed.format(displayFormat) : "";
+        const d = toDate(value);
+        return d ? format(d, displayFormat) : "";
     });
 
     // Sync inputText when value changes externally (calendar click, parent update)
     React.useEffect(() => {
         if (value) {
-            const parsed = dayjs(value);
-            if (parsed.isValid()) {
-                setInputText(parsed.format(displayFormat));
-            }
+            const d = toDate(value);
+            if (d) setInputText(format(d, displayFormat));
         } else {
             setInputText("");
         }
@@ -59,13 +65,12 @@ function DatePicker({
 
     const dateValue = React.useMemo(() => {
         if (!value) return undefined;
-        const parsed = dayjs(value);
-        return parsed.isValid() ? parsed.toDate() : undefined;
+        return toDate(value);
     }, [value]);
 
     const time = React.useMemo(() => {
         if (!dateValue) return "00:00";
-        return dayjs(dateValue).format("HH:mm");
+        return format(dateValue, "HH:mm");
     }, [dateValue]);
 
     const combineDateTime = (date: Date, timeStr: string): Date => {
@@ -80,8 +85,8 @@ function DatePicker({
         if (!isOpen) {
             // Resync input text from value on close (fixes invalid intermediate text)
             if (value) {
-                const parsed = dayjs(value);
-                if (parsed.isValid()) setInputText(parsed.format(displayFormat));
+                const d = toDate(value);
+                if (d) setInputText(format(d, displayFormat));
             } else {
                 setInputText("");
             }
@@ -121,9 +126,9 @@ function DatePicker({
             return;
         }
 
-        const parsed = dayjs(text, displayFormat, true);
-        if (parsed.isValid()) {
-            onChange(parsed.toDate());
+        const parsed = parse(text, displayFormat, new Date());
+        if (isValid(parsed)) {
+            onChange(parsed);
         }
     };
 
@@ -160,8 +165,8 @@ function DatePicker({
     const handleBlur = () => {
         // Resync input text from value on blur (fixes invalid intermediate text)
         if (value) {
-            const parsed = dayjs(value);
-            if (parsed.isValid()) setInputText(parsed.format(displayFormat));
+            const d = toDate(value);
+            if (d) setInputText(format(d, displayFormat));
         } else {
             setInputText("");
         }
@@ -169,14 +174,11 @@ function DatePicker({
 
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-            const current = dayjs(value || new Date());
-            if (current.isValid()) {
+            const current = value ? toDate(value) : new Date();
+            if (current && isValid(current)) {
                 e.preventDefault();
-                const next =
-                    e.key === "ArrowUp"
-                        ? current.add(1, "day")
-                        : current.subtract(1, "day");
-                onChange(next.toDate());
+                const next = e.key === "ArrowUp" ? addDays(current, 1) : subDays(current, 1);
+                onChange(next);
             }
         } else if (e.key === "Escape") {
             setOpen(false);
@@ -205,7 +207,7 @@ function DatePicker({
                         <button
                             type="button"
                             disabled={disabled}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
                             tabIndex={-1}
                         >
                             <CalendarIcon className="h-4 w-4" />
@@ -213,7 +215,11 @@ function DatePicker({
                     </PopoverTrigger>
                 </div>
             </PopoverAnchor>
-            <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <PopoverContent
+                className="w-auto p-0"
+                align="start"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <Calendar
                     mode="single"
                     selected={dateValue}
@@ -221,7 +227,7 @@ function DatePicker({
                     defaultMonth={dateValue}
                 />
                 {showTime && (
-                    <div className="border-t p-3 flex items-center gap-2">
+                    <div className="flex items-center gap-2 border-t p-3">
                         <Input
                             type="time"
                             value={time}
@@ -234,7 +240,7 @@ function DatePicker({
                             className="ml-auto h-8"
                             onClick={() => setOpen(false)}
                         >
-                            OK
+                            {confirmLabel ?? "OK"}
                         </Button>
                     </div>
                 )}

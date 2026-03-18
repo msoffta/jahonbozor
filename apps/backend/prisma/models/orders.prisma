@@ -1,48 +1,45 @@
 enum PaymentType {
-    CASH
-    CREDIT_CARD
-}
-
-enum OrderStatus {
-    NEW
-    ACCEPTED
-    CANCELLED
+  CASH
+  CREDIT_CARD
+  DEBT
 }
 
 model Order {
-    id          Int         @id @default(autoincrement())
-    userId      Int?
-    staffId     Int?
-    items       OrderItem[]
-    paymentType PaymentType
-    status      OrderStatus @default(NEW)
-    data        Json
+  id          Int         @id @default(autoincrement())
+  userId      Int?
+  staffId     Int?
+  items       OrderItem[]
+  paymentType PaymentType
+  comment     String?
+  data        Json
+  deletedAt   DateTime?
 
-    user  Users? @relation(fields: [userId], references: [id], onDelete: SetNull)
-    staff Staff? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  user         Users?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  staff        Staff?        @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  debtPayments DebtPayment[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    @@index([userId])
-    @@index([staffId])
-    @@index([status])
+  @@index([userId])
+  @@index([staffId])
+  @@index([deletedAt])
 }
 
 model OrderItem {
-    id        Int     @id @default(autoincrement())
-    orderId   Int
-    productId Int
-    quantity  Int
-    price     Decimal @db.Decimal(10, 2)
-    data      Json?
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  data      Json?
 
-    order   Order   @relation(fields: [orderId], references: [id])
-    product Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    @@index([orderId])
-    @@index([productId])
+  @@index([orderId])
+  @@index([productId])
 }

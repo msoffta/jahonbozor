@@ -1,8 +1,11 @@
 import z from "zod";
-import { Permission, ALL_PERMISSIONS } from "./permissions";
-import { Resource } from "./resources";
-import { Action } from "./actions";
-import { Scope } from "./scopes";
+
+import { ALL_PERMISSIONS } from "./permissions";
+
+import type { Action } from "./actions";
+import type { Permission } from "./permissions";
+import type { Resource } from "./resources";
+import type { Scope } from "./scopes";
 
 // Schema for a single permission - validates only known permissions
 export const PermissionSchema = z.enum(ALL_PERMISSIONS);
@@ -46,9 +49,7 @@ export const hasPermissionWithScope = (
     }
 
     // Check for exact permission
-    const permissionStr = scope
-        ? `${resource}:${action}:${scope}`
-        : `${resource}:${action}`;
+    const permissionStr = scope ? `${resource}:${action}:${scope}` : `${resource}:${action}`;
 
     return (
         ALL_PERMISSIONS.includes(permissionStr as Permission) &&
@@ -84,9 +85,7 @@ export const buildPermission = (
     action: Action,
     scope?: Scope,
 ): Permission | null => {
-    const permissionStr = scope
-        ? `${resource}:${action}:${scope}`
-        : `${resource}:${action}`;
+    const permissionStr = scope ? `${resource}:${action}:${scope}` : `${resource}:${action}`;
 
     if (ALL_PERMISSIONS.includes(permissionStr as Permission)) {
         return permissionStr as Permission;

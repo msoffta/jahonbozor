@@ -1,16 +1,17 @@
-import type {
-    ExpensesListResponse,
-    ExpenseDetailResponse,
-} from "@jahonbozor/schemas/src/expenses";
+import { Elysia, t } from "elysia";
+
 import { Permission } from "@jahonbozor/schemas";
 import {
     CreateExpenseBody,
-    UpdateExpenseBody,
     ExpensesPagination,
+    UpdateExpenseBody,
 } from "@jahonbozor/schemas/src/expenses";
+
 import { authMiddleware } from "@backend/lib/middleware";
-import { Elysia, t } from "elysia";
+
 import { ExpensesService } from "./expenses.service";
+
+import type { ExpenseDetailResponse, ExpensesListResponse } from "@jahonbozor/schemas/src/expenses";
 
 const expenseIdParams = t.Object({
     id: t.Numeric(),
@@ -45,7 +46,10 @@ export const expenses = new Elysia({ prefix: "/expenses" })
 
                 return result;
             } catch (error) {
-                logger.error("Expenses: Unhandled error in GET /expenses/:id", { id: params.id, error });
+                logger.error("Expenses: Unhandled error in GET /expenses/:id", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -96,7 +100,10 @@ export const expenses = new Elysia({ prefix: "/expenses" })
 
                 return result;
             } catch (error) {
-                logger.error("Expenses: Unhandled error in PATCH /expenses/:id", { id: params.id, error });
+                logger.error("Expenses: Unhandled error in PATCH /expenses/:id", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -122,7 +129,10 @@ export const expenses = new Elysia({ prefix: "/expenses" })
 
                 return result;
             } catch (error) {
-                logger.error("Expenses: Unhandled error in DELETE /expenses/:id", { id: params.id, error });
+                logger.error("Expenses: Unhandled error in DELETE /expenses/:id", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },
@@ -147,7 +157,10 @@ export const expenses = new Elysia({ prefix: "/expenses" })
 
                 return result;
             } catch (error) {
-                logger.error("Expenses: Unhandled error in POST /expenses/:id/restore", { id: params.id, error });
+                logger.error("Expenses: Unhandled error in POST /expenses/:id/restore", {
+                    id: params.id,
+                    error,
+                });
                 return { success: false, error };
             }
         },

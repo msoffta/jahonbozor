@@ -1,11 +1,18 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
+
+import { toast } from "@jahonbozor/ui";
+
 import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
+import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 
 export const productKeys = {
     all: ["products"] as const,
-    list: (params?: Record<string, unknown>) => [...productKeys.all, "list", params] as const,
-    detail: (id: number) => [...productKeys.all, "detail", id] as const,
+    lists: () => [...productKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...productKeys.lists(), params] as const,
+    details: () => [...productKeys.all, "detail"] as const,
+    detail: (id: number) => [...productKeys.details(), id] as const,
 };
 
 export const productsListQueryOptions = (params?: {
@@ -21,7 +28,15 @@ export const productsListQueryOptions = (params?: {
         queryKey: productKeys.list(params),
         queryFn: async (): Promise<{ count: number; products: AdminProductItem[] }> => {
             const { data, error } = await api.api.private.products.get({
-                query: { page: 1, limit: 100, searchQuery: "", includeDeleted: false, ...params },
+                query: {
+                    page: 1,
+                    limit: 100,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeDeleted: false,
+                    ...params,
+                },
             });
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
@@ -43,14 +58,33 @@ export const productDetailQueryOptions = (id: number) =>
 
 // --- Mutation functions (exported for testing) ---
 
-export const createProductFn = async (body: { name: string; price: number; costprice: number; categoryId: number; remaining?: number }) => {
-    const { data, error } = await api.api.private.products.post({ ...body, remaining: body.remaining ?? 0 });
+export const createProductFn = async (body: {
+    name: string;
+    price: number;
+    costprice: number;
+    categoryId: number;
+    remaining?: number;
+}) => {
+    const { data, error } = await api.api.private.products.post({
+        ...body,
+        remaining: body.remaining ?? 0,
+    });
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
     return data.data as AdminProductItem;
 };
 
-export const updateProductFn = async ({ id, ...body }: { id: number; name?: string; price?: number; costprice?: number; categoryId?: number; remaining?: number }) => {
+export const updateProductFn = async ({
+    id,
+    ...body
+}: {
+    id: number;
+    name?: string;
+    price?: number;
+    costprice?: number;
+    categoryId?: number;
+    remaining?: number;
+}) => {
     const { data, error } = await api.api.private.products({ id }).patch(body);
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
@@ -81,6 +115,9 @@ export const useCreateProduct = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
     });
 };
 
@@ -91,6 +128,9 @@ export const useUpdateProduct = () => {
         mutationFn: updateProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 };
@@ -103,6 +143,9 @@ export const useDeleteProduct = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
     });
 };
 
@@ -113,6 +156,9 @@ export const useRestoreProduct = () => {
         mutationFn: restoreProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 };

@@ -1,36 +1,66 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PageTransition, DataTable, DataTableSkeleton } from "@jahonbozor/ui";
-import type { DataTableTranslations } from "@jahonbozor/ui";
-import { ordersListQueryOptions, useDeleteOrder, useUpdateOrder, useCreateOrder } from "@/api/orders.api";
-import { productsListQueryOptions } from "@/api/products.api";
+
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+
+import { hasAnyPermission, hasPermission, Permission } from "@jahonbozor/schemas";
+import {
+    AnimatePresence,
+    DataTable,
+    DataTableSkeleton,
+    motion,
+    PageTransition,
+    toast,
+    useIsMobile,
+} from "@jahonbozor/ui";
+
 import { clientsListQueryOptions } from "@/api/clients.api";
+import {
+    ordersListQueryOptions,
+    useCreateOrder,
+    useDeleteOrder,
+    useUpdateOrder,
+} from "@/api/orders.api";
+import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderColumns } from "@/components/orders/orders-columns";
+import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
+import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
+import { useDeferredReady } from "@/hooks/use-deferred-ready";
+import { useHasAnyPermission, useHasPermission } from "@/hooks/use-permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 function OrdersPage() {
     const { t } = useTranslation("orders");
     const [page] = useState(1);
     const navigate = useNavigate();
-    const [isReady, setIsReady] = useState(false);
+    const isReady = useDeferredReady(300);
+    const translations = useDataTableTranslations("orders_empty");
 
-    // Delay heavy rendering to allow BottomNav animations to finish smoothly
-    useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 300);
-        return () => clearTimeout(timer);
-    }, []);
+    // Permission checks for component-level actions
+    const canCreate = useHasPermission(Permission.ORDERS_CREATE);
+    const canUpdate = useHasAnyPermission([
+        Permission.ORDERS_UPDATE_ALL,
+        Permission.ORDERS_UPDATE_OWN,
+    ]);
+    const canDelete = useHasPermission(Permission.ORDERS_DELETE);
 
-    const newRowDefaultValues = useMemo(() => ({
-        paymentType: "CASH",
-        quantity: 1,
-    }), []);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
+    const newRowDefaultValues = useMemo(
+        () => ({
+            paymentType: "CASH",
+            quantity: 1,
+        }),
+        [],
+    );
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
-        ordersListQueryOptions({ 
-            page, 
-            limit: 20, 
-            itemsCount: 1 
+        ordersListQueryOptions({
+            page,
+            limit: 20,
+            itemsCount: 1,
         }),
     );
 
@@ -49,28 +79,44 @@ function OrdersPage() {
     const products = productsData?.products ?? [];
     const users = clientsData?.users ?? [];
 
-    const actions = useMemo(() => ({
-        onDelete: (id: number) => {
-            if (confirm(t("common:confirm_delete"))) {
-                deleteOrder.mutate(id);
-            }
-        },
-        onStatusChange: (id: number, status: "NEW" | "ACCEPTED" | "CANCELLED") => {
-            updateOrder.mutate({ id, status });
-        },
-    }), [t, deleteOrder, updateOrder]);
+    const actions = useMemo(
+        () => ({
+            onDelete: (id: number) => {
+                setDeleteTargetId(id);
+                setDeleteConfirmOpen(true);
+            },
+        }),
+        [],
+    );
 
     const columns = useMemo(() => {
         if (!isReady) return [];
-        return getOrderColumns(t, actions, { products, users });
-    }, [t, actions, products, users, isReady]);
+        return getOrderColumns(t, actions, { products, users }, { canDelete });
+    }, [t, actions, products, users, isReady, canDelete]);
 
     const orders = ordersData?.orders ?? [];
+
+    const isMobile = useIsMobile();
+    const initialColumnVisibility = useMemo(
+        (): Record<string, boolean> =>
+            isMobile
+                ? {
+                      price: false,
+                      remaining: false,
+                      paymentType: false,
+                      user: false,
+                      createdAt: false,
+                      costprice: false,
+                      comment: false,
+                  }
+                : {},
+        [isMobile],
+    );
 
     const handleCellEdit = useCallback(
         async (rowIndex: number, columnId: string, value: unknown) => {
             if (columnId === "user" && value === "CREATE_NEW") {
-                navigate({ to: "/users", search: { new: true } as any });
+                void navigate({ to: "/users", search: { new: true } });
                 return;
             }
 
@@ -86,19 +132,24 @@ function OrdersPage() {
                 body[columnId] = value;
             }
 
+            if (body.paymentType === "DEBT" && !order.userId && !body.userId) {
+                toast.error(t("error_debt_requires_user"));
+                throw new Error("Validation failed");
+            }
+            if (order.paymentType === "DEBT" && columnId === "user" && body.userId === null) {
+                toast.error(t("error_debt_requires_user"));
+                throw new Error("Validation failed");
+            }
+
             updateOrder.mutate({ id: order.id, ...body });
         },
-        [orders, updateOrder, navigate],
+        [orders, updateOrder, navigate, t],
     );
 
     const handleNewRowSave = useCallback(
-        async (
-            data: Record<string, unknown>,
-            _rowId: string,
-            linkedId?: unknown,
-        ) => {
+        async (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
             if (data.user === "CREATE_NEW") {
-                navigate({ to: "/users", search: { new: true } as any });
+                void navigate({ to: "/users", search: { new: true } });
                 return;
             }
 
@@ -109,6 +160,17 @@ function OrdersPage() {
                     body.userId = data.user === "" ? null : Number(data.user);
                 if (data.paymentType) body.paymentType = data.paymentType;
                 // Note: items update logic would go here if supported by backend
+
+                const existingOrder = orders.find((o) => o.id === linkedId);
+                const isDebt =
+                    body.paymentType === "DEBT" ||
+                    (existingOrder?.paymentType === "DEBT" && !body.paymentType);
+                const hasNoUser = body.userId === null || (!body.userId && !existingOrder?.userId);
+
+                if (isDebt && hasNoUser) {
+                    toast.error(t("error_debt_requires_user"));
+                    throw new Error("Validation failed");
+                }
 
                 const result = await updateOrder.mutateAsync({
                     id: linkedId as number,
@@ -122,14 +184,19 @@ function OrdersPage() {
                 return; // Wait for product selection
             }
 
+            const paymentType = (data.paymentType as "CASH" | "CREDIT_CARD" | "DEBT") || "CASH";
+            if (paymentType === "DEBT" && !data.user) {
+                toast.error(t("error_debt_requires_user"));
+                throw new Error("Validation failed");
+            }
+
             const productId = Number(data.product);
             const product = products.find((p) => p.id === productId);
             const price = product?.price ?? 0;
 
             const result = await createOrder.mutateAsync({
                 userId: data.user ? Number(data.user) : null,
-                paymentType:
-                    (data.paymentType as "CASH" | "CREDIT_CARD") || "CASH",
+                paymentType,
                 items: [
                     {
                         productId,
@@ -141,7 +208,7 @@ function OrdersPage() {
 
             return result?.id;
         },
-        [createOrder, updateOrder, navigate, products],
+        [createOrder, updateOrder, navigate, products, orders, t],
     );
 
     const handleNewRowChange = useCallback(
@@ -153,12 +220,14 @@ function OrdersPage() {
                 const product = products.find((p) => p.id === productId);
                 const price = product?.price ?? 0;
                 const remaining = product?.remaining ?? 0;
+                const costprice = product?.costprice ?? 0;
                 const newTotal = price * currentQuantity;
 
                 return {
                     ...values,
                     price,
                     remaining,
+                    costprice,
                     quantity: currentQuantity,
                     total: newTotal,
                 };
@@ -169,58 +238,102 @@ function OrdersPage() {
         [products],
     );
 
-    const translations: DataTableTranslations = {
-        search: t("common:search"),
-        noResults: t("orders_empty"),
-        columns: t("table_columns"),
-        rowsPerPage: t("common:per_page"),
-        showAll: t("table_show_all"),
-        previous: t("table_previous"),
-        next: t("table_next"),
-        filterAll: t("common:filter_all"),
-        filterMin: t("common:filter_min"),
-        filterMax: t("common:filter_max"),
-        filter: t("common:filter"),
-    };
-
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="p-6 flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <div className="mb-4 flex items-center justify-between md:mb-6">
+                <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
             </div>
 
-            {isLoading ? (
-                <DataTableSkeleton columns={8} rows={10} className="flex-1" />
-            ) : (
-                <DataTable
-                    className="flex-1 costprice-table"
-                    columns={columns}
-                    data={orders}
-                    pagination
-                    defaultPageSize={20}
-                    pageSizeOptions={[10, 20, 50]}
-                    enableShowAll
-                    enableSorting
-                    enableGlobalSearch
-                    enableFiltering
-                    enableColumnVisibility
-                    enableColumnResizing
-                    enableEditing
-                    enableMultipleNewRows
-                    multiRowCount={15}
-                    onCellEdit={handleCellEdit}
-                    onMultiRowSave={handleNewRowSave}
-                    onMultiRowChange={handleNewRowChange}
-                    multiRowDefaultValues={newRowDefaultValues}
-                    translations={translations}
-                />
-            )}
+            <AnimatePresence mode="wait">
+                {isLoading ? (
+                    <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <DataTableSkeleton columns={8} rows={10} className="flex-1" />
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
+                        <DataTable
+                            className="costprice-table flex-1"
+                            columns={columns}
+                            initialColumnVisibility={initialColumnVisibility}
+                            data={orders}
+                            pagination
+                            defaultPageSize={20}
+                            pageSizeOptions={[10, 20, 50]}
+                            enableShowAll
+                            enableSorting
+                            enableGlobalSearch
+                            enableFiltering
+                            enableColumnVisibility
+                            enableColumnResizing
+                            enableEditing={canUpdate}
+                            enableMultipleNewRows={canCreate}
+                            multiRowCount={15}
+                            onCellEdit={handleCellEdit}
+                            onMultiRowSave={handleNewRowSave}
+                            onMultiRowChange={handleNewRowChange}
+                            multiRowDefaultValues={newRowDefaultValues}
+                            translations={translations}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            <ConfirmDrawer
+                open={deleteConfirmOpen}
+                onOpenChange={setDeleteConfirmOpen}
+                onConfirm={() => {
+                    if (deleteTargetId !== null) {
+                        deleteOrder.mutate(deleteTargetId);
+                    }
+                }}
+                isLoading={deleteOrder.isPending}
+            />
         </PageTransition>
     );
 }
 
 export const Route = createFileRoute("/_dashboard/")({
+    beforeLoad: async () => {
+        const { permissions } = useAuthStore.getState();
+
+        // Check if user has permission to list orders
+        const canListOrders = hasAnyPermission(permissions, [
+            Permission.ORDERS_LIST_ALL,
+            Permission.ORDERS_LIST_OWN,
+        ]);
+
+        if (!canListOrders) {
+            // Redirect to first accessible page
+            if (hasPermission(permissions, Permission.ANALYTICS_VIEW)) {
+                throw redirect({ to: "/summary" });
+            }
+            if (hasPermission(permissions, Permission.PRODUCTS_LIST)) {
+                throw redirect({ to: "/products" });
+            }
+            if (hasPermission(permissions, Permission.USERS_LIST)) {
+                throw redirect({ to: "/users" });
+            }
+            if (hasPermission(permissions, Permission.EXPENSES_LIST)) {
+                throw redirect({ to: "/expense" });
+            }
+            if (hasPermission(permissions, Permission.PRODUCT_HISTORY_LIST)) {
+                throw redirect({ to: "/income" });
+            }
+            // If no permissions at all, redirect to settings
+            throw redirect({ to: "/settings" });
+        }
+    },
     component: OrdersPage,
 });

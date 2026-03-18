@@ -1,0 +1,241 @@
+import { fireEvent, render } from "@testing-library/react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+vi.mock("react-i18next", () => ({
+    useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+vi.mock("motion/react", async () => {
+    const { motionMocks } = await import("../../../../test-utils/ui-mocks");
+    return motionMocks;
+});
+
+vi.mock("@jahonbozor/ui", async () => {
+    const { uiMocks, motionMocks } = await import("../../../../test-utils/ui-mocks");
+    return {
+        ...uiMocks,
+        ...motionMocks,
+        useIsMobile: () => false,
+        toast: { error: vi.fn() },
+        PageTransition: ({ children, className }: any) => (
+            <div className={className}>{children}</div>
+        ),
+    };
+});
+
+const mockMutate = vi.fn();
+const mockDeleteMutate = vi.fn();
+
+vi.mock("@/api/orders.api", () => ({
+    orderDetailQueryOptions: () => ({}),
+    useDeleteOrder: () => ({ mutate: mockDeleteMutate, isPending: false }),
+    useUpdateOrder: () => ({ mutate: mockMutate, isPending: false }),
+}));
+
+vi.mock("@/api/products.api", () => ({
+    productsListQueryOptions: () => ({}),
+}));
+
+vi.mock("@/components/orders/order-items-columns", () => ({
+    getOrderItemColumns: () => [],
+}));
+
+vi.mock("@/components/shared/confirm-drawer", () => ({
+    ConfirmDrawer: () => null,
+}));
+
+vi.mock("@/hooks/use-data-table-translations", () => ({
+    useDataTableTranslations: () => ({}),
+}));
+
+vi.mock("@/lib/format", () => ({
+    formatCurrency: (val: number, suffix: string) => `${val} ${suffix}`,
+}));
+
+vi.mock("date-fns", () => ({
+    format: () => "01.01.2026 12:00",
+}));
+
+// Mock permission hooks with configurable return values
+let permissionMocks: Record<string, boolean> = {};
+
+vi.mock("@/hooks/use-permissions", () => ({
+    useHasPermission: (permission: string) => permissionMocks[permission] || false,
+}));
+
+const mockOrder = {
+    id: 1,
+    userId: null,
+    staffId: 1,
+    paymentType: "CASH",
+    comment: "Test comment",
+    data: null,
+    createdAt: "2026-01-01T12:00:00Z",
+    updatedAt: "2026-01-01T12:00:00Z",
+    items: [
+        {
+            id: 1,
+            productId: 1,
+            quantity: 2,
+            price: 100,
+            product: { id: 1, name: "Product 1", price: 100, remaining: 10, costprice: 50 },
+        },
+    ],
+    user: null,
+    staff: { id: 1, fullname: "Staff 1" },
+};
+
+let queryData: typeof mockOrder | null = mockOrder;
+let isLoading = false;
+
+vi.mock("@tanstack/react-query", () => ({
+    useQuery: ({ queryKey }: any = {}) => {
+        if (queryKey?.[1] === "detail" || !queryKey) {
+            return { data: isLoading ? undefined : queryData, isLoading };
+        }
+        return { data: { products: [] }, isLoading: false };
+    },
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+    createFileRoute: () => (config: any) => ({
+        ...config,
+        useParams: () => ({ orderId: "1" }),
+    }),
+    redirect: vi.fn(),
+    useNavigate: () => vi.fn(),
+}));
+
+vi.mock("@/stores/auth.store", () => ({
+    useAuthStore: Object.assign(() => ({}), {
+        getState: () => ({ permissions: [] }),
+    }),
+}));
+
+// Dynamically import the component AFTER mocks
+const { Route } = await import("../$orderId");
+const OrderDetailPage = (Route as any).component;
+
+describe("OrderDetailPage", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        permissionMocks = {};
+        queryData = mockOrder;
+        isLoading = false;
+    });
+
+    test("should show loading skeleton when loading", () => {
+        isLoading = true;
+        const { getByTestId } = render(<OrderDetailPage />);
+        expect(getByTestId("data-table-skeleton")).toBeDefined();
+    });
+
+    test("should show empty state when order is null", () => {
+        queryData = null;
+        const { getByText } = render(<OrderDetailPage />);
+        expect(getByText("orders_empty")).toBeDefined();
+    });
+
+    test("should render order details", () => {
+        permissionMocks = {};
+        const { getByText } = render(<OrderDetailPage />);
+        expect(getByText("lists_title #1")).toBeDefined();
+        expect(getByText("payment_cash")).toBeDefined();
+    });
+
+    test("should show comment as read-only text when no update permission", () => {
+        permissionMocks = {};
+        const { getByText, queryByPlaceholderText } = render(<OrderDetailPage />);
+        expect(getByText("Test comment")).toBeDefined();
+        expect(queryByPlaceholderText("order_comment")).toBeNull();
+    });
+
+    test("should show comment input when user has update permission", () => {
+        permissionMocks = { "orders:update:own": true };
+        const { getByDisplayValue } = render(<OrderDetailPage />);
+        expect(getByDisplayValue("Test comment")).toBeDefined();
+    });
+
+    test("should call updateOrder on blur when comment changes", () => {
+        permissionMocks = { "orders:update:own": true };
+        const { getByDisplayValue } = render(<OrderDetailPage />);
+        const input = getByDisplayValue("Test comment");
+
+        fireEvent.change(input, { target: { value: "New comment" } });
+        fireEvent.blur(input);
+
+        expect(mockMutate).toHaveBeenCalledWith({
+            id: 1,
+            comment: "New comment",
+        });
+    });
+
+    test("should not call updateOrder on blur when comment is unchanged", () => {
+        permissionMocks = { "orders:update:own": true };
+        const { getByDisplayValue } = render(<OrderDetailPage />);
+        const input = getByDisplayValue("Test comment");
+
+        fireEvent.blur(input);
+
+        expect(mockMutate).not.toHaveBeenCalled();
+    });
+
+    test("should send null comment when input is cleared", () => {
+        permissionMocks = { "orders:update:own": true };
+        const { getByDisplayValue } = render(<OrderDetailPage />);
+        const input = getByDisplayValue("Test comment");
+
+        fireEvent.change(input, { target: { value: "" } });
+        fireEvent.blur(input);
+
+        expect(mockMutate).toHaveBeenCalledWith({
+            id: 1,
+            comment: null,
+        });
+    });
+
+    test("should trim whitespace from comment before saving", () => {
+        permissionMocks = { "orders:update:own": true };
+        const { getByDisplayValue } = render(<OrderDetailPage />);
+        const input = getByDisplayValue("Test comment");
+
+        fireEvent.change(input, { target: { value: "  Trimmed  " } });
+        fireEvent.blur(input);
+
+        expect(mockMutate).toHaveBeenCalledWith({
+            id: 1,
+            comment: "Trimmed",
+        });
+    });
+
+    test("should not show comment text when order has no comment and no update permission", () => {
+        queryData = { ...mockOrder, comment: null as unknown as string };
+        permissionMocks = {};
+        const { queryByText } = render(<OrderDetailPage />);
+        expect(queryByText("Test comment")).toBeNull();
+    });
+
+    test("should show empty input placeholder when order has no comment but user has update permission", () => {
+        queryData = { ...mockOrder, comment: null as unknown as string };
+        permissionMocks = { "orders:update:own": true };
+        const { getByPlaceholderText } = render(<OrderDetailPage />);
+        expect(getByPlaceholderText("order_comment")).toBeDefined();
+    });
+
+    test("should show delete button when user has delete permission", () => {
+        permissionMocks = { "orders:delete": true };
+        const { container } = render(<OrderDetailPage />);
+        const deleteButton = container.querySelector("button[class*='destructive']");
+        expect(deleteButton).toBeDefined();
+    });
+
+    test("should hide delete button when user lacks delete permission", () => {
+        permissionMocks = {};
+        const { container } = render(<OrderDetailPage />);
+        const buttons = container.querySelectorAll("button");
+        const destructiveButton = Array.from(buttons).find((b) =>
+            b.getAttribute("class")?.includes("destructive"),
+        );
+        expect(destructiveButton).toBeUndefined();
+    });
+});

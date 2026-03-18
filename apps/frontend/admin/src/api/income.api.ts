@@ -1,16 +1,17 @@
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { toast } from "@jahonbozor/ui";
+
 import { api } from "@/api/client";
 import { productKeys } from "@/api/products.api";
+import { i18n } from "@/i18n/config";
+
 import type { HistoryEntryItem } from "@jahonbozor/schemas/src/products/product-history.dto";
-import {
-    queryOptions,
-    useMutation,
-    useQueryClient,
-} from "@tanstack/react-query";
 
 export const incomeKeys = {
     all: ["income"] as const,
-    list: (params?: Record<string, unknown>) =>
-        [...incomeKeys.all, "list", params] as const,
+    lists: () => [...incomeKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...incomeKeys.lists(), params] as const,
 };
 
 export const incomeListQueryOptions = (params?: {
@@ -34,6 +35,8 @@ export const incomeListQueryOptions = (params?: {
                     page: params?.page ?? 1,
                     limit: params?.limit ?? 20,
                     searchQuery: params?.searchQuery ?? "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
                     staffId: params?.staffId,
                     productId: params?.productId,
                     dateFrom: params?.dateFrom,
@@ -52,14 +55,12 @@ export const createIncomeFn = async (body: {
     changeReason?: string | null;
     createdAt?: string;
 }) => {
-    const { data, error } = await api.api.private
-        .products({ id: body.productId })
-        .inventory.post({
-            operation: "INVENTORY_ADD",
-            quantity: body.quantity,
-            changeReason: body.changeReason ?? null,
-            createdAt: body.createdAt,
-        });
+    const { data, error } = await api.api.private.products({ id: body.productId }).inventory.post({
+        operation: "INVENTORY_ADD",
+        quantity: body.quantity,
+        changeReason: body.changeReason ?? null,
+        createdAt: body.createdAt,
+    });
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
     return data.data;
@@ -73,6 +74,9 @@ export const useCreateIncome = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: incomeKeys.all });
             queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 };

@@ -1,16 +1,18 @@
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { toast } from "@jahonbozor/ui";
+
 import { api } from "@/api/client";
+import { i18n } from "@/i18n/config";
+
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
-import {
-    queryOptions,
-    useMutation,
-    useQueryClient,
-} from "@tanstack/react-query";
 
 export const orderKeys = {
     all: ["orders"] as const,
-    list: (params?: Record<string, unknown>) =>
-        [...orderKeys.all, "list", params] as const,
-    detail: (id: number) => [...orderKeys.all, "detail", id] as const,
+    lists: () => [...orderKeys.all, "list"] as const,
+    list: (params?: Record<string, unknown>) => [...orderKeys.lists(), params] as const,
+    details: () => [...orderKeys.all, "detail"] as const,
+    detail: (id: number) => [...orderKeys.details(), id] as const,
 };
 
 export const ordersListQueryOptions = (params?: {
@@ -19,8 +21,7 @@ export const ordersListQueryOptions = (params?: {
     searchQuery?: string;
     userId?: number;
     staffId?: number;
-    paymentType?: "CASH" | "CREDIT_CARD";
-    status?: "NEW" | "ACCEPTED" | "CANCELLED";
+    paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
     dateFrom?: string;
     dateTo?: string;
     itemsCount?: number;
@@ -33,7 +34,14 @@ export const ordersListQueryOptions = (params?: {
             orders: AdminOrderItem[];
         }> => {
             const { data, error } = await api.api.private.orders.get({
-                query: { page: 1, limit: 20, searchQuery: "", ...params },
+                query: {
+                    page: 1,
+                    limit: 20,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    ...params,
+                },
             });
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
@@ -58,9 +66,9 @@ export const updateOrderFn = async ({
     ...body
 }: {
     id: number;
-    status?: "NEW" | "ACCEPTED" | "CANCELLED";
-    paymentType?: "CASH" | "CREDIT_CARD";
-    data?: any;
+    paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
+    comment?: string | null;
+    userId?: number | null;
 }) => {
     const { data, error } = await api.api.private.orders({ id }).patch(body);
     if (error) throw error;
@@ -77,7 +85,8 @@ export const deleteOrderFn = async (id: number) => {
 
 export const createOrderFn = async (body: {
     userId?: number | null;
-    paymentType: "CASH" | "CREDIT_CARD";
+    paymentType: "CASH" | "CREDIT_CARD" | "DEBT";
+    comment?: string | null;
     items: { productId: number; quantity: number; price: number }[];
 }) => {
     const { data, error } = await api.api.private.orders.post(body);
@@ -93,6 +102,9 @@ export function useCreateOrder() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
     });
 }
 
@@ -103,6 +115,9 @@ export function useUpdateOrder() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
     });
 }
 
@@ -112,6 +127,9 @@ export function useDeleteOrder() {
         mutationFn: deleteOrderFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
         },
     });
 }

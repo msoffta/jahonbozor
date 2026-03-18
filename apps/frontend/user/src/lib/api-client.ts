@@ -1,8 +1,26 @@
 import { treaty } from "@elysiajs/eden";
-import type { App } from "@jahonbozor/backend";
 import * as Sentry from "@sentry/react";
+
 import { useAuthStore } from "@/stores/auth.store";
 import { useUIStore } from "@/stores/ui.store";
+
+import type { App } from "@jahonbozor/backend";
+
+interface RefreshResponse {
+    success?: boolean;
+    data?: { token?: string };
+}
+
+interface ProfileResponse {
+    success?: boolean;
+    data?: {
+        id: number;
+        fullname: string;
+        telegramId: string | number;
+        phone: string | null;
+        language: string;
+    };
+}
 
 let isRefreshing = false;
 
@@ -20,7 +38,7 @@ export const api = treaty<App>(window.location.origin, {
             !response.url.includes("/auth/refresh") &&
             !response.url.includes("/auth/me")
         ) {
-            tryRefreshToken();
+            void tryRefreshToken();
         }
     },
     fetch: {
@@ -44,7 +62,7 @@ export async function tryRefreshToken(): Promise<boolean> {
             return false;
         }
 
-        const data = await response.json();
+        const data: RefreshResponse = (await response.json()) as RefreshResponse;
         if (!data.success || !data.data?.token) {
             useAuthStore.getState().logout();
             Sentry.setUser(null);
@@ -65,7 +83,7 @@ export async function tryRefreshToken(): Promise<boolean> {
             return false;
         }
 
-        const profileData = await profileResponse.json();
+        const profileData: ProfileResponse = (await profileResponse.json()) as ProfileResponse;
         if (profileData.success && profileData.data) {
             const profile = profileData.data;
             const language = profile.language === "ru" ? "ru" : "uz";

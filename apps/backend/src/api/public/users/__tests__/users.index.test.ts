@@ -1,9 +1,11 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { Elysia } from "elysia";
-import { prismaMock, createMockLogger, expectSuccess, expectFailure } from "@backend/test/setup";
-import type { Users as UsersType } from "@backend/generated/prisma/client";
-import { Users } from "@backend/api/private/users/users.service";
 import crypto from "crypto";
+import { Elysia } from "elysia";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { UsersService } from "@backend/api/private/users/users.service";
+import { createMockLogger, expectFailure, expectSuccess, prismaMock } from "@backend/test/setup";
+
+import type { Users as UsersType } from "@backend/generated/prisma/client";
 
 // Mock user data
 const mockUser: UsersType = {
@@ -27,7 +29,7 @@ const computeTelegramHash = (data: Record<string, unknown>, botToken: string): s
     const dataCheckString = Object.entries(data)
         .filter(([key, value]) => key !== "hash" && value !== undefined)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, value]) => `${key}=${value}`)
+        .map(([key, value]) => `${key}=${String(value)}`)
         .join("\n");
 
     const secretKey = crypto.createHash("sha256").update(botToken).digest();
@@ -73,7 +75,7 @@ const createTestApp = () => {
                 return { success: false, error: "Server configuration error" };
             }
 
-            const isValidHash = Users.validateTelegramHash(telegramData, botToken);
+            const isValidHash = UsersService.validateTelegramHash(telegramData, botToken);
             if (!isValidHash) {
                 set.status = 401;
                 return { success: false, error: "Invalid authentication data" };
@@ -87,7 +89,12 @@ const createTestApp = () => {
                 return { success: false, error: "Authentication data expired" };
             }
 
-            const result = await Users.createOrUpdateFromTelegram(telegramData, logger, undefined, requestId);
+            const result = await UsersService.createOrUpdateFromTelegram(
+                telegramData,
+                logger,
+                undefined,
+                requestId,
+            );
 
             if (!result.success || !result.data) {
                 set.status = 400;

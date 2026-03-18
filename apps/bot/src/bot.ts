@@ -1,6 +1,11 @@
-import { Bot } from "grammy";
+import { Bot, GrammyError, HttpError } from "grammy";
+
 import { handleContact } from "@bot/handlers/contact.handler";
-import { prisma } from "@bot/lib/prisma";
+import { logger } from "@bot/lib/logger";
+import { botMessages } from "@bot/lib/messages";
+import { getUserInfo } from "@bot/services/user.service";
+
+import type { Language } from "@jahonbozor/schemas";
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 if (!botToken) {
@@ -9,49 +14,18 @@ if (!botToken) {
 
 const bot = new Bot(botToken);
 
-const botMessages = {
-    uz: {
-        start: "Assalomu alaykum! Buyurtmalaringiz bo'yicha siz bilan bog'lanishimiz uchun telefon raqamingizni ulashing.",
-        startWithPhone: "Assalomu alaykum! Telefon raqamingiz saqlangan. Rahmat!",
-        generic: "Iltimos, quyidagi tugma orqali telefon raqamingizni ulashing.",
-        genericWithPhone: "Telefon raqamingiz allaqachon saqlangan. Rahmat!",
-        shareButton: "📱 Raqamni ulashish",
-    },
-    ru: {
-        start: "Здравствуйте! Поделитесь номером телефона, чтобы мы могли связаться с вами по заказам.",
-        startWithPhone: "Здравствуйте! Ваш номер телефона сохранён. Спасибо!",
-        generic: "Пожалуйста, поделитесь номером телефона через кнопку ниже.",
-        genericWithPhone: "Ваш номер телефона уже сохранён. Спасибо!",
-        shareButton: "📱 Поделиться номером",
-    },
-};
-
-const contactKeyboard = (lang: "uz" | "ru") => ({
+const contactKeyboard = (lang: Language) => ({
     keyboard: [[{ text: botMessages[lang].shareButton, request_contact: true }]],
     resize_keyboard: true,
     one_time_keyboard: true,
 });
 
-async function getUserInfo(telegramId: string): Promise<{ language: "uz" | "ru"; phone: string | null }> {
-    try {
-        const user = await prisma.users.findUnique({
-            where: { telegramId },
-            select: { language: true, phone: true },
-        });
-        return {
-            language: user?.language === "ru" ? "ru" : "uz",
-            phone: user?.phone ?? null,
-        };
-    } catch {
-        return { language: "uz", phone: null };
-    }
-}
-
 bot.on("message:contact", handleContact);
 
 bot.command("start", async (ctx) => {
-    const telegramId = String(ctx.from?.id);
-    const { language, phone } = await getUserInfo(telegramId);
+    if (!ctx.from) return;
+    const telegramId = String(ctx.from.id);
+    const { language, phone } = await getUserInfo(telegramId, logger);
 
     if (phone) {
         await ctx.reply(botMessages[language].startWithPhone);
@@ -63,8 +37,9 @@ bot.command("start", async (ctx) => {
 });
 
 bot.on("message", async (ctx) => {
-    const telegramId = String(ctx.from?.id);
-    const { language, phone } = await getUserInfo(telegramId);
+    if (!ctx.from) return;
+    const telegramId = String(ctx.from.id);
+    const { language, phone } = await getUserInfo(telegramId, logger);
 
     if (phone) {
         await ctx.reply(botMessages[language].genericWithPhone, {
@@ -74,6 +49,20 @@ bot.on("message", async (ctx) => {
         await ctx.reply(botMessages[language].generic, {
             reply_markup: contactKeyboard(language),
         });
+    }
+});
+
+bot.catch((err) => {
+    const e = err.error;
+    if (e instanceof GrammyError) {
+        logger.error("Bot: Grammy API error", {
+            description: e.description,
+            updateId: err.ctx.update.update_id,
+        });
+    } else if (e instanceof HttpError) {
+        logger.error("Bot: Network error", { error: e, updateId: err.ctx.update.update_id });
+    } else {
+        logger.error("Bot: Unhandled error", { error: e, updateId: err.ctx.update.update_id });
     }
 });
 

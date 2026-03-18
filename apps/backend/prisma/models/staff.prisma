@@ -1,44 +1,53 @@
 model Staff {
-    id           Int    @id @default(autoincrement())
-    fullname     String
-    username     String @unique
-    passwordHash String
-    telegramId   BigInt
+  id           Int    @id @default(autoincrement())
+  fullname     String
+  username     String @unique
+  passwordHash String
+  telegramId   BigInt
 
-    roleId Int
-    role   Role @relation(fields: [roleId], references: [id])
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id])
 
-    orders           Order[]
-    refreshTokens    RefreshToken[]
-    productHistories ProductHistory[]
-    expenses         Expense[]
+  orders           Order[]
+  debtPayments     DebtPayment[]
+  refreshTokens    RefreshToken[]
+  productHistories ProductHistory[]
+  expenses         Expense[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([deletedAt])
 }
 
 model Role {
-    id          Int      @id @default(autoincrement())
-    name        String   @unique
-    permissions String[]
-    staffs      Staff[]
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  permissions String[]
+  staffs      Staff[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([deletedAt])
 }
 
 model RefreshToken {
-    id        Int      @id @default(autoincrement())
-    token     String   @unique
-    staffId   Int?
-    staff     Staff?   @relation(fields: [staffId], references: [id])
-    userId    Int?
-    user      Users?   @relation(fields: [userId], references: [id])
-    expiredAt DateTime
-    revoked   Boolean  @default(false)
-    userAgent String?
-    ipAddress String?
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  staffId   Int?
+  staff     Staff?   @relation(fields: [staffId], references: [id])
+  userId    Int?
+  user      Users?   @relation(fields: [userId], references: [id])
+  expiredAt DateTime
+  revoked   Boolean  @default(false)
+  userAgent String?
+  ipAddress String?
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

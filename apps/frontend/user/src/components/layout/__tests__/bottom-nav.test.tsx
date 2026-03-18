@@ -1,13 +1,13 @@
-import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { render } from "@testing-library/react";
-import { useCartStore } from "@/stores/cart.store";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-mock.module("react-i18next", () => ({
+import { useCartStore } from "@/stores/cart.store";
+
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, ...props }: any) => (
         <a href={to} {...props}>
             {children}
@@ -16,8 +16,14 @@ mock.module("@tanstack/react-router", () => ({
     useRouterState: ({ select }: any) => select({ location: { pathname: "/" } }),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
+vi.mock("motion/react", async () => {
+    const { motionReactMock } = await import("@/test-utils/ui-mocks");
+    return motionReactMock();
+});
+vi.mock("@jahonbozor/ui", async () => {
+    const { jahonbozorUIMock } = await import("@/test-utils/ui-mocks");
+    return jahonbozorUIMock();
+});
 
 import { BottomNav } from "../bottom-nav";
 
@@ -58,7 +64,7 @@ describe("BottomNav", () => {
 
         const spans = nav?.querySelectorAll("span");
         const visibleTextSpans = Array.from(spans || []).filter(
-            (span) => !span.textContent?.match(/^\d+$/),
+            (span) => !/^\d+$/.exec(span.textContent),
         );
         expect(visibleTextSpans.length).toBe(0);
     });

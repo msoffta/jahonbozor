@@ -16,7 +16,7 @@ export function DataTableSkeleton({
     showToolbar = true,
 }: DataTableSkeletonProps) {
     return (
-        <div className={cn("w-full flex flex-col min-h-0", className)}>
+        <div className={cn("flex min-h-0 w-full flex-col", className)}>
             {showToolbar && (
                 <div className="flex items-center gap-2 py-4">
                     <Skeleton className="h-9 w-64" />
@@ -26,7 +26,7 @@ export function DataTableSkeleton({
                     </div>
                 </div>
             )}
-            <div className="rounded-md border flex-1 min-h-0 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-hidden rounded-md border">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -42,10 +42,12 @@ export function DataTableSkeleton({
                             <TableRow key={rowIdx}>
                                 {Array.from({ length: columns }).map((_, colIdx) => (
                                     <TableCell key={colIdx}>
-                                        <Skeleton className={cn(
-                                            "h-4",
-                                            colIdx === 0 ? "w-10" : "w-full max-w-[120px]",
-                                        )} />
+                                        <Skeleton
+                                            className={cn(
+                                                "h-4",
+                                                colIdx === 0 ? "w-10" : "w-full max-w-[120px]",
+                                            )}
+                                        />
                                     </TableCell>
                                 ))}
                             </TableRow>

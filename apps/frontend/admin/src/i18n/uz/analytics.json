@@ -1,0 +1,13 @@
+{
+  "analytics_dashboard": "Analitika",
+  "total_sales": "Sotuvlar",
+  "total_expenses": "Chiqimlar",
+  "profit": "Foyda",
+  "orders_count": "Buyurtmalar",
+  "date_from": "Dan",
+  "date_to": "Gacha",
+  "sales_trend": "Sotuvlar dinamikasi",
+  "top_products": "Top mahsulotlar",
+  "quantity_sold": "Sotilgan dona",
+  "category_breakdown": "Kategoriyalar bo'yicha sotuvlar"
+}

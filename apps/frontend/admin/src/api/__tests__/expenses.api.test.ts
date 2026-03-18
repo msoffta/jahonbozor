@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import type { QueryFunctionContext } from "@tanstack/react-query";
 
 interface MockEdenResponse {
@@ -6,84 +7,111 @@ interface MockEdenResponse {
     error: Record<string, unknown> | null;
 }
 
-type ListQueryFnContext = QueryFunctionContext<readonly ["expenses", "list", Record<string, unknown> | undefined]>;
+type ListQueryFnContext = QueryFunctionContext<
+    readonly ["expenses", "list", Record<string, unknown> | undefined]
+>;
 type DetailQueryFnContext = QueryFunctionContext<readonly ["expenses", "detail", number]>;
 
-// --- Mock setup (BEFORE imports) ---
-
-const mockGet = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: {
-                    count: 2,
-                    expenses: [
-                        { id: 1, name: "Office supplies", amount: 50000, description: null, expenseDate: "2026-01-15", staffId: 1 },
-                        { id: 2, name: "Transport", amount: 25000, description: "Taxi", expenseDate: "2026-01-16", staffId: 1 },
-                    ],
-                },
-            },
-            error: null,
-        }),
+const { mockGet, mockGetById, mockPost, mockPatch, mockDelete, mockRestorePost } = vi.hoisted(
+    () => ({
+        mockGet: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: {
+                            count: 2,
+                            expenses: [
+                                {
+                                    id: 1,
+                                    name: "Office supplies",
+                                    amount: 50000,
+                                    description: null,
+                                    expenseDate: "2026-01-15",
+                                    staffId: 1,
+                                },
+                                {
+                                    id: 2,
+                                    name: "Transport",
+                                    amount: 25000,
+                                    description: "Taxi",
+                                    expenseDate: "2026-01-16",
+                                    staffId: 1,
+                                },
+                            ],
+                        },
+                    },
+                    error: null,
+                }),
+        ),
+        mockGetById: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: {
+                            id: 1,
+                            name: "Office supplies",
+                            amount: 50000,
+                            description: null,
+                            expenseDate: "2026-01-15",
+                            staffId: 1,
+                        },
+                    },
+                    error: null,
+                }),
+        ),
+        mockPost: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: {
+                            id: 3,
+                            name: "New expense",
+                            amount: 10000,
+                            description: "Test",
+                            expenseDate: "2026-01-20",
+                            staffId: 1,
+                        },
+                    },
+                    error: null,
+                }),
+        ),
+        mockPatch: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: { id: 1, name: "Updated expense", amount: 60000 },
+                    },
+                    error: null,
+                }),
+        ),
+        mockDelete: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: { id: 1, name: "Office supplies", deletedAt: "2026-01-20" },
+                    },
+                    error: null,
+                }),
+        ),
+        mockRestorePost: vi.fn(
+            (): Promise<MockEdenResponse> =>
+                Promise.resolve({
+                    data: {
+                        success: true,
+                        data: { id: 1, name: "Office supplies", deletedAt: null },
+                    },
+                    error: null,
+                }),
+        ),
+    }),
 );
 
-const mockGetById = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 1, name: "Office supplies", amount: 50000, description: null, expenseDate: "2026-01-15", staffId: 1 },
-            },
-            error: null,
-        }),
-);
-
-const mockPost = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 3, name: "New expense", amount: 10000, description: "Test", expenseDate: "2026-01-20", staffId: 1 },
-            },
-            error: null,
-        }),
-);
-
-const mockPatch = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 1, name: "Updated expense", amount: 60000 },
-            },
-            error: null,
-        }),
-);
-
-const mockDelete = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 1, name: "Office supplies", deletedAt: "2026-01-20" },
-            },
-            error: null,
-        }),
-);
-
-const mockRestorePost = mock(
-    (): Promise<MockEdenResponse> =>
-        Promise.resolve({
-            data: {
-                success: true,
-                data: { id: 1, name: "Office supplies", deletedAt: null },
-            },
-            error: null,
-        }),
-);
-
-mock.module("@/api/client", () => ({
+vi.mock("@/api/client", () => ({
     api: {
         api: {
             private: {
@@ -103,18 +131,18 @@ mock.module("@/api/client", () => ({
 
 // --- Imports AFTER mocks ---
 import {
+    createExpenseFn,
+    deleteExpenseFn,
+    expenseDetailQueryOptions,
     expenseKeys,
     expensesListQueryOptions,
-    expenseDetailQueryOptions,
-    createExpenseFn,
-    updateExpenseFn,
-    deleteExpenseFn,
     restoreExpenseFn,
+    updateExpenseFn,
 } from "../expenses.api";
 
 describe("expenses.api", () => {
     beforeEach(() => {
-        mock.restore();
+        vi.clearAllMocks();
     });
 
     // --- Query Keys ---
@@ -177,7 +205,14 @@ describe("expenses.api", () => {
             const options = expensesListQueryOptions();
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 1, limit: 20, searchQuery: "", includeDeleted: false },
+                query: {
+                    page: 1,
+                    limit: 20,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
+                    includeDeleted: false,
+                },
             });
         });
 
@@ -185,7 +220,15 @@ describe("expenses.api", () => {
             const options = expensesListQueryOptions({ page: 3, limit: 50, staffId: 1 });
             await options.queryFn!({} as ListQueryFnContext);
             expect(mockGet).toHaveBeenCalledWith({
-                query: { page: 3, limit: 50, searchQuery: "", includeDeleted: false, staffId: 1 },
+                query: {
+                    page: 3,
+                    limit: 50,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc",
+                    includeDeleted: false,
+                    staffId: 1,
+                },
             });
         });
 
@@ -223,7 +266,9 @@ describe("expenses.api", () => {
             });
 
             const options = expensesListQueryOptions();
-            await expect(options.queryFn!({} as ListQueryFnContext)).rejects.toThrow("Request failed");
+            await expect(options.queryFn!({} as ListQueryFnContext)).rejects.toThrow(
+                "Request failed",
+            );
         });
     });
 
@@ -281,7 +326,9 @@ describe("expenses.api", () => {
             });
 
             const options = expenseDetailQueryOptions(999);
-            await expect(options.queryFn!({} as DetailQueryFnContext)).rejects.toThrow("Request failed");
+            await expect(options.queryFn!({} as DetailQueryFnContext)).rejects.toThrow(
+                "Request failed",
+            );
         });
     });
 
@@ -289,7 +336,12 @@ describe("expenses.api", () => {
 
     describe("createExpenseFn", () => {
         test("should call api.api.private.expenses.post with body", async () => {
-            const body = { name: "New", amount: 10000, description: null, expenseDate: "2026-01-20" };
+            const body = {
+                name: "New",
+                amount: 10000,
+                description: null,
+                expenseDate: "2026-01-20",
+            };
             await createExpenseFn(body);
             expect(mockPost).toHaveBeenCalledWith(body);
         });
@@ -300,7 +352,12 @@ describe("expenses.api", () => {
                 error: null,
             });
 
-            const result = await createExpenseFn({ name: "Created", amount: 5000, description: null, expenseDate: "2026-01-20" });
+            const result = await createExpenseFn({
+                name: "Created",
+                amount: 5000,
+                description: null,
+                expenseDate: "2026-01-20",
+            });
             expect(result).toMatchObject({ id: 10, name: "Created" });
         });
 
@@ -322,7 +379,12 @@ describe("expenses.api", () => {
             });
 
             await expect(
-                createExpenseFn({ name: "Dup", amount: 100, description: null, expenseDate: "2026-01-20" }),
+                createExpenseFn({
+                    name: "Dup",
+                    amount: 100,
+                    description: null,
+                    expenseDate: "2026-01-20",
+                }),
             ).rejects.toThrow("Request failed");
         });
     });

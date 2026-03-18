@@ -1,8 +1,7 @@
-import { describe, test, expect, mock } from "bun:test";
 import { render } from "@testing-library/react";
-import { setupUIMocks } from "../../../test-utils/ui-mocks";
+import { describe, expect, test, vi } from "vitest";
 
-mock.module("react-i18next", () => ({
+vi.mock("react-i18next", () => ({
     useTranslation: () => ({
         t: (key: string, params?: Record<string, unknown>) => {
             if (params) return `${key}_${JSON.stringify(params)}`;
@@ -11,7 +10,7 @@ mock.module("react-i18next", () => ({
     }),
 }));
 
-mock.module("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => ({
     Link: ({ children, to, params, ...props }: any) => (
         <a href={`${to}/${params?.orderId || ""}`} {...props}>
             {children}
@@ -19,21 +18,27 @@ mock.module("@tanstack/react-router", () => ({
     ),
 }));
 
-// Setup centralized UI mocks
-setupUIMocks();
-
-// Component-specific mock
-mock.module("@jahonbozor/ui", () => ({
-    ...require("../../../test-utils/ui-mocks").uiMocks,
-    Badge: ({ children, ...props }: any) => <span data-testid="badge" {...props}>{children}</span>,
-}));
+vi.mock("motion/react", async () => {
+    const { motionReactMock } = await import("@/test-utils/ui-mocks");
+    return motionReactMock();
+});
+vi.mock("@jahonbozor/ui", async () => {
+    const { uiMocks } = await import("@/test-utils/ui-mocks");
+    return {
+        ...uiMocks,
+        Badge: ({ children, ...props }: any) => (
+            <span data-testid="badge" {...props}>
+                {children}
+            </span>
+        ),
+    };
+});
 
 import { OrderCard } from "../order-card";
 
 describe("OrderCard", () => {
     const defaultProps = {
         id: 42,
-        status: "NEW",
         paymentType: "CASH",
         createdAt: "2025-01-15T10:30:00.000Z",
         items: [
@@ -52,23 +57,15 @@ describe("OrderCard", () => {
         expect(getByText(/2025/)).toBeDefined();
     });
 
-    test("should render status badge for NEW order", () => {
-        const { getByText } = render(<OrderCard {...defaultProps} />);
-        expect(getByText("status_new")).toBeDefined();
-    });
-
-    test("should render status badge for ACCEPTED order", () => {
-        const { getByText } = render(<OrderCard {...{ ...defaultProps, status: "ACCEPTED" }} />);
-        expect(getByText("status_accepted")).toBeDefined();
-    });
-
     test("should render payment method", () => {
         const { getByText } = render(<OrderCard {...defaultProps} />);
         expect(getByText(/payment_cash/)).toBeDefined();
     });
 
     test("should render credit card payment method", () => {
-        const { getByText } = render(<OrderCard {...{ ...defaultProps, paymentType: "CREDIT_CARD" }} />);
+        const { getByText } = render(
+            <OrderCard {...{ ...defaultProps, paymentType: "CREDIT_CARD" }} />,
+        );
         expect(getByText(/payment_card/)).toBeDefined();
     });
 
@@ -84,7 +81,9 @@ describe("OrderCard", () => {
     });
 
     test("should handle Date object for createdAt", () => {
-        const { getByText } = render(<OrderCard {...{ ...defaultProps, createdAt: new Date("2025-01-15T10:30:00.000Z") }} />);
+        const { getByText } = render(
+            <OrderCard {...{ ...defaultProps, createdAt: new Date("2025-01-15T10:30:00.000Z") }} />,
+        );
         expect(getByText(/2025/)).toBeDefined();
     });
 });

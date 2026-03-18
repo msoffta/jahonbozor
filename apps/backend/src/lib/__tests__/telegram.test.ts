@@ -1,6 +1,7 @@
-import { describe, test, expect, mock, beforeEach, afterEach } from "bun:test";
-import { createMockLogger } from "@backend/test/setup";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { sendContactRequest } from "@backend/lib/telegram";
+import { createMockLogger } from "@backend/test/setup";
 
 // Save original env and fetch
 const originalEnv = process.env.TELEGRAM_BOT_TOKEN;
@@ -19,7 +20,7 @@ describe("sendContactRequest", () => {
     });
 
     test("sends message and returns true on success", async () => {
-        globalThis.fetch = mock(() =>
+        globalThis.fetch = vi.fn(() =>
             Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
         ) as any;
 
@@ -46,7 +47,7 @@ describe("sendContactRequest", () => {
     });
 
     test("returns false when fetch returns non-OK status", async () => {
-        globalThis.fetch = mock(() =>
+        globalThis.fetch = vi.fn(() =>
             Promise.resolve(new Response("Bad Request", { status: 400 })),
         ) as any;
 
@@ -56,7 +57,7 @@ describe("sendContactRequest", () => {
     });
 
     test("returns false when fetch throws network error", async () => {
-        globalThis.fetch = mock(() => Promise.reject(new Error("Network error"))) as any;
+        globalThis.fetch = vi.fn(() => Promise.reject(new Error("Network error"))) as any;
 
         const result = await sendContactRequest("123456", "uz", logger);
 
@@ -64,7 +65,7 @@ describe("sendContactRequest", () => {
     });
 
     test("sends Uzbek text when language is uz", async () => {
-        globalThis.fetch = mock(() =>
+        globalThis.fetch = vi.fn(() =>
             Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
         ) as any;
 
@@ -78,7 +79,7 @@ describe("sendContactRequest", () => {
     });
 
     test("sends Russian text when language is ru", async () => {
-        globalThis.fetch = mock(() =>
+        globalThis.fetch = vi.fn(() =>
             Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
         ) as any;
 
@@ -92,7 +93,7 @@ describe("sendContactRequest", () => {
     });
 
     test("defaults to Uzbek for unknown language", async () => {
-        globalThis.fetch = mock(() =>
+        globalThis.fetch = vi.fn(() =>
             Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
         ) as any;
 
@@ -104,7 +105,7 @@ describe("sendContactRequest", () => {
     });
 
     test("sets resize_keyboard and one_time_keyboard", async () => {
-        globalThis.fetch = mock(() =>
+        globalThis.fetch = vi.fn(() =>
             Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
         ) as any;
 

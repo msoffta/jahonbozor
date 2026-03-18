@@ -1,9 +1,10 @@
-import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { useAuthStore } from "@/stores/auth.store";
 
 // Mock Sentry
-mock.module("@sentry/react", () => ({
-    setUser: mock(() => {}),
+vi.mock("@sentry/react", () => ({
+    setUser: vi.fn(),
 }));
 
 describe("api client", () => {
@@ -17,12 +18,12 @@ describe("api client", () => {
     });
 
     afterEach(() => {
-        mock.restore();
+        vi.restoreAllMocks();
     });
 
     describe("tryRefreshToken", () => {
         test("should set auth on successful refresh + profile fetch", async () => {
-            const fetchMock = spyOn(globalThis, "fetch");
+            const fetchMock = vi.spyOn(globalThis, "fetch");
 
             // First call: refresh → returns token
             fetchMock.mockResolvedValueOnce({
@@ -61,13 +62,15 @@ describe("api client", () => {
         });
 
         test("should clear auth on non-ok refresh response", async () => {
-            useAuthStore.getState().setAuth(
-                "old-token",
-                { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "old-token",
+                    { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
+                    [],
+                );
 
-            spyOn(globalThis, "fetch").mockResolvedValueOnce({
+            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
                 ok: false,
                 json: () => Promise.resolve({}),
             } as Response);
@@ -81,13 +84,15 @@ describe("api client", () => {
         });
 
         test("should clear auth when refresh response has no token", async () => {
-            useAuthStore.getState().setAuth(
-                "old-token",
-                { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "old-token",
+                    { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
+                    [],
+                );
 
-            spyOn(globalThis, "fetch").mockResolvedValueOnce({
+            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve({ success: false }),
             } as Response);
@@ -100,7 +105,7 @@ describe("api client", () => {
         });
 
         test("should clear auth when profile fetch fails", async () => {
-            const fetchMock = spyOn(globalThis, "fetch");
+            const fetchMock = vi.spyOn(globalThis, "fetch");
 
             fetchMock.mockResolvedValueOnce({
                 ok: true,
@@ -124,13 +129,15 @@ describe("api client", () => {
         });
 
         test("should clear auth on network error", async () => {
-            useAuthStore.getState().setAuth(
-                "old-token",
-                { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "old-token",
+                    { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
+                    [],
+                );
 
-            spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
+            vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
 
             const { tryRefreshToken } = await import("@/api/client");
             const result = await tryRefreshToken();
@@ -140,7 +147,7 @@ describe("api client", () => {
         });
 
         test("should call refresh endpoint with correct params", async () => {
-            const fetchMock = spyOn(globalThis, "fetch");
+            const fetchMock = vi.spyOn(globalThis, "fetch");
 
             fetchMock.mockResolvedValueOnce({
                 ok: false,
@@ -157,7 +164,7 @@ describe("api client", () => {
         });
 
         test("should set empty permissions when role has no permissions", async () => {
-            const fetchMock = spyOn(globalThis, "fetch");
+            const fetchMock = vi.spyOn(globalThis, "fetch");
 
             fetchMock.mockResolvedValueOnce({
                 ok: true,
@@ -192,11 +199,13 @@ describe("api client", () => {
 
     describe("headers", () => {
         test("should include Authorization header when token exists", () => {
-            useAuthStore.getState().setAuth(
-                "test-token",
-                { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
-                [],
-            );
+            useAuthStore
+                .getState()
+                .setAuth(
+                    "test-token",
+                    { id: 1, fullname: "Test", username: "test", roleId: 1, type: "staff" },
+                    [],
+                );
 
             const { token } = useAuthStore.getState();
             const headers = token ? { Authorization: `Bearer ${token}` } : undefined;

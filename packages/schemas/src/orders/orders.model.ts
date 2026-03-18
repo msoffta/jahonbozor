@@ -1,6 +1,7 @@
 import z from "zod";
+
 import { BaseModel } from "../common/base.model";
-import { PaymentType, OrderStatus } from "../common/enums";
+import { PaymentType } from "../common/enums";
 
 export const OrderItem = BaseModel.extend({
     orderId: z.number(),
@@ -14,7 +15,7 @@ export const Order = BaseModel.extend({
     userId: z.number().nullable(),
     staffId: z.number().nullable(),
     paymentType: PaymentType,
-    status: OrderStatus,
+    comment: z.string().nullish(),
     data: z.record(z.string(), z.unknown()).nullable(),
     items: z.array(OrderItem.omit({ orderId: true })).optional(),
 });

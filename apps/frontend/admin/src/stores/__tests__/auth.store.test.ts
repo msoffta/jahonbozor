@@ -1,7 +1,10 @@
-import { describe, test, expect, beforeEach } from "bun:test";
-import { useAuthStore } from "../auth.store";
-import type { TokenStaff } from "@jahonbozor/schemas/src/staff/staff.model";
+import { beforeEach, describe, expect, test } from "vitest";
+
 import { Permission } from "@jahonbozor/schemas";
+
+import { useAuthStore } from "../auth.store";
+
+import type { TokenStaff } from "@jahonbozor/schemas/src/staff/staff.model";
 
 const mockStaff: TokenStaff = {
     id: 1,

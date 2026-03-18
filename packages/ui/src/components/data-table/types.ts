@@ -26,16 +26,12 @@ export interface DataTableColumnMeta {
     filterVariant?: "text" | "select" | "range";
     filterOptions?: { label: string; value: string }[];
 
+    // Drag-to-select sum
+    enableDragSum?: boolean;
+
     // Inline editing
     editable?: boolean;
-    inputType?:
-        | "text"
-        | "number"
-        | "select"
-        | "combobox"
-        | "date"
-        | "datepicker"
-        | "currency";
+    inputType?: "text" | "number" | "select" | "combobox" | "date" | "datepicker" | "currency";
     selectOptions?: { label: string; value: string }[];
     validationSchema?: SafeParseable;
     placeholder?: string;
@@ -46,17 +42,17 @@ export interface DataTableColumnMeta {
 
 // ── TanStack module augmentation ───────────────────────────────
 declare module "@tanstack/react-table" {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- module augmentation requires matching generic params
     interface ColumnMeta<
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- module augmentation requires matching generic params
         TData extends RowData,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- module augmentation requires matching generic params
         TValue,
     > extends DataTableColumnMeta {}
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- module augmentation requires matching generic params
     interface TableMeta<TData extends RowData> {
-        updateData: (
-            rowIndex: number,
-            columnId: string,
-            value: unknown,
-        ) => void;
+        updateData: (rowIndex: number, columnId: string, value: unknown) => void;
     }
 }
 
@@ -88,11 +84,13 @@ export interface DataTableTranslations {
     filterMin?: string;
     filterMax?: string;
     filter?: string;
+    sumLabel?: string;
 }
 
 // ── Props ──────────────────────────────────────────────────────
 export interface DataTableProps<TData> {
     // Required
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TanStack Table ColumnDef requires `any` for heterogeneous column value types
     columns: ColumnDef<TData, any>[];
     data: TData[];
 
@@ -125,15 +123,25 @@ export interface DataTableProps<TData> {
     multiRowIncrement?: number;
     multiRowPosition?: "start" | "end";
     multiRowMaxCount?: number;
-    onMultiRowSave?: (data: Record<string, unknown>, rowId: string, linkedId?: unknown) => unknown | Promise<unknown>;
-    onMultiRowChange?: (data: Record<string, unknown>, rowId: string) => void | Record<string, unknown>;
-    onMultiRowDelete?: (rowId: string) => void;
+    onMultiRowSave?: (
+        data: Record<string, unknown>,
+        rowId: string,
+        linkedId?: unknown,
+        // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- intentional: documents that callback may return sync or async
+    ) => unknown | Promise<unknown>;
+    onMultiRowChange?: (
+        data: Record<string, unknown>,
+        rowId: string,
+    ) => void | Record<string, unknown>;
     multiRowDefaultValues?: Partial<TData> | ((rowIndex: number) => Partial<TData>);
     multiRowValidate?: (data: Record<string, unknown>) => boolean | string;
 
     // Callbacks
     onRowSelectionChange?: (selection: Record<string, boolean>) => void;
     onRowClick?: (row: TData) => void;
+
+    // Column visibility
+    initialColumnVisibility?: Record<string, boolean>;
 
     // Styling
     className?: string;

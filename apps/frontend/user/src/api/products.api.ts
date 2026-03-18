@@ -1,6 +1,9 @@
-import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
-import type { PublicProductItem } from "@jahonbozor/schemas/src/products";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
+
 import { api } from "@/lib/api-client";
+import { unwrap } from "@/lib/eden-utils";
+
+import type { PublicProductItem } from "@jahonbozor/schemas/src/products";
 
 export const productKeys = {
     all: ["products"] as const,
@@ -19,19 +22,22 @@ export const productsListOptions = (params: {
     queryOptions({
         queryKey: productKeys.list(params),
         queryFn: async (): Promise<{ count: number; products: PublicProductItem[] }> => {
-            const categoryIds = params.categoryIds?.length ? params.categoryIds.join(",") : undefined;
-            const { data, error } = await api.api.public.products.get({
-                query: {
-                    page: params.page ?? 1,
-                    limit: params.limit ?? 20,
-                    searchQuery: params.searchQuery ?? "",
-                    includeDeleted: false,
-                    categoryIds,
-                },
-            });
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data;
+            const categoryIds = params.categoryIds?.length
+                ? params.categoryIds.join(",")
+                : undefined;
+            return unwrap(
+                await api.api.public.products.get({
+                    query: {
+                        page: params.page ?? 1,
+                        limit: params.limit ?? 20,
+                        searchQuery: params.searchQuery ?? "",
+                        sortBy: "id",
+                        sortOrder: "asc" as const,
+                        includeDeleted: false,
+                        categoryIds,
+                    },
+                }),
+            );
         },
     });
 
@@ -42,20 +48,25 @@ export const productsInfiniteOptions = (params: {
 }) =>
     infiniteQueryOptions({
         queryKey: productKeys.list({ ...params, infinite: true }),
-        queryFn: async ({ pageParam }): Promise<{ count: number; products: PublicProductItem[] }> => {
-            const categoryIds = params.categoryIds?.length ? params.categoryIds.join(",") : undefined;
-            const { data, error } = await api.api.public.products.get({
-                query: {
-                    page: pageParam,
-                    limit: params.limit ?? 20,
-                    searchQuery: params.searchQuery ?? "",
-                    includeDeleted: false,
-                    categoryIds,
-                },
-            });
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data;
+        queryFn: async ({
+            pageParam,
+        }): Promise<{ count: number; products: PublicProductItem[] }> => {
+            const categoryIds = params.categoryIds?.length
+                ? params.categoryIds.join(",")
+                : undefined;
+            return unwrap(
+                await api.api.public.products.get({
+                    query: {
+                        page: pageParam,
+                        limit: params.limit ?? 20,
+                        searchQuery: params.searchQuery ?? "",
+                        sortBy: "id",
+                        sortOrder: "asc" as const,
+                        includeDeleted: false,
+                        categoryIds,
+                    },
+                }),
+            );
         },
         initialPageParam: 1,
         getNextPageParam: (lastPage, _allPages, lastPageParam) => {
@@ -67,10 +78,6 @@ export const productsInfiniteOptions = (params: {
 export const productDetailOptions = (id: number) =>
     queryOptions({
         queryKey: productKeys.detail(id),
-        queryFn: async (): Promise<PublicProductItem> => {
-            const { data, error } = await api.api.public.products({ id }).get();
-            if (error) throw error;
-            if (!data.success) throw new Error("Request failed");
-            return data.data;
-        },
+        queryFn: async (): Promise<PublicProductItem> =>
+            unwrap(await api.api.public.products({ id }).get()),
     });

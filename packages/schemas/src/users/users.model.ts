@@ -1,4 +1,5 @@
 import z from "zod";
+
 import { BaseModel } from "../base.model";
 
 // Telegram ID может быть string или number — преобразуем в string для хранения
