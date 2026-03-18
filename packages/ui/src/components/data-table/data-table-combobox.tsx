@@ -93,6 +93,18 @@ export function DataTableCombobox({
         }
     }, [autoFocus, measurePos]);
 
+    // Reposition dropdown on scroll/resize while visible
+    React.useEffect(() => {
+        if (!visible) return;
+        const update = () => measurePos();
+        window.addEventListener("scroll", update, true);
+        window.addEventListener("resize", update);
+        return () => {
+            window.removeEventListener("scroll", update, true);
+            window.removeEventListener("resize", update);
+        };
+    }, [visible, measurePos]);
+
     // Animate open/close: keep portal mounted during exit animation
     React.useEffect(() => {
         if (showList && pos !== null) {

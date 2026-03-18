@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
@@ -27,6 +27,8 @@ import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { formatCurrency } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth.store";
 
+import type { DataTableRef } from "@jahonbozor/ui";
+
 const newOrderSearchSchema = z.object({
     userId: z.coerce.number().optional(),
 });
@@ -45,6 +47,7 @@ function NewOrderPage() {
     const translations = useDataTableTranslations("no_items");
     const { userId } = Route.useSearch();
 
+    const tableRef = useRef<DataTableRef>(null);
     const [items, setItems] = useState<LocalItem[]>([]);
     const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT_CARD" | "DEBT">("CASH");
     const [comment, setComment] = useState("");
@@ -157,7 +160,9 @@ function NewOrderPage() {
         [products],
     );
 
-    function handleSaveList() {
+    async function handleSaveList() {
+        await tableRef.current?.flushPendingRows();
+
         if (items.length < 1) {
             toast.error(t("min_items_required"));
             return;
@@ -295,6 +300,7 @@ function NewOrderPage() {
                         className="flex min-h-0 flex-1 flex-col"
                     >
                         <DataTable
+                            ref={tableRef}
                             className="costprice-table flex-1"
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}

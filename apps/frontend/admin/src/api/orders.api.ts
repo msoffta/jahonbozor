@@ -7,6 +7,22 @@ import { i18n } from "@/i18n/config";
 
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 
+interface InsufficientStockDetail {
+    productName: string;
+    requested: number;
+    available: number;
+}
+
+function handleOrderError(error: unknown) {
+    const err = error as { code?: string; details?: InsufficientStockDetail[] } | undefined;
+    if (err?.code === "INSUFFICIENT_STOCK" && Array.isArray(err.details)) {
+        const lines = err.details.map((d) => `${d.productName}: ${d.requested}/${d.available}`);
+        toast.error(`${i18n.t("orders:insufficient_stock")}\n${lines.join("\n")}`);
+        return;
+    }
+    toast.error(i18n.t("error"));
+}
+
 export const orderKeys = {
     all: ["orders"] as const,
     lists: () => [...orderKeys.all, "list"] as const,
@@ -69,10 +85,11 @@ export const updateOrderFn = async ({
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
     comment?: string | null;
     userId?: number | null;
+    items?: { productId: number; quantity: number; price: number }[];
 }) => {
     const { data, error } = await api.api.private.orders({ id }).patch(body);
     if (error) throw error;
-    if (!data.success) throw new Error("Request failed");
+    if (!data.success) throw data.error;
     return data.data as AdminOrderItem;
 };
 
@@ -91,7 +108,7 @@ export const createOrderFn = async (body: {
 }) => {
     const { data, error } = await api.api.private.orders.post(body);
     if (error) throw error;
-    if (!data.success) throw new Error("Request failed");
+    if (!data.success) throw data.error;
     return data.data as AdminOrderItem;
 };
 
@@ -102,9 +119,7 @@ export function useCreateOrder() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
-        onError: () => {
-            toast.error(i18n.t("error"));
-        },
+        onError: handleOrderError,
     });
 }
 
@@ -115,9 +130,7 @@ export function useUpdateOrder() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
-        onError: () => {
-            toast.error(i18n.t("error"));
-        },
+        onError: handleOrderError,
     });
 }
 

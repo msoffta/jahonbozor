@@ -7,6 +7,7 @@ export {
 export type {
     DataTableColumnMeta,
     DataTableProps,
+    DataTableRef,
     DataTableTranslations,
     NewRowState,
 } from "./components/data-table/types.ts";

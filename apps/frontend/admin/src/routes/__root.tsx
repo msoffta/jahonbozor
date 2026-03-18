@@ -53,7 +53,7 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
 const RootLayout = () => (
     <>
         <Outlet />
-        <Toaster position="bottom-center" />
+        <Toaster position="top-right" />
     </>
 );
 

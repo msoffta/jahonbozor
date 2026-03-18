@@ -87,6 +87,12 @@ export interface DataTableTranslations {
     sumLabel?: string;
 }
 
+// ── Ref handle ────────────────────────────────────────────────
+export interface DataTableRef {
+    /** Save all non-empty, changed new rows that haven't been committed yet */
+    flushPendingRows: () => Promise<void>;
+}
+
 // ── Props ──────────────────────────────────────────────────────
 export interface DataTableProps<TData> {
     // Required

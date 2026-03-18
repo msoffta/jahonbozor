@@ -30,7 +30,11 @@ export const UpdateOrderBody = Order.pick({
     paymentType: true,
     comment: true,
     data: true,
-}).partial();
+})
+    .partial()
+    .extend({
+        items: z.array(CreateOrderItemBody).min(1).optional(),
+    });
 
 export const OrdersPagination = PaginationQuery.extend({
     userId: z.coerce.number().optional(),

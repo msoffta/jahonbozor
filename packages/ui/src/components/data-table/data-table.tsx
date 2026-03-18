@@ -26,7 +26,7 @@ import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { useMultiRowState } from "./use-multi-row-state";
 
-import type { DataTableProps } from "./types";
+import type { DataTableProps, DataTableRef } from "./types";
 
 const VIRTUALIZATION_THRESHOLD = 200;
 /** Default column width when no explicit size is provided */
@@ -35,6 +35,7 @@ const DEFAULT_COLUMN_SIZE_PX = 150;
 const SCROLL_BUTTON_THRESHOLD_PX = 50;
 
 export function DataTable<TData>({
+    ref,
     columns,
     data: externalData,
     pagination = false,
@@ -71,7 +72,7 @@ export function DataTable<TData>({
     onRowClick,
     className,
     translations,
-}: DataTableProps<TData>) {
+}: DataTableProps<TData> & { ref?: React.Ref<DataTableRef> }) {
     const [data, setData] = React.useState(externalData);
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -106,6 +107,14 @@ export function DataTable<TData>({
         onSave: onMultiRowSave,
         onChange: onMultiRowChange,
     });
+
+    React.useImperativeHandle(
+        ref,
+        () => ({
+            flushPendingRows: multiRow.flushPendingRows,
+        }),
+        [multiRow.flushPendingRows],
+    );
 
     // Sync external data
     React.useEffect(() => {

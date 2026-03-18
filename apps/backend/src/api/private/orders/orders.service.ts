@@ -399,7 +399,20 @@ export abstract class OrdersService {
             const { staffId, user, requestId } = context;
 
             const existingOrder = await prisma.order.findUnique({
-                where: { id: orderId },
+                where: { id: orderId, deletedAt: null },
+                include: {
+                    items: {
+                        include: {
+                            product: {
+                                select: {
+                                    id: true,
+                                    remaining: true,
+                                    deletedAt: true,
+                                },
+                            },
+                        },
+                    },
+                },
             });
 
             if (!existingOrder) {
@@ -417,7 +430,147 @@ export abstract class OrdersService {
                 return { success: false, error: "Forbidden" };
             }
 
+            // Validate new items before transaction
+            let productMap:
+                | Map<
+                      number,
+                      { id: number; name: string; price: Prisma.Decimal; remaining: number }
+                  >
+                | undefined;
+
+            if (orderData.items) {
+                // Build map of old quantities per product for effective stock calculation
+                const oldQuantityMap = new Map<number, number>();
+                for (const item of existingOrder.items) {
+                    if (!item.product.deletedAt) {
+                        oldQuantityMap.set(
+                            item.productId,
+                            (oldQuantityMap.get(item.productId) ?? 0) + item.quantity,
+                        );
+                    }
+                }
+
+                const productIds = orderData.items.map((item) => item.productId);
+                const products = await prisma.product.findMany({
+                    where: { id: { in: productIds }, deletedAt: null },
+                    select: { id: true, name: true, price: true, remaining: true },
+                });
+
+                if (products.length !== productIds.length) {
+                    const foundIds = products.map((p) => p.id);
+                    const missingIds = productIds.filter((id) => !foundIds.includes(id));
+                    logger.warn("Orders: Products not found for update", { missingIds });
+                    return {
+                        success: false,
+                        error: `Products not found: ${missingIds.join(", ")}`,
+                    };
+                }
+
+                productMap = new Map(products.map((p) => [p.id, p]));
+
+                const insufficientStock: {
+                    productId: number;
+                    productName: string;
+                    requested: number;
+                    available: number;
+                }[] = [];
+
+                for (const item of orderData.items) {
+                    const product = productMap.get(item.productId)!;
+                    const effectiveRemaining =
+                        product.remaining + (oldQuantityMap.get(item.productId) ?? 0);
+                    if (effectiveRemaining < item.quantity) {
+                        insufficientStock.push({
+                            productId: item.productId,
+                            productName: product.name,
+                            requested: item.quantity,
+                            available: effectiveRemaining,
+                        });
+                    }
+                }
+
+                if (insufficientStock.length > 0) {
+                    logger.warn("Orders: Insufficient stock for update", { insufficientStock });
+                    return {
+                        success: false,
+                        error: {
+                            code: "INSUFFICIENT_STOCK",
+                            message: "One or more products have insufficient stock",
+                            details: insufficientStock,
+                        },
+                    };
+                }
+            }
+
             const [updatedOrder] = await prisma.$transaction(async (transaction) => {
+                // Replace items if provided
+                if (orderData.items && productMap) {
+                    // 1. Restore old stock
+                    for (const item of existingOrder.items) {
+                        if (!item.product.deletedAt) {
+                            const previousRemaining = item.product.remaining;
+                            const newRemaining = previousRemaining + item.quantity;
+
+                            await transaction.product.update({
+                                where: { id: item.productId },
+                                data: { remaining: { increment: item.quantity } },
+                            });
+
+                            await transaction.productHistory.create({
+                                data: {
+                                    productId: item.productId,
+                                    staffId,
+                                    operation: "INVENTORY_ADD",
+                                    quantity: item.quantity,
+                                    previousData: { remaining: previousRemaining },
+                                    newData: { remaining: newRemaining },
+                                    changeReason: `Order #${orderId} items updated (restored)`,
+                                },
+                            });
+                        }
+                    }
+
+                    // 2. Delete old items
+                    await transaction.orderItem.deleteMany({
+                        where: { orderId },
+                    });
+
+                    // 3. Create new items + deduct stock
+                    for (const item of orderData.items) {
+                        const product = productMap.get(item.productId)!;
+
+                        await transaction.orderItem.create({
+                            data: {
+                                orderId,
+                                productId: item.productId,
+                                quantity: item.quantity,
+                                price: product.price,
+                                data: (item.data as Prisma.JsonObject) ?? null,
+                            },
+                        });
+
+                        const previousRemaining = product.remaining;
+                        const newRemaining = previousRemaining - item.quantity;
+
+                        await transaction.product.update({
+                            where: { id: item.productId },
+                            data: { remaining: { decrement: item.quantity } },
+                        });
+
+                        await transaction.productHistory.create({
+                            data: {
+                                productId: item.productId,
+                                staffId,
+                                operation: "INVENTORY_REMOVE",
+                                quantity: item.quantity,
+                                previousData: { remaining: previousRemaining },
+                                newData: { remaining: newRemaining },
+                                changeReason: `Order #${orderId} items updated (deducted)`,
+                            },
+                        });
+                    }
+                }
+
                 const order = await transaction.order.update({
                     where: { id: orderId },
                     data: {
