@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "bun --bun vite",
     "build": "bun vite build",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "bunx vitest run",
+    "test:watch": "bunx vitest",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "preview": "bun --bun vite preview"
   },
