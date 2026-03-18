@@ -370,6 +370,34 @@ describe("Orders Service", () => {
             expect(mockLogger.warn).toHaveBeenCalled();
         });
 
+        test("should succeed when items contain duplicate productIds", async () => {
+            // Arrange — duplicate productId=1 in items
+            const orderWithDuplicates = {
+                paymentType: "CASH" as const,
+                items: [
+                    { productId: 1, quantity: 1, price: 100 },
+                    { productId: 1, quantity: 2, price: 100 },
+                ],
+            };
+            prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
+            prismaMock.order.create.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            // Act
+            const result = await OrdersService.createOrder(
+                orderWithDuplicates,
+                mockContext,
+                mockLogger,
+            );
+
+            // Assert — deduplication means product is found, so no "Products not found" error
+            expect(result.success).toBe(true);
+        });
+
         test("should return error on insufficient stock", async () => {
             // Arrange
             const lowStockProduct = { ...mockProduct, remaining: 1 };
@@ -754,6 +782,37 @@ describe("Orders Service", () => {
             // Assert
             const failure = expectFailure(result);
             expect(failure.error).toContain("Products not found");
+        });
+
+        test("should not return empty 'Products not found' error with duplicate productIds in items", async () => {
+            // Regression test: duplicate productIds caused findMany to return fewer rows than
+            // productIds.length, triggering a false "Products not found: " (empty) error.
+            prismaMock.order.findUnique.mockResolvedValueOnce(
+                mockOrderWithItemsForUpdate as unknown as Order,
+            );
+            // findMany returns 1 unique product for the 2 duplicate productId=2 items
+            prismaMock.product.findMany.mockResolvedValueOnce([mockProduct2 as unknown as Product]);
+
+            // Act — two items with same productId=2
+            const result = await OrdersService.updateOrder(
+                1,
+                {
+                    items: [
+                        { productId: 2, quantity: 1, price: 100 },
+                        { productId: 2, quantity: 2, price: 100 },
+                    ],
+                },
+                mockContext,
+                [Permission.ORDERS_UPDATE_OWN],
+                mockLogger,
+            );
+
+            // Assert — must NOT be the misleading empty error
+            if (!result.success) {
+                expect((result as { success: false; error: string }).error).not.toBe(
+                    "Products not found: ",
+                );
+            }
         });
 
         test("should return INSUFFICIENT_STOCK when new items exceed available stock", async () => {

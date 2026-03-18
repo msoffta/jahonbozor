@@ -27,7 +27,16 @@ export abstract class PublicOrdersService {
     ): Promise<UserOrderCreateResponse> {
         try {
             const { userId, user, requestId } = context;
-            const productIds = orderData.items.map((item) => item.productId);
+            const mergedItems = orderData.items.reduce<typeof orderData.items>((acc, item) => {
+                const existing = acc.find((i) => i.productId === item.productId);
+                if (existing) {
+                    existing.quantity += item.quantity;
+                } else {
+                    acc.push({ ...item });
+                }
+                return acc;
+            }, []);
+            const productIds = mergedItems.map((item) => item.productId);
 
             const products = await prisma.product.findMany({
                 where: {
@@ -53,7 +62,7 @@ export abstract class PublicOrdersService {
                 requested: number;
                 available: number;
             }[] = [];
-            for (const item of orderData.items) {
+            for (const item of mergedItems) {
                 const product = productMap.get(item.productId)!;
                 if (product.remaining < item.quantity) {
                     insufficientStock.push({
@@ -86,7 +95,7 @@ export abstract class PublicOrdersService {
                         comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
-                            create: orderData.items.map((item) => {
+                            create: mergedItems.map((item) => {
                                 const product = productMap.get(item.productId)!;
                                 return {
                                     productId: item.productId,
@@ -106,7 +115,7 @@ export abstract class PublicOrdersService {
                     },
                 });
 
-                for (const item of orderData.items) {
+                for (const item of mergedItems) {
                     const product = productMap.get(item.productId)!;
                     const previousRemaining = product.remaining;
                     const newRemaining = previousRemaining - item.quantity;

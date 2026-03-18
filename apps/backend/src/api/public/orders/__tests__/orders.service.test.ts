@@ -118,6 +118,38 @@ describe("PublicOrders Service", () => {
             expect(mockLogger.warn).toHaveBeenCalled();
         });
 
+        test("should succeed when items contain duplicate productIds", async () => {
+            // Regression test: duplicate productIds caused findMany to return fewer rows,
+            // triggering false "Products not found: " (empty) error.
+            const orderWithDuplicates = {
+                paymentType: "CASH" as const,
+                items: [
+                    { productId: 1, quantity: 1, price: 100 },
+                    { productId: 1, quantity: 2, price: 100 },
+                ],
+            };
+            prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
+            prismaMock.order.create.mockResolvedValueOnce(
+                mockOrderWithRelations as unknown as Order,
+            );
+            prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+            prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+            prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+            const result = await PublicOrdersService.createOrder(
+                orderWithDuplicates,
+                mockContext,
+                mockLogger,
+            );
+
+            // Assert — must NOT be the misleading empty error
+            if (!result.success) {
+                expect((result as { success: false; error: string }).error).not.toBe(
+                    "Products not found: ",
+                );
+            }
+        });
+
         test("should return error on insufficient stock", async () => {
             // Arrange
             const lowStockProduct = { ...mockProduct, remaining: 1 };
