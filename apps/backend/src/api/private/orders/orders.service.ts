@@ -227,7 +227,7 @@ export abstract class OrdersService {
     ): Promise<AdminOrderDetailResponse> {
         try {
             const { staffId, user, requestId } = context;
-            const productIds = orderData.items.map((item) => item.productId);
+            const productIds = [...new Set(orderData.items.map((item) => item.productId))];
 
             const products = await prisma.product.findMany({
                 where: {
@@ -450,7 +450,7 @@ export abstract class OrdersService {
                     }
                 }
 
-                const productIds = orderData.items.map((item) => item.productId);
+                const productIds = [...new Set(orderData.items.map((item) => item.productId))];
                 const products = await prisma.product.findMany({
                     where: { id: { in: productIds }, deletedAt: null },
                     select: { id: true, name: true, price: true, remaining: true },

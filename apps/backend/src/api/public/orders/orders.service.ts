@@ -27,7 +27,7 @@ export abstract class PublicOrdersService {
     ): Promise<UserOrderCreateResponse> {
         try {
             const { userId, user, requestId } = context;
-            const productIds = orderData.items.map((item) => item.productId);
+            const productIds = [...new Set(orderData.items.map((item) => item.productId))];
 
             const products = await prisma.product.findMany({
                 where: {
