@@ -113,7 +113,7 @@ vi.mock("@/stores/auth.store", () => ({
 }));
 
 // Dynamically import the component AFTER mocks
-const { Route } = await import("../\\$orderId");
+const { Route } = await import("../$orderId");
 const OrderDetailPage = (Route as any).component;
 
 describe("OrderDetailPage", () => {
