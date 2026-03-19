@@ -90,6 +90,7 @@ export function DataTable<TData>({
     const [dragSumInfo, setDragSumInfo] = React.useState<{ sum: number; count: number } | null>(
         null,
     );
+    const [containerWidth, setContainerWidth] = React.useState(0);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -197,12 +198,26 @@ export function DataTable<TData>({
         },
     });
 
+    // Track container width via ResizeObserver for responsive column sizing
+    React.useEffect(() => {
+        if (!enableColumnResizing || !containerRef.current) return;
+
+        const observer = new ResizeObserver((entries) => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, [enableColumnResizing]);
+
     // Flex-like column sizing: distribute remaining container space
     // among columns with meta.flex proportionally (like MUI DataGrid flex)
     React.useLayoutEffect(() => {
-        if (!enableColumnResizing || !containerRef.current) return;
+        if (!enableColumnResizing || containerWidth <= 0) return;
 
-        const containerWidth = containerRef.current.clientWidth;
         const cols = table.getAllLeafColumns();
 
         let fixedTotal = 0;
@@ -231,7 +246,7 @@ export function DataTable<TData>({
         }
         setColumnSizing(newSizing);
         // eslint-disable-next-line react-hooks/exhaustive-deps -- table object is recreated every render; including it would cause infinite loop
-    }, [enableColumnResizing, allColumns]);
+    }, [enableColumnResizing, allColumns, containerWidth]);
 
     // Scroll-to-top/bottom button state
     const [isNearBottom, setIsNearBottom] = React.useState(false);

@@ -43,7 +43,7 @@ function OrderDetailPage() {
     const { orderId } = Route.useParams();
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
-    const translations = useDataTableTranslations("no_items");
+    const translations = useDataTableTranslations(t("no_items"));
     const tableRef = useRef<DataTableRef>(null);
     const numericId = Number(orderId);
 

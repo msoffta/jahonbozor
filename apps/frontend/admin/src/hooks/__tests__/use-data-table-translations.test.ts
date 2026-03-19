@@ -27,10 +27,10 @@ describe("useDataTableTranslations", () => {
         expect(result.current.filter).toBe("filter");
     });
 
-    test("should set noResults when key is provided", () => {
-        const { result } = renderHook(() => useDataTableTranslations("orders_empty"));
+    test("should pass through noResults text as-is", () => {
+        const { result } = renderHook(() => useDataTableTranslations("Заказы не найдены"));
 
-        expect(result.current.noResults).toBe("orders_empty");
+        expect(result.current.noResults).toBe("Заказы не найдены");
     });
 
     test("should leave noResults undefined when no key provided", () => {
@@ -40,7 +40,7 @@ describe("useDataTableTranslations", () => {
     });
 
     test("should return an object with correct shape", () => {
-        const { result } = renderHook(() => useDataTableTranslations("no_data"));
+        const { result } = renderHook(() => useDataTableTranslations("No data"));
 
         const keys = Object.keys(result.current);
         expect(keys).toContain("search");

@@ -5,7 +5,6 @@ import {
     BarChart,
     CartesianGrid,
     Cell,
-    Legend,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -38,24 +37,30 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
                 </CardHeader>
                 <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
-                            <XAxis dataKey="productName" tick={{ fontSize: 12 }} />
-                            <YAxis tick={{ fontSize: 12 }} />
-                            <Tooltip
-                                formatter={(value, name) => [
-                                    Number(value ?? 0),
-                                    String(name) === "quantitySold"
-                                        ? t("quantity_sold")
-                                        : String(name ?? ""),
-                                ]}
+                        <BarChart data={data} barCategoryGap="20%">
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke={colors.grid}
+                                vertical={false}
                             />
-                            <Legend />
+                            <XAxis
+                                dataKey="productName"
+                                tick={{ fontSize: 12 }}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                            <Tooltip
+                                formatter={(value) => [
+                                    Number(value ?? 0).toLocaleString(),
+                                    t("quantity_sold"),
+                                ]}
+                                cursor={{ fill: "var(--color-muted)", opacity: 0.5 }}
+                            />
                             <Bar
                                 dataKey="quantitySold"
-                                fill={colors.chart1}
                                 name={t("quantity_sold")}
-                                radius={[4, 4, 0, 0]}
+                                radius={[6, 6, 0, 0]}
                             >
                                 {data.map((_, index) => (
                                     <Cell

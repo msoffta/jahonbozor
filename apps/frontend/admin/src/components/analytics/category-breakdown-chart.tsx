@@ -21,6 +21,13 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
         value: item.totalRevenue,
     }));
 
+    const formatCurrency = (value: number) =>
+        new Intl.NumberFormat(i18n.language === "ru" ? "ru-RU" : "uz-UZ", {
+            style: "currency",
+            currency: "UZS",
+            maximumFractionDigits: 0,
+        }).format(value);
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -40,31 +47,38 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
                                 nameKey="name"
                                 cx="50%"
                                 cy="50%"
-                                outerRadius={100}
-                                label={({ name, percent }) =>
-                                    `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                                }
+                                innerRadius={60}
+                                outerRadius={110}
+                                paddingAngle={2}
+                                label={false}
                             >
                                 {chartData.map((_, index) => (
                                     <Cell
                                         key={`cell-${index}`}
                                         fill={colors.palette[index % colors.palette.length]}
+                                        stroke="none"
                                     />
                                 ))}
                             </Pie>
                             <Tooltip
-                                formatter={(value) =>
-                                    new Intl.NumberFormat(
-                                        i18n.language === "ru" ? "ru-RU" : "uz-UZ",
-                                        {
-                                            style: "currency",
-                                            currency: "UZS",
-                                            maximumFractionDigits: 0,
-                                        },
-                                    ).format(Number(value ?? 0))
-                                }
+                                formatter={(value, name) => [
+                                    formatCurrency(Number(value ?? 0)),
+                                    String(name),
+                                ]}
                             />
-                            <Legend />
+                            <Legend
+                                layout="horizontal"
+                                verticalAlign="bottom"
+                                iconType="circle"
+                                iconSize={10}
+                                formatter={(value) => (
+                                    <span
+                                        style={{ color: "var(--color-foreground)", fontSize: 13 }}
+                                    >
+                                        {value}
+                                    </span>
+                                )}
+                            />
                         </PieChart>
                     </ResponsiveContainer>
                 </CardContent>

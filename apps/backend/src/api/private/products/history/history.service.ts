@@ -33,8 +33,12 @@ export abstract class HistoryService {
                 ...(productId && { productId }),
                 ...(operation && { operation }),
                 ...(staffId && { staffId }),
-                ...(dateFrom && { createdAt: { gte: dateFrom } }),
-                ...(dateTo && { createdAt: { lte: dateTo } }),
+                ...((dateFrom ?? dateTo) && {
+                    createdAt: {
+                        ...(dateFrom && { gte: new Date(dateFrom) }),
+                        ...(dateTo && { lte: new Date(dateTo) }),
+                    },
+                }),
                 ...(searchQuery && {
                     product: { name: { contains: searchQuery } },
                 }),
@@ -133,8 +137,12 @@ export abstract class HistoryService {
                 productId,
                 ...(operation && { operation }),
                 ...(staffId && { staffId }),
-                ...(dateFrom && { createdAt: { gte: dateFrom } }),
-                ...(dateTo && { createdAt: { lte: dateTo } }),
+                ...((dateFrom ?? dateTo) && {
+                    createdAt: {
+                        ...(dateFrom && { gte: new Date(dateFrom) }),
+                        ...(dateTo && { lte: new Date(dateTo) }),
+                    },
+                }),
             };
 
             const [count, history] = await prisma.$transaction([

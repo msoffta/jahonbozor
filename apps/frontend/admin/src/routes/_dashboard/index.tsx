@@ -3,12 +3,15 @@ import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns";
 
 import { hasAnyPermission, hasPermission, Permission } from "@jahonbozor/schemas";
 import {
     AnimatePresence,
+    Button,
     DataTable,
     DataTableSkeleton,
+    DatePicker,
     motion,
     PageTransition,
     toast,
@@ -35,7 +38,7 @@ function OrdersPage() {
     const [page] = useState(1);
     const navigate = useNavigate();
     const isReady = useDeferredReady(300);
-    const translations = useDataTableTranslations("orders_empty");
+    const translations = useDataTableTranslations(t("orders_empty"));
 
     // Permission checks for component-level actions
     const canCreate = useHasPermission(Permission.ORDERS_CREATE);
@@ -44,6 +47,11 @@ function OrdersPage() {
         Permission.ORDERS_UPDATE_OWN,
     ]);
     const canDelete = useHasPermission(Permission.ORDERS_DELETE);
+
+    const monthStart = startOfMonth(new Date()).toISOString();
+    const monthEnd = endOfMonth(new Date()).toISOString();
+    const [dateFrom, setDateFrom] = useState(monthStart);
+    const [dateTo, setDateTo] = useState(monthEnd);
 
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -61,6 +69,8 @@ function OrdersPage() {
             page,
             limit: 20,
             itemsCount: 1,
+            dateFrom,
+            dateTo,
         }),
     );
 
@@ -242,8 +252,37 @@ function OrdersPage() {
 
     return (
         <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
-            <div className="mb-4 flex items-center justify-between md:mb-6">
+            <div className="mb-2 flex flex-col gap-3 md:mb-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                    <div className="flex items-center gap-2">
+                        <DatePicker
+                            value={dateFrom}
+                            onChange={(date) => {
+                                if (date) setDateFrom(startOfDay(new Date(date)).toISOString());
+                            }}
+                            className="h-8 w-28 text-xs sm:w-36"
+                        />
+                        <span className="text-muted-foreground text-xs">—</span>
+                        <DatePicker
+                            value={dateTo}
+                            onChange={(date) => {
+                                if (date) setDateTo(endOfDay(new Date(date)).toISOString());
+                            }}
+                            className="h-8 w-28 text-xs sm:w-36"
+                        />
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setDateFrom(monthStart);
+                            setDateTo(monthEnd);
+                        }}
+                    >
+                        {t("common:this_month")}
+                    </Button>
+                </div>
             </div>
 
             <AnimatePresence mode="wait">

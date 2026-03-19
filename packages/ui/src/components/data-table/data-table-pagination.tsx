@@ -48,7 +48,7 @@ export function DataTablePagination<TData>({
     };
 
     return (
-        <div className="flex items-center justify-between px-2 py-4">
+        <div className="flex items-center justify-between px-2 py-2">
             <div className="flex flex-1 items-center gap-4">
                 {enableRowSelection && (
                     <div className="text-muted-foreground text-sm">

@@ -33,7 +33,7 @@ function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const isReady = useDeferredReady();
-    const translations = useDataTableTranslations("products_empty");
+    const translations = useDataTableTranslations(t("products_empty"));
 
     // Permission checks for component-level actions
     const canCreate = useHasPermission(Permission.PRODUCTS_CREATE);

@@ -200,7 +200,7 @@ export function BottomNav() {
 
     return (
         <>
-            <nav className="border-border bg-surface fixed right-0 bottom-0 left-0 z-50 flex flex-col border-t pb-[env(safe-area-inset-bottom)]">
+            <nav className="border-border bg-background fixed right-0 bottom-0 left-0 z-50 flex flex-col border-t pb-[env(safe-area-inset-bottom)]">
                 {/* Mobile: Row 1 — Nav pills */}
                 <LayoutGroup id="bottom-navigation-mobile">
                     <div className="scrollbar-none flex items-center gap-1 overflow-x-auto px-3 py-1.5 md:hidden">

@@ -57,7 +57,7 @@ export function getOrderColumns(
             accessorKey: "id",
             header: t("order_id"),
             size: 60,
-            meta: { align: "center" as const },
+            meta: { flex: 1, align: "center" as const },
             cell: ({ getValue }) => {
                 const id = getValue<number>();
                 if (actions.onNavigate) {
@@ -84,7 +84,7 @@ export function getOrderColumns(
                 header: t("order_product"),
                 size: 250,
                 meta: {
-                    flex: 3,
+                    flex: 1,
                     editable: true,
                     inputType: "combobox" as const,
                     selectOptions: productOptions,
@@ -143,7 +143,7 @@ export function getOrderColumns(
                 size: 130,
                 cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
                 meta: {
-                    flex: 1.5,
+                    flex: 1,
                     align: "left" as const,
                     enableDragSum: true,
                 },
@@ -171,32 +171,10 @@ export function getOrderColumns(
                 header: t("order_total"),
                 size: 130,
                 cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
-                meta: { flex: 1.5, align: "left" as const },
+                meta: { flex: 1, align: "left" as const },
             },
         );
     }
-
-    // Comment column — shown in both modes, editable in showItemColumns mode
-    columns.push({
-        accessorKey: "comment",
-        header: t("order_comment"),
-        size: 150,
-        cell: ({ getValue }) => {
-            const comment = getValue<string | null>();
-            return comment ? (
-                <span className="text-muted-foreground block truncate text-sm italic">
-                    {comment}
-                </span>
-            ) : (
-                "—"
-            );
-        },
-        meta: {
-            flex: showItemColumns ? 1.5 : 2,
-            editable: showItemColumns,
-            inputType: "text" as const,
-        },
-    });
 
     columns.push(
         {
@@ -209,6 +187,8 @@ export function getOrderColumns(
                 editable: showItemColumns,
                 inputType: "select" as const,
                 selectOptions: paymentOptions,
+                filterVariant: "select" as const,
+                filterOptions: paymentOptions,
             },
         },
         {
@@ -217,7 +197,7 @@ export function getOrderColumns(
             header: t("order_client"),
             size: 180,
             meta: {
-                flex: 1.5,
+                flex: 1,
                 editable: showItemColumns,
                 inputType: "combobox" as const,
                 selectOptions: userOptions,
@@ -228,7 +208,27 @@ export function getOrderColumns(
             header: t("order_date"),
             size: 140,
             cell: ({ getValue }) => format(new Date(getValue<Date | string>()), "dd.MM.yyyy HH:mm"),
-            meta: { flex: 1.5 },
+            meta: { flex: 1 },
+        },
+        {
+            accessorKey: "comment",
+            header: t("order_comment"),
+            size: 150,
+            cell: ({ getValue }) => {
+                const comment = getValue<string | null>();
+                return comment ? (
+                    <span className="text-muted-foreground block truncate text-sm italic">
+                        {comment}
+                    </span>
+                ) : (
+                    "—"
+                );
+            },
+            meta: {
+                flex: 1,
+                editable: showItemColumns,
+                inputType: "text" as const,
+            },
         },
         {
             id: "costprice",
@@ -266,7 +266,7 @@ export function getOrderColumns(
             id: "actions",
             header: t("order_actions"),
             size: 80,
-            meta: { align: "center" as const },
+            meta: { flex: 1, align: "center" as const },
             cell: ({ row }) => (
                 <motion.div whileTap={{ scale: 0.9 }} className="inline-flex w-full justify-center">
                     <Button

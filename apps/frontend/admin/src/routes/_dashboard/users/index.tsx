@@ -39,7 +39,7 @@ function UsersPage() {
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const { new: isNew } = Route.useSearch();
     const isReady = useDeferredReady();
-    const translations = useDataTableTranslations("clients_empty");
+    const translations = useDataTableTranslations(t("clients_empty"));
 
     // Permission checks for component-level actions
     const canCreate = useHasPermission(Permission.USERS_CREATE);

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { endOfDay, startOfDay } from "date-fns";
+import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns";
 
 import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
 import {
@@ -31,7 +31,7 @@ function ListsPage() {
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
     const isReady = useDeferredReady(300);
-    const translations = useDataTableTranslations("lists_empty");
+    const translations = useDataTableTranslations(t("lists_empty"));
 
     // Permission check for delete action
     const canDelete = useHasPermission(Permission.ORDERS_DELETE);
@@ -39,11 +39,11 @@ function ListsPage() {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
-    const todayStart = startOfDay(new Date()).toISOString();
-    const todayEnd = endOfDay(new Date()).toISOString();
+    const monthStart = startOfMonth(new Date()).toISOString();
+    const monthEnd = endOfMonth(new Date()).toISOString();
 
-    const [dateFrom, setDateFrom] = useState(todayStart);
-    const [dateTo, setDateTo] = useState(todayEnd);
+    const [dateFrom, setDateFrom] = useState(monthStart);
+    const [dateTo, setDateTo] = useState(monthEnd);
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
         ordersListQueryOptions({
@@ -130,11 +130,11 @@ function ListsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                            setDateFrom(todayStart);
-                            setDateTo(todayEnd);
+                            setDateFrom(monthStart);
+                            setDateTo(monthEnd);
                         }}
                     >
-                        {t("today_orders")}
+                        {t("common:this_month")}
                     </Button>
                 </div>
             </div>

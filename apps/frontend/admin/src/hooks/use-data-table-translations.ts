@@ -2,12 +2,12 @@ import { useTranslation } from "react-i18next";
 
 import type { DataTableTranslations } from "@jahonbozor/ui";
 
-export function useDataTableTranslations(noResultsKey?: string): DataTableTranslations {
+export function useDataTableTranslations(noResultsText?: string): DataTableTranslations {
     const { t } = useTranslation("common");
 
     return {
         search: t("search"),
-        noResults: noResultsKey ? t(noResultsKey) : undefined,
+        noResults: noResultsText,
         columns: t("table_columns"),
         rowsPerPage: t("per_page"),
         showAll: t("table_show_all"),
