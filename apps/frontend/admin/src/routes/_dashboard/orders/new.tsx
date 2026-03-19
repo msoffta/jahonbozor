@@ -44,7 +44,7 @@ interface LocalItem {
 function NewOrderPage() {
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
-    const translations = useDataTableTranslations("no_items");
+    const translations = useDataTableTranslations(t("no_items"));
     const { userId } = Route.useSearch();
 
     const tableRef = useRef<DataTableRef>(null);

@@ -75,6 +75,8 @@
   "read_only_access": "Faqat ko'rish rejimi",
   "no_access_title": "Kirish ruxsati yo'q",
   "no_access_message": "Ushbu sahifaga kirish uchun sizda yetarli ruxsatlar yo'q",
+  "today": "Bugun",
+  "this_month": "Shu oy",
   "sum": "so'm",
   "validation": {
     "required": "Majburiy maydon",

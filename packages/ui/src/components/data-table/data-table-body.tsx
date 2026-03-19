@@ -13,7 +13,7 @@ import { DataTableNewRow } from "./data-table-new-row";
 import type { NewRowState } from "./types";
 import type { ColumnDef, Row, Table as TanStackTable } from "@tanstack/react-table";
 
-const VIRTUAL_ROW_HEIGHT_PX = 40;
+const VIRTUAL_ROW_HEIGHT_PX = 36;
 const VIRTUALIZER_OVERSCAN = 20;
 // eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional no-op for optional callbacks
 const NOOP = () => {};

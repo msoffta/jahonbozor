@@ -1,14 +1,17 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns";
 
 import { hasPermission, Permission } from "@jahonbozor/schemas";
 import {
     AnimatePresence,
+    Button,
     DataTable,
     DataTableSkeleton,
+    DatePicker,
     motion,
     PageTransition,
     useIsMobile,
@@ -25,13 +28,18 @@ import { useAuthStore } from "@/stores/auth.store";
 function IncomePage() {
     const { t } = useTranslation("income");
     const isReady = useDeferredReady();
-    const translations = useDataTableTranslations("income_empty");
+    const translations = useDataTableTranslations(t("income_empty"));
+
+    const monthStart = startOfMonth(new Date()).toISOString();
+    const monthEnd = endOfMonth(new Date()).toISOString();
+    const [dateFrom, setDateFrom] = useState(monthStart);
+    const [dateTo, setDateTo] = useState(monthEnd);
 
     // Permission check for creating income records
     const canCreate = useHasPermission(Permission.PRODUCT_HISTORY_CREATE);
 
     const { data: incomeData, isLoading: isIncomeLoading } = useQuery(
-        incomeListQueryOptions({ limit: 100 }),
+        incomeListQueryOptions({ limit: 100, dateFrom, dateTo }),
     );
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
@@ -95,8 +103,37 @@ function IncomePage() {
 
     return (
         <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
-            <div className="mb-4 flex items-center justify-between md:mb-6">
+            <div className="mb-2 flex flex-col gap-3 md:mb-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                    <div className="flex items-center gap-2">
+                        <DatePicker
+                            value={dateFrom}
+                            onChange={(date) => {
+                                if (date) setDateFrom(startOfDay(new Date(date)).toISOString());
+                            }}
+                            className="h-8 w-28 text-xs sm:w-36"
+                        />
+                        <span className="text-muted-foreground text-xs">—</span>
+                        <DatePicker
+                            value={dateTo}
+                            onChange={(date) => {
+                                if (date) setDateTo(endOfDay(new Date(date)).toISOString());
+                            }}
+                            className="h-8 w-28 text-xs sm:w-36"
+                        />
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setDateFrom(monthStart);
+                            setDateTo(monthEnd);
+                        }}
+                    >
+                        {t("common:this_month")}
+                    </Button>
+                </div>
             </div>
 
             <AnimatePresence mode="wait">

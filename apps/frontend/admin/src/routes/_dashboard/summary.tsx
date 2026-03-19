@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { endOfMonth, startOfMonth } from "date-fns";
 import { DollarSign, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react";
 
 import { hasPermission, Permission } from "@jahonbozor/schemas";
-import { DatePicker, PageTransition } from "@jahonbozor/ui";
+import { Button, DatePicker, PageTransition } from "@jahonbozor/ui";
 
 import { analyticsSummaryQueryOptions } from "@/api/analytics.api";
 import { CategoryBreakdownChart } from "@/components/analytics/category-breakdown-chart";
@@ -18,13 +19,15 @@ import { useAuthStore } from "@/stores/auth.store";
 function SummaryPage() {
     const { t, i18n } = useTranslation("analytics");
 
-    const [dateFrom, setDateFrom] = useState<Date | undefined>();
-    const [dateTo, setDateTo] = useState<Date | undefined>();
+    const monthStart = startOfMonth(new Date());
+    const monthEnd = endOfMonth(new Date());
+    const [dateFrom, setDateFrom] = useState<Date>(monthStart);
+    const [dateTo, setDateTo] = useState<Date>(monthEnd);
 
     const { data, isLoading, error } = useQuery(
         analyticsSummaryQueryOptions({
-            dateFrom: dateFrom?.toISOString(),
-            dateTo: dateTo?.toISOString(),
+            dateFrom: dateFrom.toISOString(),
+            dateTo: dateTo.toISOString(),
         }),
     );
 
@@ -58,17 +61,34 @@ function SummaryPage() {
                 {/* Header with filters */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <h1 className="text-xl font-bold md:text-2xl">{t("analytics_dashboard")}</h1>
-                    <div className="flex gap-2">
-                        <DatePicker
-                            value={dateFrom}
-                            onChange={setDateFrom}
-                            placeholder={t("date_from")}
-                        />
-                        <DatePicker
-                            value={dateTo}
-                            onChange={setDateTo}
-                            placeholder={t("date_to")}
-                        />
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                        <div className="flex items-center gap-2">
+                            <DatePicker
+                                value={dateFrom.toISOString()}
+                                onChange={(date) => {
+                                    if (date) setDateFrom(new Date(date));
+                                }}
+                                className="h-8 w-28 text-xs sm:w-36"
+                            />
+                            <span className="text-muted-foreground text-xs">—</span>
+                            <DatePicker
+                                value={dateTo.toISOString()}
+                                onChange={(date) => {
+                                    if (date) setDateTo(new Date(date));
+                                }}
+                                className="h-8 w-28 text-xs sm:w-36"
+                            />
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setDateFrom(monthStart);
+                                setDateTo(monthEnd);
+                            }}
+                        >
+                            {t("common:this_month")}
+                        </Button>
                     </div>
                 </div>
 

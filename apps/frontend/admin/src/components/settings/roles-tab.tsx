@@ -36,7 +36,7 @@ export function RolesTab() {
     const { t } = useTranslation("settings");
     const currentUserPermissions = useAuthStore((s) => s.permissions);
     const isReady = useDeferredReady();
-    const translations = useDataTableTranslations("roles_empty");
+    const translations = useDataTableTranslations(t("roles_empty"));
     const [editingRole, setEditingRole] = useState<RoleItem | null>(null);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 

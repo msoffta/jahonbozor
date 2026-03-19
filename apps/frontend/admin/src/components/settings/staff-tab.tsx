@@ -33,7 +33,7 @@ export function StaffTab() {
     const { t } = useTranslation("settings");
     const currentUser = useAuthStore((s) => s.user);
     const isReady = useDeferredReady();
-    const translations = useDataTableTranslations("staff_empty");
+    const translations = useDataTableTranslations(t("staff_empty"));
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
     const canCreate = useHasPermission(Permission.STAFF_CREATE);

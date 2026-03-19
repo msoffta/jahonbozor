@@ -80,7 +80,7 @@ function UserDetailPage() {
     const { t } = useTranslation("clients");
     const navigate = useNavigate();
     const numericId = Number(userId);
-    const orderTranslations = useDataTableTranslations("detail_no_orders");
+    const orderTranslations = useDataTableTranslations(t("detail_no_orders"));
 
     const canManageDebts = useHasPermission(Permission.DEBTS_CREATE_PAYMENT);
 

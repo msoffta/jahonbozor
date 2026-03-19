@@ -106,7 +106,10 @@ export function getClientColumns(
                                 variant="ghost"
                                 size="icon"
                                 className="text-muted-foreground hover:text-primary h-8 w-8"
-                                onClick={() => actions.onRestore(row.original.id)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    actions.onRestore(row.original.id);
+                                }}
                                 title={t("action_restore")}
                             >
                                 <RotateCcw className="h-4 w-4" />
@@ -116,7 +119,10 @@ export function getClientColumns(
                                 variant="ghost"
                                 size="icon"
                                 className="text-muted-foreground hover:text-destructive h-8 w-8"
-                                onClick={() => actions.onDelete(row.original.id)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    actions.onDelete(row.original.id);
+                                }}
                                 title={t("action_delete")}
                             >
                                 <Trash2 className="h-4 w-4" />
