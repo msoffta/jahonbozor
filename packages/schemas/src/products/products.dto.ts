@@ -43,11 +43,11 @@ export interface PublicProductItem {
     id: number;
     name: string;
     price: number;
-    categoryId: number;
+    categoryId: number | null;
     remaining: number;
     createdAt: Date | string;
     updatedAt: Date | string;
-    category?: ProductCategoryRelation;
+    category?: ProductCategoryRelation | null;
 }
 
 export type PublicProductsListResponse = ReturnSchema<{

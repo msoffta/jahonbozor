@@ -131,16 +131,16 @@ function ProductsPage() {
             }
 
             // For initial creation, check if all required fields are present
-            if (!data.name || data.price === undefined || !data.category) {
+            if (!data.name || data.price === undefined) {
                 return; // Wait for more data before creating
             }
 
-            const categoryId = await resolveCategoryId(data.category);
+            const categoryId = data.category ? await resolveCategoryId(data.category) : undefined;
             const result = await createProduct.mutateAsync({
                 name: String(data.name as string),
                 price: Number(data.price),
                 costprice: Number(data.costprice) || 0,
-                categoryId,
+                ...(categoryId != null && { categoryId }),
                 remaining: Number(data.remaining) || 0,
             });
             return result?.id;

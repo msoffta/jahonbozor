@@ -62,7 +62,7 @@ export const createProductFn = async (body: {
     name: string;
     price: number;
     costprice: number;
-    categoryId: number;
+    categoryId?: number;
     remaining?: number;
 }) => {
     const { data, error } = await api.api.private.products.post({

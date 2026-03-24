@@ -317,6 +317,31 @@ describe("ProductsService", () => {
             expect(mockLogger.warn).toHaveBeenCalled();
         });
 
+        test("should create product without categoryId", async () => {
+            // Arrange
+            const mockProduct = createMockProduct({
+                id: 1,
+                name: "No Category Product",
+                categoryId: null,
+            });
+
+            prismaMock.product.create.mockResolvedValue(mockProduct);
+            prismaMock.productHistory.create.mockResolvedValue(createMockProductHistory());
+            prismaMock.auditLog.create.mockResolvedValue(createMockAuditLog());
+
+            // Act
+            const result = await ProductsService.createProduct(
+                { name: "No Category Product", price: 100, costprice: 50, remaining: 0 },
+                mockContext,
+                mockLogger,
+            );
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data?.id).toBe(1);
+            expect(prismaMock.category.findUnique).not.toHaveBeenCalled();
+        });
+
         test("should handle database error", async () => {
             // Arrange
             const mockCategory = createMockCategory({ id: 1 });
