@@ -326,6 +326,36 @@ describe("Products API Routes", () => {
             spy.mockRestore();
         });
 
+        test("should create product without categoryId", async () => {
+            // Arrange
+            const productWithoutCategory = { ...mockProduct, categoryId: null, category: null };
+            const spy = vi.spyOn(ProductsService, "createProduct").mockResolvedValue({
+                success: true,
+                data: productWithoutCategory,
+            });
+
+            // Act
+            const response = await app.handle(
+                new Request("http://localhost/products", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: "Test Product",
+                        price: 100,
+                        costprice: 50,
+                    }),
+                }),
+            );
+            const body = await response.json();
+
+            // Assert
+            expect(response.status).toBe(200);
+            expect(body.success).toBe(true);
+            expect(body.data.categoryId).toBeNull();
+
+            spy.mockRestore();
+        });
+
         test("should return error when category not found", async () => {
             // Arrange
             const spy = vi.spyOn(ProductsService, "createProduct").mockResolvedValue({

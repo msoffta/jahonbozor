@@ -3,11 +3,11 @@ model Product {
   name       String
   price      Decimal   @db.Decimal(10, 2)
   costprice  Decimal   @db.Decimal(10, 2)
-  categoryId Int
+  categoryId Int?
   remaining  Int       @default(0)
   deletedAt  DateTime?
 
-  category         Category         @relation(fields: [categoryId], references: [id])
+  category         Category?        @relation(fields: [categoryId], references: [id])
   productHistories ProductHistory[]
   orderItems       OrderItem[]
 

@@ -140,13 +140,17 @@ export abstract class ProductsService {
         logger: Logger,
     ): Promise<AdminProductDetailResponse> {
         try {
-            const categoryExists = await prisma.category.findUnique({
-                where: { id: productData.categoryId },
-            });
+            if (productData.categoryId != null) {
+                const categoryExists = await prisma.category.findUnique({
+                    where: { id: productData.categoryId },
+                });
 
-            if (!categoryExists) {
-                logger.warn("Products: Category not found", { categoryId: productData.categoryId });
-                return { success: false, error: "Category not found" };
+                if (!categoryExists) {
+                    logger.warn("Products: Category not found", {
+                        categoryId: productData.categoryId,
+                    });
+                    return { success: false, error: "Category not found" };
+                }
             }
 
             const [newProduct] = await prisma.$transaction(async (transaction) => {
@@ -155,7 +159,7 @@ export abstract class ProductsService {
                         name: productData.name,
                         price: productData.price,
                         costprice: productData.costprice,
-                        categoryId: productData.categoryId,
+                        categoryId: productData.categoryId ?? null,
                         remaining: productData.remaining ?? 0,
                     },
                 });
@@ -221,15 +225,20 @@ export abstract class ProductsService {
                 return { success: false, error: "Cannot update deleted product" };
             }
 
-            if (productData.categoryId && productData.categoryId !== existingProduct.categoryId) {
-                const categoryExists = await prisma.category.findUnique({
-                    where: { id: productData.categoryId },
-                });
-                if (!categoryExists) {
-                    logger.warn("Products: Target category not found", {
-                        categoryId: productData.categoryId,
+            if (
+                productData.categoryId !== undefined &&
+                productData.categoryId !== existingProduct.categoryId
+            ) {
+                if (productData.categoryId != null) {
+                    const categoryExists = await prisma.category.findUnique({
+                        where: { id: productData.categoryId },
                     });
-                    return { success: false, error: "Category not found" };
+                    if (!categoryExists) {
+                        logger.warn("Products: Target category not found", {
+                            categoryId: productData.categoryId,
+                        });
+                        return { success: false, error: "Category not found" };
+                    }
                 }
             }
 

@@ -6,7 +6,7 @@ export const Product = BaseModel.extend({
     name: z.string().min(1).max(255),
     price: z.number().positive(),
     costprice: z.number().nonnegative(),
-    categoryId: z.number(),
+    categoryId: z.number().optional(),
     remaining: z.number().nonnegative().default(0),
     deletedAt: z.union([z.coerce.date(), z.iso.datetime()]).nullable(),
 });
