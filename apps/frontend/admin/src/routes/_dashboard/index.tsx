@@ -35,7 +35,7 @@ import { useAuthStore } from "@/stores/auth.store";
 
 function OrdersPage() {
     const { t } = useTranslation("orders");
-    const [page] = useState(1);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
     const navigate = useNavigate();
     const isReady = useDeferredReady(300);
     const translations = useDataTableTranslations(t("orders_empty"));
@@ -66,8 +66,8 @@ function OrdersPage() {
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
         ordersListQueryOptions({
-            page,
-            limit: 20,
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
             itemsCount: 1,
             dateFrom,
             dateTo,
@@ -309,9 +309,11 @@ function OrdersPage() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={orders}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((ordersData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering

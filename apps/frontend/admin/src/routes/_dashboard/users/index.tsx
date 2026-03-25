@@ -37,6 +37,7 @@ function UsersPage() {
     const { t } = useTranslation("clients");
     const navigate = useNavigate();
     const [includeDeleted, setIncludeDeleted] = useState(false);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
     const { new: isNew } = Route.useSearch();
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("clients_empty"));
@@ -47,7 +48,11 @@ function UsersPage() {
     const canDelete = useHasPermission(Permission.USERS_DELETE);
 
     const { data: clientsData, isLoading: isClientsLoading } = useQuery(
-        clientsListQueryOptions({ limit: 100, includeDeleted }),
+        clientsListQueryOptions({
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            includeDeleted,
+        }),
     );
 
     const createClient = useCreateClient();
@@ -179,9 +184,11 @@ function UsersPage() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={clients}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((clientsData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering

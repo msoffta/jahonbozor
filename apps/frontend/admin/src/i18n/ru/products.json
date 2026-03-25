@@ -17,5 +17,18 @@
   "table_next": "Вперёд",
   "product_actions": "Действия",
   "action_delete": "Удалить",
-  "action_restore": "Восстановить"
+  "action_restore": "Восстановить",
+  "import_button": "Импорт",
+  "import_title": "Импорт товаров",
+  "import_drop_hint": "Перетащите CSV файл или нажмите для выбора",
+  "import_supported_formats": "Поддерживаемый формат: CSV",
+  "import_preview": "Предпросмотр: {{count}} товаров",
+  "import_errors": "{{count}} строк с ошибками (будут пропущены)",
+  "import_confirm": "Импортировать",
+  "import_importing": "Импорт...",
+  "import_success": "Импорт завершён",
+  "import_created": "Создано: {{count}}",
+  "import_updated": "Обновлено: {{count}}",
+  "import_done": "Готово",
+  "import_more_rows": "ещё"
 }

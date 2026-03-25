@@ -35,12 +35,16 @@ export function StaffTab() {
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("staff_empty"));
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
     const canCreate = useHasPermission(Permission.STAFF_CREATE);
     const canDelete = useHasPermission(Permission.STAFF_DELETE);
 
     const { data: staffData, isLoading: isStaffLoading } = useQuery(
-        staffListQueryOptions({ limit: 100 }),
+        staffListQueryOptions({
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+        }),
     );
 
     const { data: rolesData, isLoading: isRolesLoading } = useQuery(
@@ -166,9 +170,11 @@ export function StaffTab() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={staff}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((staffData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering

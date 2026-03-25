@@ -41,6 +41,7 @@ function ExpensePage() {
     const monthEnd = endOfMonth(new Date()).toISOString();
     const [dateFrom, setDateFrom] = useState(monthStart);
     const [dateTo, setDateTo] = useState(monthEnd);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
     // Permission checks for expense actions
     const canCreate = useHasPermission(Permission.EXPENSES_CREATE);
@@ -48,7 +49,13 @@ function ExpensePage() {
     const canDelete = useHasPermission(Permission.EXPENSES_DELETE);
 
     const { data: expensesData, isLoading: isExpensesLoading } = useQuery(
-        expensesListQueryOptions({ limit: 100, includeDeleted, dateFrom, dateTo }),
+        expensesListQueryOptions({
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            includeDeleted,
+            dateFrom,
+            dateTo,
+        }),
     );
 
     const createExpense = useCreateExpense();
@@ -209,9 +216,11 @@ function ExpensePage() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={expenses}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((expensesData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering

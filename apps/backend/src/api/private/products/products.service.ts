@@ -10,6 +10,8 @@ import type {
     AdminProductDetailResponse,
     AdminProductsListResponse,
     CreateProductBody,
+    ImportProductRow,
+    ImportProductsResponse,
     ProductsPagination,
     UpdateProductBody,
 } from "@jahonbozor/schemas/src/products";
@@ -416,6 +418,116 @@ export abstract class ProductsService {
             return { success: true, data: mapped };
         } catch (error) {
             logger.error("Products: Error in restoreProduct", { productId, error });
+            return { success: false, error };
+        }
+    }
+
+    static async importProducts(
+        rows: ImportProductRow[],
+        context: ServiceContext,
+        logger: Logger,
+    ): Promise<ImportProductsResponse> {
+        try {
+            const trimmedRows = rows.map((r) => ({ ...r, name: r.name.trim() }));
+            const uniqueNames = [...new Set(trimmedRows.map((r) => r.name))];
+
+            // Find existing products by name (case-insensitive, non-deleted)
+            const existingProducts = await prisma.product.findMany({
+                where: {
+                    name: { in: uniqueNames, mode: "insensitive" },
+                    deletedAt: null,
+                },
+            });
+
+            // Build lookup: lowercase name → existing product
+            const nameMap = new Map(existingProducts.map((p) => [p.name.toLowerCase().trim(), p]));
+
+            let created = 0;
+            let updated = 0;
+            const historyEntries: Prisma.ProductHistoryCreateManyInput[] = [];
+
+            // Extended timeout for large imports (2 min)
+            await prisma.$transaction(
+                async (tx) => {
+                    for (const row of trimmedRows) {
+                        const existing = nameMap.get(row.name.toLowerCase());
+
+                        if (existing) {
+                            const updatedProduct = await tx.product.update({
+                                where: { id: existing.id },
+                                data: {
+                                    price: row.price,
+                                    costprice: row.costprice,
+                                    remaining: row.remaining,
+                                },
+                            });
+
+                            historyEntries.push({
+                                productId: existing.id,
+                                staffId: context.staffId,
+                                operation: "UPDATE",
+                                changeReason: "CSV Import",
+                                previousData: createProductSnapshot(existing),
+                                newData: createProductSnapshot(updatedProduct),
+                            });
+
+                            nameMap.set(row.name.toLowerCase(), updatedProduct);
+                            updated++;
+                        } else {
+                            const newProduct = await tx.product.create({
+                                data: {
+                                    name: row.name,
+                                    price: row.price,
+                                    costprice: row.costprice,
+                                    remaining: row.remaining,
+                                },
+                            });
+
+                            historyEntries.push({
+                                productId: newProduct.id,
+                                staffId: context.staffId,
+                                operation: "CREATE",
+                                changeReason: "CSV Import",
+                                newData: createProductSnapshot(newProduct),
+                            });
+
+                            nameMap.set(row.name.toLowerCase(), newProduct);
+                            created++;
+                        }
+                    }
+
+                    // Batch insert all history entries at once
+                    if (historyEntries.length > 0) {
+                        await tx.productHistory.createMany({ data: historyEntries });
+                    }
+
+                    await auditInTransaction(
+                        tx,
+                        { requestId: context.requestId, user: context.user, logger },
+                        {
+                            entityType: "product",
+                            entityId: 0,
+                            action: "CREATE",
+                            newData: {
+                                importSummary: { created, updated, total: trimmedRows.length },
+                            },
+                        },
+                    );
+                },
+                { timeout: 120_000 },
+            );
+
+            const total = trimmedRows.length;
+            logger.info("Products: CSV import completed", {
+                created,
+                updated,
+                total,
+                staffId: context.staffId,
+            });
+
+            return { success: true, data: { created, updated, total } };
+        } catch (error) {
+            logger.error("Products: Error in importProducts", { error });
             return { success: false, error };
         }
     }

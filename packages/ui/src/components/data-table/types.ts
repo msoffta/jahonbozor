@@ -105,6 +105,9 @@ export interface DataTableProps<TData> {
     pageSizeOptions?: number[];
     defaultPageSize?: number;
     enableShowAll?: boolean;
+    manualPagination?: boolean;
+    pageCount?: number;
+    onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void;
 
     // Features
     enableSorting?: boolean;

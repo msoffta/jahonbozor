@@ -5,7 +5,7 @@ import { toast } from "@jahonbozor/ui";
 import { api } from "@/api/client";
 import { i18n } from "@/i18n/config";
 
-import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
+import type { AdminProductItem, ImportProductRow } from "@jahonbozor/schemas/src/products";
 
 export const productKeys = {
     all: ["products"] as const,
@@ -154,6 +154,31 @@ export const useRestoreProduct = () => {
 
     return useMutation({
         mutationFn: restoreProductFn,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
+    });
+};
+
+// --- Import ---
+
+export const importProductsFn = async (products: ImportProductRow[]) => {
+    const { data, error } = await api.api.private.products.import.post({
+        products,
+    });
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data as { created: number; updated: number; total: number };
+};
+
+export const useImportProducts = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: importProductsFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },

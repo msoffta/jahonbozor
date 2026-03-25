@@ -4,6 +4,7 @@ import { Permission } from "@jahonbozor/schemas";
 import {
     CreateInventoryAdjustmentBody,
     CreateProductBody,
+    ImportProductsBody,
     ProductHistoryPagination,
     ProductsPagination,
     UpdateProductBody,
@@ -19,6 +20,7 @@ import type {
     AdminProductDetailResponse,
     AdminProductsListResponse,
     HistoryListResponse,
+    ImportProductsResponse,
     InventoryAdjustmentResponse,
 } from "@jahonbozor/schemas/src/products";
 
@@ -44,6 +46,33 @@ export const products = new Elysia({ prefix: "/products" })
         {
             permissions: [Permission.PRODUCTS_LIST],
             query: ProductsPagination,
+        },
+    )
+    .post(
+        "/import",
+        async ({ body, user, set, logger, requestId }): Promise<ImportProductsResponse> => {
+            try {
+                const result = await ProductsService.importProducts(
+                    body.products,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    set.status = 400;
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Products: Unhandled error in POST /products/import", {
+                    error,
+                });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.PRODUCTS_CREATE],
+            body: ImportProductsBody,
         },
     )
     .get(
