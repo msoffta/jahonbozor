@@ -34,12 +34,18 @@ function IncomePage() {
     const monthEnd = endOfMonth(new Date()).toISOString();
     const [dateFrom, setDateFrom] = useState(monthStart);
     const [dateTo, setDateTo] = useState(monthEnd);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
     // Permission check for creating income records
     const canCreate = useHasPermission(Permission.PRODUCT_HISTORY_CREATE);
 
     const { data: incomeData, isLoading: isIncomeLoading } = useQuery(
-        incomeListQueryOptions({ limit: 100, dateFrom, dateTo }),
+        incomeListQueryOptions({
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            dateFrom,
+            dateTo,
+        }),
     );
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
@@ -160,9 +166,11 @@ function IncomePage() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={history}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((incomeData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering

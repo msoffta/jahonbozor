@@ -12,12 +12,19 @@ const COMBOBOX_MIN_WIDTH_PX = 180;
 const COMBOBOX_BLUR_DELAY_MS = 150;
 /** Duration for exit animation (matches combobox-out in globals.css) */
 const COMBOBOX_EXIT_ANIMATION_MS = 100;
+/** Debounce delay for async search */
+const SEARCH_DEBOUNCE_MS = 300;
+
+interface ComboboxOption {
+    label: string;
+    value: string;
+}
 
 interface DataTableComboboxProps {
     value: string;
     onChange: (value: string) => void;
     onSelect?: (value: string) => void;
-    options: { label: string; value: string }[];
+    options: ComboboxOption[];
     placeholder?: string;
     error?: boolean;
     autoFocus?: boolean;
@@ -26,6 +33,8 @@ interface DataTableComboboxProps {
     inputRef?: (el: HTMLInputElement | null) => void;
     /** Text to display when no options match the query */
     noResultsText?: string;
+    /** Async search — called with debounce when user types */
+    onSearch?: (query: string) => Promise<ComboboxOption[]>;
 }
 
 export function DataTableCombobox({
@@ -40,6 +49,7 @@ export function DataTableCombobox({
     onBlur,
     inputRef: externalRef,
     noResultsText,
+    onSearch,
 }: DataTableComboboxProps) {
     const listboxId = React.useId();
     const [showList, setShowList] = React.useState(false);
@@ -56,22 +66,56 @@ export function DataTableCombobox({
         width: number;
     } | null>(null);
 
+    // Async search results
+    const [asyncOptions, setAsyncOptions] = React.useState<ComboboxOption[] | null>(null);
+
+    // Merge static + async options for lookups (selected option label resolution)
+    const allKnownOptions = React.useMemo(() => {
+        if (!asyncOptions?.length) return options;
+        const map = new Map(options.map((o) => [o.value, o]));
+        for (const o of asyncOptions) map.set(o.value, o);
+        return Array.from(map.values());
+    }, [options, asyncOptions]);
+
     // When value matches an option's value (e.g. selected ID), show the label instead
     const isSelectedOption = React.useMemo(
-        () => options.some((o) => o.value === value),
-        [value, options],
+        () => allKnownOptions.some((o) => o.value === value),
+        [value, allKnownOptions],
     );
 
     const filtered = React.useMemo(() => {
+        // When async search returned results, use them directly (server already filtered)
+        if (onSearch && asyncOptions) return asyncOptions;
         if (!value || isSelectedOption) return options;
         const lower = value.toLowerCase();
         return options.filter((o) => o.label.toLowerCase().includes(lower));
-    }, [value, options, isSelectedOption]);
+    }, [value, options, asyncOptions, isSelectedOption, onSearch]);
 
     // Reset selected index when list filter changes
     React.useEffect(() => {
         setSelectedIndex(0);
     }, [filtered.length]);
+
+    const [searchQuery, setSearchQuery] = React.useState("");
+
+    // Debounced async search
+    React.useEffect(() => {
+        if (!onSearch) return;
+        if (!searchQuery || isSelectedOption) {
+            setAsyncOptions(null);
+            return;
+        }
+        let cancelled = false;
+        const timer = setTimeout(() => {
+            void onSearch(searchQuery).then((results) => {
+                if (!cancelled) setAsyncOptions(results);
+            });
+        }, SEARCH_DEBOUNCE_MS);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [searchQuery, onSearch, isSelectedOption]);
 
     const measurePos = React.useCallback(() => {
         const el = innerRef.current;
@@ -131,9 +175,15 @@ export function DataTableCombobox({
 
     const handleSelect = (optionValue: string) => {
         selectingRef.current = true;
+        // Set label immediately so sync effect doesn't flash the ID
+        const label = [...(asyncOptions ?? []), ...options].find(
+            (o) => o.value === optionValue,
+        )?.label;
+        if (label) setSearchQuery(label);
         onChange(optionValue);
         onSelect?.(optionValue);
         setShowList(false);
+        setAsyncOptions(null);
         setTimeout(() => {
             selectingRef.current = false;
         }, 0);
@@ -173,19 +223,17 @@ export function DataTableCombobox({
         onKeyDown?.(e);
     };
 
-    const [searchQuery, setSearchQuery] = React.useState("");
-
     // Maintain query in sync with value/external reset
     React.useEffect(() => {
         if (!value) {
             setSearchQuery("");
         } else if (value && isSelectedOption) {
-            const label = options.find((o) => o.value === value)?.label ?? value;
+            const label = allKnownOptions.find((o) => o.value === value)?.label ?? value;
             setSearchQuery(label);
         } else {
             setSearchQuery(value);
         }
-    }, [value, isSelectedOption, options]);
+    }, [value, isSelectedOption, allKnownOptions]);
 
     return (
         <>

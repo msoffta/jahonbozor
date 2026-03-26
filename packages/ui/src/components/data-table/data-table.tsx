@@ -42,6 +42,9 @@ export function DataTable<TData>({
     pageSizeOptions,
     defaultPageSize = 10,
     enableShowAll = false,
+    manualPagination = false,
+    pageCount,
+    onPaginationChange: onPaginationChangeProp,
     enableSorting = false,
     enableFiltering = false,
     enableGlobalSearch = false,
@@ -70,6 +73,7 @@ export function DataTable<TData>({
     onRowSelectionChange,
     initialColumnVisibility,
     onRowClick,
+    onDragSelectionChange,
     className,
     translations,
 }: DataTableProps<TData> & { ref?: React.Ref<DataTableRef> }) {
@@ -157,6 +161,13 @@ export function DataTable<TData>({
         return [selectionColumn, ...columns];
     }, [columns, enableRowSelection]);
 
+    // Notify parent about pagination changes (server-side pagination)
+    React.useEffect(() => {
+        if (manualPagination && onPaginationChangeProp) {
+            onPaginationChangeProp(paginationState);
+        }
+    }, [paginationState, manualPagination, onPaginationChangeProp]);
+
     const table = useReactTable({
         data,
         columns: allColumns,
@@ -179,7 +190,11 @@ export function DataTable<TData>({
         onRowSelectionChange: setRowSelection,
         onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
-        ...(pagination ? { getPaginationRowModel: getPaginationRowModel() } : {}),
+        ...(manualPagination
+            ? { manualPagination: true, pageCount: pageCount ?? -1 }
+            : pagination
+              ? { getPaginationRowModel: getPaginationRowModel() }
+              : {}),
         ...(enableSorting ? { getSortedRowModel: getSortedRowModel() } : {}),
         ...(enableFiltering || enableGlobalSearch
             ? { getFilteredRowModel: getFilteredRowModel() }
@@ -378,6 +393,7 @@ export function DataTable<TData>({
                             onNeedMoreRows={multiRow.handleNeedMoreRows}
                             multiRowDefaultValues={multiRowDefaultValues}
                             onDragSumChange={setDragSumInfo}
+                            onDragSelectionChange={onDragSelectionChange}
                         />
                     </Table>
                 </div>

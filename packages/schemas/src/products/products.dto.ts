@@ -67,3 +67,24 @@ export type AdminProductsListResponse = ReturnSchema<{
     products: AdminProductItem[];
 }>;
 export type AdminProductDetailResponse = ReturnSchema<AdminProductItem>;
+
+// --- Import types ---
+
+export const ImportProductRow = z.object({
+    name: z.string().min(1).max(255),
+    price: z.number().positive(),
+    costprice: z.number().nonnegative(),
+    remaining: z.number().int().default(0),
+});
+export type ImportProductRow = z.infer<typeof ImportProductRow>;
+
+export const ImportProductsBody = z.object({
+    products: z.array(ImportProductRow).min(1),
+});
+export type ImportProductsBody = z.infer<typeof ImportProductsBody>;
+
+export type ImportProductsResponse = ReturnSchema<{
+    created: number;
+    updated: number;
+    total: number;
+}>;

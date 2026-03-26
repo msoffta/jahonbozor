@@ -3,6 +3,7 @@ import { webhookCallback } from "grammy";
 import { bot } from "@bot/bot";
 import { logger } from "@bot/lib/logger";
 import { prisma } from "@bot/lib/prisma";
+import { startDebtReminderScheduler } from "@bot/lib/scheduler";
 
 const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -50,9 +51,14 @@ void bot.api
         logger.error("Bot: Webhook registration failed", { error: err });
     });
 
+// Start debt reminder scheduler (daily at 10:00 AM Asia/Samarkand)
+const debtReminderJob = startDebtReminderScheduler(bot, logger);
+logger.info("Bot: Debt reminder scheduler started");
+
 // Graceful shutdown
 const shutdown = async () => {
     logger.info("Bot: Shutting down...");
+    debtReminderJob.stop();
     void server.stop();
     await prisma.$disconnect();
     process.exit(0);

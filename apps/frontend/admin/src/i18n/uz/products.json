@@ -17,5 +17,18 @@
   "table_next": "Keyingi",
   "product_actions": "Amallar",
   "action_delete": "O'chirish",
-  "action_restore": "Tiklash"
+  "action_restore": "Tiklash",
+  "import_button": "Import",
+  "import_title": "Mahsulotlarni import qilish",
+  "import_drop_hint": "CSV faylni tashlang yoki tanlash uchun bosing",
+  "import_supported_formats": "Qo'llab-quvvatlanadigan format: CSV",
+  "import_preview": "Ko'rib chiqish: {{count}} mahsulot",
+  "import_errors": "{{count}} qator xatolik bilan (o'tkazib yuboriladi)",
+  "import_confirm": "Import qilish",
+  "import_importing": "Import...",
+  "import_success": "Import yakunlandi",
+  "import_created": "Yaratildi: {{count}}",
+  "import_updated": "Yangilandi: {{count}}",
+  "import_done": "Tayyor",
+  "import_more_rows": "yana"
 }

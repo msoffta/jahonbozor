@@ -21,7 +21,7 @@ import {
 
 import { clientDetailQueryOptions } from "@/api/clients.api";
 import { useCreateOrder } from "@/api/orders.api";
-import { productsListQueryOptions } from "@/api/products.api";
+import { productsListQueryOptions, searchProductsFn } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { formatCurrency } from "@/lib/format";
@@ -55,7 +55,7 @@ function NewOrderPage() {
     const { data: clientData } = useQuery(clientDetailQueryOptions(userId ?? 0));
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({ limit: 100, includeDeleted: false }),
+        productsListQueryOptions({ limit: 50, includeDeleted: false }),
     );
 
     const createOrder = useCreateOrder();
@@ -66,7 +66,11 @@ function NewOrderPage() {
     }, []);
 
     const columns = useMemo(
-        () => getOrderItemColumns(t, products, { onDelete: handleDeleteItem }),
+        () =>
+            getOrderItemColumns(t, products, {
+                onDelete: handleDeleteItem,
+                onSearchProducts: searchProductsFn,
+            }),
         [t, products, handleDeleteItem],
     );
 
@@ -156,6 +160,41 @@ function NewOrderPage() {
 
             setItems((prev) => [...prev, newItem]);
             return newId;
+        },
+        [products],
+    );
+
+    const handleCellEdit = useCallback(
+        (rowIndex: number, columnId: string, value: unknown) => {
+            if (columnId === "product") {
+                const productId = Number(value);
+                const product = products.find((p) => p.id === productId);
+                if (!product) return;
+                setItems((prev) =>
+                    prev.map((item, i) =>
+                        i === rowIndex
+                            ? {
+                                  ...item,
+                                  productId,
+                                  price: product.price,
+                                  product: {
+                                      id: product.id,
+                                      name: product.name,
+                                      price: product.price,
+                                      remaining: product.remaining,
+                                      costprice: product.costprice,
+                                  },
+                              }
+                            : item,
+                    ),
+                );
+            } else if (columnId === "quantity") {
+                setItems((prev) =>
+                    prev.map((item, i) =>
+                        i === rowIndex ? { ...item, quantity: Number(value) || 1 } : item,
+                    ),
+                );
+            }
         },
         [products],
     );
@@ -305,6 +344,8 @@ function NewOrderPage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={items}
+                            enableEditing
+                            onCellEdit={handleCellEdit}
                             enableMultipleNewRows
                             multiRowCount={15}
                             onMultiRowSave={handleNewRowSave}

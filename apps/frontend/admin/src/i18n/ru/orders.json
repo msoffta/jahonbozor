@@ -44,5 +44,18 @@
   "back_to_lists": "Назад к спискам",
   "order_comment": "Комментарий",
   "error_debt_requires_user": "Для оплаты в долг необходимо выбрать клиента",
-  "insufficient_stock": "Недостаточно товара"
+  "insufficient_stock": "Недостаточно товара на складе:",
+  "insufficient_stock_detail": "{{name}} — нужно {{requested}}, в наличии {{available}}",
+  "print_receipt": "Печать чека",
+  "receipt_order_number": "Заказ №{{number}}",
+  "receipt_date": "Дата",
+  "receipt_client": "Клиент",
+  "receipt_payment": "Тип оплаты",
+  "receipt_product": "Товар",
+  "receipt_qty": "Кол.",
+  "receipt_price": "Цена",
+  "receipt_item_total": "Сумма",
+  "receipt_total": "ИТОГО",
+  "receipt_thank_you": "Спасибо за покупку!",
+  "receipt_comment": "Комментарий"
 }

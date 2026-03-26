@@ -35,6 +35,11 @@ export interface DataTableColumnMeta {
     selectOptions?: { label: string; value: string }[];
     validationSchema?: SafeParseable;
     placeholder?: string;
+    /** Override cell.getValue() when entering edit mode (e.g. return productId instead of product name) */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- row type varies per table
+    editValueAccessor?: (row: any) => unknown;
+    /** Async search for combobox options — called with debounce when user types */
+    onSearchOptions?: (query: string) => Promise<{ label: string; value: string }[]>;
 
     // DatePicker — show time input (HH:mm) alongside calendar
     showTime?: boolean;
@@ -105,6 +110,9 @@ export interface DataTableProps<TData> {
     pageSizeOptions?: number[];
     defaultPageSize?: number;
     enableShowAll?: boolean;
+    manualPagination?: boolean;
+    pageCount?: number;
+    onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void;
 
     // Features
     enableSorting?: boolean;
@@ -145,6 +153,7 @@ export interface DataTableProps<TData> {
     // Callbacks
     onRowSelectionChange?: (selection: Record<string, boolean>) => void;
     onRowClick?: (row: TData) => void;
+    onDragSelectionChange?: (selectedRows: TData[]) => void;
 
     // Column visibility
     initialColumnVisibility?: Record<string, boolean>;

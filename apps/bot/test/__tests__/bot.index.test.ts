@@ -18,6 +18,13 @@ vi.mock("grammy", () => ({
     webhookCallback: () => () => mockHandleUpdate(),
 }));
 
+// Mock scheduler
+const mockSchedulerStop = vi.fn();
+const mockStartScheduler = vi.fn(() => ({ stop: mockSchedulerStop }));
+vi.mock("@bot/lib/scheduler", () => ({
+    startDebtReminderScheduler: (...args: unknown[]) => mockStartScheduler(...(args as [])),
+}));
+
 // Mock logger
 const mockLogger = vi.hoisted(() => ({
     info: vi.fn(),
@@ -45,6 +52,7 @@ process.env.BOT_PORT = "0";
 // State captured during module initialization (before mockReset clears call history)
 let webhookCalledWith: string | undefined;
 let webhookLoggedSuccess = false;
+let schedulerStartedOnBoot = false;
 let shutdownHandler: (() => void) | undefined;
 
 describe("bot webhook server", () => {
@@ -70,6 +78,7 @@ describe("bot webhook server", () => {
             (call: unknown[]) =>
                 typeof call[0] === "string" && call[0].includes("Bot: Webhook registered"),
         );
+        schedulerStartedOnBoot = mockStartScheduler.mock.calls.length > 0;
     });
 
     test("POST /bot routes to webhook handler", async () => {
@@ -161,12 +170,18 @@ describe("webhook registration", () => {
     });
 });
 
+describe("debt reminder scheduler", () => {
+    test("scheduler is started on boot", () => {
+        expect(schedulerStartedOnBoot).toBe(true);
+    });
+});
+
 describe("graceful shutdown", () => {
     test("SIGTERM handler is registered", () => {
         expect(shutdownHandler).toBeDefined();
     });
 
-    test("shutdown stops server, disconnects prisma, and exits", async () => {
+    test("shutdown stops scheduler, server, disconnects prisma, and exits", async () => {
         // Re-spy process.exit (restoreAllMocks clears previous spy)
         const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
 
@@ -175,6 +190,7 @@ describe("graceful shutdown", () => {
         // Allow async shutdown to complete
         await new Promise((r) => setTimeout(r, 50));
 
+        expect(mockSchedulerStop).toHaveBeenCalled();
         expect(mockServer.stop).toHaveBeenCalled();
         expect(prismaMock.$disconnect).toHaveBeenCalled();
         expect(exitSpy).toHaveBeenCalledWith(0);

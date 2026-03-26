@@ -39,13 +39,18 @@ export function RolesTab() {
     const translations = useDataTableTranslations(t("roles_empty"));
     const [editingRole, setEditingRole] = useState<RoleItem | null>(null);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
     const canCreate = useHasPermission(Permission.ROLES_CREATE);
     const canUpdate = useHasPermission(Permission.ROLES_UPDATE);
     const canDelete = useHasPermission(Permission.ROLES_DELETE);
 
     const { data: rolesData, isLoading: isRolesLoading } = useQuery(
-        rolesListQueryOptions({ limit: 100, includeStaffCount: true }),
+        rolesListQueryOptions({
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            includeStaffCount: true,
+        }),
     );
 
     const createRole = useCreateRole();
@@ -142,9 +147,11 @@ export function RolesTab() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={roles}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((rolesData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableColumnVisibility

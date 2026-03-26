@@ -38,6 +38,7 @@ function ListsPage() {
 
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
     const monthStart = startOfMonth(new Date()).toISOString();
     const monthEnd = endOfMonth(new Date()).toISOString();
@@ -47,7 +48,8 @@ function ListsPage() {
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
         ordersListQueryOptions({
-            limit: 100,
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
             minItemsCount: 2,
             dateFrom,
             dateTo,
@@ -163,9 +165,11 @@ function ListsPage() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={orders}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((ordersData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering

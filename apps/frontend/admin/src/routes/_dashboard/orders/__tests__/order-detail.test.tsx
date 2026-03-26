@@ -34,6 +34,7 @@ vi.mock("@/api/orders.api", () => ({
 
 vi.mock("@/api/products.api", () => ({
     productsListQueryOptions: () => ({}),
+    searchProductsFn: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("@/components/orders/order-items-columns", () => ({

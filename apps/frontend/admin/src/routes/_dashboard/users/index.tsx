@@ -31,13 +31,15 @@ import { useAuthStore } from "@/stores/auth.store";
 
 const usersSearchSchema = z.object({
     new: z.boolean().optional(),
+    returnTo: z.string().optional(),
 });
 
 function UsersPage() {
     const { t } = useTranslation("clients");
     const navigate = useNavigate();
     const [includeDeleted, setIncludeDeleted] = useState(false);
-    const { new: isNew } = Route.useSearch();
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const { new: isNew, returnTo } = Route.useSearch();
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("clients_empty"));
 
@@ -47,7 +49,11 @@ function UsersPage() {
     const canDelete = useHasPermission(Permission.USERS_DELETE);
 
     const { data: clientsData, isLoading: isClientsLoading } = useQuery(
-        clientsListQueryOptions({ limit: 100, includeDeleted }),
+        clientsListQueryOptions({
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            includeDeleted,
+        }),
     );
 
     const createClient = useCreateClient();
@@ -137,9 +143,14 @@ function UsersPage() {
                 photo: null,
                 language: data.language === "ru" ? "ru" : "uz",
             });
+
+            if (result?.id && returnTo === "orders") {
+                void navigate({ to: "/orders/new", search: { userId: result.id } });
+            }
+
             return result?.id;
         },
-        [createClient, updateClient],
+        [createClient, updateClient, navigate, returnTo],
     );
 
     return (
@@ -179,9 +190,11 @@ function UsersPage() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={clients}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((clientsData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering

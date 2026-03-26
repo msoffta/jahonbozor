@@ -3,10 +3,12 @@ import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Upload } from "lucide-react";
 
 import { hasPermission, Permission } from "@jahonbozor/schemas";
 import {
     AnimatePresence,
+    Button,
     Checkbox,
     DataTable,
     DataTableSkeleton,
@@ -23,6 +25,7 @@ import {
     useRestoreProduct,
     useUpdateProduct,
 } from "@/api/products.api";
+import { ImportDrawer } from "@/components/products/import-drawer";
 import { getProductColumns } from "@/components/products/products-columns";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { useDeferredReady } from "@/hooks/use-deferred-ready";
@@ -32,6 +35,8 @@ import { useAuthStore } from "@/stores/auth.store";
 function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("products_empty"));
 
@@ -41,7 +46,11 @@ function ProductsPage() {
     const canDelete = useHasPermission(Permission.PRODUCTS_DELETE);
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({ limit: 100, includeDeleted }),
+        productsListQueryOptions({
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            includeDeleted,
+        }),
     );
 
     const { data: categoriesData } = useQuery(categoriesListQueryOptions({ limit: 100 }));
@@ -154,13 +163,21 @@ function ProductsPage() {
         <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
             <div className="mb-4 flex items-center justify-between md:mb-6">
                 <h1 className="text-xl font-bold md:text-2xl">{t("common:products")}</h1>
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                    <Checkbox
-                        checked={includeDeleted}
-                        onCheckedChange={(checked) => setIncludeDeleted(checked === true)}
-                    />
-                    {t("common:show_deleted")}
-                </label>
+                <div className="flex items-center gap-3">
+                    {canCreate && (
+                        <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {t("import_button")}
+                        </Button>
+                    )}
+                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                        <Checkbox
+                            checked={includeDeleted}
+                            onCheckedChange={(checked) => setIncludeDeleted(checked === true)}
+                        />
+                        {t("common:show_deleted")}
+                    </label>
+                </div>
             </div>
 
             <AnimatePresence mode="wait">
@@ -187,9 +204,11 @@ function ProductsPage() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={products}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((productsData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering
@@ -205,6 +224,8 @@ function ProductsPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <ImportDrawer open={importOpen} onOpenChange={setImportOpen} />
         </PageTransition>
     );
 }

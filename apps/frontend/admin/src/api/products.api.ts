@@ -5,7 +5,7 @@ import { toast } from "@jahonbozor/ui";
 import { api } from "@/api/client";
 import { i18n } from "@/i18n/config";
 
-import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
+import type { AdminProductItem, ImportProductRow } from "@jahonbozor/schemas/src/products";
 
 export const productKeys = {
     all: ["products"] as const,
@@ -55,6 +55,25 @@ export const productDetailQueryOptions = (id: number) =>
         },
         enabled: id > 0,
     });
+
+/** Server-side product search for combobox (returns {label, value} pairs) */
+export const searchProductsFn = async (
+    query: string,
+): Promise<{ label: string; value: string }[]> => {
+    const { data, error } = await api.api.private.products.get({
+        query: {
+            searchQuery: query,
+            limit: 20,
+            page: 1,
+            sortBy: "id",
+            sortOrder: "asc" as const,
+            includeDeleted: false,
+        },
+    });
+    if (error || !data.success) return [];
+    const result = data.data as { count: number; products: AdminProductItem[] };
+    return result.products.map((p) => ({ label: p.name, value: String(p.id) }));
+};
 
 // --- Mutation functions (exported for testing) ---
 
@@ -154,6 +173,31 @@ export const useRestoreProduct = () => {
 
     return useMutation({
         mutationFn: restoreProductFn,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
+    });
+};
+
+// --- Import ---
+
+export const importProductsFn = async (products: ImportProductRow[]) => {
+    const { data, error } = await api.api.private.products.import.post({
+        products,
+    });
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data as { created: number; updated: number; total: number };
+};
+
+export const useImportProducts = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: importProductsFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },

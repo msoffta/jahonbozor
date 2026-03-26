@@ -7,16 +7,29 @@ import { i18n } from "@/i18n/config";
 
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 
-interface InsufficientStockDetail {
-    productName: string;
-    requested: number;
-    available: number;
+/** Extract the business error from Eden Treaty's Error wrapper (.value) or a direct throw. */
+function getBusinessError(error: unknown): Record<string, unknown> | undefined {
+    const value = (error as { value?: { error?: Record<string, unknown> } })?.value?.error;
+    if (value) return value;
+    const raw = error as Record<string, unknown> | undefined;
+    return raw?.code ? raw : undefined;
 }
 
 function handleOrderError(error: unknown) {
-    const err = error as { code?: string; details?: InsufficientStockDetail[] } | undefined;
+    const err = getBusinessError(error);
     if (err?.code === "INSUFFICIENT_STOCK" && Array.isArray(err.details)) {
-        const lines = err.details.map((d) => `${d.productName}: ${d.requested}/${d.available}`);
+        const details = err.details as {
+            productName: string;
+            requested: number;
+            available: number;
+        }[];
+        const lines = details.map((d) =>
+            i18n.t("orders:insufficient_stock_detail", {
+                name: d.productName,
+                requested: d.requested,
+                available: d.available,
+            }),
+        );
         toast.error(`${i18n.t("orders:insufficient_stock")}\n${lines.join("\n")}`);
         return;
     }

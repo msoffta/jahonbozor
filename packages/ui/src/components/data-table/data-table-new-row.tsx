@@ -335,6 +335,7 @@ export function DataTableNewRow<TData>({
                                 }}
                                 placeholder={meta.placeholder}
                                 error={!!error}
+                                onSearch={meta.onSearchOptions}
                             />
                         ) : meta.inputType === "datepicker" ? (
                             <DatePicker

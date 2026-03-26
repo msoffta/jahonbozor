@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns";
+import { Printer } from "lucide-react";
 
 import { hasAnyPermission, hasPermission, Permission } from "@jahonbozor/schemas";
 import {
@@ -26,6 +27,7 @@ import {
     useUpdateOrder,
 } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
+import { OrderReceiptContainer } from "@/components/orders/order-receipt";
 import { getOrderColumns } from "@/components/orders/orders-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
@@ -33,9 +35,12 @@ import { useDeferredReady } from "@/hooks/use-deferred-ready";
 import { useHasAnyPermission, useHasPermission } from "@/hooks/use-permissions";
 import { useAuthStore } from "@/stores/auth.store";
 
+import type { OrderReceiptProps } from "@/components/orders/order-receipt";
+import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
+
 function OrdersPage() {
     const { t } = useTranslation("orders");
-    const [page] = useState(1);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
     const navigate = useNavigate();
     const isReady = useDeferredReady(300);
     const translations = useDataTableTranslations(t("orders_empty"));
@@ -55,6 +60,47 @@ function OrdersPage() {
 
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+    const [selectedOrders, setSelectedOrders] = useState<AdminOrderItem[]>([]);
+
+    const receipts = useMemo((): OrderReceiptProps[] => {
+        if (selectedOrders.length === 0) return [];
+
+        const userIds = new Set(selectedOrders.map((o) => o.userId ?? null));
+
+        if (userIds.size === 1) {
+            // Same client → merge all items into one receipt
+            const allItems = selectedOrders.flatMap((o) =>
+                o.items.map((item) => ({
+                    name: item.product?.name ?? "—",
+                    quantity: item.quantity,
+                    price: item.price,
+                })),
+            );
+            const totalSum = allItems.reduce((s, i) => s + i.price * i.quantity, 0);
+            return [
+                {
+                    clientName: selectedOrders[0]?.user?.fullname,
+                    items: allItems,
+                    totalSum,
+                },
+            ];
+        }
+
+        // Different clients → one receipt per order
+        return selectedOrders.map((order) => ({
+            orderId: order.id,
+            clientName: order.user?.fullname,
+            date: order.createdAt,
+            paymentType: order.paymentType,
+            comment: order.comment,
+            items: order.items.map((item) => ({
+                name: item.product?.name ?? "—",
+                quantity: item.quantity,
+                price: item.price,
+            })),
+            totalSum: order.items.reduce((s, i) => s + (i.price ?? 0) * (i.quantity ?? 1), 0),
+        }));
+    }, [selectedOrders]);
 
     const newRowDefaultValues = useMemo(
         () => ({
@@ -66,8 +112,8 @@ function OrdersPage() {
 
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
         ordersListQueryOptions({
-            page,
-            limit: 20,
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
             itemsCount: 1,
             dateFrom,
             dateTo,
@@ -282,6 +328,30 @@ function OrdersPage() {
                     >
                         {t("common:this_month")}
                     </Button>
+                    <AnimatePresence>
+                        {selectedOrders.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{
+                                    type: "spring",
+                                    stiffness: 500,
+                                    damping: 30,
+                                }}
+                            >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => window.print()}
+                                    className="gap-1.5"
+                                >
+                                    <Printer className="h-3.5 w-3.5" />
+                                    {t("print_receipt")} ({selectedOrders.length})
+                                </Button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
 
@@ -309,9 +379,11 @@ function OrdersPage() {
                             initialColumnVisibility={initialColumnVisibility}
                             data={orders}
                             pagination
+                            manualPagination
+                            pageCount={Math.ceil((ordersData?.count ?? 0) / pagination.pageSize)}
+                            onPaginationChange={setPagination}
                             defaultPageSize={20}
                             pageSizeOptions={[10, 20, 50]}
-                            enableShowAll
                             enableSorting
                             enableGlobalSearch
                             enableFiltering
@@ -325,6 +397,7 @@ function OrdersPage() {
                             onMultiRowChange={handleNewRowChange}
                             multiRowDefaultValues={newRowDefaultValues}
                             translations={translations}
+                            onDragSelectionChange={setSelectedOrders}
                         />
                     </motion.div>
                 )}
@@ -339,6 +412,7 @@ function OrdersPage() {
                 }}
                 isLoading={deleteOrder.isPending}
             />
+            <OrderReceiptContainer receipts={receipts} />
         </PageTransition>
     );
 }
