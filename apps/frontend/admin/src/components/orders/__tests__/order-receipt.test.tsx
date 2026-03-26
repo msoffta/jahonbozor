@@ -112,13 +112,13 @@ describe("OrderReceipt", () => {
 
     test("applies pageBreakBefore style when pageBreak is true", () => {
         const { container } = render(<OrderReceipt {...baseProps} pageBreak />);
-        const receipt = container.querySelector(".print-receipt")!;
+        const receipt = container.querySelector<HTMLElement>(".print-receipt")!;
         expect(receipt.style.pageBreakBefore).toBe("always");
     });
 
     test("does not apply pageBreakBefore style by default", () => {
         const { container } = render(<OrderReceipt {...baseProps} />);
-        const receipt = container.querySelector(".print-receipt")!;
+        const receipt = container.querySelector<HTMLElement>(".print-receipt")!;
         expect(receipt.style.pageBreakBefore).toBe("");
     });
 
