@@ -31,6 +31,7 @@ import { useAuthStore } from "@/stores/auth.store";
 
 const usersSearchSchema = z.object({
     new: z.boolean().optional(),
+    returnTo: z.string().optional(),
 });
 
 function UsersPage() {
@@ -38,7 +39,7 @@ function UsersPage() {
     const navigate = useNavigate();
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
-    const { new: isNew } = Route.useSearch();
+    const { new: isNew, returnTo } = Route.useSearch();
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("clients_empty"));
 
@@ -142,9 +143,14 @@ function UsersPage() {
                 photo: null,
                 language: data.language === "ru" ? "ru" : "uz",
             });
+
+            if (result?.id && returnTo === "orders") {
+                void navigate({ to: "/orders/new", search: { userId: result.id } });
+            }
+
             return result?.id;
         },
-        [createClient, updateClient],
+        [createClient, updateClient, navigate, returnTo],
     );
 
     return (

@@ -39,3 +39,14 @@ export const contactMessages = {
         genericError: "Произошла ошибка. Попробуйте позже.",
     },
 };
+
+export const debtReminderMessages = {
+    uz: {
+        reminder: (fullname: string, balance: string) =>
+            `Hurmatli ${fullname}, sizning qarzdorligingiz: ${balance} so'm. Iltimos, o'z vaqtida to'lang.`,
+    },
+    ru: {
+        reminder: (fullname: string, balance: string) =>
+            `Уважаемый(ая) ${fullname}, ваша задолженность: ${balance} сум. Пожалуйста, оплатите вовремя.`,
+    },
+};

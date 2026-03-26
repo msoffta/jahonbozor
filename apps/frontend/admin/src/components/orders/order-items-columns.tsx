@@ -18,6 +18,7 @@ export interface OrderItemRow {
 
 export interface OrderItemActions {
     onDelete?: (index: number) => void;
+    onSearchProducts?: (query: string) => Promise<{ label: string; value: string }[]>;
 }
 
 export function getOrderItemColumns(
@@ -48,6 +49,8 @@ export function getOrderItemColumns(
                 editable: true,
                 inputType: "combobox" as const,
                 selectOptions,
+                editValueAccessor: (row: OrderItemRow) => String(row.productId),
+                onSearchOptions: actions?.onSearchProducts,
             },
         },
         {

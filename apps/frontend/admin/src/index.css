@@ -19,3 +19,116 @@ td.costprice-hover-target {
 .costprice-value {
     color: inherit;
 }
+
+/* ── Print receipt styles ──────────────────────────────────── */
+@media print {
+    /* Hide app, show only receipt (portaled to body) */
+    #root {
+        display: none !important;
+    }
+
+    .print-receipt-container {
+        display: block !important;
+    }
+
+    /* Page setup for A4 */
+    @page {
+        size: A4;
+        margin: 15mm 20mm;
+    }
+
+    /* Force light colors */
+    .print-receipt {
+        color: #000;
+        background: #fff;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 14px;
+        padding: 0;
+        max-width: 170mm;
+        margin: 0 auto;
+    }
+
+    /* Logo */
+    .receipt-logo {
+        text-align: center;
+        padding: 8mm 0 4mm;
+    }
+
+    .receipt-logo img {
+        max-width: 140px;
+        height: auto;
+        image-rendering: -webkit-optimize-contrast;
+    }
+
+    /* Info section */
+    .receipt-info {
+        font-size: 13px;
+        line-height: 1.6;
+        padding: 3mm 0;
+    }
+
+    /* Separator */
+    .receipt-divider {
+        border-top: 1px dashed #000;
+        margin: 3mm 0;
+    }
+
+    /* Items table */
+    .receipt-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .receipt-table th,
+    .receipt-table td {
+        padding: 2mm 3mm;
+        font-size: 13px;
+        text-align: left;
+    }
+
+    .receipt-table th {
+        font-weight: bold;
+        border-bottom: 1px solid #000;
+    }
+
+    .receipt-table td:first-child,
+    .receipt-table th:first-child {
+        width: 10mm;
+        text-align: center;
+    }
+
+    .receipt-table td:nth-child(3),
+    .receipt-table th:nth-child(3) {
+        width: 15mm;
+        text-align: center;
+    }
+
+    .receipt-table td:nth-child(4),
+    .receipt-table td:nth-child(5),
+    .receipt-table th:nth-child(4),
+    .receipt-table th:nth-child(5) {
+        text-align: right;
+    }
+
+    /* Total */
+    .receipt-total {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: right;
+        padding: 4mm 0;
+    }
+
+    /* Comment */
+    .receipt-comment {
+        font-size: 12px;
+        font-style: italic;
+        padding: 2mm 0;
+    }
+
+    /* Footer */
+    .receipt-footer {
+        text-align: center;
+        font-size: 13px;
+        padding: 6mm 0;
+    }
+}

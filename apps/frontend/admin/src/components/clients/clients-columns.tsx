@@ -56,7 +56,15 @@ export function getClientColumns(
                 const lang = getValue<string>();
                 return lang === "ru" ? t("common:russian") : t("common:uzbek");
             },
-            meta: { flex: 1, editable: true, inputType: "text" as const },
+            meta: {
+                flex: 1,
+                editable: true,
+                inputType: "select" as const,
+                selectOptions: [
+                    { label: t("common:russian"), value: "ru" },
+                    { label: t("common:uzbek"), value: "uz" },
+                ],
+            },
         },
         {
             id: "status",

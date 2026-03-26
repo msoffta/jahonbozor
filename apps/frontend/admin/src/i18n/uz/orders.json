@@ -41,5 +41,18 @@
   "order_total": "Summa",
   "order_comment": "Izoh",
   "error_debt_requires_user": "Qarz to'lovi uchun mijozni tanlash kerak",
-  "insufficient_stock": "Mahsulot yetarli emas"
+  "insufficient_stock": "Omborda mahsulot yetarli emas:",
+  "insufficient_stock_detail": "{{name}} — kerak {{requested}}, bor {{available}}",
+  "print_receipt": "Chekni chop etish",
+  "receipt_order_number": "Buyurtma №{{number}}",
+  "receipt_date": "Sana",
+  "receipt_client": "Mijoz",
+  "receipt_payment": "To'lov turi",
+  "receipt_product": "Mahsulot",
+  "receipt_qty": "Soni",
+  "receipt_price": "Narxi",
+  "receipt_item_total": "Summa",
+  "receipt_total": "JAMI",
+  "receipt_thank_you": "Xaridingiz uchun rahmat!",
+  "receipt_comment": "Izoh"
 }

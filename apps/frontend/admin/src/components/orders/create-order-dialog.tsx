@@ -52,7 +52,7 @@ export function CreateOrderDialog({ open, onOpenChange }: CreateOrderDialogProps
 
     function handleCreateNewClient() {
         handleClose();
-        void navigate({ to: "/users", search: { new: true } });
+        void navigate({ to: "/users", search: { new: true, returnTo: "orders" } });
     }
 
     function handleSelectClient(userId: number) {

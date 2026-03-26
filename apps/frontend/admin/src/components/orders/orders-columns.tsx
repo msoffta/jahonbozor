@@ -88,6 +88,7 @@ export function getOrderColumns(
                     editable: true,
                     inputType: "combobox" as const,
                     selectOptions: productOptions,
+                    enableDragSum: true,
                 },
             },
             {

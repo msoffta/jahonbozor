@@ -50,6 +50,7 @@ interface DataTableBodyProps<TData> {
     onNeedMoreRows?: () => void;
     multiRowDefaultValues?: Partial<TData> | ((index: number) => Partial<TData>);
     onDragSumChange?: (sumInfo: { sum: number; count: number } | null) => void;
+    onDragSelectionChange?: (selectedRows: TData[]) => void;
 }
 
 export function DataTableBody<TData>({
@@ -80,6 +81,7 @@ export function DataTableBody<TData>({
     onNeedMoreRows,
     multiRowDefaultValues,
     onDragSumChange,
+    onDragSelectionChange,
 }: DataTableBodyProps<TData>) {
     const rows = table.getRowModel().rows;
     const parentRef = React.useRef<HTMLTableSectionElement>(null);
@@ -96,21 +98,32 @@ export function DataTableBody<TData>({
     const [dragStart, setDragStart] = React.useState<{ row: number; col: string } | null>(null);
     const [dragCurrent, setDragCurrent] = React.useState<{ row: number } | null>(null);
 
+    // Ctrl/Shift click selection
+    const [manualSelection, setManualSelection] = React.useState<Set<number>>(new Set());
+    const anchorRowRef = React.useRef<number | null>(null);
+
     React.useEffect(() => {
         const handleMouseUp = () => setIsDragging(false);
         window.addEventListener("mouseup", handleMouseUp);
         return () => window.removeEventListener("mouseup", handleMouseUp);
     }, []);
 
-    const selectedAreaSum = React.useMemo(() => {
-        if (!dragStart || !dragCurrent) return 0;
-        if (dragStart.row === dragCurrent.row) return 0;
+    // Merge drag range + manual (Ctrl/Shift) selection
+    const allSelectedIndices = React.useMemo(() => {
+        const indices = new Set(manualSelection);
+        if (dragStart && dragCurrent) {
+            const min = Math.min(dragStart.row, dragCurrent.row);
+            const max = Math.max(dragStart.row, dragCurrent.row);
+            for (let i = min; i <= max; i++) indices.add(i);
+        }
+        return indices;
+    }, [dragStart, dragCurrent, manualSelection]);
 
-        const minRow = Math.min(dragStart.row, dragCurrent.row);
-        const maxRow = Math.max(dragStart.row, dragCurrent.row);
+    const selectedAreaSum = React.useMemo(() => {
+        if (!dragStart || allSelectedIndices.size < 2) return 0;
 
         let sum = 0;
-        for (let i = minRow; i <= maxRow; i++) {
+        for (const i of allSelectedIndices) {
             const row = rows[i];
             if (!row) continue;
 
@@ -128,32 +141,43 @@ export function DataTableBody<TData>({
             if (!isNaN(num)) sum += num;
         }
         return sum;
-    }, [dragStart, dragCurrent, rows]);
+    }, [dragStart, allSelectedIndices, rows]);
 
     React.useEffect(() => {
         if (onDragSumChange) {
-            if (
-                dragStart &&
-                dragCurrent &&
-                dragStart.row !== dragCurrent.row &&
-                selectedAreaSum > 0
-            ) {
-                const count = Math.abs(dragStart.row - dragCurrent.row) + 1;
-                onDragSumChange({ sum: selectedAreaSum, count });
+            if (selectedAreaSum > 0 && allSelectedIndices.size >= 2) {
+                onDragSumChange({ sum: selectedAreaSum, count: allSelectedIndices.size });
             } else {
                 onDragSumChange(null);
             }
         }
-    }, [selectedAreaSum, dragStart, dragCurrent, onDragSumChange]);
+    }, [selectedAreaSum, allSelectedIndices, onDragSumChange]);
+
+    React.useEffect(() => {
+        if (!onDragSelectionChange) return;
+        if (allSelectedIndices.size > 0) {
+            const sorted = Array.from(allSelectedIndices).sort((a, b) => a - b);
+            onDragSelectionChange(sorted.map((i) => rows[i]?.original).filter(Boolean));
+        } else {
+            onDragSelectionChange([]);
+        }
+    }, [allSelectedIndices, rows, onDragSelectionChange]);
 
     const renderCells = (row: Row<TData>, rowIndex: number, extraCellStyle?: React.CSSProperties) =>
         row.getVisibleCells().map((cell) => {
             const isDragSumEnabled = cell.column.columnDef.meta?.enableDragSum;
+
+            // Highlight: drag range OR manual selection
             let isSelectedForSum = false;
-            if (dragStart && dragCurrent && dragStart.col === cell.column.id) {
-                const minRow = Math.min(dragStart.row, dragCurrent.row);
-                const maxRow = Math.max(dragStart.row, dragCurrent.row);
-                isSelectedForSum = rowIndex >= minRow && rowIndex <= maxRow;
+            if (dragStart?.col === cell.column.id) {
+                if (manualSelection.has(rowIndex)) {
+                    isSelectedForSum = true;
+                }
+                if (dragCurrent) {
+                    const minRow = Math.min(dragStart.row, dragCurrent.row);
+                    const maxRow = Math.max(dragStart.row, dragCurrent.row);
+                    if (rowIndex >= minRow && rowIndex <= maxRow) isSelectedForSum = true;
+                }
             }
 
             return (
@@ -165,14 +189,51 @@ export function DataTableBody<TData>({
                         isSelectedForSum && DRAG_SUM_HIGHLIGHT,
                         isDragSumEnabled && "cursor-cell",
                     )}
-                    onMouseDown={() => {
+                    onMouseDown={(e) => {
                         if (isDragSumEnabled) {
+                            if (e.ctrlKey || e.metaKey) {
+                                // Ctrl+Click: toggle row
+                                setManualSelection((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(rowIndex)) {
+                                        next.delete(rowIndex);
+                                    } else {
+                                        next.add(rowIndex);
+                                    }
+                                    return next;
+                                });
+                                anchorRowRef.current = rowIndex;
+                                setDragStart(
+                                    (prev) => prev ?? { row: rowIndex, col: cell.column.id },
+                                );
+                                return;
+                            }
+
+                            if (e.shiftKey && anchorRowRef.current !== null) {
+                                // Shift+Click: range from anchor to current
+                                const min = Math.min(anchorRowRef.current, rowIndex);
+                                const max = Math.max(anchorRowRef.current, rowIndex);
+                                setManualSelection((prev) => {
+                                    const next = new Set(prev);
+                                    for (let i = min; i <= max; i++) next.add(i);
+                                    return next;
+                                });
+                                setDragStart(
+                                    (prev) => prev ?? { row: rowIndex, col: cell.column.id },
+                                );
+                                return;
+                            }
+
+                            // Plain click: clear manual selection, start drag
+                            setManualSelection(new Set());
+                            anchorRowRef.current = rowIndex;
                             setIsDragging(true);
                             setDragStart({ row: rowIndex, col: cell.column.id });
                             setDragCurrent({ row: rowIndex });
                         } else {
                             setDragStart(null);
                             setDragCurrent(null);
+                            setManualSelection(new Set());
                         }
                     }}
                     onMouseEnter={() => {

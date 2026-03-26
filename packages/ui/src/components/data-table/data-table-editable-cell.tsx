@@ -37,17 +37,22 @@ export function DataTableEditableCell<TData>({
     const meta = cell.column.columnDef.meta;
     const isEditable = enableEditing && meta?.editable;
 
-    const initialValue = cell.getValue();
-    const [value, setValue] = React.useState(initialValue);
+    const rawValue = cell.getValue();
+    const editValue = meta?.editValueAccessor
+        ? meta.editValueAccessor(cell.row.original)
+        : rawValue;
+    const [value, setValue] = React.useState(editValue);
     const [isEditing, setIsEditing] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
         if (!isEditing) {
-            setValue(initialValue);
+            setValue(
+                meta?.editValueAccessor ? meta.editValueAccessor(cell.row.original) : rawValue,
+            );
         }
-    }, [initialValue, isEditing]);
+    }, [rawValue, isEditing, meta, cell.row.original]);
 
     const handleSave = React.useCallback(
         (currentValue: unknown = value, closeEdit = true) => {
@@ -63,27 +68,35 @@ export function DataTableEditableCell<TData>({
                 setIsEditing(false);
             }
 
-            if (currentValue !== initialValue) {
-                cell.table.options.meta?.updateData(cell.row.index, cell.column.id, currentValue);
+            if (currentValue !== editValue) {
+                // Skip internal updateData when onCellEdit handles external state
+                // (avoids corrupting complex objects like product: {id, name, ...})
+                if (!onCellEdit) {
+                    cell.table.options.meta?.updateData(
+                        cell.row.index,
+                        cell.column.id,
+                        currentValue,
+                    );
+                }
                 onCellEdit?.(cell.row.index, cell.column.id, currentValue);
             }
         },
-        [value, initialValue, meta, cell, onCellEdit],
+        [value, editValue, meta, cell, onCellEdit],
     );
 
     // Auto-save effect
     React.useEffect(() => {
-        if (!isEditing || value === initialValue) return;
+        if (!isEditing || value === editValue) return;
 
         const timer = setTimeout(() => {
             handleSave(value, false);
         }, AUTO_SAVE_DEBOUNCE_MS);
 
         return () => clearTimeout(timer);
-    }, [value, isEditing, initialValue, handleSave]);
+    }, [value, isEditing, editValue, handleSave]);
 
     const handleCancel = () => {
-        setValue(initialValue);
+        setValue(editValue);
         setError(null);
         setIsEditing(false);
     };
@@ -109,7 +122,7 @@ export function DataTableEditableCell<TData>({
                     meta?.className,
                 )}
             >
-                {toDisplayString(initialValue)}
+                {toDisplayString(rawValue)}
             </div>
         );
     }
@@ -124,12 +137,14 @@ export function DataTableEditableCell<TData>({
                             setValue(newValue);
                             setError(null);
                             setIsEditing(false);
-                            if (newValue !== toDisplayString(initialValue)) {
-                                cell.table.options.meta?.updateData(
-                                    cell.row.index,
-                                    cell.column.id,
-                                    newValue,
-                                );
+                            if (newValue !== toDisplayString(editValue)) {
+                                if (!onCellEdit) {
+                                    cell.table.options.meta?.updateData(
+                                        cell.row.index,
+                                        cell.column.id,
+                                        newValue,
+                                    );
+                                }
                                 onCellEdit?.(cell.row.index, cell.column.id, newValue);
                             }
                         }}
@@ -155,12 +170,14 @@ export function DataTableEditableCell<TData>({
                         }}
                         onSelect={(newValue) => {
                             setIsEditing(false);
-                            if (newValue !== toDisplayString(initialValue)) {
-                                cell.table.options.meta?.updateData(
-                                    cell.row.index,
-                                    cell.column.id,
-                                    newValue,
-                                );
+                            if (newValue !== toDisplayString(editValue)) {
+                                if (!onCellEdit) {
+                                    cell.table.options.meta?.updateData(
+                                        cell.row.index,
+                                        cell.column.id,
+                                        newValue,
+                                    );
+                                }
                                 onCellEdit?.(cell.row.index, cell.column.id, newValue);
                             }
                         }}
@@ -168,12 +185,14 @@ export function DataTableEditableCell<TData>({
                         onBlur={() => {
                             setIsEditing(false);
                             const v = value;
-                            if (v !== initialValue) {
-                                cell.table.options.meta?.updateData(
-                                    cell.row.index,
-                                    cell.column.id,
-                                    v,
-                                );
+                            if (v !== editValue) {
+                                if (!onCellEdit) {
+                                    cell.table.options.meta?.updateData(
+                                        cell.row.index,
+                                        cell.column.id,
+                                        v,
+                                    );
+                                }
                                 onCellEdit?.(cell.row.index, cell.column.id, v);
                             }
                         }}
@@ -182,12 +201,14 @@ export function DataTableEditableCell<TData>({
                                 e.preventDefault();
                                 setIsEditing(false);
                                 const v = value;
-                                if (v !== initialValue) {
-                                    cell.table.options.meta?.updateData(
-                                        cell.row.index,
-                                        cell.column.id,
-                                        v,
-                                    );
+                                if (v !== editValue) {
+                                    if (!onCellEdit) {
+                                        cell.table.options.meta?.updateData(
+                                            cell.row.index,
+                                            cell.column.id,
+                                            v,
+                                        );
+                                    }
                                     onCellEdit?.(cell.row.index, cell.column.id, v);
                                 }
                             } else if (e.key === "Escape") {
@@ -197,6 +218,7 @@ export function DataTableEditableCell<TData>({
                         }}
                         placeholder={meta.placeholder}
                         error={!!error}
+                        onSearch={meta?.onSearchOptions}
                     />
                 ) : meta?.inputType === "datepicker" ? (
                     <DatePicker
@@ -290,7 +312,7 @@ export function DataTableEditableCell<TData>({
         >
             {cell.column.columnDef.cell
                 ? flexRender(cell.column.columnDef.cell, cell)
-                : toDisplayString(initialValue)}
+                : toDisplayString(rawValue)}
         </div>
     );
 }

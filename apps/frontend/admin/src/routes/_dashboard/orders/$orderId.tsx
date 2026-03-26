@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Printer, Save, Trash2 } from "lucide-react";
 
 import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
 import {
@@ -21,8 +21,9 @@ import {
 } from "@jahonbozor/ui";
 
 import { orderDetailQueryOptions, useDeleteOrder, useUpdateOrder } from "@/api/orders.api";
-import { productsListQueryOptions } from "@/api/products.api";
+import { productsListQueryOptions, searchProductsFn } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
+import { OrderReceiptContainer } from "@/components/orders/order-receipt";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
 import { useHasPermission } from "@/hooks/use-permissions";
@@ -54,7 +55,7 @@ function OrderDetailPage() {
     const { data: order, isLoading } = useQuery(orderDetailQueryOptions(numericId));
 
     const { data: productsData } = useQuery(
-        productsListQueryOptions({ limit: 100, includeDeleted: false }),
+        productsListQueryOptions({ limit: 50, includeDeleted: false }),
     );
 
     const deleteOrder = useDeleteOrder();
@@ -110,7 +111,10 @@ function OrderDetailPage() {
     const columns = useMemo(
         () =>
             canUpdate
-                ? getOrderItemColumns(t, products, { onDelete: handleDeleteItem })
+                ? getOrderItemColumns(t, products, {
+                      onDelete: handleDeleteItem,
+                      onSearchProducts: searchProductsFn,
+                  })
                 : getOrderItemColumns(t, products),
         [t, products, canUpdate, handleDeleteItem],
     );
@@ -199,6 +203,41 @@ function OrderDetailPage() {
 
             setEditItems((prev) => [...prev, newItem]);
             return newId;
+        },
+        [products],
+    );
+
+    const handleCellEdit = useCallback(
+        (rowIndex: number, columnId: string, value: unknown) => {
+            if (columnId === "product") {
+                const productId = Number(value);
+                const product = products.find((p) => p.id === productId);
+                if (!product) return;
+                setEditItems((prev) =>
+                    prev.map((item, i) =>
+                        i === rowIndex
+                            ? {
+                                  ...item,
+                                  productId,
+                                  price: product.price,
+                                  product: {
+                                      id: product.id,
+                                      name: product.name,
+                                      price: product.price,
+                                      remaining: product.remaining,
+                                      costprice: product.costprice,
+                                  },
+                              }
+                            : item,
+                    ),
+                );
+            } else if (columnId === "quantity") {
+                setEditItems((prev) =>
+                    prev.map((item, i) =>
+                        i === rowIndex ? { ...item, quantity: Number(value) || 1 } : item,
+                    ),
+                );
+            }
         },
         [products],
     );
@@ -318,6 +357,16 @@ function OrderDetailPage() {
                             </motion.div>
                         )}
                     </AnimatePresence>
+                    <motion.div whileTap={{ scale: 0.9 }}>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => window.print()}
+                            title={t("print_receipt")}
+                        >
+                            <Printer className="h-4 w-4" />
+                        </Button>
+                    </motion.div>
                     {canDelete && (
                         <Button
                             variant="destructive"
@@ -354,6 +403,8 @@ function OrderDetailPage() {
                 enableSorting={false}
                 translations={translations}
                 {...(canUpdate && {
+                    enableEditing: true,
+                    onCellEdit: handleCellEdit,
                     enableMultipleNewRows: true,
                     multiRowCount: 15,
                     onMultiRowSave: handleNewRowSave,
@@ -371,6 +422,26 @@ function OrderDetailPage() {
                     });
                 }}
                 isLoading={deleteOrder.isPending}
+            />
+            <OrderReceiptContainer
+                receipts={[
+                    {
+                        orderId: order.id,
+                        clientName: order.user?.fullname,
+                        date: order.createdAt,
+                        paymentType: order.paymentType,
+                        comment: order.comment,
+                        items: serverItems.map((item) => ({
+                            name: item.product?.name ?? "—",
+                            quantity: item.quantity,
+                            price: item.price,
+                        })),
+                        totalSum: serverItems.reduce(
+                            (sum, item) => sum + item.price * item.quantity,
+                            0,
+                        ),
+                    },
+                ]}
             />
         </PageTransition>
     );

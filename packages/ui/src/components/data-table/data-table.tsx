@@ -73,6 +73,7 @@ export function DataTable<TData>({
     onRowSelectionChange,
     initialColumnVisibility,
     onRowClick,
+    onDragSelectionChange,
     className,
     translations,
 }: DataTableProps<TData> & { ref?: React.Ref<DataTableRef> }) {
@@ -392,6 +393,7 @@ export function DataTable<TData>({
                             onNeedMoreRows={multiRow.handleNeedMoreRows}
                             multiRowDefaultValues={multiRowDefaultValues}
                             onDragSumChange={setDragSumInfo}
+                            onDragSelectionChange={onDragSelectionChange}
                         />
                     </Table>
                 </div>

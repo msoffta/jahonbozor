@@ -56,6 +56,25 @@ export const productDetailQueryOptions = (id: number) =>
         enabled: id > 0,
     });
 
+/** Server-side product search for combobox (returns {label, value} pairs) */
+export const searchProductsFn = async (
+    query: string,
+): Promise<{ label: string; value: string }[]> => {
+    const { data, error } = await api.api.private.products.get({
+        query: {
+            searchQuery: query,
+            limit: 20,
+            page: 1,
+            sortBy: "id",
+            sortOrder: "asc" as const,
+            includeDeleted: false,
+        },
+    });
+    if (error || !data.success) return [];
+    const result = data.data as { count: number; products: AdminProductItem[] };
+    return result.products.map((p) => ({ label: p.name, value: String(p.id) }));
+};
+
 // --- Mutation functions (exported for testing) ---
 
 export const createProductFn = async (body: {
