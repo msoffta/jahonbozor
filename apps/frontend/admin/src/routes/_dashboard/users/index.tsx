@@ -66,6 +66,22 @@ function UsersPage() {
     const deleteClient = useDeleteClient();
     const restoreClient = useRestoreClient();
 
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<unknown>();
+        if (updateClient.isPending && updateClient.variables?.id)
+            ids.add(updateClient.variables.id);
+        if (deleteClient.isPending && deleteClient.variables) ids.add(deleteClient.variables);
+        if (restoreClient.isPending && restoreClient.variables) ids.add(restoreClient.variables);
+        return ids;
+    }, [
+        updateClient.isPending,
+        updateClient.variables,
+        deleteClient.isPending,
+        deleteClient.variables,
+        restoreClient.isPending,
+        restoreClient.variables,
+    ]);
+
     const isLoading = isClientsLoading || !isReady;
 
     useEffect(() => {
@@ -96,7 +112,11 @@ function UsersPage() {
         [t, actions, canDelete],
     );
 
-    const clients = useMemo(() => clientsData?.pages.flatMap((p) => p.users) ?? [], [clientsData]);
+    const clients = useMemo(() => {
+        const all = clientsData?.pages.flatMap((p) => p.users) ?? [];
+        if (includeDeleted) return all.filter((u) => u.deletedAt != null);
+        return all;
+    }, [clientsData, includeDeleted]);
     const totalCount = clientsData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
@@ -208,10 +228,11 @@ function UsersPage() {
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
-                            multiRowMaxCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
+                            loadingRowIds={loadingRowIds}
                             translations={translations}
                             onRowClick={(row) =>
                                 void navigate({

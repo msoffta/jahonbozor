@@ -184,8 +184,8 @@ function IncomePage() {
                             enableColumnResizing
                             enableEditing={false}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
-                            multiRowMaxCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onMultiRowSave={handleNewRowSave}
                             multiRowDefaultValues={multiRowDefaultValues}
                             translations={translations}

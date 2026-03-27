@@ -71,6 +71,12 @@ function ListsPage() {
 
     const deleteOrder = useDeleteOrder();
 
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<unknown>();
+        if (deleteOrder.isPending && deleteOrder.variables) ids.add(deleteOrder.variables);
+        return ids;
+    }, [deleteOrder.isPending, deleteOrder.variables]);
+
     const products = productsData?.products ?? [];
     const users = clientsData?.users ?? [];
     const orders = useMemo(() => ordersData?.pages.flatMap((p) => p.orders) ?? [], [ordersData]);
@@ -181,6 +187,7 @@ function ListsPage() {
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
+                            loadingRowIds={loadingRowIds}
                             translations={translations}
                             onRowClick={(row) => actions.onNavigate(row.id)}
                         />

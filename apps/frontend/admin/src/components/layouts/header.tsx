@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Link } from "@tanstack/react-router";
-import { Bell, LogOut, Settings, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 
 import {
     cn,
@@ -43,7 +43,7 @@ export function Header() {
             </Link>
 
             <div className="flex items-center gap-2 md:gap-3">
-                <DropdownMenu>
+                {/* <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <motion.button
                             type="button"
@@ -65,7 +65,7 @@ export function Header() {
                             {t("no_notifications")}
                         </div>
                     </DropdownMenuContent>
-                </DropdownMenu>
+                </DropdownMenu> */}
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>

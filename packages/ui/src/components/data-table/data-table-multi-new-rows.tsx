@@ -74,6 +74,7 @@ export function DataTableMultiNewRows<TData>({
                     enableRowSelection={enableRowSelection}
                     externalValues={rowState.values}
                     externalErrors={rowState.errors}
+                    isSaving={rowState.isSaving}
                 />
             ))}
 

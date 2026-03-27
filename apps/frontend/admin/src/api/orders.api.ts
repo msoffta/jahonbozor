@@ -174,8 +174,26 @@ export function useCreateOrder() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: createOrderFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        onSuccess: (newOrder) => {
+            // Optimistic: append new order to cache without full refetch
+            queryClient.setQueriesData<{
+                pages: { count: number; orders: AdminOrderItem[] }[];
+                pageParams: number[];
+            }>({ queryKey: orderKeys.all }, (old) => {
+                if (!old?.pages?.length) return old;
+                const lastPage = old.pages[old.pages.length - 1];
+                return {
+                    ...old,
+                    pages: [
+                        ...old.pages.slice(0, -1),
+                        {
+                            ...lastPage,
+                            count: lastPage.count + 1,
+                            orders: [...lastPage.orders, newOrder],
+                        },
+                    ],
+                };
+            });
         },
         onError: handleOrderError,
     });
@@ -185,8 +203,25 @@ export function useUpdateOrder() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: updateOrderFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        onSuccess: (updatedOrder) => {
+            // Optimistic: patch the order in-place across all cached pages
+            queryClient.setQueriesData<{
+                pages: { count: number; orders: AdminOrderItem[] }[];
+                pageParams: number[];
+            }>({ queryKey: orderKeys.all }, (old) => {
+                if (!old?.pages?.length) return old;
+                return {
+                    ...old,
+                    pages: old.pages.map((page) => ({
+                        ...page,
+                        orders: page.orders.map((o) =>
+                            o.id === updatedOrder.id ? updatedOrder : o,
+                        ),
+                    })),
+                };
+            });
+            // Also update detail cache if present
+            queryClient.setQueryData(orderKeys.detail(updatedOrder.id), updatedOrder);
         },
         onError: handleOrderError,
     });

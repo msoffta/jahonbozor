@@ -19,5 +19,6 @@ export function useDataTableTranslations(noResultsText?: string): DataTableTrans
         filter: t("filter"),
         showingOf: t("table_showing_of"),
         loadingMore: t("table_loading_more"),
+        sumLabel: t("table_sum"),
     };
 }

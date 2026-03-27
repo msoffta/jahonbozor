@@ -68,6 +68,22 @@ function ExpensePage() {
     const deleteExpense = useDeleteExpense();
     const restoreExpense = useRestoreExpense();
 
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<unknown>();
+        if (updateExpense.isPending && updateExpense.variables?.id)
+            ids.add(updateExpense.variables.id);
+        if (deleteExpense.isPending && deleteExpense.variables) ids.add(deleteExpense.variables);
+        if (restoreExpense.isPending && restoreExpense.variables) ids.add(restoreExpense.variables);
+        return ids;
+    }, [
+        updateExpense.isPending,
+        updateExpense.variables,
+        deleteExpense.isPending,
+        deleteExpense.variables,
+        restoreExpense.isPending,
+        restoreExpense.variables,
+    ]);
+
     const isLoading = isExpensesLoading || !isReady;
 
     const actions = useMemo(
@@ -83,10 +99,11 @@ function ExpensePage() {
         [t, actions, canDelete],
     );
 
-    const expenses = useMemo(
-        () => expensesData?.pages.flatMap((p) => p.expenses) ?? [],
-        [expensesData],
-    );
+    const expenses = useMemo(() => {
+        const all = expensesData?.pages.flatMap((p) => p.expenses) ?? [];
+        if (includeDeleted) return all.filter((e) => e.deletedAt != null);
+        return all;
+    }, [expensesData, includeDeleted]);
     const totalCount = expensesData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
@@ -237,11 +254,12 @@ function ExpensePage() {
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
-                            multiRowMaxCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
                             multiRowDefaultValues={multiRowDefaultValues}
+                            loadingRowIds={loadingRowIds}
                             translations={translations}
                         />
                     </motion.div>

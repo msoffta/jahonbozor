@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { flexRender } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
@@ -53,6 +54,7 @@ interface DataTableBodyProps<TData> {
     onDragSumChange?: (sumInfo: { sum: number; count: number } | null) => void;
     onDragSelectionChange?: (selectedRows: TData[]) => void;
     enableInfiniteScroll?: boolean;
+    loadingRowIds?: Set<unknown> | unknown[];
 }
 
 export function DataTableBody<TData>({
@@ -86,6 +88,7 @@ export function DataTableBody<TData>({
     onDragSumChange,
     onDragSelectionChange,
     enableInfiniteScroll,
+    loadingRowIds,
 }: DataTableBodyProps<TData>) {
     const rows = table.getRowModel().rows;
     const parentRef = React.useRef<HTMLTableSectionElement>(null);
@@ -167,8 +170,23 @@ export function DataTableBody<TData>({
         }
     }, [allSelectedIndices, rows, onDragSelectionChange]);
 
-    const renderCells = (row: Row<TData>, rowIndex: number, extraCellStyle?: React.CSSProperties) =>
-        row.getVisibleCells().map((cell) => {
+    const loadingSet = React.useMemo(() => {
+        if (!loadingRowIds) return null;
+        return loadingRowIds instanceof Set ? loadingRowIds : new Set(loadingRowIds);
+    }, [loadingRowIds]);
+
+    const renderCells = (
+        row: Row<TData>,
+        rowIndex: number,
+        extraCellStyle?: React.CSSProperties,
+    ) => {
+        const rowId = (row.original as Record<string, unknown>).id;
+        const isRowLoading = !!loadingSet && rowId != null && loadingSet.has(rowId);
+        let isFirstCell = true;
+
+        return row.getVisibleCells().map((cell) => {
+            const showSpinner = isRowLoading && isFirstCell;
+            if (isFirstCell) isFirstCell = false;
             const isDragSumEnabled = cell.column.columnDef.meta?.enableDragSum;
 
             // Highlight: drag range OR manual selection
@@ -187,9 +205,12 @@ export function DataTableBody<TData>({
             return (
                 <TableCell
                     key={cell.id}
+                    data-row-index={rowIndex}
+                    data-column-id={cell.column.id}
                     style={{ width: cell.column.getSize(), ...extraCellStyle }}
                     className={cn(
                         cell.column.columnDef.meta?.cellClassName,
+                        enableEditing && !cell.column.columnDef.meta?.editable && "bg-muted",
                         isSelectedForSum && DRAG_SUM_HIGHLIGHT,
                         isDragSumEnabled && "cursor-cell",
                     )}
@@ -246,7 +267,9 @@ export function DataTableBody<TData>({
                         }
                     }}
                 >
-                    {enableEditing && cell.column.columnDef.meta?.editable ? (
+                    {showSpinner ? (
+                        <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                    ) : enableEditing && cell.column.columnDef.meta?.editable ? (
                         <DataTableEditableCell
                             cell={cell.getContext()}
                             enableEditing
@@ -258,6 +281,7 @@ export function DataTableBody<TData>({
                 </TableCell>
             );
         });
+    };
 
     // Single row (existing behavior)
     const singleNewRow =

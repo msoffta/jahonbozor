@@ -36,6 +36,8 @@ export function getOrderColumns(
     const productOptions = data.products.map((p) => ({
         label: p.name,
         value: String(p.id),
+        disabled: (p.remaining ?? 0) < 1,
+        disabledReason: t("product_out_of_stock"),
     }));
 
     const userOptions = [
@@ -172,7 +174,7 @@ export function getOrderColumns(
                 header: t("order_total"),
                 size: 130,
                 cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
-                meta: { flex: 1, align: "left" as const },
+                meta: { flex: 1, align: "left" as const, enableDragSum: true },
             },
         );
     }

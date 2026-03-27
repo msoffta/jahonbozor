@@ -9,3 +9,4 @@ export type {
     DataTableTranslations,
     NewRowState,
 } from "./types";
+export { useCellNavigation } from "./use-cell-navigation";

@@ -347,8 +347,8 @@ function NewOrderPage() {
                             enableEditing
                             onCellEdit={handleCellEdit}
                             enableMultipleNewRows
-                            multiRowCount={15}
-                            multiRowMaxCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onMultiRowSave={handleNewRowSave}
                             onMultiRowChange={handleNewRowChange}
                             multiRowDefaultValues={newRowDefaultValues}

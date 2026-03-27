@@ -100,13 +100,5 @@ describe("Header", () => {
         expect(getByText("logout")).toBeDefined();
     });
 
-    test("should render notifications label with i18n key", () => {
-        const { getByText } = render(<Header />);
-        expect(getByText("notifications")).toBeDefined();
-    });
-
-    test("should render no_notifications message", () => {
-        const { getByText } = render(<Header />);
-        expect(getByText("no_notifications")).toBeDefined();
-    });
+    // Notifications dropdown is currently commented out in header.tsx
 });

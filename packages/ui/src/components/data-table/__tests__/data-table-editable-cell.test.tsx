@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -51,9 +51,8 @@ describe("DataTableEditableCell", () => {
             },
         ];
 
-        test("should enter edit mode on double-click and show input", async () => {
-            const user = userEvent.setup();
-            const { getByText, getByDisplayValue } = render(
+        test("should render ghost input immediately (no double-click needed)", () => {
+            const { getByDisplayValue } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -62,13 +61,14 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("Alice"));
+            // Input is always visible — no double-click needed
             expect(getByDisplayValue("Alice")).toBeDefined();
+            expect(getByDisplayValue("Bob")).toBeDefined();
         });
 
         test("should save on Enter and call onCellEdit", async () => {
             const user = userEvent.setup();
-            const { getByText, getByDisplayValue } = render(
+            const { getByDisplayValue } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -77,7 +77,6 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("Alice"));
             const input = getByDisplayValue("Alice");
             await user.clear(input);
             await user.type(input, "Updated");
@@ -88,7 +87,7 @@ describe("DataTableEditableCell", () => {
 
         test("should cancel on Escape and revert value", async () => {
             const user = userEvent.setup();
-            const { getByText, getByDisplayValue, queryByDisplayValue } = render(
+            const { getByDisplayValue, queryByDisplayValue } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -97,18 +96,20 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("Alice"));
             const input = getByDisplayValue("Alice");
             await user.clear(input);
-            await user.type(input, "Changed{Escape}");
+            await user.type(input, "Changed");
+            await user.keyboard("{Escape}");
 
+            // Value should revert to original
             expect(queryByDisplayValue("Changed")).toBeNull();
+            expect(getByDisplayValue("Alice")).toBeDefined();
             expect(onCellEdit).not.toHaveBeenCalled();
         });
 
         test("should not call onCellEdit when value is unchanged", async () => {
             const user = userEvent.setup();
-            const { getByText, getByDisplayValue } = render(
+            const { getByDisplayValue } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -117,8 +118,8 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("Alice"));
-            getByDisplayValue("Alice");
+            const input = getByDisplayValue("Alice");
+            await user.click(input);
             await user.keyboard("{Enter}");
 
             expect(onCellEdit).not.toHaveBeenCalled();
@@ -136,9 +137,8 @@ describe("DataTableEditableCell", () => {
             },
         ];
 
-        test("should render number input in edit mode", async () => {
-            const user = userEvent.setup();
-            const { getByText, container } = render(
+        test("should render number input immediately", () => {
+            const { container } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -147,14 +147,13 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("1500"));
-            const numberInput = container.querySelector("input[type='number']");
-            expect(numberInput).toBeDefined();
+            const numberInputs = container.querySelectorAll("input[type='number']");
+            expect(numberInputs.length).toBe(2); // one per row
         });
 
         test("should convert string to number on edit", async () => {
             const user = userEvent.setup();
-            const { getByText, container } = render(
+            const { container } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -163,9 +162,7 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("1500"));
             const input = container.querySelector("input[type='number']")!;
-
             await user.clear(input);
             await user.type(input, "3000");
             await user.keyboard("{Enter}");
@@ -192,9 +189,8 @@ describe("DataTableEditableCell", () => {
             },
         ];
 
-        test("should render select options in edit mode", async () => {
-            const user = userEvent.setup();
-            const { getByText, container } = render(
+        test("should render select immediately with options", () => {
+            const { container } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -203,17 +199,16 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("active"));
-            const select = container.querySelector("select");
-            expect(select).toBeDefined();
+            const selects = container.querySelectorAll("select");
+            expect(selects.length).toBe(2); // one per row
 
-            const options = container.querySelectorAll("option");
+            const options = selects[0].querySelectorAll("option");
             expect(options.length).toBe(2);
         });
 
         test("should call onCellEdit when value changes via select", async () => {
             const user = userEvent.setup();
-            const { getByText, container } = render(
+            const { container } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -222,7 +217,6 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("active"));
             const select = container.querySelector("select")!;
             await user.selectOptions(select, "inactive");
 
@@ -231,7 +225,7 @@ describe("DataTableEditableCell", () => {
 
         test("should not call onCellEdit when same value is re-selected", async () => {
             const user = userEvent.setup();
-            const { getByText, container } = render(
+            const { container } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -240,7 +234,6 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("active"));
             const select = container.querySelector("select")!;
             await user.selectOptions(select, "active");
 
@@ -266,7 +259,7 @@ describe("DataTableEditableCell", () => {
                 },
             ];
 
-            const { getByText, getByDisplayValue, queryByText } = render(
+            const { getByDisplayValue, queryByText } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -275,7 +268,6 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("Alice"));
             const input = getByDisplayValue("Alice");
             await user.clear(input);
             await user.type(input, "AB");
@@ -301,7 +293,7 @@ describe("DataTableEditableCell", () => {
                 },
             ];
 
-            const { getByText, getByDisplayValue, queryByText } = render(
+            const { getByDisplayValue, queryByText } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -311,7 +303,6 @@ describe("DataTableEditableCell", () => {
             );
 
             // Trigger error
-            await user.dblClick(getByText("Alice"));
             const input = getByDisplayValue("Alice");
             await user.clear(input);
             await user.type(input, "AB");
@@ -330,7 +321,7 @@ describe("DataTableEditableCell", () => {
 
     // ── Non-editable cell ──────────────────────────────────────
     describe("non-editable cell", () => {
-        test("should not enter edit mode on double-click", () => {
+        test("should not render input for non-editable column", () => {
             const columns: ColumnDef<TestRow, any>[] = [
                 { accessorKey: "id", header: "ID" },
                 { accessorKey: "name", header: "Name" },
@@ -345,7 +336,8 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            fireEvent.doubleClick(getByText("Alice"));
+            // Non-editable cell renders as plain text
+            expect(getByText("Alice")).toBeDefined();
             expect(queryByDisplayValue("Alice")).toBeNull();
         });
 
@@ -363,7 +355,8 @@ describe("DataTableEditableCell", () => {
                 <DataTable columns={columns} data={testData} onCellEdit={onCellEdit} />,
             );
 
-            fireEvent.doubleClick(getByText("Alice"));
+            // Without enableEditing, even editable columns render as text
+            expect(getByText("Alice")).toBeDefined();
             expect(queryByDisplayValue("Alice")).toBeNull();
         });
     });
@@ -416,17 +409,12 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            // Double-click on empty cell - find the cell by its position
-            const cells = container.querySelectorAll("td");
-            const nameCell = cells[1] as HTMLElement; // second cell is name
-            fireEvent.doubleClick(nameCell);
-
-            // Should show input with empty value
+            // Ghost input should be present even for empty values
             const input = container.querySelector("input[type='text']");
             expect(input).toBeDefined();
         });
 
-        test("should handle numeric zero values in text cell", () => {
+        test("should handle numeric zero values in editable cell", () => {
             const zeroData = [{ id: 0, name: "Zero", price: 0, status: "", category: "" }];
             const columns: ColumnDef<TestRow, any>[] = [
                 {
@@ -436,7 +424,7 @@ describe("DataTableEditableCell", () => {
                 },
             ];
 
-            const { getByText } = render(
+            const { getByDisplayValue } = render(
                 <DataTable
                     columns={columns}
                     data={zeroData}
@@ -445,8 +433,8 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            // Zero should render as "0", not empty
-            expect(getByText("0")).toBeDefined();
+            // Zero should render as "0" in the input
+            expect(getByDisplayValue("0")).toBeDefined();
         });
 
         test("should handle alignment meta option", () => {
@@ -467,15 +455,15 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            // Cell content should have text-right class
-            const cellContent = container.querySelector(".text-right");
-            expect(cellContent).toBeDefined();
+            // Ghost input should be rendered (alignment is on input, not a wrapper div)
+            const inputs = container.querySelectorAll("input[type='number']");
+            expect(inputs.length).toBe(2);
         });
     });
 
     // ── Auto-save (debounce) ───────────────────────────────────
     describe("auto-save", () => {
-        test("should auto-save after 500ms debounce when value changes during editing", async () => {
+        test("should auto-save after 500ms debounce when value changes", async () => {
             const user = userEvent.setup();
             const columns: ColumnDef<TestRow, any>[] = [
                 { accessorKey: "id", header: "ID" },
@@ -486,7 +474,7 @@ describe("DataTableEditableCell", () => {
                 },
             ];
 
-            const { getByText, getByDisplayValue } = render(
+            const { getByDisplayValue } = render(
                 <DataTable
                     columns={columns}
                     data={testData}
@@ -495,7 +483,6 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            await user.dblClick(getByText("Alice"));
             const input = getByDisplayValue("Alice");
             await user.clear(input);
             await user.type(input, "AutoSaved");

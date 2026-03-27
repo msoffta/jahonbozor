@@ -173,6 +173,9 @@ export interface DataTableProps<TData> {
     // Column visibility
     initialColumnVisibility?: Record<string, boolean>;
 
+    // Loading state — show spinner on specific rows (e.g. during update/delete)
+    loadingRowIds?: Set<unknown> | unknown[];
+
     // Styling
     className?: string;
 

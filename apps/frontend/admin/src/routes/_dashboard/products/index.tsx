@@ -66,6 +66,22 @@ function ProductsPage() {
     const restoreProduct = useRestoreProduct();
     const createCategory = useCreateCategory();
 
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<unknown>();
+        if (updateProduct.isPending && updateProduct.variables?.id)
+            ids.add(updateProduct.variables.id);
+        if (deleteProduct.isPending && deleteProduct.variables) ids.add(deleteProduct.variables);
+        if (restoreProduct.isPending && restoreProduct.variables) ids.add(restoreProduct.variables);
+        return ids;
+    }, [
+        updateProduct.isPending,
+        updateProduct.variables,
+        deleteProduct.isPending,
+        deleteProduct.variables,
+        restoreProduct.isPending,
+        restoreProduct.variables,
+    ]);
+
     const resolveCategoryId = useCallback(
         async (value: unknown): Promise<number> => {
             const num = Number(value);
@@ -100,10 +116,11 @@ function ProductsPage() {
         [t, categories, actions, canDelete],
     );
 
-    const products = useMemo(
-        () => productsData?.pages.flatMap((p) => p.products) ?? [],
-        [productsData],
-    );
+    const products = useMemo(() => {
+        const all = productsData?.pages.flatMap((p) => p.products) ?? [];
+        if (includeDeleted) return all.filter((p) => p.deletedAt != null);
+        return all;
+    }, [productsData, includeDeleted]);
     const totalCount = productsData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
@@ -225,10 +242,11 @@ function ProductsPage() {
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
-                            multiRowMaxCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
+                            loadingRowIds={loadingRowIds}
                             translations={translations}
                         />
                     </motion.div>

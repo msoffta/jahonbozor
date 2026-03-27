@@ -29,6 +29,8 @@ export function getOrderItemColumns(
     const selectOptions = products.map((product) => ({
         label: product.name,
         value: String(product.id),
+        disabled: (product.remaining ?? 0) < 1,
+        disabledReason: t("product_out_of_stock"),
     }));
 
     const columns: ColumnDef<OrderItemRow, unknown>[] = [
@@ -102,6 +104,7 @@ export function getOrderItemColumns(
             meta: {
                 flex: 1,
                 align: "left" as const,
+                enableDragSum: true,
             },
         },
         {

@@ -170,3 +170,19 @@
 .combobox-dropdown[data-closing] {
     animation: combobox-out 0.1s ease-in forwards;
 }
+
+/* Ghost input — fully transparent, never shows its own border */
+.ghost-input {
+    background: transparent;
+    border-color: transparent;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.ghost-input:focus,
+.ghost-input:focus-visible {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    outline: none;
+}

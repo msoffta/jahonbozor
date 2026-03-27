@@ -137,6 +137,18 @@ function OrdersPage() {
     const updateOrder = useUpdateOrder();
     const createOrder = useCreateOrder();
 
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<unknown>();
+        if (updateOrder.isPending && updateOrder.variables?.id) ids.add(updateOrder.variables.id);
+        if (deleteOrder.isPending && deleteOrder.variables) ids.add(deleteOrder.variables);
+        return ids;
+    }, [
+        updateOrder.isPending,
+        updateOrder.variables,
+        deleteOrder.isPending,
+        deleteOrder.variables,
+    ]);
+
     const products = productsData?.products ?? [];
     const users = clientsData?.users ?? [];
 
@@ -397,14 +409,15 @@ function OrdersPage() {
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
-                            multiRowMaxCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
                             onMultiRowChange={handleNewRowChange}
                             multiRowDefaultValues={newRowDefaultValues}
                             translations={translations}
                             onDragSelectionChange={setSelectedOrders}
+                            loadingRowIds={loadingRowIds}
                         />
                     </motion.div>
                 )}

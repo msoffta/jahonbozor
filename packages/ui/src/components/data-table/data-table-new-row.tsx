@@ -1,6 +1,7 @@
 import * as React from "react";
 import { NumericFormat } from "react-number-format";
 
+import { Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
@@ -35,6 +36,7 @@ interface DataTableNewRowProps<TData> {
     onSaveAndLoop?: () => Promise<boolean>;
     externalValues?: Record<string, unknown>;
     externalErrors?: Record<string, string>;
+    isSaving?: boolean;
 }
 
 export function DataTableNewRow<TData>({
@@ -50,6 +52,7 @@ export function DataTableNewRow<TData>({
     onSaveAndLoop,
     externalValues,
     externalErrors,
+    isSaving,
 }: DataTableNewRowProps<TData>) {
     // Determine if controlled mode
     const isControlled = externalValues !== undefined;
@@ -240,13 +243,11 @@ export function DataTableNewRow<TData>({
                 if (targetElement?.closest?.('[role="listbox"]')) return;
                 if (targetElement?.closest?.('[role="dialog"]')) return;
 
-                // Focus is truly leaving the row
-                onBlur?.();
+                // Delay to let child inputs (combobox) commit their values first
+                setTimeout(() => onBlur?.(), 200);
             }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="bg-muted/30 border-b border-dashed"
+            initial={false}
+            className="border-b"
         >
             {enableRowSelection && (
                 <TableCell>
@@ -265,20 +266,24 @@ export function DataTableNewRow<TData>({
                             ? val.toLocaleString()
                             : val !== undefined && val !== ""
                               ? toDisplayString(val)
-                              : "—";
+                              : "";
 
                     return (
                         <TableCell
                             key={key}
                             className={cn(
-                                "text-sm",
+                                "bg-muted text-sm",
                                 meta?.align === "right" && "text-right",
                                 meta?.align === "center" && "text-center",
-                                displayVal === "—" && "text-muted-foreground italic",
+                                "text-muted-foreground",
                                 meta?.cellClassName,
                             )}
                         >
-                            {displayVal}
+                            {isSaving && colIndex === 0 ? (
+                                <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                            ) : (
+                                displayVal
+                            )}
                         </TableCell>
                     );
                 }
@@ -287,7 +292,7 @@ export function DataTableNewRow<TData>({
                 const error = errors[key];
 
                 return (
-                    <TableCell key={key} className={cn("relative p-2", meta?.cellClassName)}>
+                    <TableCell key={key} className={cn("relative", meta?.cellClassName)}>
                         {meta.inputType === "select" && meta.selectOptions ? (
                             <Select
                                 value={toDisplayString(values[key])}
@@ -300,7 +305,10 @@ export function DataTableNewRow<TData>({
                                 }}
                             >
                                 <SelectTrigger
-                                    className={cn("h-8 text-sm", error && "border-destructive")}
+                                    className={cn(
+                                        "ghost-input h-7 rounded-none px-0 text-sm focus-visible:ring-0",
+                                        error && "border-destructive",
+                                    )}
                                 >
                                     <SelectValue placeholder={meta.placeholder} />
                                 </SelectTrigger>
@@ -336,6 +344,7 @@ export function DataTableNewRow<TData>({
                                 placeholder={meta.placeholder}
                                 error={!!error}
                                 onSearch={meta.onSearchOptions}
+                                className="ghost-input h-7 rounded-none px-0 text-sm focus-visible:ring-0"
                             />
                         ) : meta.inputType === "datepicker" ? (
                             <DatePicker
@@ -358,7 +367,10 @@ export function DataTableNewRow<TData>({
                                     if (el) inputRefs.current.set(key, el);
                                 }}
                                 placeholder={meta.placeholder}
-                                className={cn("h-8 w-full text-sm", error && "border-destructive")}
+                                className={cn(
+                                    "ghost-input h-7 w-full text-sm",
+                                    error && "border-destructive",
+                                )}
                             />
                         ) : meta.inputType === "currency" ? (
                             <NumericFormat
@@ -379,7 +391,10 @@ export function DataTableNewRow<TData>({
                                 }}
                                 onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 placeholder={meta.placeholder}
-                                className={cn("h-8 text-sm", error && "border-destructive")}
+                                className={cn(
+                                    "ghost-input h-7 rounded-none px-0 text-sm focus-visible:ring-0",
+                                    error && "border-destructive",
+                                )}
                             />
                         ) : (
                             <Input
@@ -407,7 +422,10 @@ export function DataTableNewRow<TData>({
                                 }}
                                 onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 placeholder={meta.placeholder}
-                                className={cn("h-8 text-sm", error && "border-destructive")}
+                                className={cn(
+                                    "ghost-input h-7 rounded-none px-0 text-sm focus-visible:ring-0",
+                                    error && "border-destructive",
+                                )}
                             />
                         )}
                         {error && (

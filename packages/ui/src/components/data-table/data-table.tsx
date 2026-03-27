@@ -25,6 +25,7 @@ import { DataTableColumnHeader } from "./data-table-header";
 import { DataTableInfiniteStatus } from "./data-table-infinite-status";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
+import { useCellNavigation } from "./use-cell-navigation";
 import { useMultiRowState } from "./use-multi-row-state";
 
 import type { DataTableProps, DataTableRef } from "./types";
@@ -87,6 +88,7 @@ export function DataTable<TData>({
     initialColumnVisibility,
     onRowClick,
     onDragSelectionChange,
+    loadingRowIds,
     className,
     translations,
 }: DataTableProps<TData> & { ref?: React.Ref<DataTableRef> }) {
@@ -149,6 +151,12 @@ export function DataTable<TData>({
         }),
         [multiRow.flushPendingRows],
     );
+
+    // ── Spreadsheet keyboard navigation ──────────────────────────
+    useCellNavigation({
+        enabled: !!enableEditing,
+        containerRef: containerRef as React.RefObject<HTMLElement | null>,
+    });
 
     // Sync external data
     React.useEffect(() => {
@@ -425,6 +433,7 @@ export function DataTable<TData>({
                                     multiRowDefaultValues={multiRowDefaultValues}
                                     onDragSumChange={setDragSumInfo}
                                     onDragSelectionChange={onDragSelectionChange}
+                                    loadingRowIds={loadingRowIds}
                                 />
                             </>
                         );
@@ -472,7 +481,7 @@ export function DataTable<TData>({
                 </AnimatePresence>
             </div>
 
-            {enableInfiniteScroll && (
+            {(enableInfiniteScroll || dragSumInfo) && (
                 <DataTableInfiniteStatus
                     loadedCount={rows.length}
                     totalCount={totalCount}
