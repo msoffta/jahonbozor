@@ -72,7 +72,7 @@ function ListsPage() {
     const deleteOrder = useDeleteOrder();
 
     const loadingRowIds = useMemo(() => {
-        const ids = new Set<unknown>();
+        const ids = new Set<number>();
         if (deleteOrder.isPending && deleteOrder.variables) ids.add(deleteOrder.variables);
         return ids;
     }, [deleteOrder.isPending, deleteOrder.variables]);

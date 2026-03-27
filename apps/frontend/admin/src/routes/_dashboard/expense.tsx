@@ -69,7 +69,7 @@ function ExpensePage() {
     const restoreExpense = useRestoreExpense();
 
     const loadingRowIds = useMemo(() => {
-        const ids = new Set<unknown>();
+        const ids = new Set<number>();
         if (updateExpense.isPending && updateExpense.variables?.id)
             ids.add(updateExpense.variables.id);
         if (deleteExpense.isPending && deleteExpense.variables) ids.add(deleteExpense.variables);

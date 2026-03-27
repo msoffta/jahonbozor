@@ -54,7 +54,7 @@ interface DataTableBodyProps<TData> {
     onDragSumChange?: (sumInfo: { sum: number; count: number } | null) => void;
     onDragSelectionChange?: (selectedRows: TData[]) => void;
     enableInfiniteScroll?: boolean;
-    loadingRowIds?: Set<unknown> | unknown[];
+    loadingRowIds?: Set<number>;
 }
 
 export function DataTableBody<TData>({
@@ -170,18 +170,13 @@ export function DataTableBody<TData>({
         }
     }, [allSelectedIndices, rows, onDragSelectionChange]);
 
-    const loadingSet = React.useMemo(() => {
-        if (!loadingRowIds) return null;
-        return loadingRowIds instanceof Set ? loadingRowIds : new Set(loadingRowIds);
-    }, [loadingRowIds]);
-
     const renderCells = (
         row: Row<TData>,
         rowIndex: number,
         extraCellStyle?: React.CSSProperties,
     ) => {
-        const rowId = (row.original as Record<string, unknown>).id;
-        const isRowLoading = !!loadingSet && rowId != null && loadingSet.has(rowId);
+        const rowId = (row.original as { id?: number }).id;
+        const isRowLoading = loadingRowIds != null && rowId != null && loadingRowIds.has(rowId);
         let isFirstCell = true;
 
         return row.getVisibleCells().map((cell) => {

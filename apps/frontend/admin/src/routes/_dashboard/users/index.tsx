@@ -67,7 +67,7 @@ function UsersPage() {
     const restoreClient = useRestoreClient();
 
     const loadingRowIds = useMemo(() => {
-        const ids = new Set<unknown>();
+        const ids = new Set<number>();
         if (updateClient.isPending && updateClient.variables?.id)
             ids.add(updateClient.variables.id);
         if (deleteClient.isPending && deleteClient.variables) ids.add(deleteClient.variables);

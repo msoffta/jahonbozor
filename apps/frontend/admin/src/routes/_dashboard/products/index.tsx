@@ -67,7 +67,7 @@ function ProductsPage() {
     const createCategory = useCreateCategory();
 
     const loadingRowIds = useMemo(() => {
-        const ids = new Set<unknown>();
+        const ids = new Set<number>();
         if (updateProduct.isPending && updateProduct.variables?.id)
             ids.add(updateProduct.variables.id);
         if (deleteProduct.isPending && deleteProduct.variables) ids.add(deleteProduct.variables);

@@ -138,7 +138,7 @@ function OrdersPage() {
     const createOrder = useCreateOrder();
 
     const loadingRowIds = useMemo(() => {
-        const ids = new Set<unknown>();
+        const ids = new Set<number>();
         if (updateOrder.isPending && updateOrder.variables?.id) ids.add(updateOrder.variables.id);
         if (deleteOrder.isPending && deleteOrder.variables) ids.add(deleteOrder.variables);
         return ids;
