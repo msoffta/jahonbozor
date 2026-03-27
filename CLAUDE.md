@@ -253,9 +253,9 @@ Frontend tsconfig: @/* (own src) + @backend/lib/*, @backend/api/*, @backend/gene
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT` (optional)
 - `VITE_TELEGRAM_BOT_USERNAME`
 
-**Notifications (optional):**
+**Notifications & Backup:**
 
-- `TELEGRAM_CHAT_ID`, `TELEGRAM_NOTIFICATION_TOKEN`
+- `TELEGRAM_CHAT_ID`, `TELEGRAM_NOTIFICATION_TOKEN` — deploy notifications + DB backup sends
 
 ### Deployment
 
@@ -274,8 +274,17 @@ cd /opt/jahonbozor
 # Rollback to previous version
 ./rollback.sh
 
+# Backup database manually (sends .sql.gz to Telegram)
+./scripts/backup.sh
+
+# Restore database from backup
+./scripts/restore-db.sh ./backups/jahonbozor_20260328_060000.sql.gz
+
 # View logs
 docker compose -f docker-compose.prod.yml logs -f
+
+# View backup cron log
+tail -f logs/backup.log
 ```
 
 ## Monitoring
