@@ -117,7 +117,7 @@ describe("DataTable - Infinite Scroll", () => {
             />,
         );
 
-        const scrollContainer = container.querySelector(".overflow-x-hidden");
+        const scrollContainer = container.querySelector(".overflow-auto");
         expect(scrollContainer).toBeDefined();
 
         // Simulate scroll near bottom using defineProperty with configurable
@@ -152,7 +152,7 @@ describe("DataTable - Infinite Scroll", () => {
             />,
         );
 
-        const scrollContainer = container.querySelector(".overflow-x-hidden");
+        const scrollContainer = container.querySelector(".overflow-auto");
 
         Object.defineProperty(scrollContainer!, "scrollHeight", {
             value: 1000,
@@ -185,7 +185,7 @@ describe("DataTable - Infinite Scroll", () => {
             />,
         );
 
-        const scrollContainer = container.querySelector(".overflow-x-hidden");
+        const scrollContainer = container.querySelector(".overflow-auto");
 
         Object.defineProperty(scrollContainer!, "scrollHeight", {
             value: 1000,
