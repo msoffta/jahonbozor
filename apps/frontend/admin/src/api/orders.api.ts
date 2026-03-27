@@ -1,4 +1,9 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    queryOptions,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import { toast } from "@jahonbozor/ui";
 
@@ -75,6 +80,46 @@ export const ordersListQueryOptions = (params?: {
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
             return data.data as { count: number; orders: AdminOrderItem[] };
+        },
+    });
+
+export const ordersInfiniteQueryOptions = (params?: {
+    limit?: number;
+    searchQuery?: string;
+    userId?: number;
+    staffId?: number;
+    paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
+    dateFrom?: string;
+    dateTo?: string;
+    itemsCount?: number;
+    minItemsCount?: number;
+}) =>
+    infiniteQueryOptions({
+        queryKey: orderKeys.list({ ...params, infinite: true }),
+        queryFn: async ({
+            pageParam,
+        }): Promise<{
+            count: number;
+            orders: AdminOrderItem[];
+        }> => {
+            const { data, error } = await api.api.private.orders.get({
+                query: {
+                    page: pageParam,
+                    limit: params?.limit ?? 1000,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    ...params,
+                },
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error("Request failed");
+            return data.data as { count: number; orders: AdminOrderItem[] };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+            const loaded = lastPageParam * (params?.limit ?? 50);
+            return loaded < lastPage.count ? lastPageParam + 1 : undefined;
         },
     });
 

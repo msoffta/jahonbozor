@@ -26,6 +26,7 @@ interface DataTableBodyProps<TData> {
     columns: ColumnDef<TData, any>[];
     isVirtualActive?: boolean;
     scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+    scrollElement?: HTMLDivElement | null;
     enableEditing?: boolean;
     onCellEdit?: (rowIndex: number, columnId: string, value: unknown) => void;
     enableNewRow?: boolean;
@@ -51,6 +52,7 @@ interface DataTableBodyProps<TData> {
     multiRowDefaultValues?: Partial<TData> | ((index: number) => Partial<TData>);
     onDragSumChange?: (sumInfo: { sum: number; count: number } | null) => void;
     onDragSelectionChange?: (selectedRows: TData[]) => void;
+    enableInfiniteScroll?: boolean;
 }
 
 export function DataTableBody<TData>({
@@ -58,6 +60,7 @@ export function DataTableBody<TData>({
     columns,
     isVirtualActive,
     scrollContainerRef,
+    scrollElement: scrollElementProp,
     enableEditing,
     onCellEdit,
     enableNewRow,
@@ -82,13 +85,14 @@ export function DataTableBody<TData>({
     multiRowDefaultValues,
     onDragSumChange,
     onDragSelectionChange,
+    enableInfiniteScroll,
 }: DataTableBodyProps<TData>) {
     const rows = table.getRowModel().rows;
     const parentRef = React.useRef<HTMLTableSectionElement>(null);
 
     const virtualizer = useVirtualizer({
         count: isVirtualActive ? rows.length : 0,
-        getScrollElement: () => scrollContainerRef?.current ?? null,
+        getScrollElement: () => scrollElementProp ?? scrollContainerRef?.current ?? null,
         estimateSize: () => VIRTUAL_ROW_HEIGHT_PX,
         overscan: VIRTUALIZER_OVERSCAN,
         enabled: !!isVirtualActive,
@@ -309,39 +313,41 @@ export function DataTableBody<TData>({
         );
     }
 
-    // Virtualized mode (large dataset with "All" selected)
+    // Virtualized mode — use padding to maintain scroll height while only
+    // rendering visible rows. Keeps normal <table> layout (no display:grid).
     if (isVirtualActive) {
         const virtualRows = virtualizer.getVirtualItems();
+        const totalSize = virtualizer.getTotalSize();
+        const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+        const paddingBottom =
+            virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
 
         return (
-            <TableBody
-                ref={parentRef}
-                className={cn(isDragging && "select-none")}
-                style={{
-                    display: "grid",
-                    height: `${virtualizer.getTotalSize()}px`,
-                    position: "relative",
-                }}
-            >
+            <TableBody ref={parentRef} className={cn(isDragging && "select-none")}>
                 {position === "start" && newRows}
+                {paddingTop > 0 && (
+                    <tr>
+                        <td style={{ height: paddingTop, padding: 0 }} />
+                    </tr>
+                )}
                 {virtualRows.map((virtualRow) => {
                     const row = rows[virtualRow.index];
                     return (
                         <TableRow
                             key={row.id}
                             data-state={row.getIsSelected() ? "selected" : undefined}
-                            style={{
-                                display: "flex",
-                                position: "absolute",
-                                transform: `translateY(${virtualRow.start}px)`,
-                                width: "100%",
-                            }}
                             className={cn(onRowClick ? "cursor-pointer" : "")}
+                            onClick={() => onRowClick?.(row.original)}
                         >
-                            {renderCells(row, virtualRow.index, { display: "flex" })}
+                            {renderCells(row, virtualRow.index)}
                         </TableRow>
                     );
                 })}
+                {paddingBottom > 0 && (
+                    <tr>
+                        <td style={{ height: paddingBottom, padding: 0 }} />
+                    </tr>
+                )}
                 {position === "end" && newRows}
             </TableBody>
         );
@@ -351,22 +357,36 @@ export function DataTableBody<TData>({
     return (
         <TableBody className={cn(isDragging && "select-none")}>
             {position === "start" && newRows}
-            {rows.map((row, index) => (
-                <motion.tr
-                    key={row.id}
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    data-state={row.getIsSelected() ? "selected" : undefined}
-                    className={cn(
-                        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
-                        onRowClick ? "cursor-pointer" : "",
-                    )}
-                    onClick={() => onRowClick?.(row.original)}
-                >
-                    {renderCells(row, index)}
-                </motion.tr>
-            ))}
+            {rows.map((row, index) =>
+                enableInfiniteScroll ? (
+                    <tr
+                        key={row.id}
+                        data-state={row.getIsSelected() ? "selected" : undefined}
+                        className={cn(
+                            "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+                            onRowClick ? "cursor-pointer" : "",
+                        )}
+                        onClick={() => onRowClick?.(row.original)}
+                    >
+                        {renderCells(row, index)}
+                    </tr>
+                ) : (
+                    <motion.tr
+                        key={row.id}
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        data-state={row.getIsSelected() ? "selected" : undefined}
+                        className={cn(
+                            "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+                            onRowClick ? "cursor-pointer" : "",
+                        )}
+                        onClick={() => onRowClick?.(row.original)}
+                    >
+                        {renderCells(row, index)}
+                    </motion.tr>
+                ),
+            )}
             {position === "end" && newRows}
         </TableBody>
     );

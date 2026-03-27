@@ -22,6 +22,7 @@ import { Checkbox } from "../ui/checkbox";
 import { Table, TableHeader, TableRow } from "../ui/table";
 import { DataTableBody } from "./data-table-body";
 import { DataTableColumnHeader } from "./data-table-header";
+import { DataTableInfiniteStatus } from "./data-table-infinite-status";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { useMultiRowState } from "./use-multi-row-state";
@@ -33,6 +34,10 @@ const VIRTUALIZATION_THRESHOLD = 200;
 const DEFAULT_COLUMN_SIZE_PX = 150;
 /** Minimum scrollable distance before showing scroll-to-edge button */
 const SCROLL_BUTTON_THRESHOLD_PX = 50;
+/** Distance from bottom (px) at which infinite scroll triggers next page fetch.
+ *  Set high enough to prefetch well before the user sees the end of loaded data,
+ *  especially when multi-row new-row inputs sit at the bottom (~540px for 15 rows). */
+const INFINITE_SCROLL_THRESHOLD_PX = 2000;
 
 export function DataTable<TData>({
     ref,
@@ -70,6 +75,14 @@ export function DataTable<TData>({
     multiRowDefaultValues,
     multiRowValidate,
 
+    // Infinite scroll
+    enableInfiniteScroll = false,
+    onFetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    totalCount,
+    onSearchQueryChange,
+
     onRowSelectionChange,
     initialColumnVisibility,
     onRowClick,
@@ -85,6 +98,19 @@ export function DataTable<TData>({
     );
     const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
     const [globalFilter, setGlobalFilter] = React.useState("");
+    const isServerSearch = !!onSearchQueryChange;
+
+    const serverSearchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handleGlobalFilterChange = React.useCallback(
+        (value: string) => {
+            setGlobalFilter(value);
+            if (onSearchQueryChange) {
+                if (serverSearchTimerRef.current) clearTimeout(serverSearchTimerRef.current);
+                serverSearchTimerRef.current = setTimeout(() => onSearchQueryChange(value), 300);
+            }
+        },
+        [onSearchQueryChange],
+    );
     const [paginationState, setPaginationState] = React.useState({
         pageIndex: 0,
         pageSize: defaultPageSize,
@@ -95,7 +121,10 @@ export function DataTable<TData>({
         null,
     );
     const [containerWidth, setContainerWidth] = React.useState(0);
-    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    // useState (not useRef) so that setting the element triggers a re-render,
+    // allowing the virtualizer to pick up the non-null scroll element.
+    const [scrollElement, setScrollElement] = React.useState<HTMLDivElement | null>(null);
+    const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
     // ── Multi-row state management ─────────────────────────────
@@ -178,7 +207,9 @@ export function DataTable<TData>({
             rowSelection,
             globalFilter,
             columnSizing,
-            ...(pagination && !isShowAll ? { pagination: paginationState } : {}),
+            ...(!enableInfiniteScroll && pagination && !isShowAll
+                ? { pagination: paginationState }
+                : {}),
         },
         enableColumnResizing,
         columnResizeMode: "onChange",
@@ -190,13 +221,15 @@ export function DataTable<TData>({
         onRowSelectionChange: setRowSelection,
         onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
-        ...(manualPagination
-            ? { manualPagination: true, pageCount: pageCount ?? -1 }
-            : pagination
-              ? { getPaginationRowModel: getPaginationRowModel() }
-              : {}),
+        ...(enableInfiniteScroll
+            ? {}
+            : manualPagination
+              ? { manualPagination: true, pageCount: pageCount ?? -1 }
+              : pagination
+                ? { getPaginationRowModel: getPaginationRowModel() }
+                : {}),
         ...(enableSorting ? { getSortedRowModel: getSortedRowModel() } : {}),
-        ...(enableFiltering || enableGlobalSearch
+        ...(enableFiltering || (enableGlobalSearch && !isServerSearch)
             ? { getFilteredRowModel: getFilteredRowModel() }
             : {}),
         meta: {
@@ -267,16 +300,27 @@ export function DataTable<TData>({
     const [isNearBottom, setIsNearBottom] = React.useState(false);
     const [showScrollBtn, setShowScrollBtn] = React.useState(false);
 
-    const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        const el = e.currentTarget;
-        const scrollable = el.scrollHeight - el.clientHeight;
-        if (scrollable < SCROLL_BUTTON_THRESHOLD_PX) {
-            setShowScrollBtn(false);
-            return;
-        }
-        setShowScrollBtn(true);
-        setIsNearBottom(el.scrollTop > scrollable / 2);
-    }, []);
+    const handleScroll = React.useCallback(
+        (e: React.UIEvent<HTMLDivElement>) => {
+            const el = e.currentTarget;
+            const scrollable = el.scrollHeight - el.clientHeight;
+            if (scrollable < SCROLL_BUTTON_THRESHOLD_PX) {
+                setShowScrollBtn(false);
+                return;
+            }
+            setShowScrollBtn(true);
+            setIsNearBottom(el.scrollTop > scrollable / 2);
+
+            // Infinite scroll: fetch next page when near bottom
+            if (enableInfiniteScroll && hasNextPage && !isFetchingNextPage && onFetchNextPage) {
+                const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+                if (distanceFromBottom < INFINITE_SCROLL_THRESHOLD_PX) {
+                    onFetchNextPage();
+                }
+            }
+        },
+        [enableInfiniteScroll, hasNextPage, isFetchingNextPage, onFetchNextPage],
+    );
 
     const scrollToEdge = React.useCallback(() => {
         const el = containerRef.current;
@@ -289,14 +333,26 @@ export function DataTable<TData>({
     }, [isNearBottom]);
 
     const rows = table.getRowModel().rows;
-    const isVirtualActive = isShowAll && rows.length > VIRTUALIZATION_THRESHOLD;
+    const isVirtualActive =
+        enableInfiniteScroll || (isShowAll && rows.length > VIRTUALIZATION_THRESHOLD);
+
+    // Infinite scroll: check on mount/data change if container needs more data
+    React.useEffect(() => {
+        if (!enableInfiniteScroll || !hasNextPage || isFetchingNextPage || !onFetchNextPage) return;
+        const el = containerRef.current;
+        if (!el) return;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (distanceFromBottom < INFINITE_SCROLL_THRESHOLD_PX) {
+            onFetchNextPage();
+        }
+    }, [enableInfiniteScroll, hasNextPage, isFetchingNextPage, onFetchNextPage, rows.length]);
 
     return (
         <div className={cn("flex min-h-0 w-full flex-col", className)}>
             <DataTableToolbar
                 table={table}
                 globalFilter={globalFilter}
-                onGlobalFilterChange={setGlobalFilter}
+                onGlobalFilterChange={handleGlobalFilterChange}
                 enableGlobalSearch={enableGlobalSearch}
                 enableColumnVisibility={enableColumnVisibility}
                 enableFiltering={enableFiltering}
@@ -307,95 +363,83 @@ export function DataTable<TData>({
                 <div
                     ref={(el) => {
                         containerRef.current = el;
-                        if (isVirtualActive) scrollContainerRef.current = el;
+                        scrollContainerRef.current = el;
+                        if (el !== scrollElement) setScrollElement(el);
                     }}
                     onScroll={handleScroll}
                     className="h-full overflow-auto rounded-md border"
-                    style={
-                        isVirtualActive
-                            ? {
-                                  position: "relative",
-                              }
-                            : undefined
-                    }
                 >
-                    <Table
-                        style={{
-                            ...(enableColumnResizing
-                                ? {
-                                      width: table.getTotalSize(),
-                                      tableLayout: "fixed" as const,
-                                  }
-                                : {}),
-                            ...(isVirtualActive ? { display: "grid" } : {}),
-                        }}
-                    >
-                        <TableHeader
-                            className={isVirtualActive ? "bg-background" : undefined}
-                            style={
-                                isVirtualActive
-                                    ? {
-                                          display: "grid",
-                                          position: "sticky",
-                                          top: 0,
-                                          zIndex: 1,
-                                      }
-                                    : undefined
-                            }
-                        >
-                            {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow
-                                    key={headerGroup.id}
-                                    style={
-                                        isVirtualActive
-                                            ? { display: "flex", width: "100%" }
-                                            : undefined
-                                    }
-                                >
-                                    {headerGroup.headers.map((header) => (
-                                        <DataTableColumnHeader
-                                            key={header.id}
-                                            header={header}
-                                            enableSorting={enableSorting}
-                                            enableColumnResizing={enableColumnResizing}
-                                            isVirtualActive={isVirtualActive}
-                                        />
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
+                    {(() => {
+                        const tableStyle = enableColumnResizing
+                            ? {
+                                  width: table.getTotalSize(),
+                                  tableLayout: "fixed" as const,
+                              }
+                            : undefined;
 
-                        <DataTableBody
-                            table={table}
-                            columns={allColumns}
-                            isVirtualActive={isVirtualActive}
-                            scrollContainerRef={scrollContainerRef}
-                            enableEditing={enableEditing}
-                            onCellEdit={onCellEdit}
-                            enableNewRow={enableNewRow}
-                            newRowPosition={newRowPosition}
-                            onNewRowSave={onNewRowSave}
-                            onNewRowChange={onNewRowChange}
-                            newRowDefaultValues={newRowDefaultValues}
-                            enableRowSelection={enableRowSelection}
-                            onRowClick={onRowClick}
-                            translations={translations}
-                            // Multi-row props
-                            enableMultipleNewRows={enableMultipleNewRows}
-                            multiRowStates={multiRow.rowStates}
-                            multiRowPosition={multiRowPosition}
-                            onMultiRowChange={multiRow.handleChange}
-                            onMultiRowSave={multiRow.handleSave}
-                            onMultiRowFocus={multiRow.handleFocus}
-                            onMultiRowBlur={multiRow.handleBlur}
-                            onMultiRowFocusNext={multiRow.handleFocusNext}
-                            onMultiRowSaveAndLoop={multiRow.handleSaveAndLoop}
-                            onNeedMoreRows={multiRow.handleNeedMoreRows}
-                            multiRowDefaultValues={multiRowDefaultValues}
-                            onDragSumChange={setDragSumInfo}
-                            onDragSelectionChange={onDragSelectionChange}
-                        />
-                    </Table>
+                        const tableChildren = (
+                            <>
+                                <TableHeader>
+                                    {table.getHeaderGroups().map((headerGroup) => (
+                                        <TableRow key={headerGroup.id}>
+                                            {headerGroup.headers.map((header) => (
+                                                <DataTableColumnHeader
+                                                    key={header.id}
+                                                    header={header}
+                                                    enableSorting={enableSorting}
+                                                    enableColumnResizing={enableColumnResizing}
+                                                    isVirtualActive={false}
+                                                />
+                                            ))}
+                                        </TableRow>
+                                    ))}
+                                </TableHeader>
+
+                                <DataTableBody
+                                    table={table}
+                                    columns={allColumns}
+                                    isVirtualActive={isVirtualActive}
+                                    scrollContainerRef={scrollContainerRef}
+                                    scrollElement={scrollElement}
+                                    enableInfiniteScroll={enableInfiniteScroll}
+                                    enableEditing={enableEditing}
+                                    onCellEdit={onCellEdit}
+                                    enableNewRow={enableNewRow}
+                                    newRowPosition={newRowPosition}
+                                    onNewRowSave={onNewRowSave}
+                                    onNewRowChange={onNewRowChange}
+                                    newRowDefaultValues={newRowDefaultValues}
+                                    enableRowSelection={enableRowSelection}
+                                    onRowClick={onRowClick}
+                                    translations={translations}
+                                    enableMultipleNewRows={enableMultipleNewRows}
+                                    multiRowStates={multiRow.rowStates}
+                                    multiRowPosition={multiRowPosition}
+                                    onMultiRowChange={multiRow.handleChange}
+                                    onMultiRowSave={multiRow.handleSave}
+                                    onMultiRowFocus={multiRow.handleFocus}
+                                    onMultiRowBlur={multiRow.handleBlur}
+                                    onMultiRowFocusNext={multiRow.handleFocusNext}
+                                    onMultiRowSaveAndLoop={multiRow.handleSaveAndLoop}
+                                    onNeedMoreRows={multiRow.handleNeedMoreRows}
+                                    multiRowDefaultValues={multiRowDefaultValues}
+                                    onDragSumChange={setDragSumInfo}
+                                    onDragSelectionChange={onDragSelectionChange}
+                                />
+                            </>
+                        );
+
+                        // Virtual mode: render <table> directly — the Table component
+                        // adds a wrapper <div overflow-auto> that creates a second scroll
+                        // container, preventing the virtualizer from tracking scroll correctly.
+                        return isVirtualActive ? (
+                            <table className="w-full caption-bottom text-sm" style={tableStyle}>
+                                {tableChildren}
+                            </table>
+                        ) : (
+                            <Table style={tableStyle}>{tableChildren}</Table>
+                        );
+                    })()}
                 </div>
 
                 <AnimatePresence>
@@ -428,7 +472,18 @@ export function DataTable<TData>({
                 </AnimatePresence>
             </div>
 
-            {pagination && (
+            {enableInfiniteScroll && (
+                <DataTableInfiniteStatus
+                    loadedCount={rows.length}
+                    totalCount={totalCount}
+                    isFetchingNextPage={isFetchingNextPage}
+                    hasNextPage={hasNextPage}
+                    translations={translations}
+                    dragSumInfo={dragSumInfo}
+                />
+            )}
+
+            {pagination && !enableInfiniteScroll && (
                 <DataTablePagination
                     table={table}
                     pageSizeOptions={pageSizeOptions}

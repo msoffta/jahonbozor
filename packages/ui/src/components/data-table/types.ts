@@ -90,6 +90,10 @@ export interface DataTableTranslations {
     filterMax?: string;
     filter?: string;
     sumLabel?: string;
+
+    // Infinite scroll
+    showingOf?: string;
+    loadingMore?: string;
 }
 
 // ── Ref handle ────────────────────────────────────────────────
@@ -149,6 +153,17 @@ export interface DataTableProps<TData> {
     ) => void | Record<string, unknown>;
     multiRowDefaultValues?: Partial<TData> | ((rowIndex: number) => Partial<TData>);
     multiRowValidate?: (data: Record<string, unknown>) => boolean | string;
+
+    // Infinite scroll
+    enableInfiniteScroll?: boolean;
+    onFetchNextPage?: () => void;
+    hasNextPage?: boolean;
+    isFetchingNextPage?: boolean;
+    totalCount?: number;
+
+    // Server-side search — when provided, search query is sent to the server
+    // instead of filtering client-side. The parent manages the query state.
+    onSearchQueryChange?: (query: string) => void;
 
     // Callbacks
     onRowSelectionChange?: (selection: Record<string, boolean>) => void;

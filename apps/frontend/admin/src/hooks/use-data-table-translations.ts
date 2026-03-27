@@ -17,5 +17,7 @@ export function useDataTableTranslations(noResultsText?: string): DataTableTrans
         filterMin: t("filter_min"),
         filterMax: t("filter_max"),
         filter: t("filter"),
+        showingOf: t("table_showing_of"),
+        loadingMore: t("table_loading_more"),
     };
 }

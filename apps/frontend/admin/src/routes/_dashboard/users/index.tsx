@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import z from "zod";
 
@@ -17,7 +17,7 @@ import {
 } from "@jahonbozor/ui";
 
 import {
-    clientsListQueryOptions,
+    clientsInfiniteQueryOptions,
     useCreateClient,
     useDeleteClient,
     useRestoreClient,
@@ -38,7 +38,7 @@ function UsersPage() {
     const { t } = useTranslation("clients");
     const navigate = useNavigate();
     const [includeDeleted, setIncludeDeleted] = useState(false);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const [searchQuery, setSearchQuery] = useState("");
     const { new: isNew, returnTo } = Route.useSearch();
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("clients_empty"));
@@ -48,11 +48,16 @@ function UsersPage() {
     const canUpdate = useHasPermission(Permission.USERS_UPDATE_ALL);
     const canDelete = useHasPermission(Permission.USERS_DELETE);
 
-    const { data: clientsData, isLoading: isClientsLoading } = useQuery(
-        clientsListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: clientsData,
+        isLoading: isClientsLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        clientsInfiniteQueryOptions({
             includeDeleted,
+            searchQuery,
         }),
     );
 
@@ -91,7 +96,8 @@ function UsersPage() {
         [t, actions, canDelete],
     );
 
-    const clients = clientsData?.users ?? [];
+    const clients = useMemo(() => clientsData?.pages.flatMap((p) => p.users) ?? [], [clientsData]);
+    const totalCount = clientsData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
@@ -189,20 +195,21 @@ function UsersPage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={clients}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((clientsData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
                             multiRowCount={15}
+                            multiRowMaxCount={15}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
                             translations={translations}

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns";
 
@@ -17,7 +17,7 @@ import {
     useIsMobile,
 } from "@jahonbozor/ui";
 
-import { incomeListQueryOptions, useCreateIncome } from "@/api/income.api";
+import { incomeInfiniteQueryOptions, useCreateIncome } from "@/api/income.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getIncomeColumns } from "@/components/income/income-columns";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
@@ -34,15 +34,20 @@ function IncomePage() {
     const monthEnd = endOfMonth(new Date()).toISOString();
     const [dateFrom, setDateFrom] = useState(monthStart);
     const [dateTo, setDateTo] = useState(monthEnd);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const [searchQuery, setSearchQuery] = useState("");
 
     // Permission check for creating income records
     const canCreate = useHasPermission(Permission.PRODUCT_HISTORY_CREATE);
 
-    const { data: incomeData, isLoading: isIncomeLoading } = useQuery(
-        incomeListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: incomeData,
+        isLoading: isIncomeLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        incomeInfiniteQueryOptions({
+            searchQuery,
             dateFrom,
             dateTo,
         }),
@@ -58,7 +63,8 @@ function IncomePage() {
 
     const columns = useMemo(() => getIncomeColumns(t, products), [t, products]);
 
-    const history = incomeData?.history ?? [];
+    const history = useMemo(() => incomeData?.pages.flatMap((p) => p.history) ?? [], [incomeData]);
+    const totalCount = incomeData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
@@ -165,20 +171,21 @@ function IncomePage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={history}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((incomeData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
                             enableEditing={false}
                             enableMultipleNewRows={canCreate}
                             multiRowCount={15}
+                            multiRowMaxCount={15}
                             onMultiRowSave={handleNewRowSave}
                             multiRowDefaultValues={multiRowDefaultValues}
                             translations={translations}

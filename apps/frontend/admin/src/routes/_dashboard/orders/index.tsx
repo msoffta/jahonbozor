@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns";
 
@@ -18,7 +18,7 @@ import {
 } from "@jahonbozor/ui";
 
 import { clientsListQueryOptions } from "@/api/clients.api";
-import { ordersListQueryOptions, useDeleteOrder } from "@/api/orders.api";
+import { ordersInfiniteQueryOptions, useDeleteOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderColumns } from "@/components/orders/orders-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
@@ -38,7 +38,7 @@ function ListsPage() {
 
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const [searchQuery, setSearchQuery] = useState("");
 
     const monthStart = startOfMonth(new Date()).toISOString();
     const monthEnd = endOfMonth(new Date()).toISOString();
@@ -46,11 +46,16 @@ function ListsPage() {
     const [dateFrom, setDateFrom] = useState(monthStart);
     const [dateTo, setDateTo] = useState(monthEnd);
 
-    const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
-        ordersListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: ordersData,
+        isLoading: isOrdersLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        ordersInfiniteQueryOptions({
             minItemsCount: 2,
+            searchQuery,
             dateFrom,
             dateTo,
         }),
@@ -68,7 +73,8 @@ function ListsPage() {
 
     const products = productsData?.products ?? [];
     const users = clientsData?.users ?? [];
-    const orders = ordersData?.orders ?? [];
+    const orders = useMemo(() => ordersData?.pages.flatMap((p) => p.orders) ?? [], [ordersData]);
+    const totalCount = ordersData?.pages[0]?.count ?? 0;
 
     const actions = useMemo(
         () => ({
@@ -164,14 +170,14 @@ function ListsPage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={orders}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((ordersData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing

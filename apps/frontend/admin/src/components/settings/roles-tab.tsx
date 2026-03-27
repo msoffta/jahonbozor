@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 
 import { Permission } from "@jahonbozor/schemas";
@@ -15,7 +15,7 @@ import {
 } from "@jahonbozor/ui";
 
 import {
-    rolesListQueryOptions,
+    rolesInfiniteQueryOptions,
     useCreateRole,
     useDeleteRole,
     useUpdateRole,
@@ -39,16 +39,21 @@ export function RolesTab() {
     const translations = useDataTableTranslations(t("roles_empty"));
     const [editingRole, setEditingRole] = useState<RoleItem | null>(null);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const [searchQuery, setSearchQuery] = useState("");
 
     const canCreate = useHasPermission(Permission.ROLES_CREATE);
     const canUpdate = useHasPermission(Permission.ROLES_UPDATE);
     const canDelete = useHasPermission(Permission.ROLES_DELETE);
 
-    const { data: rolesData, isLoading: isRolesLoading } = useQuery(
-        rolesListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: rolesData,
+        isLoading: isRolesLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        rolesInfiniteQueryOptions({
+            searchQuery,
             includeStaffCount: true,
         }),
     );
@@ -58,7 +63,8 @@ export function RolesTab() {
     const deleteRole = useDeleteRole();
 
     const isLoading = isRolesLoading || !isReady;
-    const roles = rolesData?.roles ?? [];
+    const roles = useMemo(() => rolesData?.pages.flatMap((p) => p.roles) ?? [], [rolesData]);
+    const totalCount = rolesData?.pages[0]?.count ?? 0;
 
     const currentUserPermissionCount = currentUserPermissions.length;
 
@@ -146,14 +152,14 @@ export function RolesTab() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={roles}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((rolesData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableColumnVisibility
                             enableColumnResizing
                             enableEditing

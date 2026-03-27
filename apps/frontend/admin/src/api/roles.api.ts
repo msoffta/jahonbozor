@@ -1,4 +1,9 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    queryOptions,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import { toast } from "@jahonbozor/ui";
 
@@ -40,6 +45,35 @@ export const rolesListQueryOptions = (params?: {
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
             return data.data as { count: number; roles: RoleItem[] };
+        },
+    });
+
+export const rolesInfiniteQueryOptions = (params?: {
+    limit?: number;
+    searchQuery?: string;
+    includeStaffCount?: boolean;
+}) =>
+    infiniteQueryOptions({
+        queryKey: roleKeys.list({ ...params, infinite: true }),
+        queryFn: async ({ pageParam }): Promise<{ count: number; roles: RoleItem[] }> => {
+            const { data, error } = await api.api.private.staff.roles.get({
+                query: {
+                    page: pageParam,
+                    limit: params?.limit ?? 1000,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeStaffCount: true,
+                    ...params,
+                },
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error("Request failed");
+            return data.data as { count: number; roles: RoleItem[] };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+            const loaded = lastPageParam * (params?.limit ?? 50);
+            return loaded < lastPage.count ? lastPageParam + 1 : undefined;
         },
     });
 

@@ -407,6 +407,7 @@ function OrderDetailPage() {
                     onCellEdit: handleCellEdit,
                     enableMultipleNewRows: true,
                     multiRowCount: 15,
+                    multiRowMaxCount: 15,
                     onMultiRowSave: handleNewRowSave,
                     onMultiRowChange: handleNewRowChange,
                     multiRowDefaultValues: newRowDefaultValues,

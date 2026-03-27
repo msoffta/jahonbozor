@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Upload } from "lucide-react";
 
@@ -19,7 +19,7 @@ import {
 
 import { categoriesListQueryOptions, useCreateCategory } from "@/api/categories.api";
 import {
-    productsListQueryOptions,
+    productsInfiniteQueryOptions,
     useCreateProduct,
     useDeleteProduct,
     useRestoreProduct,
@@ -36,7 +36,7 @@ function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const [searchQuery, setSearchQuery] = useState("");
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("products_empty"));
 
@@ -45,11 +45,16 @@ function ProductsPage() {
     const canUpdate = useHasPermission(Permission.PRODUCTS_UPDATE);
     const canDelete = useHasPermission(Permission.PRODUCTS_DELETE);
 
-    const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: productsData,
+        isLoading: isProductsLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        productsInfiniteQueryOptions({
             includeDeleted,
+            searchQuery,
         }),
     );
 
@@ -95,7 +100,11 @@ function ProductsPage() {
         [t, categories, actions, canDelete],
     );
 
-    const products = productsData?.products ?? [];
+    const products = useMemo(
+        () => productsData?.pages.flatMap((p) => p.products) ?? [],
+        [productsData],
+    );
+    const totalCount = productsData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
@@ -203,20 +212,21 @@ function ProductsPage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={products}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((productsData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
                             multiRowCount={15}
+                            multiRowMaxCount={15}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
                             translations={translations}
