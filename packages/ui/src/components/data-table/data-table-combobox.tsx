@@ -205,7 +205,7 @@ export function DataTableCombobox({
 
     const handleFocus = () => {
         measurePos();
-        setShowList(true);
+        // Don't open dropdown on focus — wait for user to type or press ArrowDown
     };
 
     const handleBlur = () => {
