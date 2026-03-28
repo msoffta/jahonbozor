@@ -498,7 +498,7 @@ export abstract class OrdersService {
                                 orderId,
                                 productId: item.productId,
                                 quantity: item.quantity,
-                                price: product.price,
+                                price: item.price,
                                 data: (item.data as Prisma.JsonObject) ?? null,
                             },
                         });

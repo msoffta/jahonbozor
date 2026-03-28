@@ -18,6 +18,7 @@ interface DataTableMultiNewRowsProps<TData> {
     enableRowSelection?: boolean;
     defaultValuesFactory: (rowIndex: number) => Partial<TData>;
     onNeedMoreRows: () => void;
+    dataRowCount?: number;
 }
 
 export function DataTableMultiNewRows<TData>({
@@ -32,6 +33,7 @@ export function DataTableMultiNewRows<TData>({
     enableRowSelection,
     defaultValuesFactory,
     onNeedMoreRows,
+    dataRowCount = 0,
 }: DataTableMultiNewRowsProps<TData>) {
     const sentinelRef = React.useRef<HTMLTableRowElement>(null);
 
@@ -75,6 +77,7 @@ export function DataTableMultiNewRows<TData>({
                     externalValues={rowState.values}
                     externalErrors={rowState.errors}
                     isSaving={rowState.isSaving}
+                    rowIndex={dataRowCount + index}
                 />
             ))}
 

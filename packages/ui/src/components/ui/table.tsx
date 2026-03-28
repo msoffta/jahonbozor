@@ -96,7 +96,7 @@ const TableCell = ({
     <td
         ref={ref}
         className={cn(
-            "border-border focus-within:outline-ring border-r px-2 py-0.5 align-middle last:border-r-0 focus-within:outline-2 focus-within:-outline-offset-2 [&:has([role=checkbox])]:pr-0",
+            "border-border border-r px-2 py-0.5 align-middle last:border-r-0 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-black [&:has([role=checkbox])]:pr-0",
             className,
         )}
         {...props}

@@ -37,6 +37,7 @@ interface DataTableNewRowProps<TData> {
     externalValues?: Record<string, unknown>;
     externalErrors?: Record<string, string>;
     isSaving?: boolean;
+    rowIndex?: number;
 }
 
 export function DataTableNewRow<TData>({
@@ -53,6 +54,7 @@ export function DataTableNewRow<TData>({
     externalValues,
     externalErrors,
     isSaving,
+    rowIndex,
 }: DataTableNewRowProps<TData>) {
     // Determine if controlled mode
     const isControlled = externalValues !== undefined;
@@ -277,6 +279,9 @@ export function DataTableNewRow<TData>({
                     return (
                         <TableCell
                             key={key}
+                            data-row-index={rowIndex}
+                            data-column-id={key}
+                            tabIndex={-1}
                             className={cn(
                                 "bg-muted text-sm",
                                 meta?.align === "right" && "text-right",
@@ -298,7 +303,13 @@ export function DataTableNewRow<TData>({
                 const error = errors[key];
 
                 return (
-                    <TableCell key={key} className={cn("relative", meta?.cellClassName)}>
+                    <TableCell
+                        key={key}
+                        data-row-index={rowIndex}
+                        data-column-id={key}
+                        tabIndex={-1}
+                        className={cn("relative", meta?.cellClassName)}
+                    >
                         {meta.inputType === "select" && meta.selectOptions ? (
                             <Select
                                 value={toDisplayString(values[key])}
@@ -312,7 +323,7 @@ export function DataTableNewRow<TData>({
                             >
                                 <SelectTrigger
                                     className={cn(
-                                        "ghost-input focus:bg-primary/5 h-6 rounded-none px-0 text-sm focus:outline-none focus-visible:ring-0",
+                                        "ghost-input h-6 rounded-none px-0 text-sm focus:outline-none focus-visible:ring-0",
                                         error && "border-destructive",
                                     )}
                                 >
@@ -350,7 +361,7 @@ export function DataTableNewRow<TData>({
                                 placeholder={meta.placeholder}
                                 error={!!error}
                                 onSearch={meta.onSearchOptions}
-                                className="ghost-input focus:bg-primary/5 h-6 rounded-none px-0 text-sm focus:outline-none focus-visible:ring-0"
+                                className="ghost-input h-6 rounded-none px-0 text-sm focus:outline-none focus-visible:ring-0"
                             />
                         ) : meta.inputType === "datepicker" ? (
                             <DatePicker
@@ -398,7 +409,7 @@ export function DataTableNewRow<TData>({
                                 onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 placeholder={meta.placeholder}
                                 className={cn(
-                                    "ghost-input focus:bg-primary/5 h-6 rounded-none px-0 text-sm focus:outline-none focus-visible:ring-0",
+                                    "ghost-input h-6 rounded-none px-0 text-sm focus:outline-none focus-visible:ring-0",
                                     error && "border-destructive",
                                 )}
                             />
@@ -429,7 +440,7 @@ export function DataTableNewRow<TData>({
                                 onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 placeholder={meta.placeholder}
                                 className={cn(
-                                    "ghost-input focus:bg-primary/5 h-6 rounded-none px-0 text-sm focus:outline-none focus-visible:ring-0",
+                                    "ghost-input h-6 rounded-none px-0 text-sm focus:outline-none focus-visible:ring-0",
                                     error && "border-destructive",
                                 )}
                             />

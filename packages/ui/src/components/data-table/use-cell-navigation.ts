@@ -50,12 +50,18 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
             return td.querySelector<HTMLInputElement>('input, [role="combobox"]');
         }
 
-        function focusCell(td: HTMLTableCellElement) {
-            const input = findInputIn(td);
-            if (input) {
-                input.focus();
-                input.select();
+        /** Move cursor to cell. editMode=true focuses the input for editing. */
+        function focusCell(td: HTMLTableCellElement, editMode = false) {
+            if (editMode) {
+                const input = findInputIn(td);
+                if (input) {
+                    input.focus();
+                    input.select();
+                    return;
+                }
             }
+            // Cursor mode: focus <td> itself → outline appears, no input activation
+            td.focus();
         }
 
         /** Get unique sorted row indices from all cells */
@@ -141,13 +147,11 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
                 }
 
                 case "ArrowLeft": {
-                    // Only navigate if cursor is at the start of input
                     if (input && !isAtInputStart(input)) return;
                     e.preventDefault();
-                    // Find prev column that has an input
                     for (let i = colPos - 1; i >= 0; i--) {
                         const targetTd = getCell(coords.row, columnIds[i]);
-                        if (targetTd && findInputIn(targetTd)) {
+                        if (targetTd) {
                             focusCell(targetTd);
                             break;
                         }
@@ -156,13 +160,11 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
                 }
 
                 case "ArrowRight": {
-                    // Only navigate if cursor is at the end of input
                     if (input && !isAtInputEnd(input)) return;
                     e.preventDefault();
-                    // Find next column that has an input
                     for (let i = colPos + 1; i < columnIds.length; i++) {
                         const targetTd = getCell(coords.row, columnIds[i]);
-                        if (targetTd && findInputIn(targetTd)) {
+                        if (targetTd) {
                             focusCell(targetTd);
                             break;
                         }
@@ -188,33 +190,39 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
 
                     const nextIdx = currentIdx + direction;
                     if (nextIdx >= 0 && nextIdx < editableCells.length) {
-                        focusCell(editableCells[nextIdx]);
+                        focusCell(editableCells[nextIdx], true); // Tab enters edit mode
                     }
                     break;
                 }
 
                 case "Enter": {
-                    // Don't interfere if inside a combobox dropdown
                     if (isComboboxOpen(target)) return;
                     e.preventDefault();
-                    // Save current (blur triggers save), then move to next row's first editable
-                    input?.blur();
 
-                    if (rowPos < rowIndices.length - 1) {
-                        const nextRow = rowIndices[rowPos + 1];
-                        for (const ci of columnIds) {
-                            const c = getCell(nextRow, ci);
-                            if (c && findInputIn(c)) {
-                                requestAnimationFrame(() => focusCell(c));
-                                break;
+                    if (input) {
+                        // Already editing → save and move down
+                        input.blur();
+                        if (rowPos < rowIndices.length - 1) {
+                            const targetTd = getCell(rowIndices[rowPos + 1], coords.col);
+                            if (targetTd) {
+                                requestAnimationFrame(() => focusCell(targetTd));
                             }
                         }
+                    } else {
+                        // Cursor on <td> → enter edit mode if cell has input
+                        focusCell(td, true);
+                        // Stop propagation so Enter doesn't reach the newly focused combobox
+                        e.stopImmediatePropagation();
                     }
                     break;
                 }
 
                 case "Escape": {
-                    // Let the event bubble to cell's React onKeyDown → handleCancel()
+                    if (input) {
+                        // Exit edit mode → return focus to <td> (cursor mode)
+                        // Let the event bubble first so cell's handleCancel() reverts value
+                        requestAnimationFrame(() => td.focus());
+                    }
                     return;
                 }
             }

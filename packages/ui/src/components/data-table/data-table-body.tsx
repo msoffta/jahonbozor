@@ -194,7 +194,12 @@ export function DataTableBody<TData>({
         }
 
         React.startTransition(() => {
-            onDragSumChange?.({ sum, count: indices.size, excludedSum, excludedCount: 0 });
+            // Only show sum badge if there are actual numeric values
+            if (sum > 0 || excludedSum > 0) {
+                onDragSumChange?.({ sum, count: indices.size, excludedSum, excludedCount: 0 });
+            } else {
+                onDragSumChange?.(null);
+            }
             onDragSelectionChange?.(selectedRows);
         });
     }
@@ -231,12 +236,17 @@ export function DataTableBody<TData>({
                     key={cell.id}
                     data-row-index={rowIndex}
                     data-column-id={cell.column.id}
+                    tabIndex={-1}
                     style={{ width: cell.column.getSize(), ...extraCellStyle }}
                     className={cn(
                         cell.column.columnDef.meta?.cellClassName,
                         enableEditing && !cell.column.columnDef.meta?.editable && "bg-muted",
                         isDragSumEnabled && "cursor-cell",
                     )}
+                    onClick={(e) => {
+                        // Prevent drag-sum clicks from triggering onRowClick (navigation)
+                        if (isDragSumEnabled) e.stopPropagation();
+                    }}
                     onDoubleClick={() => {
                         if (isDragSumEnabled && cell.column.columnDef.meta?.editable) {
                             const td = document.querySelector<HTMLElement>(
@@ -340,9 +350,11 @@ export function DataTableBody<TData>({
                     onChange={onNewRowChange}
                     defaultValues={newRowDefaultValues}
                     enableRowSelection={enableRowSelection}
+                    rowIndex={rows.length}
                 />
             ) : null,
         [
+            rows.length,
             columns,
             enableNewRow,
             enableMultipleNewRows,
@@ -368,9 +380,11 @@ export function DataTableBody<TData>({
                     enableRowSelection={enableRowSelection}
                     defaultValuesFactory={defaultValuesFactory}
                     onNeedMoreRows={onNeedMoreRows ?? NOOP}
+                    dataRowCount={rows.length}
                 />
             ) : null,
         [
+            rows.length,
             columns,
             enableMultipleNewRows,
             multiRowStates,
