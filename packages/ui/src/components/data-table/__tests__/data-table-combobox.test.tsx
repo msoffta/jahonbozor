@@ -61,14 +61,14 @@ describe("DataTableCombobox", () => {
         expect(onChange).toHaveBeenCalled();
     });
 
-    test("should show dropdown on focus", async () => {
+    test("should show dropdown when typing", async () => {
         const user = userEvent.setup();
         const { getByRole } = render(
             <DataTableCombobox value="" onChange={onChange} options={options} />,
         );
 
         const input = getByRole("combobox");
-        await user.click(input);
+        await user.type(input, "a");
 
         // Portal renders options in document.body
         const optionElements = document.querySelectorAll(".combobox-dropdown > div");
@@ -158,7 +158,7 @@ describe("DataTableCombobox", () => {
         );
 
         const input = getByRole("combobox");
-        await user.click(input);
+        await user.type(input, "a");
 
         // Find the option in the portal and click it
         const dropdownOptions = document.querySelectorAll(".combobox-dropdown > div:not(.italic)");
@@ -290,7 +290,8 @@ describe("DataTableCombobox", () => {
         );
 
         const input = getByRole("combobox");
-        await user.click(input);
+        // Type a space to trigger dropdown (matches all options)
+        await user.type(input, " ");
 
         const dropdownOptions = document.querySelectorAll(".combobox-dropdown > div");
         expect(dropdownOptions.length).toBe(100);
@@ -331,7 +332,7 @@ describe("DataTableCombobox", () => {
         );
 
         const input = getByRole("combobox");
-        await user.click(input);
+        await user.type(input, "a");
 
         expect(input.getAttribute("aria-expanded")).toBe("true");
         expect(input.getAttribute("aria-controls")).toBeDefined();
@@ -357,7 +358,7 @@ describe("DataTableCombobox", () => {
         );
 
         const input = getByRole("combobox");
-        await user.click(input);
+        await user.type(input, "a");
 
         // Initially points to first option
         const initialDescendant = input.getAttribute("aria-activedescendant");
