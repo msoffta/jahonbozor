@@ -1,4 +1,9 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    queryOptions,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import { toast } from "@jahonbozor/ui";
 
@@ -42,6 +47,42 @@ export const clientsListQueryOptions = (params?: {
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
             return data.data as { count: number; users: AdminUserItem[] };
+        },
+    });
+
+export const clientsInfiniteQueryOptions = (params?: {
+    limit?: number;
+    searchQuery?: string;
+    includeOrders?: boolean;
+    includeDeleted?: boolean;
+}) =>
+    infiniteQueryOptions({
+        queryKey: clientKeys.list({ ...params, infinite: true }),
+        queryFn: async ({
+            pageParam,
+        }): Promise<{
+            count: number;
+            users: AdminUserItem[];
+        }> => {
+            const { data, error } = await api.api.private.users.get({
+                query: {
+                    page: pageParam,
+                    limit: params?.limit ?? 1000,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeDeleted: false,
+                    ...params,
+                },
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error("Request failed");
+            return data.data as { count: number; users: AdminUserItem[] };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+            const loaded = lastPageParam * (params?.limit ?? 50);
+            return loaded < lastPage.count ? lastPageParam + 1 : undefined;
         },
     });
 
@@ -111,6 +152,7 @@ export const useCreateClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["clients", "create"],
         mutationFn: createClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
@@ -125,6 +167,7 @@ export const useUpdateClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["clients", "update"],
         mutationFn: updateClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
@@ -139,6 +182,7 @@ export const useDeleteClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["clients", "delete"],
         mutationFn: deleteClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
@@ -153,6 +197,7 @@ export const useRestoreClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["clients", "restore"],
         mutationFn: restoreClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });

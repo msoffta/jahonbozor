@@ -90,6 +90,11 @@ export interface DataTableTranslations {
     filterMax?: string;
     filter?: string;
     sumLabel?: string;
+    excludedSumLabel?: string;
+
+    // Infinite scroll
+    showingOf?: string;
+    loadingMore?: string;
 }
 
 // ── Ref handle ────────────────────────────────────────────────
@@ -150,13 +155,29 @@ export interface DataTableProps<TData> {
     multiRowDefaultValues?: Partial<TData> | ((rowIndex: number) => Partial<TData>);
     multiRowValidate?: (data: Record<string, unknown>) => boolean | string;
 
+    // Infinite scroll
+    enableInfiniteScroll?: boolean;
+    onFetchNextPage?: () => void;
+    hasNextPage?: boolean;
+    isFetchingNextPage?: boolean;
+    totalCount?: number;
+
+    // Server-side search — when provided, search query is sent to the server
+    // instead of filtering client-side. The parent manages the query state.
+    onSearchQueryChange?: (query: string) => void;
+
     // Callbacks
     onRowSelectionChange?: (selection: Record<string, boolean>) => void;
     onRowClick?: (row: TData) => void;
     onDragSelectionChange?: (selectedRows: TData[]) => void;
+    /** Filter rows included in drag-sum. Returns true to include, false to exclude. Excluded rows are summed separately. */
+    dragSumFilter?: (row: TData) => boolean;
 
     // Column visibility
     initialColumnVisibility?: Record<string, boolean>;
+
+    // Loading state — show spinner on specific rows (e.g. during update/delete)
+    loadingRowIds?: Set<number>;
 
     // Styling
     className?: string;

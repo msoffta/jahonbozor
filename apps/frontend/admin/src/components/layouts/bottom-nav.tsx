@@ -264,7 +264,7 @@ export function BottomNav() {
                                 "flex h-10 w-16 items-center justify-center rounded-xl will-change-transform md:h-11 md:w-20",
                                 pathname === "/"
                                     ? "bg-primary text-primary-foreground shadow-md"
-                                    : "text-muted-foreground border-border bg-background/50 border",
+                                    : "bg-orange-500 text-white",
                             )}
                             whileTap={{ scale: 0.92 }}
                             transition={fastTransition}

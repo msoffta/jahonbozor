@@ -1,4 +1,9 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    queryOptions,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import { toast } from "@jahonbozor/ui";
 
@@ -41,6 +46,41 @@ export const productsListQueryOptions = (params?: {
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
             return data.data as { count: number; products: AdminProductItem[] };
+        },
+    });
+
+export const productsInfiniteQueryOptions = (params?: {
+    limit?: number;
+    searchQuery?: string;
+    categoryIds?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    includeDeleted?: boolean;
+}) =>
+    infiniteQueryOptions({
+        queryKey: productKeys.list({ ...params, infinite: true }),
+        queryFn: async ({
+            pageParam,
+        }): Promise<{ count: number; products: AdminProductItem[] }> => {
+            const { data, error } = await api.api.private.products.get({
+                query: {
+                    page: pageParam,
+                    limit: params?.limit ?? 1000,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    includeDeleted: false,
+                    ...params,
+                },
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error("Request failed");
+            return data.data as { count: number; products: AdminProductItem[] };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+            const loaded = lastPageParam * (params?.limit ?? 50);
+            return loaded < lastPage.count ? lastPageParam + 1 : undefined;
         },
     });
 
@@ -130,6 +170,7 @@ export const useCreateProduct = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "create"],
         mutationFn: createProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -144,6 +185,7 @@ export const useUpdateProduct = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "update"],
         mutationFn: updateProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -158,6 +200,7 @@ export const useDeleteProduct = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "delete"],
         mutationFn: deleteProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -172,6 +215,7 @@ export const useRestoreProduct = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "restore"],
         mutationFn: restoreProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -197,6 +241,7 @@ export const useImportProducts = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "import"],
         mutationFn: importProductsFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });

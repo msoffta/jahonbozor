@@ -80,6 +80,8 @@ export function getOrderItemColumns(
             meta: {
                 flex: 1,
                 align: "left" as const,
+                editable: true,
+                inputType: "currency" as const,
             },
         },
         {
@@ -102,6 +104,9 @@ export function getOrderItemColumns(
             meta: {
                 flex: 1,
                 align: "left" as const,
+                enableDragSum: true,
+                editable: true,
+                inputType: "currency" as const,
             },
         },
         {

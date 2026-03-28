@@ -126,11 +126,11 @@ function OrderDetailPage() {
         [isMobile],
     );
 
-    const newRowDefaultValues = useMemo(() => ({ quantity: 1 }), []);
+    const newRowDefaultValues = useMemo(() => ({}), []);
 
     const handleNewRowChange = useCallback(
         (values: Record<string, unknown>, _rowId: string) => {
-            const currentQuantity = Number(values.quantity) || 1;
+            const currentQuantity = Number(values.quantity) || 0;
 
             if (values.product) {
                 const productId = Number(values.product);
@@ -163,6 +163,9 @@ function OrderDetailPage() {
             const product = products.find((p) => p.id === productId);
             if (!product) return;
 
+            const userPrice =
+                data.price != null && data.price !== "" ? Number(data.price) : product.price;
+
             if (linkedId) {
                 setEditItems((prev) =>
                     prev.map((item) =>
@@ -170,8 +173,8 @@ function OrderDetailPage() {
                             ? {
                                   ...item,
                                   productId,
-                                  quantity: Number(data.quantity) || 1,
-                                  price: product.price,
+                                  quantity: Number(data.quantity) || 0,
+                                  price: userPrice,
                                   product: {
                                       id: product.id,
                                       name: product.name,
@@ -190,8 +193,8 @@ function OrderDetailPage() {
             const newItem: LocalItem = {
                 id: newId,
                 productId,
-                quantity: Number(data.quantity) || 1,
-                price: product.price,
+                quantity: Number(data.quantity) || 0,
+                price: userPrice,
                 product: {
                     id: product.id,
                     name: product.name,
@@ -234,8 +237,24 @@ function OrderDetailPage() {
             } else if (columnId === "quantity") {
                 setEditItems((prev) =>
                     prev.map((item, i) =>
-                        i === rowIndex ? { ...item, quantity: Number(value) || 1 } : item,
+                        i === rowIndex ? { ...item, quantity: Number(value) || 0 } : item,
                     ),
+                );
+            } else if (columnId === "price") {
+                setEditItems((prev) =>
+                    prev.map((item, i) =>
+                        i === rowIndex ? { ...item, price: Number(value) || 0 } : item,
+                    ),
+                );
+            } else if (columnId === "total") {
+                const newTotal = Number(value) || 0;
+                setEditItems((prev) =>
+                    prev.map((item, i) => {
+                        if (i !== rowIndex) return item;
+                        const newPrice =
+                            item.quantity > 0 ? Math.round(newTotal / item.quantity) : newTotal;
+                        return { ...item, price: newPrice };
+                    }),
                 );
             }
         },
@@ -275,7 +294,7 @@ function OrderDetailPage() {
 
     if (isLoading) {
         return (
-            <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+            <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
                 <DataTableSkeleton columns={6} rows={5} className="flex-1" />
             </PageTransition>
         );
@@ -283,14 +302,14 @@ function OrderDetailPage() {
 
     if (!order) {
         return (
-            <PageTransition className="p-3 md:p-6">
+            <PageTransition className="p-2 md:p-4">
                 <p className="text-muted-foreground">{t("orders_empty")}</p>
             </PageTransition>
         );
     }
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             {/* Header */}
             <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
@@ -406,7 +425,8 @@ function OrderDetailPage() {
                     enableEditing: true,
                     onCellEdit: handleCellEdit,
                     enableMultipleNewRows: true,
-                    multiRowCount: 15,
+                    multiRowCount: 50,
+                    multiRowMaxCount: 50,
                     onMultiRowSave: handleNewRowSave,
                     onMultiRowChange: handleNewRowChange,
                     multiRowDefaultValues: newRowDefaultValues,

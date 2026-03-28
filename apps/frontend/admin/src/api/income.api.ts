@@ -1,4 +1,9 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    queryOptions,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import { toast } from "@jahonbozor/ui";
 
@@ -49,6 +54,47 @@ export const incomeListQueryOptions = (params?: {
         },
     });
 
+export const incomeInfiniteQueryOptions = (params?: {
+    limit?: number;
+    searchQuery?: string;
+    staffId?: number;
+    productId?: number;
+    dateFrom?: string;
+    dateTo?: string;
+}) =>
+    infiniteQueryOptions({
+        queryKey: incomeKeys.list({ ...params, infinite: true }),
+        queryFn: async ({
+            pageParam,
+        }): Promise<{
+            count: number;
+            history: HistoryEntryItem[];
+        }> => {
+            const { data, error } = await api.api.private.products.history.get({
+                query: {
+                    operation: "INVENTORY_ADD",
+                    page: pageParam,
+                    limit: params?.limit ?? 1000,
+                    searchQuery: params?.searchQuery ?? "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    staffId: params?.staffId,
+                    productId: params?.productId,
+                    dateFrom: params?.dateFrom,
+                    dateTo: params?.dateTo,
+                },
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error("Request failed");
+            return data.data as { count: number; history: HistoryEntryItem[] };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+            const loaded = lastPageParam * (params?.limit ?? 50);
+            return loaded < lastPage.count ? lastPageParam + 1 : undefined;
+        },
+    });
+
 export const createIncomeFn = async (body: {
     productId: number;
     quantity: number;
@@ -70,6 +116,7 @@ export const useCreateIncome = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["income", "create"],
         mutationFn: createIncomeFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: incomeKeys.all });

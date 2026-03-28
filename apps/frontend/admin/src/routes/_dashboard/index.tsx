@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns";
 import { Printer } from "lucide-react";
@@ -21,7 +21,7 @@ import {
 
 import { clientsListQueryOptions } from "@/api/clients.api";
 import {
-    ordersListQueryOptions,
+    ordersInfiniteQueryOptions,
     useCreateOrder,
     useDeleteOrder,
     useUpdateOrder,
@@ -40,8 +40,8 @@ import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 
 function OrdersPage() {
     const { t } = useTranslation("orders");
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
     const navigate = useNavigate();
+    const [searchQuery, setSearchQuery] = useState("");
     const isReady = useDeferredReady(300);
     const translations = useDataTableTranslations(t("orders_empty"));
 
@@ -105,16 +105,20 @@ function OrdersPage() {
     const newRowDefaultValues = useMemo(
         () => ({
             paymentType: "CASH",
-            quantity: 1,
         }),
         [],
     );
 
-    const { data: ordersData, isLoading: isOrdersLoading } = useQuery(
-        ordersListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: ordersData,
+        isLoading: isOrdersLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        ordersInfiniteQueryOptions({
             itemsCount: 1,
+            searchQuery,
             dateFrom,
             dateTo,
         }),
@@ -131,6 +135,18 @@ function OrdersPage() {
     const deleteOrder = useDeleteOrder();
     const updateOrder = useUpdateOrder();
     const createOrder = useCreateOrder();
+
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<number>();
+        if (updateOrder.isPending && updateOrder.variables?.id) ids.add(updateOrder.variables.id);
+        if (deleteOrder.isPending && deleteOrder.variables) ids.add(deleteOrder.variables);
+        return ids;
+    }, [
+        updateOrder.isPending,
+        updateOrder.variables,
+        deleteOrder.isPending,
+        deleteOrder.variables,
+    ]);
 
     const products = productsData?.products ?? [];
     const users = clientsData?.users ?? [];
@@ -150,7 +166,8 @@ function OrdersPage() {
         return getOrderColumns(t, actions, { products, users }, { canDelete });
     }, [t, actions, products, users, isReady, canDelete]);
 
-    const orders = ordersData?.orders ?? [];
+    const orders = useMemo(() => ordersData?.pages.flatMap((p) => p.orders) ?? [], [ordersData]);
+    const totalCount = ordersData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
@@ -183,6 +200,27 @@ function OrdersPage() {
             if (columnId === "user") {
                 body.userId = value === "" ? null : Number(value);
             } else if (columnId === "product") {
+                return;
+            } else if (columnId === "price" || columnId === "quantity" || columnId === "total") {
+                // Price/quantity/total edits require sending items array
+                const item = order.items[0];
+                if (!item) return;
+                let newPrice = item.price;
+                let newQuantity = item.quantity;
+                if (columnId === "price") newPrice = Number(value) || 0;
+                else if (columnId === "quantity") newQuantity = Number(value) || 0;
+                else if (columnId === "total") {
+                    const newTotal = Number(value) || 0;
+                    newPrice = newQuantity > 0 ? Math.round(newTotal / newQuantity) : newTotal;
+                }
+                updateOrder.mutate({
+                    id: order.id,
+                    items: order.items.map((it, i) =>
+                        i === 0
+                            ? { productId: it.productId, quantity: newQuantity, price: newPrice }
+                            : { productId: it.productId, quantity: it.quantity, price: it.price },
+                    ),
+                });
                 return;
             } else {
                 body[columnId] = value;
@@ -248,7 +286,10 @@ function OrdersPage() {
 
             const productId = Number(data.product);
             const product = products.find((p) => p.id === productId);
-            const price = product?.price ?? 0;
+            const price =
+                data.price != null && data.price !== ""
+                    ? Number(data.price)
+                    : (product?.price ?? 0);
 
             const result = await createOrder.mutateAsync({
                 userId: data.user ? Number(data.user) : null,
@@ -256,7 +297,7 @@ function OrdersPage() {
                 items: [
                     {
                         productId,
-                        quantity: Number(data.quantity) || 1,
+                        quantity: Number(data.quantity) || 0,
                         price,
                     },
                 ],
@@ -269,7 +310,7 @@ function OrdersPage() {
 
     const handleNewRowChange = useCallback(
         (values: Record<string, unknown>, _rowId: string) => {
-            const currentQuantity = Number(values.quantity) || 1;
+            const currentQuantity = Number(values.quantity) || 0;
 
             if (values.product) {
                 const productId = Number(values.product);
@@ -297,7 +338,7 @@ function OrdersPage() {
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             <div className="mb-2 flex flex-col gap-3 md:mb-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
                 <div className="flex flex-wrap items-center gap-2 md:gap-3">
@@ -378,26 +419,29 @@ function OrdersPage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={orders}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((ordersData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
                             onMultiRowChange={handleNewRowChange}
                             multiRowDefaultValues={newRowDefaultValues}
                             translations={translations}
                             onDragSelectionChange={setSelectedOrders}
+                            loadingRowIds={loadingRowIds}
+                            dragSumFilter={(order) => order.paymentType !== "DEBT"}
                         />
                     </motion.div>
                 )}

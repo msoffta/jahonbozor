@@ -120,6 +120,8 @@ export function getOrderColumns(
                 meta: {
                     flex: 1,
                     align: "left" as const,
+                    editable: true,
+                    inputType: "currency" as const,
                 },
             },
             {
@@ -147,6 +149,8 @@ export function getOrderColumns(
                     flex: 1,
                     align: "left" as const,
                     enableDragSum: true,
+                    editable: true,
+                    inputType: "currency" as const,
                 },
             },
         );
@@ -172,7 +176,7 @@ export function getOrderColumns(
                 header: t("order_total"),
                 size: 130,
                 cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
-                meta: { flex: 1, align: "left" as const },
+                meta: { flex: 1, align: "left" as const, enableDragSum: true },
             },
         );
     }

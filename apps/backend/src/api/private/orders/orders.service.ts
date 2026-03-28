@@ -261,38 +261,6 @@ export abstract class OrdersService {
             // All productIds are guaranteed to exist in the map (validated by length check above)
             const productMap = new Map(products.map((product) => [product.id, product]));
 
-            const insufficientStock: {
-                productId: number;
-                productName: string;
-                requested: number;
-                available: number;
-            }[] = [];
-            for (const item of mergedItems) {
-                const product = productMap.get(item.productId)!;
-                if (product.remaining < item.quantity) {
-                    insufficientStock.push({
-                        productId: item.productId,
-                        productName: product.name,
-                        requested: item.quantity,
-                        available: product.remaining,
-                    });
-                }
-            }
-
-            if (insufficientStock.length > 0) {
-                logger.warn("Orders: Insufficient stock", {
-                    insufficientStock,
-                });
-                return {
-                    success: false,
-                    error: {
-                        code: "INSUFFICIENT_STOCK",
-                        message: "One or more products have insufficient stock",
-                        details: insufficientStock,
-                    },
-                };
-            }
-
             const order = await prisma.$transaction(async (transaction) => {
                 const newOrder = await transaction.order.create({
                     data: {
@@ -486,39 +454,6 @@ export abstract class OrdersService {
                 }
 
                 productMap = new Map(products.map((p) => [p.id, p]));
-
-                const insufficientStock: {
-                    productId: number;
-                    productName: string;
-                    requested: number;
-                    available: number;
-                }[] = [];
-
-                for (const item of mergedItems) {
-                    const product = productMap.get(item.productId)!;
-                    const effectiveRemaining =
-                        product.remaining + (oldQuantityMap.get(item.productId) ?? 0);
-                    if (effectiveRemaining < item.quantity) {
-                        insufficientStock.push({
-                            productId: item.productId,
-                            productName: product.name,
-                            requested: item.quantity,
-                            available: effectiveRemaining,
-                        });
-                    }
-                }
-
-                if (insufficientStock.length > 0) {
-                    logger.warn("Orders: Insufficient stock for update", { insufficientStock });
-                    return {
-                        success: false,
-                        error: {
-                            code: "INSUFFICIENT_STOCK",
-                            message: "One or more products have insufficient stock",
-                            details: insufficientStock,
-                        },
-                    };
-                }
             }
 
             const [updatedOrder] = await prisma.$transaction(async (transaction) => {
@@ -563,7 +498,7 @@ export abstract class OrdersService {
                                 orderId,
                                 productId: item.productId,
                                 quantity: item.quantity,
-                                price: product.price,
+                                price: item.price,
                                 data: (item.data as Prisma.JsonObject) ?? null,
                             },
                         });

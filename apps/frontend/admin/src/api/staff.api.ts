@@ -1,4 +1,9 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    queryOptions,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import { toast } from "@jahonbozor/ui";
 
@@ -38,6 +43,34 @@ export const staffListQueryOptions = (params?: {
             if (error) throw error;
             if (!data.success) throw new Error("Request failed");
             return data.data as { count: number; staff: StaffItem[] };
+        },
+    });
+
+export const staffInfiniteQueryOptions = (params?: {
+    limit?: number;
+    searchQuery?: string;
+    roleId?: number;
+}) =>
+    infiniteQueryOptions({
+        queryKey: staffKeys.list({ ...params, infinite: true }),
+        queryFn: async ({ pageParam }): Promise<{ count: number; staff: StaffItem[] }> => {
+            const { data, error } = await api.api.private.staff.get({
+                query: {
+                    page: pageParam,
+                    limit: params?.limit ?? 1000,
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    ...params,
+                },
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error("Request failed");
+            return data.data as { count: number; staff: StaffItem[] };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+            const loaded = lastPageParam * (params?.limit ?? 50);
+            return loaded < lastPage.count ? lastPageParam + 1 : undefined;
         },
     });
 
@@ -117,6 +150,7 @@ export const deleteStaffFn = async (id: number) => {
 export const useCreateStaff = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["staff", "create"],
         mutationFn: createStaffFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: staffKeys.all });
@@ -130,6 +164,7 @@ export const useCreateStaff = () => {
 export const useUpdateStaff = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["staff", "update"],
         mutationFn: updateStaffFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: staffKeys.all });
@@ -143,6 +178,7 @@ export const useUpdateStaff = () => {
 export const useDeleteStaff = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["staff", "delete"],
         mutationFn: deleteStaffFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: staffKeys.all });

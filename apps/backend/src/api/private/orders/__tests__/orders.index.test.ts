@@ -587,34 +587,6 @@ describe("Orders API edge cases", () => {
         spy.mockRestore();
     });
 
-    test("POST /orders should handle insufficient stock error", async () => {
-        const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
-            success: false,
-            error: {
-                code: "INSUFFICIENT_STOCK",
-                message: "One or more products have insufficient stock",
-                details: [{ productId: 1, productName: "Test", requested: 10, available: 1 }],
-            },
-        });
-
-        const response = await app.handle(
-            new Request("http://localhost/orders", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    paymentType: "CASH",
-                    items: [{ productId: 1, quantity: 10, price: 100 }],
-                }),
-            }),
-        );
-        const body = await response.json();
-
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe("INSUFFICIENT_STOCK");
-
-        spy.mockRestore();
-    });
-
     test("PATCH /orders/:id with empty body should call service", async () => {
         const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
             success: true,

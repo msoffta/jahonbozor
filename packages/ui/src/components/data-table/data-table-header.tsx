@@ -70,7 +70,7 @@ export function DataTableColumnHeader<TData>({
                     className={cn(
                         "absolute top-0 right-0 h-full w-2 cursor-col-resize touch-none select-none",
                         "opacity-0 transition-opacity group-hover/th:opacity-100",
-                        "after:bg-border after:absolute after:top-0 after:right-0 after:h-full after:w-[2px]",
+                        "after:bg-border after:absolute after:top-0 after:right-0 after:h-full after:w-0.5",
                         header.column.getIsResizing() && "after:bg-primary opacity-100",
                     )}
                     style={{ userSelect: "none" }}

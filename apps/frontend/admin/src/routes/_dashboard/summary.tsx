@@ -33,7 +33,7 @@ function SummaryPage() {
 
     if (isLoading) {
         return (
-            <PageTransition className="p-3 md:p-6">
+            <PageTransition className="p-2 md:p-4">
                 <div className="text-center">{t("common:loading")}</div>
             </PageTransition>
         );
@@ -41,7 +41,7 @@ function SummaryPage() {
 
     if (error) {
         return (
-            <PageTransition className="p-3 md:p-6">
+            <PageTransition className="p-2 md:p-4">
                 <div className="text-destructive text-center">{t("common:error")}</div>
             </PageTransition>
         );

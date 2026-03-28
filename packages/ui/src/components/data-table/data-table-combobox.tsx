@@ -18,6 +18,8 @@ const SEARCH_DEBOUNCE_MS = 300;
 interface ComboboxOption {
     label: string;
     value: string;
+    disabled?: boolean;
+    disabledReason?: string;
 }
 
 interface DataTableComboboxProps {
@@ -35,6 +37,8 @@ interface DataTableComboboxProps {
     noResultsText?: string;
     /** Async search — called with debounce when user types */
     onSearch?: (query: string) => Promise<ComboboxOption[]>;
+    /** Extra classes for the input element (e.g. ghost-input styling) */
+    className?: string;
 }
 
 export function DataTableCombobox({
@@ -50,6 +54,7 @@ export function DataTableCombobox({
     inputRef: externalRef,
     noResultsText,
     onSearch,
+    className: externalClassName,
 }: DataTableComboboxProps) {
     const listboxId = React.useId();
     const [showList, setShowList] = React.useState(false);
@@ -96,6 +101,13 @@ export function DataTableCombobox({
         setSelectedIndex(0);
     }, [filtered.length]);
 
+    // Auto-scroll to keep selected option visible
+    React.useEffect(() => {
+        if (!visible) return;
+        const option = document.getElementById(`${listboxId}-option-${selectedIndex}`);
+        option?.scrollIntoView({ block: "nearest" });
+    }, [selectedIndex, visible, listboxId]);
+
     const [searchQuery, setSearchQuery] = React.useState("");
 
     // Debounced async search
@@ -120,7 +132,9 @@ export function DataTableCombobox({
     const measurePos = React.useCallback(() => {
         const el = innerRef.current;
         if (!el) return;
-        const rect = el.getBoundingClientRect();
+        // Use the parent cell (td) width for dropdown alignment
+        const cellEl = el.closest("td");
+        const rect = cellEl ? cellEl.getBoundingClientRect() : el.getBoundingClientRect();
         setPos({
             top: rect.bottom + 4,
             left: rect.left,
@@ -206,13 +220,23 @@ export function DataTableCombobox({
         if (e.key === "ArrowDown") {
             e.preventDefault();
             setShowList(true);
-            setSelectedIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : prev));
+            setSelectedIndex((prev) => {
+                for (let i = prev + 1; i < filtered.length; i++) {
+                    if (!filtered[i].disabled) return i;
+                }
+                return prev;
+            });
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
             setShowList(true);
-            setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+            setSelectedIndex((prev) => {
+                for (let i = prev - 1; i >= 0; i--) {
+                    if (!filtered[i].disabled) return i;
+                }
+                return prev;
+            });
         } else if (e.key === "Enter") {
-            if (showList && filtered.length > 0) {
+            if (showList && filtered.length > 0 && !filtered[selectedIndex]?.disabled) {
                 e.preventDefault();
                 e.stopPropagation();
                 handleSelect(filtered[selectedIndex].value);
@@ -262,7 +286,7 @@ export function DataTableCombobox({
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
-                className={cn("h-8 text-sm", error && "border-destructive")}
+                className={cn("h-8 text-sm", error && "border-destructive", externalClassName)}
             />
             {visible &&
                 pos !== null &&
@@ -289,16 +313,22 @@ export function DataTableCombobox({
                                     id={`${listboxId}-option-${index}`}
                                     role="option"
                                     aria-selected={selectedIndex === index}
+                                    aria-disabled={option.disabled ?? undefined}
+                                    title={option.disabled ? option.disabledReason : undefined}
                                     onMouseDown={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
+                                        if (option.disabled) return;
                                         handleSelect(option.value);
                                     }}
                                     className={cn(
-                                        "relative flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none",
-                                        selectedIndex === index
+                                        "relative flex items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none",
+                                        option.disabled
+                                            ? "text-muted-foreground cursor-not-allowed opacity-50"
+                                            : "cursor-pointer",
+                                        !option.disabled && selectedIndex === index
                                             ? "bg-accent text-accent-foreground"
-                                            : "hover:bg-accent/50",
+                                            : !option.disabled && "hover:bg-accent/50",
                                     )}
                                 >
                                     {option.label}

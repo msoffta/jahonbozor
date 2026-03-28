@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Link } from "@tanstack/react-router";
-import { Bell, LogOut, Settings, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 
 import {
     cn,
@@ -34,7 +34,7 @@ export function Header() {
     return (
         <header
             className={cn(
-                "sticky top-0 z-50 flex h-14 items-center justify-between px-3 transition-all duration-200 md:px-6",
+                "sticky top-0 z-50 flex h-10 items-center justify-between px-3 transition-all duration-200 md:px-6",
                 scrolled ? "bg-surface shadow-sm" : "bg-surface/80",
             )}
         >
@@ -43,7 +43,7 @@ export function Header() {
             </Link>
 
             <div className="flex items-center gap-2 md:gap-3">
-                <DropdownMenu>
+                {/* <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <motion.button
                             type="button"
@@ -65,7 +65,7 @@ export function Header() {
                             {t("no_notifications")}
                         </div>
                     </DropdownMenuContent>
-                </DropdownMenu>
+                </DropdownMenu> */}
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>

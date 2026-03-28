@@ -1,4 +1,9 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    queryOptions,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import { toast } from "@jahonbozor/ui";
 
@@ -78,6 +83,46 @@ export const ordersListQueryOptions = (params?: {
         },
     });
 
+export const ordersInfiniteQueryOptions = (params?: {
+    limit?: number;
+    searchQuery?: string;
+    userId?: number;
+    staffId?: number;
+    paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
+    dateFrom?: string;
+    dateTo?: string;
+    itemsCount?: number;
+    minItemsCount?: number;
+}) =>
+    infiniteQueryOptions({
+        queryKey: orderKeys.list({ ...params, infinite: true }),
+        queryFn: async ({
+            pageParam,
+        }): Promise<{
+            count: number;
+            orders: AdminOrderItem[];
+        }> => {
+            const { data, error } = await api.api.private.orders.get({
+                query: {
+                    page: pageParam,
+                    limit: params?.limit ?? 1000,
+                    searchQuery: "",
+                    sortBy: "id",
+                    sortOrder: "asc" as const,
+                    ...params,
+                },
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error("Request failed");
+            return data.data as { count: number; orders: AdminOrderItem[] };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+            const loaded = lastPageParam * (params?.limit ?? 50);
+            return loaded < lastPage.count ? lastPageParam + 1 : undefined;
+        },
+    });
+
 export const orderDetailQueryOptions = (id: number) =>
     queryOptions({
         queryKey: orderKeys.detail(id),
@@ -128,9 +173,28 @@ export const createOrderFn = async (body: {
 export function useCreateOrder() {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["orders", "create"],
         mutationFn: createOrderFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        onSuccess: (newOrder) => {
+            // Optimistic: append new order to cache without full refetch
+            queryClient.setQueriesData<{
+                pages: { count: number; orders: AdminOrderItem[] }[];
+                pageParams: number[];
+            }>({ queryKey: orderKeys.all }, (old) => {
+                if (!old?.pages?.length) return old;
+                const lastPage = old.pages[old.pages.length - 1];
+                return {
+                    ...old,
+                    pages: [
+                        ...old.pages.slice(0, -1),
+                        {
+                            ...lastPage,
+                            count: lastPage.count + 1,
+                            orders: [...lastPage.orders, newOrder],
+                        },
+                    ],
+                };
+            });
         },
         onError: handleOrderError,
     });
@@ -139,9 +203,27 @@ export function useCreateOrder() {
 export function useUpdateOrder() {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["orders", "update"],
         mutationFn: updateOrderFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        onSuccess: (updatedOrder) => {
+            // Optimistic: patch the order in-place across all cached pages
+            queryClient.setQueriesData<{
+                pages: { count: number; orders: AdminOrderItem[] }[];
+                pageParams: number[];
+            }>({ queryKey: orderKeys.all }, (old) => {
+                if (!old?.pages?.length) return old;
+                return {
+                    ...old,
+                    pages: old.pages.map((page) => ({
+                        ...page,
+                        orders: page.orders.map((o) =>
+                            o.id === updatedOrder.id ? updatedOrder : o,
+                        ),
+                    })),
+                };
+            });
+            // Also update detail cache if present
+            queryClient.setQueryData(orderKeys.detail(updatedOrder.id), updatedOrder);
         },
         onError: handleOrderError,
     });
@@ -150,6 +232,7 @@ export function useUpdateOrder() {
 export function useDeleteOrder() {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["orders", "delete"],
         mutationFn: deleteOrderFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });

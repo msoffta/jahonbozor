@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 
 import { Permission } from "@jahonbozor/schemas";
@@ -16,7 +16,7 @@ import {
 
 import { rolesListQueryOptions } from "@/api/roles.api";
 import {
-    staffListQueryOptions,
+    staffInfiniteQueryOptions,
     useCreateStaff,
     useDeleteStaff,
     useUpdateStaff,
@@ -35,17 +35,18 @@ export function StaffTab() {
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("staff_empty"));
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const [searchQuery, setSearchQuery] = useState("");
 
     const canCreate = useHasPermission(Permission.STAFF_CREATE);
     const canDelete = useHasPermission(Permission.STAFF_DELETE);
 
-    const { data: staffData, isLoading: isStaffLoading } = useQuery(
-        staffListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
-        }),
-    );
+    const {
+        data: staffData,
+        isLoading: isStaffLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(staffInfiniteQueryOptions({ searchQuery }));
 
     const { data: rolesData, isLoading: isRolesLoading } = useQuery(
         rolesListQueryOptions({ limit: 100 }),
@@ -56,7 +57,8 @@ export function StaffTab() {
     const deleteStaff = useDeleteStaff();
 
     const isLoading = isStaffLoading || isRolesLoading || !isReady;
-    const staff = staffData?.staff ?? [];
+    const staff = useMemo(() => staffData?.pages.flatMap((p) => p.staff) ?? [], [staffData]);
+    const totalCount = staffData?.pages[0]?.count ?? 0;
     const roles = rolesData?.roles ?? [];
 
     // Вес роли = количество permissions
@@ -169,14 +171,14 @@ export function StaffTab() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={staff}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((staffData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing

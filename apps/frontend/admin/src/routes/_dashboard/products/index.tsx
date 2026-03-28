@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Upload } from "lucide-react";
 
@@ -19,7 +19,7 @@ import {
 
 import { categoriesListQueryOptions, useCreateCategory } from "@/api/categories.api";
 import {
-    productsListQueryOptions,
+    productsInfiniteQueryOptions,
     useCreateProduct,
     useDeleteProduct,
     useRestoreProduct,
@@ -36,7 +36,7 @@ function ProductsPage() {
     const { t } = useTranslation("products");
     const [includeDeleted, setIncludeDeleted] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const [searchQuery, setSearchQuery] = useState("");
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("products_empty"));
 
@@ -45,11 +45,16 @@ function ProductsPage() {
     const canUpdate = useHasPermission(Permission.PRODUCTS_UPDATE);
     const canDelete = useHasPermission(Permission.PRODUCTS_DELETE);
 
-    const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: productsData,
+        isLoading: isProductsLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        productsInfiniteQueryOptions({
             includeDeleted,
+            searchQuery,
         }),
     );
 
@@ -60,6 +65,22 @@ function ProductsPage() {
     const deleteProduct = useDeleteProduct();
     const restoreProduct = useRestoreProduct();
     const createCategory = useCreateCategory();
+
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<number>();
+        if (updateProduct.isPending && updateProduct.variables?.id)
+            ids.add(updateProduct.variables.id);
+        if (deleteProduct.isPending && deleteProduct.variables) ids.add(deleteProduct.variables);
+        if (restoreProduct.isPending && restoreProduct.variables) ids.add(restoreProduct.variables);
+        return ids;
+    }, [
+        updateProduct.isPending,
+        updateProduct.variables,
+        deleteProduct.isPending,
+        deleteProduct.variables,
+        restoreProduct.isPending,
+        restoreProduct.variables,
+    ]);
 
     const resolveCategoryId = useCallback(
         async (value: unknown): Promise<number> => {
@@ -95,7 +116,12 @@ function ProductsPage() {
         [t, categories, actions, canDelete],
     );
 
-    const products = productsData?.products ?? [];
+    const products = useMemo(() => {
+        const all = productsData?.pages.flatMap((p) => p.products) ?? [];
+        if (includeDeleted) return all.filter((p) => p.deletedAt != null);
+        return all;
+    }, [productsData, includeDeleted]);
+    const totalCount = productsData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
@@ -160,7 +186,7 @@ function ProductsPage() {
     const isLoading = isProductsLoading || !isReady;
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             <div className="mb-4 flex items-center justify-between md:mb-6">
                 <h1 className="text-xl font-bold md:text-2xl">{t("common:products")}</h1>
                 <div className="flex items-center gap-3">
@@ -203,22 +229,24 @@ function ProductsPage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={products}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((productsData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
+                            loadingRowIds={loadingRowIds}
                             translations={translations}
                         />
                     </motion.div>

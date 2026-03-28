@@ -398,42 +398,6 @@ describe("Orders Service", () => {
             expect(result.success).toBe(true);
         });
 
-        test("should return error on insufficient stock", async () => {
-            // Arrange
-            const lowStockProduct = { ...mockProduct, remaining: 1 };
-            prismaMock.product.findMany.mockResolvedValueOnce([lowStockProduct]);
-
-            // Act
-            const orderWithHighQuantity = {
-                ...validOrderData,
-                items: [{ productId: 1, quantity: 10, price: 100 }],
-            };
-            const result = await OrdersService.createOrder(
-                orderWithHighQuantity,
-                mockContext,
-                mockLogger,
-            );
-
-            // Assert
-            const failure = expectFailure(result);
-            expect(failure.error).toEqual({
-                code: "INSUFFICIENT_STOCK",
-                message: "One or more products have insufficient stock",
-                details: [
-                    {
-                        productId: 1,
-                        productName: "Test Product",
-                        requested: 10,
-                        available: 1,
-                    },
-                ],
-            });
-            expect(mockLogger.warn).toHaveBeenCalledWith(
-                "Orders: Insufficient stock",
-                expect.any(Object),
-            );
-        });
-
         test("should create ProductHistory records", async () => {
             // Arrange
             prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
@@ -813,39 +777,6 @@ describe("Orders Service", () => {
                     "Products not found: ",
                 );
             }
-        });
-
-        test("should return INSUFFICIENT_STOCK when new items exceed available stock", async () => {
-            // Arrange
-            const lowStockProduct = { ...mockProduct2, remaining: 1 };
-            prismaMock.order.findUnique.mockResolvedValueOnce(
-                mockOrderWithItemsForUpdate as unknown as Order,
-            );
-            prismaMock.product.findMany.mockResolvedValueOnce([
-                lowStockProduct as unknown as Product,
-            ]);
-
-            // Act — requesting 10 of product2 (remaining=1, old stock of product1 doesn't help)
-            const result = await OrdersService.updateOrder(
-                1,
-                { items: [{ productId: 2, quantity: 10, price: 100 }] },
-                mockContext,
-                [Permission.ORDERS_UPDATE_OWN],
-                mockLogger,
-            );
-
-            // Assert
-            const failure = expectFailure(result);
-            expect(failure.error).toEqual({
-                code: "INSUFFICIENT_STOCK",
-                message: "One or more products have insufficient stock",
-                details: expect.arrayContaining([
-                    expect.objectContaining({
-                        productId: 2,
-                        requested: 10,
-                    }),
-                ]),
-            });
         });
 
         test("should succeed when stock is sufficient after old stock restoration", async () => {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import z from "zod";
 
@@ -17,7 +17,7 @@ import {
 } from "@jahonbozor/ui";
 
 import {
-    clientsListQueryOptions,
+    clientsInfiniteQueryOptions,
     useCreateClient,
     useDeleteClient,
     useRestoreClient,
@@ -38,7 +38,7 @@ function UsersPage() {
     const { t } = useTranslation("clients");
     const navigate = useNavigate();
     const [includeDeleted, setIncludeDeleted] = useState(false);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const [searchQuery, setSearchQuery] = useState("");
     const { new: isNew, returnTo } = Route.useSearch();
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("clients_empty"));
@@ -48,11 +48,16 @@ function UsersPage() {
     const canUpdate = useHasPermission(Permission.USERS_UPDATE_ALL);
     const canDelete = useHasPermission(Permission.USERS_DELETE);
 
-    const { data: clientsData, isLoading: isClientsLoading } = useQuery(
-        clientsListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: clientsData,
+        isLoading: isClientsLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        clientsInfiniteQueryOptions({
             includeDeleted,
+            searchQuery,
         }),
     );
 
@@ -60,6 +65,22 @@ function UsersPage() {
     const updateClient = useUpdateClient();
     const deleteClient = useDeleteClient();
     const restoreClient = useRestoreClient();
+
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<number>();
+        if (updateClient.isPending && updateClient.variables?.id)
+            ids.add(updateClient.variables.id);
+        if (deleteClient.isPending && deleteClient.variables) ids.add(deleteClient.variables);
+        if (restoreClient.isPending && restoreClient.variables) ids.add(restoreClient.variables);
+        return ids;
+    }, [
+        updateClient.isPending,
+        updateClient.variables,
+        deleteClient.isPending,
+        deleteClient.variables,
+        restoreClient.isPending,
+        restoreClient.variables,
+    ]);
 
     const isLoading = isClientsLoading || !isReady;
 
@@ -91,7 +112,12 @@ function UsersPage() {
         [t, actions, canDelete],
     );
 
-    const clients = clientsData?.users ?? [];
+    const clients = useMemo(() => {
+        const all = clientsData?.pages.flatMap((p) => p.users) ?? [];
+        if (includeDeleted) return all.filter((u) => u.deletedAt != null);
+        return all;
+    }, [clientsData, includeDeleted]);
+    const totalCount = clientsData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
@@ -154,7 +180,7 @@ function UsersPage() {
     );
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             <div className="mb-4 flex items-center justify-between md:mb-6">
                 <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
                 <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -189,22 +215,24 @@ function UsersPage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={clients}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((clientsData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
+                            loadingRowIds={loadingRowIds}
                             translations={translations}
                             onRowClick={(row) =>
                                 void navigate({

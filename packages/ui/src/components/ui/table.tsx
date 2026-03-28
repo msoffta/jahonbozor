@@ -8,7 +8,11 @@ const Table = ({
     ...props
 }: React.HTMLAttributes<HTMLTableElement> & { ref?: React.RefObject<HTMLTableElement | null> }) => (
     <div className="relative w-full overflow-auto">
-        <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+        <table
+            ref={ref}
+            className={cn("w-full caption-bottom border-collapse text-sm", className)}
+            {...props}
+        />
     </div>
 );
 Table.displayName = "Table";
@@ -74,7 +78,7 @@ const TableHead = ({
     <th
         ref={ref}
         className={cn(
-            "text-muted-foreground h-9 px-3 text-left align-middle font-medium [&:has([role=checkbox])]:pr-0",
+            "text-muted-foreground border-border h-8 border-r px-2 text-left align-middle font-medium last:border-r-0 [&:has([role=checkbox])]:pr-0",
             className,
         )}
         {...props}
@@ -91,7 +95,10 @@ const TableCell = ({
 }) => (
     <td
         ref={ref}
-        className={cn("px-3 py-1.5 align-middle [&:has([role=checkbox])]:pr-0", className)}
+        className={cn(
+            "border-border border-r px-2 py-0.5 align-middle last:border-r-0 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-black [&:has([role=checkbox])]:pr-0",
+            className,
+        )}
         {...props}
     />
 );

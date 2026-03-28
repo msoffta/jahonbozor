@@ -49,6 +49,7 @@ export const useCreateCategory = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["categories", "create"],
         mutationFn: createCategoryFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: categoryKeys.all });

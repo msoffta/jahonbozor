@@ -214,7 +214,7 @@ describe("DataTable", () => {
         expect(checkboxes[1].checked).toBe(true);
     });
 
-    test("should enter edit mode on double-click and save on blur", async () => {
+    test("should render ghost inputs and save on Enter", async () => {
         const user = userEvent.setup();
         const onCellEdit = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
@@ -228,7 +228,7 @@ describe("DataTable", () => {
             { accessorKey: "status", header: "Status" },
         ];
 
-        const { getByText, getByDisplayValue } = render(
+        const { getByDisplayValue } = render(
             <DataTable
                 columns={editableColumns}
                 data={testData}
@@ -237,8 +237,7 @@ describe("DataTable", () => {
             />,
         );
 
-        await user.dblClick(getByText("Alice"));
-
+        // Ghost inputs are always visible — no double-click needed
         const input = getByDisplayValue("Alice");
         await user.clear(input);
         await user.type(input, "Updated");
@@ -406,17 +405,12 @@ describe("DataTable", () => {
             />,
         );
 
-        // The first <tr> in <tbody> should be the new row (has dashed border class / inputs)
+        // The first <tr> in <tbody> should be the new row (identified by data-testid)
         const tbodyRows = container.querySelectorAll("tbody tr");
         const firstRow = tbodyRows[0] as HTMLElement;
-        const lastRow = tbodyRows[tbodyRows.length - 1] as HTMLElement;
 
-        // New row has text inputs; first data row does not
-        const firstRowInputs = firstRow.querySelectorAll("input[type='text']");
-        const lastRowInputs = lastRow.querySelectorAll("input[type='text']");
-
-        expect(firstRowInputs.length).toBeGreaterThan(0);
-        expect(lastRowInputs.length).toBe(0);
+        // New row is identifiable by data-testid="new-row"
+        expect(firstRow.getAttribute("data-testid")).toBe("new-row");
     });
 
     // ── Error cases ────────────────────────────────────────────
@@ -439,7 +433,7 @@ describe("DataTable", () => {
             { accessorKey: "status", header: "Status" },
         ];
 
-        const { getByText, getByDisplayValue, queryByText } = render(
+        const { getByDisplayValue, queryByText } = render(
             <DataTable
                 columns={editableColumns}
                 data={testData}
@@ -448,7 +442,6 @@ describe("DataTable", () => {
             />,
         );
 
-        await user.dblClick(getByText("Alice"));
         const input = getByDisplayValue("Alice");
         await user.clear(input);
         await user.type(input, "AB");
@@ -519,7 +512,7 @@ describe("DataTable", () => {
             { accessorKey: "status", header: "Status" },
         ];
 
-        const { getByText, getByDisplayValue, queryByDisplayValue } = render(
+        const { getByDisplayValue, queryByDisplayValue } = render(
             <DataTable
                 columns={editableColumns}
                 data={testData}
@@ -528,13 +521,13 @@ describe("DataTable", () => {
             />,
         );
 
-        await user.dblClick(getByText("Alice"));
-
         const input = getByDisplayValue("Alice");
         await user.clear(input);
-        await user.type(input, "Changed{Escape}");
+        await user.type(input, "Changed");
+        await user.keyboard("{Escape}");
 
         expect(queryByDisplayValue("Changed")).toBeNull();
+        expect(getByDisplayValue("Alice")).toBeDefined();
         expect(onCellEdit).not.toHaveBeenCalled();
     });
 

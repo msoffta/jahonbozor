@@ -10,6 +10,7 @@
   "order_payment": "Оплата",
   "order_date": "Дата",
   "order_actions": "Действия",
+  "product_out_of_stock": "Нет в наличии",
   "order_quantity": "Кол-во",
   "order_remaining": "Остаток",
   "order_items_count": "Позиций",

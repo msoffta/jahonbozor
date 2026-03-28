@@ -384,6 +384,8 @@ jobs:
           SENTRY_ENVIRONMENT=${{ secrets.SENTRY_ENVIRONMENT }}
           NODE_ENV=production
           VITE_TELEGRAM_BOT_USERNAME=${{ secrets.VITE_TELEGRAM_BOT_USERNAME }}
+          TELEGRAM_NOTIFICATION_TOKEN=${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
+          TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}
           EOF
 
       - name: Setup SSH key
@@ -400,8 +402,10 @@ jobs:
           scp -i ~/.ssh/deploy_key scripts/deploy.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/
           scp -i ~/.ssh/deploy_key scripts/rollback.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/
 
-          # Create nginx directory on VPS and copy config
-          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "mkdir -p ${{ secrets.VPS_DEPLOY_PATH }}/nginx"
+          # Create directories on VPS and copy backup scripts
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "mkdir -p ${{ secrets.VPS_DEPLOY_PATH }}/scripts ${{ secrets.VPS_DEPLOY_PATH }}/nginx ${{ secrets.VPS_DEPLOY_PATH }}/logs"
+          scp -i ~/.ssh/deploy_key scripts/backup.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/scripts/
+          scp -i ~/.ssh/deploy_key scripts/restore-db.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/scripts/
           scp -i ~/.ssh/deploy_key nginx/nginx.prod.conf ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/nginx/
 
       - name: Deploy to VPS
@@ -412,8 +416,11 @@ jobs:
             export GITHUB_ACTOR=${{ github.actor }}
             export GITHUB_REPOSITORY=${{ github.repository }}
             export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-            chmod +x deploy.sh rollback.sh
+            chmod +x deploy.sh rollback.sh scripts/backup.sh scripts/restore-db.sh
             ./deploy.sh
+
+            # Install backup cron job (idempotent)
+            (crontab -l 2>/dev/null | grep -v 'backup.sh' ; echo '0 */6 * * * ${{ secrets.VPS_DEPLOY_PATH }}/scripts/backup.sh >> ${{ secrets.VPS_DEPLOY_PATH }}/logs/backup.log 2>&1') | crontab -
           EOF
 
       - name: Send Telegram notification

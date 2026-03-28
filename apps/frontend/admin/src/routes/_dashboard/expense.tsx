@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { endOfDay, endOfMonth, startOfDay, startOfMonth } from "date-fns";
 
@@ -19,7 +19,7 @@ import {
 } from "@jahonbozor/ui";
 
 import {
-    expensesListQueryOptions,
+    expensesInfiniteQueryOptions,
     useCreateExpense,
     useDeleteExpense,
     useRestoreExpense,
@@ -34,6 +34,7 @@ import { useAuthStore } from "@/stores/auth.store";
 function ExpensePage() {
     const { t } = useTranslation("expenses");
     const [includeDeleted, setIncludeDeleted] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const isReady = useDeferredReady();
     const translations = useDataTableTranslations(t("expenses_empty"));
 
@@ -41,18 +42,22 @@ function ExpensePage() {
     const monthEnd = endOfMonth(new Date()).toISOString();
     const [dateFrom, setDateFrom] = useState(monthStart);
     const [dateTo, setDateTo] = useState(monthEnd);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
     // Permission checks for expense actions
     const canCreate = useHasPermission(Permission.EXPENSES_CREATE);
     const canUpdate = useHasPermission(Permission.EXPENSES_UPDATE);
     const canDelete = useHasPermission(Permission.EXPENSES_DELETE);
 
-    const { data: expensesData, isLoading: isExpensesLoading } = useQuery(
-        expensesListQueryOptions({
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+    const {
+        data: expensesData,
+        isLoading: isExpensesLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery(
+        expensesInfiniteQueryOptions({
             includeDeleted,
+            searchQuery,
             dateFrom,
             dateTo,
         }),
@@ -62,6 +67,22 @@ function ExpensePage() {
     const updateExpense = useUpdateExpense();
     const deleteExpense = useDeleteExpense();
     const restoreExpense = useRestoreExpense();
+
+    const loadingRowIds = useMemo(() => {
+        const ids = new Set<number>();
+        if (updateExpense.isPending && updateExpense.variables?.id)
+            ids.add(updateExpense.variables.id);
+        if (deleteExpense.isPending && deleteExpense.variables) ids.add(deleteExpense.variables);
+        if (restoreExpense.isPending && restoreExpense.variables) ids.add(restoreExpense.variables);
+        return ids;
+    }, [
+        updateExpense.isPending,
+        updateExpense.variables,
+        deleteExpense.isPending,
+        deleteExpense.variables,
+        restoreExpense.isPending,
+        restoreExpense.variables,
+    ]);
 
     const isLoading = isExpensesLoading || !isReady;
 
@@ -78,7 +99,12 @@ function ExpensePage() {
         [t, actions, canDelete],
     );
 
-    const expenses = expensesData?.expenses ?? [];
+    const expenses = useMemo(() => {
+        const all = expensesData?.pages.flatMap((p) => p.expenses) ?? [];
+        if (includeDeleted) return all.filter((e) => e.deletedAt != null);
+        return all;
+    }, [expensesData, includeDeleted]);
+    const totalCount = expensesData?.pages[0]?.count ?? 0;
 
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
@@ -151,7 +177,7 @@ function ExpensePage() {
     );
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             <div className="mb-2 flex flex-col gap-3 md:mb-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
                 <div className="flex flex-wrap items-center gap-2 md:gap-3">
@@ -215,23 +241,25 @@ function ExpensePage() {
                             columns={columns}
                             initialColumnVisibility={initialColumnVisibility}
                             data={expenses}
-                            pagination
-                            manualPagination
-                            pageCount={Math.ceil((expensesData?.count ?? 0) / pagination.pageSize)}
-                            onPaginationChange={setPagination}
-                            defaultPageSize={20}
-                            pageSizeOptions={[10, 20, 50]}
+                            enableInfiniteScroll
+                            onFetchNextPage={fetchNextPage}
+                            hasNextPage={hasNextPage}
+                            isFetchingNextPage={isFetchingNextPage}
+                            totalCount={totalCount}
                             enableSorting
                             enableGlobalSearch
+                            onSearchQueryChange={setSearchQuery}
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={15}
+                            multiRowCount={50}
+                            multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onMultiRowSave={handleNewRowSave}
                             multiRowDefaultValues={multiRowDefaultValues}
+                            loadingRowIds={loadingRowIds}
                             translations={translations}
                         />
                     </motion.div>
