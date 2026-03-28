@@ -186,7 +186,7 @@ function ProductsPage() {
     const isLoading = isProductsLoading || !isReady;
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             <div className="mb-4 flex items-center justify-between md:mb-6">
                 <h1 className="text-xl font-bold md:text-2xl">{t("common:products")}</h1>
                 <div className="flex items-center gap-3">

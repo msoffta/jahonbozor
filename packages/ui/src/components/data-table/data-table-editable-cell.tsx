@@ -23,7 +23,8 @@ function toDisplayString(value: unknown): string {
 /** Auto-save debounce delay for editable cells */
 const AUTO_SAVE_DEBOUNCE_MS = 500;
 
-const GHOST = "ghost-input h-6 px-0 text-sm rounded-none focus-visible:ring-0";
+const GHOST =
+    "ghost-input h-6 px-0 text-sm rounded-none focus-visible:ring-0 focus:bg-primary/5 focus:outline-none";
 
 interface DataTableEditableCellProps<TData> {
     cell: CellContext<TData, unknown>;

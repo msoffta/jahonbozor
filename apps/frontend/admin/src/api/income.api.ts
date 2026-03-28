@@ -116,6 +116,7 @@ export const useCreateIncome = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["income", "create"],
         mutationFn: createIncomeFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: incomeKeys.all });

@@ -170,6 +170,7 @@ export const useCreateProduct = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "create"],
         mutationFn: createProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -184,6 +185,7 @@ export const useUpdateProduct = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "update"],
         mutationFn: updateProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -198,6 +200,7 @@ export const useDeleteProduct = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "delete"],
         mutationFn: deleteProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -212,6 +215,7 @@ export const useRestoreProduct = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "restore"],
         mutationFn: restoreProductFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -237,6 +241,7 @@ export const useImportProducts = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["products", "import"],
         mutationFn: importProductsFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: productKeys.all });

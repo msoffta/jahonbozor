@@ -173,6 +173,7 @@ export const createOrderFn = async (body: {
 export function useCreateOrder() {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["orders", "create"],
         mutationFn: createOrderFn,
         onSuccess: (newOrder) => {
             // Optimistic: append new order to cache without full refetch
@@ -202,6 +203,7 @@ export function useCreateOrder() {
 export function useUpdateOrder() {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["orders", "update"],
         mutationFn: updateOrderFn,
         onSuccess: (updatedOrder) => {
             // Optimistic: patch the order in-place across all cached pages
@@ -230,6 +232,7 @@ export function useUpdateOrder() {
 export function useDeleteOrder() {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["orders", "delete"],
         mutationFn: deleteOrderFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });

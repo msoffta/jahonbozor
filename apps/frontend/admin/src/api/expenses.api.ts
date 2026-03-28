@@ -144,6 +144,7 @@ export const useCreateExpense = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["expenses", "create"],
         mutationFn: createExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
@@ -158,6 +159,7 @@ export const useUpdateExpense = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["expenses", "update"],
         mutationFn: updateExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
@@ -172,6 +174,7 @@ export const useDeleteExpense = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["expenses", "delete"],
         mutationFn: deleteExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });
@@ -186,6 +189,7 @@ export const useRestoreExpense = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["expenses", "restore"],
         mutationFn: restoreExpenseFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: expenseKeys.all });

@@ -70,6 +70,7 @@ export const createDebtPaymentFn = async ({
 export function useCreateDebtPayment() {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["debts", "createPayment"],
         mutationFn: createDebtPaymentFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: debtKeys.all });

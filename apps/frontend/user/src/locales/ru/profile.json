@@ -11,7 +11,7 @@
   "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME не настроен",
   "orders": "Заказы",
   "cart": "Корзина",
-  "debt_balance": "Задолженность",
+  "debt_balance": "MUTE",
   "debt_paid": "Оплачено",
   "debt_total": "Общий долг",
   "debt_no_debts": "Долгов нет"

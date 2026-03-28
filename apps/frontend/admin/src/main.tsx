@@ -5,7 +5,7 @@ import { lazy, StrictMode, Suspense, useMemo } from "react";
 import ReactDOM from "react-dom/client";
 
 import * as Sentry from "@sentry/react";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { ru } from "date-fns/locale/ru";
 import { uz } from "date-fns/locale/uz";
@@ -16,10 +16,26 @@ import { initZodI18n } from "./lib/zod-i18n";
 
 initZodI18n();
 
+import { registerMutationDefaults } from "@/lib/mutation-defaults";
 import { queryClient } from "@/lib/query-client";
 import { useUIStore } from "@/stores/ui.store";
 
 import { routeTree } from "./routeTree.gen";
+
+// Online/offline detection for React Query mutation pausing
+onlineManager.setEventListener((setOnline) => {
+    const onlineHandler = () => setOnline(true);
+    const offlineHandler = () => setOnline(false);
+    window.addEventListener("online", onlineHandler);
+    window.addEventListener("offline", offlineHandler);
+    return () => {
+        window.removeEventListener("online", onlineHandler);
+        window.removeEventListener("offline", offlineHandler);
+    };
+});
+
+// Register mutation defaults so persisted mutations can resume after reload
+registerMutationDefaults(queryClient);
 
 const dateFnsLocales = { ru, uz } as const;
 

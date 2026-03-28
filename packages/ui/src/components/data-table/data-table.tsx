@@ -88,6 +88,7 @@ export function DataTable<TData>({
     initialColumnVisibility,
     onRowClick,
     onDragSelectionChange,
+    dragSumFilter,
     loadingRowIds,
     className,
     translations,
@@ -119,9 +120,12 @@ export function DataTable<TData>({
     });
     const [isShowAll, setIsShowAll] = React.useState(false);
     const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({});
-    const [dragSumInfo, setDragSumInfo] = React.useState<{ sum: number; count: number } | null>(
-        null,
-    );
+    const [dragSumInfo, setDragSumInfo] = React.useState<{
+        sum: number;
+        count: number;
+        excludedSum?: number;
+        excludedCount?: number;
+    } | null>(null);
     const [containerWidth, setContainerWidth] = React.useState(0);
     // useState (not useRef) so that setting the element triggers a re-render,
     // allowing the virtualizer to pick up the non-null scroll element.
@@ -433,6 +437,7 @@ export function DataTable<TData>({
                                     multiRowDefaultValues={multiRowDefaultValues}
                                     onDragSumChange={setDragSumInfo}
                                     onDragSelectionChange={onDragSelectionChange}
+                                    dragSumFilter={dragSumFilter}
                                     loadingRowIds={loadingRowIds}
                                 />
                             </>

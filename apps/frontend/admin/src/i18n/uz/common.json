@@ -74,6 +74,8 @@
   "table_showing_of": "{{total}} dan {{loaded}} ta ko'rsatilmoqda",
   "table_loading_more": "Yuklanmoqda...",
   "table_sum": "Jami",
+  "table_debt_sum": "Qarz",
+  "offline_banner": "Internet aloqasi yo'q. O'zgarishlar aloqa tiklanganda sinxronlanadi.",
   "no_permission": "Ruxsat rad etildi",
   "read_only_access": "Faqat ko'rish rejimi",
   "no_access_title": "Kirish ruxsati yo'q",

@@ -118,7 +118,7 @@ function ListsPage() {
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-xl font-bold md:text-2xl">{t("lists_title")}</h1>
 
@@ -190,6 +190,7 @@ function ListsPage() {
                             loadingRowIds={loadingRowIds}
                             translations={translations}
                             onRowClick={(row) => actions.onNavigate(row.id)}
+                            dragSumFilter={(order) => order.paymentType !== "DEBT"}
                         />
                     </motion.div>
                 )}

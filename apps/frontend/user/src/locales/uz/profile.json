@@ -11,7 +11,7 @@
   "bot_username_not_configured": "VITE_TELEGRAM_BOT_USERNAME sozlanmagan",
   "orders": "Buyurtmalar",
   "cart": "Savatcha",
-  "debt_balance": "Qarzdorlik",
+  "debt_balance": "MUTE",
   "debt_paid": "To'langan",
   "debt_total": "Umumiy qarz",
   "debt_no_debts": "Qarzlar yo'q"

@@ -34,7 +34,7 @@ export function Header() {
     return (
         <header
             className={cn(
-                "sticky top-0 z-50 flex h-14 items-center justify-between px-3 transition-all duration-200 md:px-6",
+                "sticky top-0 z-50 flex h-10 items-center justify-between px-3 transition-all duration-200 md:px-6",
                 scrolled ? "bg-surface shadow-sm" : "bg-surface/80",
             )}
         >

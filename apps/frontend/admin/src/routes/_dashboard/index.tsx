@@ -105,7 +105,6 @@ function OrdersPage() {
     const newRowDefaultValues = useMemo(
         () => ({
             paymentType: "CASH",
-            quantity: 1,
         }),
         [],
     );
@@ -202,6 +201,27 @@ function OrdersPage() {
                 body.userId = value === "" ? null : Number(value);
             } else if (columnId === "product") {
                 return;
+            } else if (columnId === "price" || columnId === "quantity" || columnId === "total") {
+                // Price/quantity/total edits require sending items array
+                const item = order.items[0];
+                if (!item) return;
+                let newPrice = item.price;
+                let newQuantity = item.quantity;
+                if (columnId === "price") newPrice = Number(value) || 0;
+                else if (columnId === "quantity") newQuantity = Number(value) || 0;
+                else if (columnId === "total") {
+                    const newTotal = Number(value) || 0;
+                    newPrice = newQuantity > 0 ? Math.round(newTotal / newQuantity) : newTotal;
+                }
+                updateOrder.mutate({
+                    id: order.id,
+                    items: order.items.map((it, i) =>
+                        i === 0
+                            ? { productId: it.productId, quantity: newQuantity, price: newPrice }
+                            : { productId: it.productId, quantity: it.quantity, price: it.price },
+                    ),
+                });
+                return;
             } else {
                 body[columnId] = value;
             }
@@ -266,7 +286,10 @@ function OrdersPage() {
 
             const productId = Number(data.product);
             const product = products.find((p) => p.id === productId);
-            const price = product?.price ?? 0;
+            const price =
+                data.price != null && data.price !== ""
+                    ? Number(data.price)
+                    : (product?.price ?? 0);
 
             const result = await createOrder.mutateAsync({
                 userId: data.user ? Number(data.user) : null,
@@ -274,7 +297,7 @@ function OrdersPage() {
                 items: [
                     {
                         productId,
-                        quantity: Number(data.quantity) || 1,
+                        quantity: Number(data.quantity) || 0,
                         price,
                     },
                 ],
@@ -287,7 +310,7 @@ function OrdersPage() {
 
     const handleNewRowChange = useCallback(
         (values: Record<string, unknown>, _rowId: string) => {
-            const currentQuantity = Number(values.quantity) || 1;
+            const currentQuantity = Number(values.quantity) || 0;
 
             if (values.product) {
                 const productId = Number(values.product);
@@ -315,7 +338,7 @@ function OrdersPage() {
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             <div className="mb-2 flex flex-col gap-3 md:mb-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-xl font-bold md:text-2xl">{t("title")}</h1>
                 <div className="flex flex-wrap items-center gap-2 md:gap-3">
@@ -418,6 +441,7 @@ function OrdersPage() {
                             translations={translations}
                             onDragSelectionChange={setSelectedOrders}
                             loadingRowIds={loadingRowIds}
+                            dragSumFilter={(order) => order.paymentType !== "DEBT"}
                         />
                     </motion.div>
                 )}

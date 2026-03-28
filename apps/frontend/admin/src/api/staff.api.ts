@@ -150,6 +150,7 @@ export const deleteStaffFn = async (id: number) => {
 export const useCreateStaff = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["staff", "create"],
         mutationFn: createStaffFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: staffKeys.all });
@@ -163,6 +164,7 @@ export const useCreateStaff = () => {
 export const useUpdateStaff = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["staff", "update"],
         mutationFn: updateStaffFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: staffKeys.all });
@@ -176,6 +178,7 @@ export const useUpdateStaff = () => {
 export const useDeleteStaff = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["staff", "delete"],
         mutationFn: deleteStaffFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: staffKeys.all });

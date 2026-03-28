@@ -91,6 +91,17 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
             return input.selectionStart === len && input.selectionEnd === len;
         }
 
+        /** Check if a combobox dropdown is currently open */
+        function isComboboxOpen(el: HTMLElement): boolean {
+            if (
+                el.getAttribute("role") === "combobox" &&
+                el.getAttribute("aria-expanded") === "true"
+            )
+                return true;
+            const combobox = el.closest('[role="combobox"]');
+            return combobox?.getAttribute("aria-expanded") === "true";
+        }
+
         function handleKeyDown(e: KeyboardEvent) {
             const target = e.target as HTMLElement;
             const td = target.closest<HTMLTableCellElement>(`td[${ROW_ATTR}]`);
@@ -106,6 +117,9 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
             const colPos = columnIds.indexOf(coords.col);
 
             const input = target.tagName === "INPUT" ? (target as HTMLInputElement) : null;
+
+            // Don't intercept arrow keys when combobox dropdown is open
+            if ((e.key === "ArrowUp" || e.key === "ArrowDown") && isComboboxOpen(target)) return;
 
             switch (e.key) {
                 case "ArrowUp": {
@@ -181,24 +195,27 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
 
                 case "Enter": {
                     // Don't interfere if inside a combobox dropdown
-                    if (target.getAttribute("role") === "combobox") return;
+                    if (isComboboxOpen(target)) return;
                     e.preventDefault();
-                    // Save current (blur triggers save), then move down
+                    // Save current (blur triggers save), then move to next row's first editable
                     input?.blur();
+
                     if (rowPos < rowIndices.length - 1) {
-                        const targetTd = getCell(rowIndices[rowPos + 1], coords.col);
-                        if (targetTd) {
-                            // Small delay to let blur/save complete
-                            requestAnimationFrame(() => focusCell(targetTd));
+                        const nextRow = rowIndices[rowPos + 1];
+                        for (const ci of columnIds) {
+                            const c = getCell(nextRow, ci);
+                            if (c && findInputIn(c)) {
+                                requestAnimationFrame(() => focusCell(c));
+                                break;
+                            }
                         }
                     }
                     break;
                 }
 
                 case "Escape": {
-                    e.preventDefault();
-                    input?.blur();
-                    break;
+                    // Let the event bubble to cell's React onKeyDown → handleCancel()
+                    return;
                 }
             }
         }

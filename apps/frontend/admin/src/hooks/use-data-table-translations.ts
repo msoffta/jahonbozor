@@ -20,5 +20,6 @@ export function useDataTableTranslations(noResultsText?: string): DataTableTrans
         showingOf: t("table_showing_of"),
         loadingMore: t("table_loading_more"),
         sumLabel: t("table_sum"),
+        excludedSumLabel: t("table_debt_sum"),
     };
 }

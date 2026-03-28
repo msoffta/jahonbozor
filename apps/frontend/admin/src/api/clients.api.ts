@@ -152,6 +152,7 @@ export const useCreateClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["clients", "create"],
         mutationFn: createClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
@@ -166,6 +167,7 @@ export const useUpdateClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["clients", "update"],
         mutationFn: updateClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
@@ -180,6 +182,7 @@ export const useDeleteClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["clients", "delete"],
         mutationFn: deleteClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });
@@ -194,6 +197,7 @@ export const useRestoreClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
+        mutationKey: ["clients", "restore"],
         mutationFn: restoreClientFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: clientKeys.all });

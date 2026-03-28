@@ -20,7 +20,12 @@ interface DataTablePaginationProps<TData> {
     isShowAll: boolean;
     onShowAllChange: (showAll: boolean) => void;
     translations?: DataTableTranslations;
-    dragSumInfo?: { sum: number; count: number } | null;
+    dragSumInfo?: {
+        sum: number;
+        count: number;
+        excludedSum?: number;
+        excludedCount?: number;
+    } | null;
 }
 
 export function DataTablePagination<TData>({
@@ -65,26 +70,39 @@ export function DataTablePagination<TData>({
                             animate={{ opacity: 1, scale: 1, x: 0 }}
                             exit={{ opacity: 0, scale: 0.95, x: -10 }}
                             transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
+                            className="flex items-center gap-2"
                         >
-                            <span className="text-muted-foreground">
-                                {translations?.sumLabel ?? "Sum"} ({dragSumInfo.count}):
-                            </span>
-                            <span className="text-foreground font-semibold">
-                                {dragSumInfo.sum.toLocaleString()}
-                            </span>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="hover:bg-muted ml-1 h-6 w-6"
-                                onClick={() => void handleCopySum()}
-                            >
-                                {copied ? (
-                                    <Check className="text-success h-3.5 w-3.5" />
-                                ) : (
-                                    <Copy className="text-muted-foreground h-3.5 w-3.5" />
-                                )}
-                            </Button>
+                            <div className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                                <span className="text-muted-foreground">
+                                    {translations?.sumLabel ?? "Sum"} ({dragSumInfo.count}):
+                                </span>
+                                <span className="text-foreground font-semibold">
+                                    {dragSumInfo.sum.toLocaleString()}
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="hover:bg-muted ml-1 h-6 w-6"
+                                    onClick={() => void handleCopySum()}
+                                >
+                                    {copied ? (
+                                        <Check className="text-success h-3.5 w-3.5" />
+                                    ) : (
+                                        <Copy className="text-muted-foreground h-3.5 w-3.5" />
+                                    )}
+                                </Button>
+                            </div>
+                            {dragSumInfo.excludedSum != null && dragSumInfo.excludedSum > 0 && (
+                                <div className="border-destructive/30 bg-destructive/5 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                                    <span className="text-muted-foreground">
+                                        {translations?.excludedSumLabel ?? "Debt"} (
+                                        {dragSumInfo.excludedCount}):
+                                    </span>
+                                    <span className="text-destructive font-semibold">
+                                        {dragSumInfo.excludedSum.toLocaleString()}
+                                    </span>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>

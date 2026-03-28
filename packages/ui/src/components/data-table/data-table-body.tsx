@@ -51,8 +51,16 @@ interface DataTableBodyProps<TData> {
     onMultiRowSaveAndLoop?: (rowId: string) => Promise<boolean>;
     onNeedMoreRows?: () => void;
     multiRowDefaultValues?: Partial<TData> | ((index: number) => Partial<TData>);
-    onDragSumChange?: (sumInfo: { sum: number; count: number } | null) => void;
+    onDragSumChange?: (
+        sumInfo: {
+            sum: number;
+            count: number;
+            excludedSum?: number;
+            excludedCount?: number;
+        } | null,
+    ) => void;
     onDragSelectionChange?: (selectedRows: TData[]) => void;
+    dragSumFilter?: (row: TData) => boolean;
     enableInfiniteScroll?: boolean;
     loadingRowIds?: Set<number>;
 }
@@ -87,6 +95,7 @@ export function DataTableBody<TData>({
     multiRowDefaultValues,
     onDragSumChange,
     onDragSelectionChange,
+    dragSumFilter,
     enableInfiniteScroll,
     loadingRowIds,
 }: DataTableBodyProps<TData>) {
@@ -101,74 +110,107 @@ export function DataTableBody<TData>({
         enabled: !!isVirtualActive,
     });
 
-    const [isDragging, setIsDragging] = React.useState(false);
-    const [dragStart, setDragStart] = React.useState<{ row: number; col: string } | null>(null);
-    const [dragCurrent, setDragCurrent] = React.useState<{ row: number } | null>(null);
+    // ── Imperative drag-sum (no React state → no re-renders during drag) ──
+    const dragRef = React.useRef<{
+        isDragging: boolean;
+        startRow: number;
+        startCol: string;
+        currentRow: number;
+        manual: Set<number>;
+        anchor: number | null;
+    }>({
+        isDragging: false,
+        startRow: -1,
+        startCol: "",
+        currentRow: -1,
+        manual: new Set(),
+        anchor: null,
+    });
 
-    // Ctrl/Shift click selection
-    const [manualSelection, setManualSelection] = React.useState<Set<number>>(new Set());
-    const anchorRowRef = React.useRef<number | null>(null);
+    const dragSumFilterRef = React.useRef(dragSumFilter);
+    dragSumFilterRef.current = dragSumFilter;
 
-    React.useEffect(() => {
-        const handleMouseUp = () => setIsDragging(false);
-        window.addEventListener("mouseup", handleMouseUp);
-        return () => window.removeEventListener("mouseup", handleMouseUp);
-    }, []);
-
-    // Merge drag range + manual (Ctrl/Shift) selection
-    const allSelectedIndices = React.useMemo(() => {
-        const indices = new Set(manualSelection);
-        if (dragStart && dragCurrent) {
-            const min = Math.min(dragStart.row, dragCurrent.row);
-            const max = Math.max(dragStart.row, dragCurrent.row);
+    /** Get all selected row indices from current drag state */
+    function getSelectedIndices(): Set<number> {
+        const d = dragRef.current;
+        const indices = new Set(d.manual);
+        if (d.startRow >= 0 && d.currentRow >= 0) {
+            const min = Math.min(d.startRow, d.currentRow);
+            const max = Math.max(d.startRow, d.currentRow);
             for (let i = min; i <= max; i++) indices.add(i);
         }
         return indices;
-    }, [dragStart, dragCurrent, manualSelection]);
+    }
 
-    const selectedAreaSum = React.useMemo(() => {
-        if (!dragStart || allSelectedIndices.size < 2) return 0;
+    /** Apply/remove highlight CSS classes directly on DOM (no re-render) */
+    function updateHighlight() {
+        const container = parentRef.current?.closest("table")?.parentElement;
+        if (!container) return;
+        const col = dragRef.current.startCol;
+        // Remove all existing highlights
+        container.querySelectorAll(`.${DRAG_SUM_HIGHLIGHT.split(" ")[0]}`).forEach((el) => {
+            DRAG_SUM_HIGHLIGHT.split(" ").forEach((cls) => el.classList.remove(cls));
+        });
+        // Apply highlights to selected cells
+        const indices = getSelectedIndices();
+        for (const i of indices) {
+            const td = container.querySelector<HTMLElement>(
+                `td[data-row-index="${i}"][data-column-id="${col}"]`,
+            );
+            if (td) DRAG_SUM_HIGHLIGHT.split(" ").forEach((cls) => td.classList.add(cls));
+        }
+    }
+
+    /** Compute sum and update React state (called only on mouseup or significant changes) */
+    function commitDragSum() {
+        const d = dragRef.current;
+        const indices = getSelectedIndices();
+
+        if (indices.size < 2 || d.startCol === "") {
+            onDragSumChange?.(null);
+            onDragSelectionChange?.([]);
+            return;
+        }
 
         let sum = 0;
-        for (const i of allSelectedIndices) {
+        let excludedSum = 0;
+        const filterFn = dragSumFilterRef.current;
+        const selectedRows: TData[] = [];
+
+        for (const i of indices) {
             const row = rows[i];
             if (!row) continue;
-
-            const cell = row.getAllCells().find((c) => c.column.id === dragStart.col);
+            selectedRows.push(row.original);
+            const cell = row.getAllCells().find((c) => c.column.id === d.startCol);
             if (!cell) continue;
-
             const val = cell.getValue();
             let num = NaN;
-            if (typeof val === "number") {
-                num = val;
-            } else if (typeof val === "string") {
-                num = Number(val.replace(/\s+/g, ""));
-            }
-
-            if (!isNaN(num)) sum += num;
-        }
-        return sum;
-    }, [dragStart, allSelectedIndices, rows]);
-
-    React.useEffect(() => {
-        if (onDragSumChange) {
-            if (selectedAreaSum > 0 && allSelectedIndices.size >= 2) {
-                onDragSumChange({ sum: selectedAreaSum, count: allSelectedIndices.size });
-            } else {
-                onDragSumChange(null);
+            if (typeof val === "number") num = val;
+            else if (typeof val === "string") num = Number(val.replace(/\s+/g, ""));
+            if (!isNaN(num)) {
+                if (filterFn && !filterFn(row.original)) excludedSum += num;
+                else sum += num;
             }
         }
-    }, [selectedAreaSum, allSelectedIndices, onDragSumChange]);
+
+        React.startTransition(() => {
+            onDragSumChange?.({ sum, count: indices.size, excludedSum, excludedCount: 0 });
+            onDragSelectionChange?.(selectedRows);
+        });
+    }
 
     React.useEffect(() => {
-        if (!onDragSelectionChange) return;
-        if (allSelectedIndices.size > 0) {
-            const sorted = Array.from(allSelectedIndices).sort((a, b) => a - b);
-            onDragSelectionChange(sorted.map((i) => rows[i]?.original).filter(Boolean));
-        } else {
-            onDragSelectionChange([]);
-        }
-    }, [allSelectedIndices, rows, onDragSelectionChange]);
+        const handleMouseUp = () => {
+            if (dragRef.current.isDragging) {
+                dragRef.current.isDragging = false;
+                // Defer sum computation to next frame so mouseup returns instantly
+                requestAnimationFrame(() => commitDragSum());
+            }
+        };
+        window.addEventListener("mouseup", handleMouseUp);
+        return () => window.removeEventListener("mouseup", handleMouseUp);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- commitDragSum uses refs, stable across renders
+    }, [rows]);
 
     const renderCells = (
         row: Row<TData>,
@@ -184,19 +226,6 @@ export function DataTableBody<TData>({
             if (isFirstCell) isFirstCell = false;
             const isDragSumEnabled = cell.column.columnDef.meta?.enableDragSum;
 
-            // Highlight: drag range OR manual selection
-            let isSelectedForSum = false;
-            if (dragStart?.col === cell.column.id) {
-                if (manualSelection.has(rowIndex)) {
-                    isSelectedForSum = true;
-                }
-                if (dragCurrent) {
-                    const minRow = Math.min(dragStart.row, dragCurrent.row);
-                    const maxRow = Math.max(dragStart.row, dragCurrent.row);
-                    if (rowIndex >= minRow && rowIndex <= maxRow) isSelectedForSum = true;
-                }
-            }
-
             return (
                 <TableCell
                     key={cell.id}
@@ -206,59 +235,74 @@ export function DataTableBody<TData>({
                     className={cn(
                         cell.column.columnDef.meta?.cellClassName,
                         enableEditing && !cell.column.columnDef.meta?.editable && "bg-muted",
-                        isSelectedForSum && DRAG_SUM_HIGHLIGHT,
                         isDragSumEnabled && "cursor-cell",
                     )}
+                    onDoubleClick={() => {
+                        if (isDragSumEnabled && cell.column.columnDef.meta?.editable) {
+                            const td = document.querySelector<HTMLElement>(
+                                `td[data-row-index="${rowIndex}"][data-column-id="${cell.column.id}"]`,
+                            );
+                            td?.querySelector<HTMLInputElement>(
+                                'input, [role="combobox"]',
+                            )?.focus();
+                        }
+                    }}
                     onMouseDown={(e) => {
                         if (isDragSumEnabled) {
+                            const focused = document.activeElement;
+                            if (focused instanceof HTMLInputElement) focused.blur();
+                            e.preventDefault();
+
+                            const d = dragRef.current;
+
                             if (e.ctrlKey || e.metaKey) {
-                                // Ctrl+Click: toggle row
-                                setManualSelection((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(rowIndex)) {
-                                        next.delete(rowIndex);
-                                    } else {
-                                        next.add(rowIndex);
-                                    }
-                                    return next;
-                                });
-                                anchorRowRef.current = rowIndex;
-                                setDragStart(
-                                    (prev) => prev ?? { row: rowIndex, col: cell.column.id },
-                                );
+                                if (d.manual.has(rowIndex)) d.manual.delete(rowIndex);
+                                else d.manual.add(rowIndex);
+                                d.anchor = rowIndex;
+                                if (!d.startCol) d.startCol = cell.column.id;
+                                updateHighlight();
+                                requestAnimationFrame(() => commitDragSum());
                                 return;
                             }
 
-                            if (e.shiftKey && anchorRowRef.current !== null) {
-                                // Shift+Click: range from anchor to current
-                                const min = Math.min(anchorRowRef.current, rowIndex);
-                                const max = Math.max(anchorRowRef.current, rowIndex);
-                                setManualSelection((prev) => {
-                                    const next = new Set(prev);
-                                    for (let i = min; i <= max; i++) next.add(i);
-                                    return next;
-                                });
-                                setDragStart(
-                                    (prev) => prev ?? { row: rowIndex, col: cell.column.id },
-                                );
+                            if (e.shiftKey && d.anchor !== null) {
+                                const min = Math.min(d.anchor, rowIndex);
+                                const max = Math.max(d.anchor, rowIndex);
+                                for (let i = min; i <= max; i++) d.manual.add(i);
+                                if (!d.startCol) d.startCol = cell.column.id;
+                                updateHighlight();
+                                requestAnimationFrame(() => commitDragSum());
                                 return;
                             }
 
-                            // Plain click: clear manual selection, start drag
-                            setManualSelection(new Set());
-                            anchorRowRef.current = rowIndex;
-                            setIsDragging(true);
-                            setDragStart({ row: rowIndex, col: cell.column.id });
-                            setDragCurrent({ row: rowIndex });
+                            // Plain click
+                            d.manual.clear();
+                            d.isDragging = true;
+                            d.startRow = rowIndex;
+                            d.startCol = cell.column.id;
+                            d.currentRow = rowIndex;
+                            d.anchor = rowIndex;
+                            updateHighlight();
                         } else {
-                            setDragStart(null);
-                            setDragCurrent(null);
-                            setManualSelection(new Set());
+                            // Click on non-drag cell → clear selection
+                            dragRef.current.manual.clear();
+                            dragRef.current.startRow = -1;
+                            dragRef.current.startCol = "";
+                            dragRef.current.currentRow = -1;
+                            updateHighlight();
+                            onDragSumChange?.(null);
+                            onDragSelectionChange?.([]);
                         }
                     }}
                     onMouseEnter={() => {
-                        if (isDragging && dragStart) {
-                            setDragCurrent({ row: rowIndex });
+                        const d = dragRef.current;
+                        if (d.isDragging && d.startRow >= 0) {
+                            if (d.startRow !== rowIndex) {
+                                const focused = document.activeElement;
+                                if (focused instanceof HTMLInputElement) focused.blur();
+                            }
+                            d.currentRow = rowIndex;
+                            updateHighlight();
                         }
                     }}
                 >
@@ -278,46 +322,76 @@ export function DataTableBody<TData>({
         });
     };
 
-    // Single row (existing behavior)
-    const singleNewRow =
-        enableNewRow && !enableMultipleNewRows && onNewRowSave ? (
-            <DataTableNewRow
-                columns={columns}
-                onSave={onNewRowSave}
-                onChange={onNewRowChange}
-                defaultValues={newRowDefaultValues}
-                enableRowSelection={enableRowSelection}
-            />
-        ) : null;
+    // Memoize new rows so drag-sum state changes don't re-render 50+ ghost rows
+    const defaultValuesFactory = React.useCallback(
+        (index: number) =>
+            typeof multiRowDefaultValues === "function"
+                ? multiRowDefaultValues(index)
+                : { ...multiRowDefaultValues },
+        [multiRowDefaultValues],
+    );
 
-    // Multiple rows (new behavior)
-    const multiNewRows =
-        enableMultipleNewRows && onMultiRowSave && onMultiRowChange ? (
-            <DataTableMultiNewRows
-                columns={columns}
-                rowStates={multiRowStates}
-                onRowChange={onMultiRowChange}
-                onRowSave={onMultiRowSave}
-                onRowFocus={onMultiRowFocus}
-                onRowBlur={onMultiRowBlur}
-                onRowFocusNext={onMultiRowFocusNext}
-                onRowSaveAndLoop={onMultiRowSaveAndLoop}
-                enableRowSelection={enableRowSelection}
-                defaultValuesFactory={(index) =>
-                    typeof multiRowDefaultValues === "function"
-                        ? multiRowDefaultValues(index)
-                        : { ...multiRowDefaultValues }
-                }
-                onNeedMoreRows={onNeedMoreRows ?? NOOP}
-            />
-        ) : null;
+    const singleNewRow = React.useMemo(
+        () =>
+            enableNewRow && !enableMultipleNewRows && onNewRowSave ? (
+                <DataTableNewRow
+                    columns={columns}
+                    onSave={onNewRowSave}
+                    onChange={onNewRowChange}
+                    defaultValues={newRowDefaultValues}
+                    enableRowSelection={enableRowSelection}
+                />
+            ) : null,
+        [
+            columns,
+            enableNewRow,
+            enableMultipleNewRows,
+            onNewRowSave,
+            onNewRowChange,
+            newRowDefaultValues,
+            enableRowSelection,
+        ],
+    );
+
+    const multiNewRows = React.useMemo(
+        () =>
+            enableMultipleNewRows && onMultiRowSave && onMultiRowChange ? (
+                <DataTableMultiNewRows
+                    columns={columns}
+                    rowStates={multiRowStates}
+                    onRowChange={onMultiRowChange}
+                    onRowSave={onMultiRowSave}
+                    onRowFocus={onMultiRowFocus}
+                    onRowBlur={onMultiRowBlur}
+                    onRowFocusNext={onMultiRowFocusNext}
+                    onRowSaveAndLoop={onMultiRowSaveAndLoop}
+                    enableRowSelection={enableRowSelection}
+                    defaultValuesFactory={defaultValuesFactory}
+                    onNeedMoreRows={onNeedMoreRows ?? NOOP}
+                />
+            ) : null,
+        [
+            columns,
+            enableMultipleNewRows,
+            multiRowStates,
+            onMultiRowChange,
+            onMultiRowSave,
+            onMultiRowFocus,
+            onMultiRowBlur,
+            onMultiRowFocusNext,
+            onMultiRowSaveAndLoop,
+            enableRowSelection,
+            defaultValuesFactory,
+            onNeedMoreRows,
+        ],
+    );
 
     const newRows = enableMultipleNewRows ? multiNewRows : singleNewRow;
     const position = enableMultipleNewRows ? multiRowPosition : newRowPosition;
 
     if (rows.length === 0 && !enableNewRow && !enableMultipleNewRows) {
         return (
-            <TableBody className={cn(isDragging && "select-none")}>
+            <TableBody className={"select-none"}>
                 {position === "start" && newRows}
                 <TableRow>
                     <TableCell
@@ -342,7 +416,7 @@ export function DataTableBody<TData>({
             virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
 
         return (
-            <TableBody ref={parentRef} className={cn(isDragging && "select-none")}>
+            <TableBody ref={parentRef} className={"select-none"}>
                 {position === "start" && newRows}
                 {paddingTop > 0 && (
                     <tr>
@@ -374,7 +448,7 @@ export function DataTableBody<TData>({
 
     // Show-all / paginated mode — same rendering, only virtualized differs
     return (
-        <TableBody className={cn(isDragging && "select-none")}>
+        <TableBody className={"select-none"}>
             {position === "start" && newRows}
             {rows.map((row, index) =>
                 enableInfiniteScroll ? (

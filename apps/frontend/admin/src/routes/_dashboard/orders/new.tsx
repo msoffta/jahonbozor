@@ -81,11 +81,11 @@ function NewOrderPage() {
         [isMobile],
     );
 
-    const newRowDefaultValues = useMemo(() => ({ quantity: 1 }), []);
+    const newRowDefaultValues = useMemo(() => ({}), []);
 
     const handleNewRowChange = useCallback(
         (values: Record<string, unknown>, _rowId: string) => {
-            const currentQuantity = Number(values.quantity) || 1;
+            const currentQuantity = Number(values.quantity) || 0;
 
             if (values.product) {
                 const productId = Number(values.product);
@@ -118,6 +118,9 @@ function NewOrderPage() {
             const product = products.find((p) => p.id === productId);
             if (!product) return;
 
+            const userPrice =
+                data.price != null && data.price !== "" ? Number(data.price) : product.price;
+
             if (linkedId) {
                 // Update existing item in local list
                 setItems((prev) =>
@@ -126,8 +129,8 @@ function NewOrderPage() {
                             ? {
                                   ...item,
                                   productId,
-                                  quantity: Number(data.quantity) || 1,
-                                  price: product.price,
+                                  quantity: Number(data.quantity) || 0,
+                                  price: userPrice,
                                   product: {
                                       id: product.id,
                                       name: product.name,
@@ -147,8 +150,8 @@ function NewOrderPage() {
             const newItem: LocalItem = {
                 id: newId,
                 productId,
-                quantity: Number(data.quantity) || 1,
-                price: product.price,
+                quantity: Number(data.quantity) || 0,
+                price: userPrice,
                 product: {
                     id: product.id,
                     name: product.name,
@@ -191,8 +194,24 @@ function NewOrderPage() {
             } else if (columnId === "quantity") {
                 setItems((prev) =>
                     prev.map((item, i) =>
-                        i === rowIndex ? { ...item, quantity: Number(value) || 1 } : item,
+                        i === rowIndex ? { ...item, quantity: Number(value) || 0 } : item,
                     ),
+                );
+            } else if (columnId === "price") {
+                setItems((prev) =>
+                    prev.map((item, i) =>
+                        i === rowIndex ? { ...item, price: Number(value) || 0 } : item,
+                    ),
+                );
+            } else if (columnId === "total") {
+                const newTotal = Number(value) || 0;
+                setItems((prev) =>
+                    prev.map((item, i) => {
+                        if (i !== rowIndex) return item;
+                        const newPrice =
+                            item.quantity > 0 ? Math.round(newTotal / item.quantity) : newTotal;
+                        return { ...item, price: newPrice };
+                    }),
                 );
             }
         },
@@ -237,7 +256,7 @@ function NewOrderPage() {
     const totalSum = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
-        <PageTransition className="flex min-h-0 flex-1 flex-col p-3 md:p-6">
+        <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
             {/* Header */}
             <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">

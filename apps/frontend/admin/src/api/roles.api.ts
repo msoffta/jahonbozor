@@ -129,6 +129,7 @@ export const deleteRoleFn = async (id: number) => {
 export const useCreateRole = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["roles", "create"],
         mutationFn: createRoleFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: roleKeys.all });
@@ -142,6 +143,7 @@ export const useCreateRole = () => {
 export const useUpdateRole = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["roles", "update"],
         mutationFn: updateRoleFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: roleKeys.all });
@@ -155,6 +157,7 @@ export const useUpdateRole = () => {
 export const useDeleteRole = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        mutationKey: ["roles", "delete"],
         mutationFn: deleteRoleFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: roleKeys.all });

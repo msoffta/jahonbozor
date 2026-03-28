@@ -90,6 +90,7 @@ export interface DataTableTranslations {
     filterMax?: string;
     filter?: string;
     sumLabel?: string;
+    excludedSumLabel?: string;
 
     // Infinite scroll
     showingOf?: string;
@@ -169,6 +170,8 @@ export interface DataTableProps<TData> {
     onRowSelectionChange?: (selection: Record<string, boolean>) => void;
     onRowClick?: (row: TData) => void;
     onDragSelectionChange?: (selectedRows: TData[]) => void;
+    /** Filter rows included in drag-sum. Returns true to include, false to exclude. Excluded rows are summed separately. */
+    dragSumFilter?: (row: TData) => boolean;
 
     // Column visibility
     initialColumnVisibility?: Record<string, boolean>;

@@ -36,8 +36,6 @@ export function getOrderColumns(
     const productOptions = data.products.map((p) => ({
         label: p.name,
         value: String(p.id),
-        disabled: (p.remaining ?? 0) < 1,
-        disabledReason: t("product_out_of_stock"),
     }));
 
     const userOptions = [
@@ -122,6 +120,8 @@ export function getOrderColumns(
                 meta: {
                     flex: 1,
                     align: "left" as const,
+                    editable: true,
+                    inputType: "currency" as const,
                 },
             },
             {
@@ -149,6 +149,8 @@ export function getOrderColumns(
                     flex: 1,
                     align: "left" as const,
                     enableDragSum: true,
+                    editable: true,
+                    inputType: "currency" as const,
                 },
             },
         );
