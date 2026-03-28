@@ -78,7 +78,7 @@ const TableHead = ({
     <th
         ref={ref}
         className={cn(
-            "text-muted-foreground border-border h-9 border-r px-2 text-left align-middle font-medium last:border-r-0 [&:has([role=checkbox])]:pr-0",
+            "text-muted-foreground border-border h-8 border-r px-2 text-left align-middle font-medium last:border-r-0 [&:has([role=checkbox])]:pr-0",
             className,
         )}
         {...props}
@@ -96,7 +96,7 @@ const TableCell = ({
     <td
         ref={ref}
         className={cn(
-            "border-border focus-within:outline-ring border-r px-2 py-1 align-middle last:border-r-0 focus-within:outline-2 focus-within:-outline-offset-2 [&:has([role=checkbox])]:pr-0",
+            "border-border focus-within:outline-ring border-r px-2 py-0.5 align-middle last:border-r-0 focus-within:outline-2 focus-within:-outline-offset-2 [&:has([role=checkbox])]:pr-0",
             className,
         )}
         {...props}

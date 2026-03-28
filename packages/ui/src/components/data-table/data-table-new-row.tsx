@@ -306,7 +306,7 @@ export function DataTableNewRow<TData>({
                             >
                                 <SelectTrigger
                                     className={cn(
-                                        "ghost-input h-7 rounded-none px-0 text-sm focus-visible:ring-0",
+                                        "ghost-input h-6 rounded-none px-0 text-sm focus-visible:ring-0",
                                         error && "border-destructive",
                                     )}
                                 >
@@ -344,7 +344,7 @@ export function DataTableNewRow<TData>({
                                 placeholder={meta.placeholder}
                                 error={!!error}
                                 onSearch={meta.onSearchOptions}
-                                className="ghost-input h-7 rounded-none px-0 text-sm focus-visible:ring-0"
+                                className="ghost-input h-6 rounded-none px-0 text-sm focus-visible:ring-0"
                             />
                         ) : meta.inputType === "datepicker" ? (
                             <DatePicker
@@ -368,7 +368,7 @@ export function DataTableNewRow<TData>({
                                 }}
                                 placeholder={meta.placeholder}
                                 className={cn(
-                                    "ghost-input h-7 w-full text-sm",
+                                    "ghost-input h-6 w-full text-sm",
                                     error && "border-destructive",
                                 )}
                             />
@@ -392,7 +392,7 @@ export function DataTableNewRow<TData>({
                                 onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 placeholder={meta.placeholder}
                                 className={cn(
-                                    "ghost-input h-7 rounded-none px-0 text-sm focus-visible:ring-0",
+                                    "ghost-input h-6 rounded-none px-0 text-sm focus-visible:ring-0",
                                     error && "border-destructive",
                                 )}
                             />
@@ -423,7 +423,7 @@ export function DataTableNewRow<TData>({
                                 onKeyDown={(e) => handleKeyDown(e, currentEditableIndex)}
                                 placeholder={meta.placeholder}
                                 className={cn(
-                                    "ghost-input h-7 rounded-none px-0 text-sm focus-visible:ring-0",
+                                    "ghost-input h-6 rounded-none px-0 text-sm focus-visible:ring-0",
                                     error && "border-destructive",
                                 )}
                             />
