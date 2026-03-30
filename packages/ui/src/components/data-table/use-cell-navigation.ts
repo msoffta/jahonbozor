@@ -130,7 +130,19 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
             switch (e.key) {
                 case "ArrowUp": {
                     e.preventDefault();
-                    container!.dispatchEvent(new CustomEvent("datatable:navigate"));
+                    if (e.shiftKey) {
+                        // Shift+Arrow → extend drag-sum selection
+                        container!.dispatchEvent(
+                            new CustomEvent("datatable:shift-select", {
+                                detail: {
+                                    row: rowPos > 0 ? rowIndices[rowPos - 1] : coords.row,
+                                    col: coords.col,
+                                },
+                            }),
+                        );
+                    } else {
+                        container!.dispatchEvent(new CustomEvent("datatable:navigate"));
+                    }
                     if (rowPos > 0) {
                         const targetTd = getCell(rowIndices[rowPos - 1], coords.col);
                         if (targetTd) focusCell(targetTd);
@@ -140,7 +152,21 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
 
                 case "ArrowDown": {
                     e.preventDefault();
-                    container!.dispatchEvent(new CustomEvent("datatable:navigate"));
+                    if (e.shiftKey) {
+                        container!.dispatchEvent(
+                            new CustomEvent("datatable:shift-select", {
+                                detail: {
+                                    row:
+                                        rowPos < rowIndices.length - 1
+                                            ? rowIndices[rowPos + 1]
+                                            : coords.row,
+                                    col: coords.col,
+                                },
+                            }),
+                        );
+                    } else {
+                        container!.dispatchEvent(new CustomEvent("datatable:navigate"));
+                    }
                     if (rowPos < rowIndices.length - 1) {
                         const targetTd = getCell(rowIndices[rowPos + 1], coords.col);
                         if (targetTd) focusCell(targetTd);
@@ -179,6 +205,22 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
                 case "Tab": {
                     e.preventDefault();
                     container!.dispatchEvent(new CustomEvent("datatable:navigate"));
+
+                    // If combobox dropdown is open, select the highlighted option first
+                    if (target.getAttribute("role") === "combobox") {
+                        const listboxId = target.getAttribute("aria-controls");
+                        if (listboxId) {
+                            const selected = document.querySelector(
+                                `#${CSS.escape(listboxId)} [aria-selected="true"]`,
+                            );
+                            if (selected) {
+                                (selected as HTMLElement).dispatchEvent(
+                                    new MouseEvent("mousedown", { bubbles: true }),
+                                );
+                            }
+                        }
+                    }
+
                     const direction = e.shiftKey ? -1 : 1;
 
                     // Build ordered list of editable cells

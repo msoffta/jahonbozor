@@ -232,9 +232,35 @@ export function DataTableBody<TData>({
         };
         tableContainer?.addEventListener("datatable:navigate", handleNavigate);
 
+        // Shift+Arrow extends drag-sum selection
+        const handleShiftSelect = (evt: Event) => {
+            const detail = (evt as CustomEvent<{ row: number; col: string }>).detail;
+            const targetRow: number = detail.row;
+            const targetCol: string = detail.col;
+            const d = dragRef.current;
+            // Initialize selection if not started
+            if (d.startRow < 0) {
+                const focused = document.activeElement?.closest<HTMLElement>("td[data-row-index]");
+                const focusedRow = focused?.getAttribute("data-row-index");
+                d.startRow = focusedRow != null ? Number(focusedRow) : targetRow;
+                d.startCol = targetCol;
+                d.anchor = d.startRow;
+            }
+            d.currentRow = targetRow;
+            d.manual.clear();
+            const anchorRow: number = d.anchor ?? d.startRow;
+            const min = Math.min(anchorRow, targetRow);
+            const max = Math.max(anchorRow, targetRow);
+            for (let i = min; i <= max; i++) d.manual.add(i);
+            updateHighlight();
+            requestAnimationFrame(() => commitDragSum());
+        };
+        tableContainer?.addEventListener("datatable:shift-select", handleShiftSelect);
+
         return () => {
             window.removeEventListener("mouseup", handleMouseUp);
             tableContainer?.removeEventListener("datatable:navigate", handleNavigate);
+            tableContainer?.removeEventListener("datatable:shift-select", handleShiftSelect);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps -- commitDragSum uses refs, stable across renders
     }, [rows]);
