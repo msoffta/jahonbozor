@@ -213,7 +213,29 @@ export function DataTableBody<TData>({
             }
         };
         window.addEventListener("mouseup", handleMouseUp);
-        return () => window.removeEventListener("mouseup", handleMouseUp);
+
+        // Clear drag-sum when keyboard navigation moves cursor
+        const tableContainer = parentRef.current?.closest("[data-datatable]") as HTMLElement | null;
+        const handleNavigate = () => {
+            const d = dragRef.current;
+            if (d.startRow >= 0) {
+                d.manual.clear();
+                d.startRow = -1;
+                d.startCol = "";
+                d.currentRow = -1;
+                updateHighlight();
+                React.startTransition(() => {
+                    onDragSumChange?.(null);
+                    onDragSelectionChange?.([]);
+                });
+            }
+        };
+        tableContainer?.addEventListener("datatable:navigate", handleNavigate);
+
+        return () => {
+            window.removeEventListener("mouseup", handleMouseUp);
+            tableContainer?.removeEventListener("datatable:navigate", handleNavigate);
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps -- commitDragSum uses refs, stable across renders
     }, [rows]);
 
@@ -293,6 +315,8 @@ export function DataTableBody<TData>({
                             d.currentRow = rowIndex;
                             d.anchor = rowIndex;
                             updateHighlight();
+                            // Set cursor on the cell (e.preventDefault blocked native focus)
+                            (e.currentTarget as HTMLElement).focus();
                         } else {
                             // Click on non-drag cell → clear selection
                             dragRef.current.manual.clear();

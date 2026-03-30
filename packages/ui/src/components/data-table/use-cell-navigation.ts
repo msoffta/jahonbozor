@@ -130,6 +130,7 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
             switch (e.key) {
                 case "ArrowUp": {
                     e.preventDefault();
+                    container!.dispatchEvent(new CustomEvent("datatable:navigate"));
                     if (rowPos > 0) {
                         const targetTd = getCell(rowIndices[rowPos - 1], coords.col);
                         if (targetTd) focusCell(targetTd);
@@ -139,6 +140,7 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
 
                 case "ArrowDown": {
                     e.preventDefault();
+                    container!.dispatchEvent(new CustomEvent("datatable:navigate"));
                     if (rowPos < rowIndices.length - 1) {
                         const targetTd = getCell(rowIndices[rowPos + 1], coords.col);
                         if (targetTd) focusCell(targetTd);
@@ -149,6 +151,7 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
                 case "ArrowLeft": {
                     if (input && !isAtInputStart(input)) return;
                     e.preventDefault();
+                    container!.dispatchEvent(new CustomEvent("datatable:navigate"));
                     for (let i = colPos - 1; i >= 0; i--) {
                         const targetTd = getCell(coords.row, columnIds[i]);
                         if (targetTd) {
@@ -162,6 +165,7 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
                 case "ArrowRight": {
                     if (input && !isAtInputEnd(input)) return;
                     e.preventDefault();
+                    container!.dispatchEvent(new CustomEvent("datatable:navigate"));
                     for (let i = colPos + 1; i < columnIds.length; i++) {
                         const targetTd = getCell(coords.row, columnIds[i]);
                         if (targetTd) {
@@ -174,6 +178,7 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
 
                 case "Tab": {
                     e.preventDefault();
+                    container!.dispatchEvent(new CustomEvent("datatable:navigate"));
                     const direction = e.shiftKey ? -1 : 1;
 
                     // Build ordered list of editable cells
@@ -224,6 +229,35 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
                         requestAnimationFrame(() => td.focus());
                     }
                     return;
+                }
+
+                case "Delete":
+                case "Backspace": {
+                    if (!input) {
+                        // Cursor mode → clear cell value and enter edit mode
+                        const cellInput = findInputIn(td);
+                        if (cellInput) {
+                            e.preventDefault();
+                            cellInput.value = "";
+                            cellInput.dispatchEvent(new Event("input", { bubbles: true }));
+                            cellInput.focus();
+                        }
+                    }
+                    break;
+                }
+
+                default: {
+                    // Printable character on <td> → enter edit mode, clear value, type
+                    if (!input && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        const cellInput = findInputIn(td);
+                        if (cellInput) {
+                            cellInput.value = "";
+                            cellInput.dispatchEvent(new Event("input", { bubbles: true }));
+                            cellInput.focus();
+                            // Don't preventDefault — let the character be typed into the input
+                        }
+                    }
+                    break;
                 }
             }
         }

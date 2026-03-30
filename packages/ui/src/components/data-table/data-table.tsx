@@ -378,6 +378,7 @@ export function DataTable<TData>({
                         scrollContainerRef.current = el;
                         if (el !== scrollElement) setScrollElement(el);
                     }}
+                    data-datatable
                     onScroll={handleScroll}
                     className="h-full overflow-auto rounded-md border"
                 >
