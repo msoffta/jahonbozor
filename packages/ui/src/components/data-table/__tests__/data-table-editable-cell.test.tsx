@@ -147,7 +147,7 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            const numberInputs = container.querySelectorAll("input[type='number']");
+            const numberInputs = container.querySelectorAll("input[inputmode='numeric']");
             expect(numberInputs.length).toBe(2); // one per row
         });
 
@@ -162,7 +162,7 @@ describe("DataTableEditableCell", () => {
                 />,
             );
 
-            const input = container.querySelector("input[type='number']")!;
+            const input = container.querySelector("input[inputmode='numeric']")!;
             await user.clear(input);
             await user.type(input, "3000");
             fireEvent.blur(input);
@@ -457,7 +457,7 @@ describe("DataTableEditableCell", () => {
             );
 
             // Ghost input should be rendered (alignment is on input, not a wrapper div)
-            const inputs = container.querySelectorAll("input[type='number']");
+            const inputs = container.querySelectorAll("input[inputmode='numeric']");
             expect(inputs.length).toBe(2);
         });
     });
