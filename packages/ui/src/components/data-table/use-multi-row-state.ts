@@ -150,21 +150,21 @@ export function useMultiRowState({
     const handleFocusNext = React.useCallback(
         (rowId: string) => {
             const index = rowStates.findIndex((r) => r.id === rowId);
-            if (index !== -1 && index < rowStates.length - 1) {
-                const nextRow = rowStates[index + 1];
+            if (index === -1) return;
 
-                navigatingFromRowRef.current = rowId;
-                void handleSave(rowId);
+            // Find the next visible row (without linkedId — saved rows are hidden)
+            const nextRow = rowStates.slice(index + 1).find((r) => !r.linkedId);
+            if (!nextRow) return;
 
-                setTimeout(() => {
-                    const nextRowEl = document.getElementById(nextRow.id);
-                    const firstInput =
-                        nextRowEl?.querySelector<HTMLElement>("input, button, select");
-                    firstInput?.focus();
-                }, 0);
-            }
+            navigatingFromRowRef.current = rowId;
+
+            setTimeout(() => {
+                const nextRowEl = document.getElementById(nextRow.id);
+                const firstInput = nextRowEl?.querySelector<HTMLElement>("input, button, select");
+                firstInput?.focus();
+            }, 0);
         },
-        [rowStates, handleSave],
+        [rowStates],
     );
 
     const handleSaveAndLoop = React.useCallback(
