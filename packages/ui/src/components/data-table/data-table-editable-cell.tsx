@@ -1,29 +1,15 @@
 import * as React from "react";
-import { NumericFormat } from "react-number-format";
 
 import { flexRender } from "@tanstack/react-table";
 import { motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
-import { DatePicker } from "../ui/date-picker";
-import { Input } from "../ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { DataTableCombobox } from "./data-table-combobox";
+import { DataTableCellInput, GHOST_INPUT_CLASS, toDisplayString } from "./data-table-cell-input";
 
 import type { CellContext } from "@tanstack/react-table";
 
-/** Safely convert unknown cell value to display string */
-function toDisplayString(value: unknown): string {
-    if (value == null || value === "") return "";
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
-        return String(value);
-    return JSON.stringify(value);
-}
-
 /** Auto-save debounce delay for editable cells */
 const AUTO_SAVE_DEBOUNCE_MS = 500;
-
-const GHOST = "ghost-input h-6 px-0 text-sm rounded-none focus-visible:ring-0 focus:outline-none";
 
 interface DataTableEditableCellProps<TData> {
     cell: CellContext<TData, unknown>;
@@ -133,146 +119,50 @@ export function DataTableEditableCell<TData>({
         );
     }
 
-    // Editable cell — always-visible ghost input
+    // Editable cell — always-visible ghost input via DataTableCellInput
     return (
         <div className="relative">
-            {meta?.inputType === "select" && meta.selectOptions ? (
-                <Select
-                    value={toDisplayString(value)}
-                    onValueChange={(newValue) => {
-                        setValue(newValue);
-                        setError(null);
-                        if (newValue !== toDisplayString(editValue)) {
-                            if (!onCellEdit) {
-                                cell.table.options.meta?.updateData(
-                                    cell.row.index,
-                                    cell.column.id,
-                                    newValue,
-                                );
-                            }
-                            onCellEdit?.(cell.row.index, cell.column.id, newValue);
-                        }
-                    }}
-                >
-                    <SelectTrigger className={cn(GHOST, error && "border-destructive")}>
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {meta.selectOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            ) : meta?.inputType === "combobox" && meta.selectOptions ? (
-                <DataTableCombobox
-                    value={toDisplayString(value)}
-                    options={meta.selectOptions}
-                    onChange={(newValue) => {
-                        setValue(newValue);
-                        setError(null);
-                    }}
-                    onSelect={(newValue) => {
-                        if (newValue !== toDisplayString(editValue)) {
-                            if (!onCellEdit) {
-                                cell.table.options.meta?.updateData(
-                                    cell.row.index,
-                                    cell.column.id,
-                                    newValue,
-                                );
-                            }
-                            onCellEdit?.(cell.row.index, cell.column.id, newValue);
-                        }
-                    }}
-                    onBlur={() => {
-                        if (cancellingRef.current) return;
-                        const v = value;
-                        if (v !== editValue) {
-                            if (!onCellEdit) {
-                                cell.table.options.meta?.updateData(
-                                    cell.row.index,
-                                    cell.column.id,
-                                    v,
-                                );
-                            }
-                            onCellEdit?.(cell.row.index, cell.column.id, v);
-                        }
-                    }}
-                    onKeyDown={(e) => {
+            <DataTableCellInput
+                meta={meta}
+                value={value}
+                error={error}
+                onChange={(newValue) => {
+                    setValue(newValue);
+                    setError(null);
+                }}
+                onKeyDown={(e) => {
+                    // Combobox only sends Escape; other inputs get full handleKeyDown
+                    if (meta?.inputType === "combobox") {
                         if (e.key === "Escape") {
                             e.preventDefault();
                             handleCancel();
                         }
-                    }}
-                    placeholder={meta.placeholder}
-                    error={!!error}
-                    onSearch={meta?.onSearchOptions}
-                    className={GHOST}
-                />
-            ) : meta?.inputType === "datepicker" ? (
-                <DatePicker
-                    value={value as Date | string | undefined}
-                    showTime={meta?.showTime}
-                    onChange={(date) => {
-                        const val = date
-                            ? meta?.showTime
-                                ? date.toISOString()
-                                : date.toISOString().split("T")[0]
-                            : "";
-                        setValue(val);
-                        setError(null);
-                    }}
-                    onClose={() => {
-                        handleSave();
-                    }}
-                    onKeyDown={handleKeyDown}
-                    inputRef={(el) => {
-                        (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
-                    }}
-                    placeholder={meta?.placeholder}
-                    className={cn(GHOST, "w-full", error && "border-destructive")}
-                />
-            ) : meta?.inputType === "currency" ? (
-                <NumericFormat
-                    getInputRef={inputRef}
-                    customInput={Input}
-                    value={value != null ? Number(value) : ""}
-                    thousandSeparator=" "
-                    decimalScale={0}
-                    allowNegative={false}
-                    onValueChange={(values) => {
-                        setValue(values.floatValue ?? 0);
-                        setError(null);
-                    }}
-                    onBlur={() => !cancellingRef.current && handleSave()}
-                    onKeyDown={handleKeyDown}
-                    className={cn(GHOST, error && "border-destructive")}
-                    placeholder={meta?.placeholder}
-                />
-            ) : (
-                <Input
-                    ref={inputRef}
-                    type={
-                        meta?.inputType === "number"
-                            ? "number"
-                            : meta?.inputType === "date"
-                              ? "date"
-                              : "text"
+                    } else {
+                        handleKeyDown(e);
                     }
-                    value={toDisplayString(value)}
-                    onChange={(e) => {
-                        const newValue =
-                            meta?.inputType === "number" ? Number(e.target.value) : e.target.value;
-                        setValue(newValue);
-                        setError(null);
-                    }}
-                    onBlur={() => !cancellingRef.current && handleSave()}
-                    onKeyDown={handleKeyDown}
-                    className={cn(GHOST, error && "border-destructive")}
-                    placeholder={meta?.placeholder}
-                />
-            )}
+                }}
+                onBlur={() => {
+                    if (!cancellingRef.current) handleSave();
+                }}
+                onClose={() => handleSave()}
+                onSelect={(newValue) => {
+                    // Immediate save for select/combobox
+                    if (newValue !== toDisplayString(editValue)) {
+                        if (!onCellEdit) {
+                            cell.table.options.meta?.updateData(
+                                cell.row.index,
+                                cell.column.id,
+                                newValue,
+                            );
+                        }
+                        onCellEdit?.(cell.row.index, cell.column.id, newValue);
+                    }
+                }}
+                inputRef={(el) => {
+                    (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                }}
+                className={GHOST_INPUT_CLASS}
+            />
             {error && (
                 <motion.p
                     initial={{ opacity: 0, x: 0 }}

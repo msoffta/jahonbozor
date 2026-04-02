@@ -91,30 +91,8 @@ export function useMultiRowState({
                 (v) => v === "" || v === null || v === undefined,
             );
 
-            if (isEmpty || !isChanged) {
-                const isStillFocused = focusedRowIdRef.current === rowId;
-                if (!isStillFocused && rowState.linkedId) {
-                    setRowStates((prev) =>
-                        prev.map((row) => {
-                            if (row.id !== rowId) return row;
-                            const index = prev.findIndex((s) => s.id === rowId);
-                            const defaults =
-                                typeof defaultValues === "function"
-                                    ? defaultValues(index)
-                                    : { ...defaultValues };
-                            return {
-                                ...row,
-                                values: defaults,
-                                errors: {},
-                                linkedId: undefined,
-                                isSaving: false,
-                                lastSavedValues: defaults,
-                            };
-                        }),
-                    );
-                }
-                return;
-            }
+            // Nothing to save — row is empty or unchanged
+            if (isEmpty || !isChanged) return;
 
             if (validate) {
                 const result = validate(rowState.values);
@@ -139,30 +117,11 @@ export function useMultiRowState({
             try {
                 const resultId = await onSave?.(valuesToSave, rowId, rowState.linkedId);
 
+                // Row stays in place with saved values — deduplication in body
+                // removes it when the refetched data row appears
                 setRowStates((prev) =>
                     prev.map((row) => {
                         if (row.id !== rowId) return row;
-
-                        const isStillFocused = focusedRowIdRef.current === rowId;
-                        const isNavigating = navigatingFromRowRef.current === rowId;
-
-                        if (resultId && !isStillFocused && !isNavigating) {
-                            const index = prev.findIndex((s) => s.id === rowId);
-                            const defaults =
-                                typeof defaultValues === "function"
-                                    ? defaultValues(index)
-                                    : { ...defaultValues };
-
-                            return {
-                                ...row,
-                                values: defaults,
-                                errors: {},
-                                linkedId: undefined,
-                                isSaving: false,
-                                lastSavedValues: defaults,
-                            };
-                        }
-
                         return {
                             ...row,
                             linkedId: resultId ?? row.linkedId,
@@ -180,7 +139,7 @@ export function useMultiRowState({
                 savingRowsRef.current.delete(rowId);
             }
         },
-        [rowStates, validate, onSave, defaultValues, onError],
+        [rowStates, validate, onSave, onError],
     );
 
     const handleFocus = React.useCallback((rowId: string) => {
@@ -227,28 +186,9 @@ export function useMultiRowState({
             if (isEmpty && !rowState.linkedId) return false;
             if (!isChanged && !rowState.linkedId) return false;
 
-            // Has linkedId but no changes → just reset (user is done editing)
-            if (!isChanged && rowState.linkedId) {
-                setRowStates((prev) =>
-                    prev.map((row) => {
-                        if (row.id !== rowId) return row;
-                        const index = prev.findIndex((s) => s.id === rowId);
-                        const defaults =
-                            typeof defaultValues === "function"
-                                ? defaultValues(index)
-                                : { ...defaultValues };
-                        return {
-                            ...row,
-                            values: defaults,
-                            errors: {},
-                            linkedId: undefined,
-                            isSaving: false,
-                            lastSavedValues: defaults,
-                        };
-                    }),
-                );
-                return true;
-            }
+            // Has linkedId but no changes → already saved, just signal success
+            // (deduplication will remove this row when refetch brings the data row)
+            if (!isChanged && rowState.linkedId) return true;
 
             if (validate) {
                 const result = validate(rowState.values);
@@ -271,24 +211,19 @@ export function useMultiRowState({
             const valuesToSave = { ...rowState.values };
 
             try {
-                await onSave?.(valuesToSave, rowId, rowState.linkedId);
+                const resultId = await onSave?.(valuesToSave, rowId, rowState.linkedId);
 
-                // Always reset after successful save (Excel-like loop)
+                // Row stays in place with saved values — deduplication in body
+                // removes it when the refetched data row appears.
+                // Focus moves to the next blank row (handled by caller).
                 setRowStates((prev) =>
                     prev.map((row) => {
                         if (row.id !== rowId) return row;
-                        const index = prev.findIndex((s) => s.id === rowId);
-                        const defaults =
-                            typeof defaultValues === "function"
-                                ? defaultValues(index)
-                                : { ...defaultValues };
                         return {
                             ...row,
-                            values: defaults,
-                            errors: {},
-                            linkedId: undefined,
+                            linkedId: resultId ?? row.linkedId,
                             isSaving: false,
-                            lastSavedValues: defaults,
+                            lastSavedValues: valuesToSave,
                         };
                     }),
                 );
@@ -303,7 +238,7 @@ export function useMultiRowState({
                 savingRowsRef.current.delete(rowId);
             }
         },
-        [rowStates, validate, onSave, defaultValues, onError],
+        [rowStates, validate, onSave, onError],
     );
 
     const handleBlur = React.useCallback(
@@ -322,14 +257,9 @@ export function useMultiRowState({
                     focusedRowIdRef.current !== null && focusedRowIdRef.current !== rowId;
 
                 if (focusMovedToAnotherNewRow && !isNavigating) {
-                    void handleSaveAndLoop(rowId).then((saved) => {
-                        if (saved) {
-                            const rowEl = document.getElementById(rowId);
-                            const firstInput =
-                                rowEl?.querySelector<HTMLElement>("input, button, select");
-                            firstInput?.focus();
-                        }
-                    });
+                    // Save current row; focus already moved to the target row,
+                    // no need to refocus — deduplication handles removal on refetch
+                    void handleSaveAndLoop(rowId);
                 } else if (focusedRowIdRef.current !== rowId && !isNavigating) {
                     void handleSave(rowId);
                 }

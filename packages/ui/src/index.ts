@@ -1,9 +1,4 @@
-export {
-    DataTable,
-    DataTableMultiNewRows,
-    DataTableNewRow,
-    DataTableSkeleton,
-} from "./components/data-table/index.ts";
+export { DataTable, DataTableSkeleton } from "./components/data-table/index.ts";
 export type {
     DataTableColumnMeta,
     DataTableProps,

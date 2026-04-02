@@ -6,20 +6,86 @@ import { Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
+import { Checkbox } from "../ui/checkbox";
 import { TableBody, TableCell, TableRow } from "../ui/table";
+import { DataTableCellInput, GHOST_INPUT_CLASS, toDisplayString } from "./data-table-cell-input";
 import { DataTableEditableCell } from "./data-table-editable-cell";
-import { DataTableMultiNewRows } from "./data-table-multi-new-rows";
-import { DataTableNewRow } from "./data-table-new-row";
 
 import type { NewRowState } from "./types";
 import type { ColumnDef, Row, Table as TanStackTable } from "@tanstack/react-table";
 
 const VIRTUAL_ROW_HEIGHT_PX = 36;
 const VIRTUALIZER_OVERSCAN = 20;
-// eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional no-op for optional callbacks
-const NOOP = () => {};
+/** How close to the end of new rows to trigger lazy loading (virtual mode) */
+const LAZY_LOAD_THRESHOLD = 5;
 
 const DRAG_SUM_HIGHLIGHT = "bg-drag-sum ring-1 ring-inset ring-drag-sum-border";
+
+/** Check if blur target is a portal element (combobox/select/datepicker dropdown) */
+function isBlurToPortal(e: React.FocusEvent): boolean {
+    const target = e.relatedTarget as Element | null;
+    if (!target) return true;
+    if (e.currentTarget.contains(target)) return true;
+    if (target.closest?.("[data-radix-popper-content-wrapper]")) return true;
+    if (target.closest?.('[role="listbox"]')) return true;
+    if (target.closest?.('[role="dialog"]')) return true;
+    return false;
+}
+
+// ── Unified row list types ──────────────────────────────────────
+
+type UnifiedRow<TData> =
+    | { kind: "data"; row: Row<TData>; rowIndex: number }
+    | { kind: "new-single"; rowIndex: number }
+    | { kind: "new-multi"; state: NewRowState; stateIndex: number; rowIndex: number };
+
+function buildUnifiedRows<TData>(
+    dataRows: Row<TData>[],
+    position: "start" | "end",
+    newRowMode: "none" | "single" | "multi",
+    visibleNewRows: NewRowState[],
+): UnifiedRow<TData>[] {
+    if (newRowMode === "none") {
+        return dataRows.map((row, i) => ({ kind: "data", row, rowIndex: i }));
+    }
+
+    const newItems: UnifiedRow<TData>[] =
+        newRowMode === "single"
+            ? [{ kind: "new-single", rowIndex: 0 }]
+            : visibleNewRows.map((state, i) => ({
+                  kind: "new-multi",
+                  state,
+                  stateIndex: i,
+                  rowIndex: i,
+              }));
+
+    if (position === "start") {
+        // New rows first, then data rows with offset indices
+        const offset = newItems.length;
+        const dataItems: UnifiedRow<TData>[] = dataRows.map((row, i) => ({
+            kind: "data",
+            row,
+            rowIndex: offset + i,
+        }));
+        // Fix new row indices (already correct: 0..M-1)
+        return [...newItems, ...dataItems];
+    }
+
+    // position === "end": data rows first, then new rows with offset
+    const dataItems: UnifiedRow<TData>[] = dataRows.map((row, i) => ({
+        kind: "data",
+        row,
+        rowIndex: i,
+    }));
+    const offset = dataRows.length;
+    const reindexed: UnifiedRow<TData>[] = newItems.map((item, i) => ({
+        ...item,
+        rowIndex: offset + i,
+    }));
+    return [...dataItems, ...reindexed];
+}
+
+// ── Component ───────────────────────────────────────────────────
 
 interface DataTableBodyProps<TData> {
     table: TanStackTable<TData>;
@@ -50,7 +116,6 @@ interface DataTableBodyProps<TData> {
     onMultiRowFocusNext?: (rowId: string) => void;
     onMultiRowSaveAndLoop?: (rowId: string) => Promise<boolean>;
     onNeedMoreRows?: () => void;
-    multiRowDefaultValues?: Partial<TData> | ((index: number) => Partial<TData>);
     onDragSumChange?: (
         sumInfo: {
             sum: number;
@@ -92,7 +157,6 @@ export function DataTableBody<TData>({
     onMultiRowFocusNext,
     onMultiRowSaveAndLoop,
     onNeedMoreRows,
-    multiRowDefaultValues,
     onDragSumChange,
     onDragSelectionChange,
     dragSumFilter,
@@ -102,13 +166,86 @@ export function DataTableBody<TData>({
     const rows = table.getRowModel().rows;
     const parentRef = React.useRef<HTMLTableSectionElement>(null);
 
+    // ── Single new row state (uncontrolled) ─────────────────────
+    const [singleNewRowValues, setSingleNewRowValues] = React.useState<Record<string, unknown>>(
+        () => {
+            if (!enableNewRow || enableMultipleNewRows) return {};
+            const initial: Record<string, unknown> = {};
+            for (const col of columns) {
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                if (key) {
+                    initial[key] = (newRowDefaultValues as Record<string, unknown>)?.[key] ?? "";
+                }
+            }
+            return initial;
+        },
+    );
+    const [singleNewRowErrors, setSingleNewRowErrors] = React.useState<Record<string, string>>({});
+    const singleNewRowInputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
+
+    // ── Multi new row input refs (keyed by row ID) ──────────────
+    const multiRowInputRefs = React.useRef<Map<string, Map<string, HTMLInputElement>>>(new Map());
+
+    // ── Deduplication: filter out new rows whose linkedId is already in data ──
+    const visibleNewRows = React.useMemo(() => {
+        if (!enableMultipleNewRows || !multiRowStates.length) return [];
+        const dataIds = new Set(
+            rows.map((r) => (r.original as { id?: unknown }).id).filter(Boolean),
+        );
+        return multiRowStates.filter((r) => !r.linkedId || !dataIds.has(r.linkedId));
+    }, [rows, multiRowStates, enableMultipleNewRows]);
+
+    // ── Unified row list ────────────────────────────────────────
+    const newRowMode = enableMultipleNewRows
+        ? "multi"
+        : enableNewRow && onNewRowSave
+          ? "single"
+          : "none";
+    const position = enableMultipleNewRows ? multiRowPosition : newRowPosition;
+
+    const unifiedRows = React.useMemo(
+        () => buildUnifiedRows(rows, position, newRowMode, visibleNewRows),
+        [rows, position, newRowMode, visibleNewRows],
+    );
+
+    // ── Virtualizer ─────────────────────────────────────────────
     const virtualizer = useVirtualizer({
-        count: isVirtualActive ? rows.length : 0,
+        count: isVirtualActive ? unifiedRows.length : 0,
         getScrollElement: () => scrollElementProp ?? scrollContainerRef?.current ?? null,
         estimateSize: () => VIRTUAL_ROW_HEIGHT_PX,
         overscan: VIRTUALIZER_OVERSCAN,
         enabled: !!isVirtualActive,
     });
+
+    // ── Lazy loading (virtual mode): trigger when near end ──────
+    const range = virtualizer.range;
+    React.useEffect(() => {
+        if (!isVirtualActive || !enableMultipleNewRows || !onNeedMoreRows || !range) return;
+        if (range.endIndex >= unifiedRows.length - LAZY_LOAD_THRESHOLD) {
+            onNeedMoreRows();
+        }
+    }, [range, unifiedRows.length, onNeedMoreRows, isVirtualActive, enableMultipleNewRows]);
+
+    // ── Lazy loading (non-virtual mode): IntersectionObserver sentinel ──
+    const sentinelRef = React.useRef<HTMLTableRowElement>(null);
+    React.useEffect(() => {
+        if (isVirtualActive || !enableMultipleNewRows || !onNeedMoreRows) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    onNeedMoreRows();
+                }
+            },
+            { rootMargin: "200px" },
+        );
+
+        if (sentinelRef.current) {
+            observer.observe(sentinelRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [onNeedMoreRows, isVirtualActive, enableMultipleNewRows]);
 
     // ── Imperative drag-sum (no React state → no re-renders during drag) ──
     const dragRef = React.useRef<{
@@ -265,6 +402,7 @@ export function DataTableBody<TData>({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- commitDragSum uses refs, stable across renders
     }, [rows]);
 
+    // ── Data row cell renderer ──────────────────────────────────
     const renderCells = (
         row: Row<TData>,
         rowIndex: number,
@@ -382,152 +520,285 @@ export function DataTableBody<TData>({
         });
     };
 
-    // Memoize new rows so drag-sum state changes don't re-render 50+ ghost rows
-    const defaultValuesFactory = React.useCallback(
-        (index: number) =>
-            typeof multiRowDefaultValues === "function"
-                ? multiRowDefaultValues(index)
-                : { ...multiRowDefaultValues },
-        [multiRowDefaultValues],
+    // ── New row keyboard handler factory ─────────────────────────
+    const editableColumns = React.useMemo(
+        () => columns.filter((col) => col.meta?.editable),
+        [columns],
     );
 
-    const singleNewRow = React.useMemo(
-        () =>
-            enableNewRow && !enableMultipleNewRows && onNewRowSave ? (
-                <DataTableNewRow
-                    columns={columns}
-                    onSave={onNewRowSave}
-                    onChange={onNewRowChange}
-                    defaultValues={newRowDefaultValues}
-                    enableRowSelection={enableRowSelection}
-                    rowIndex={rows.length}
-                />
-            ) : null,
-        [
-            rows.length,
-            columns,
-            enableNewRow,
-            enableMultipleNewRows,
-            onNewRowSave,
-            onNewRowChange,
-            newRowDefaultValues,
-            enableRowSelection,
-        ],
+    const makeNewRowKeyDown = (
+        _rowId: string,
+        colIndex: number,
+        inputRefsMap: Map<string, HTMLInputElement>,
+        saveFn: () => void,
+        saveAndLoopFn?: () => Promise<boolean>,
+        focusNextRowFn?: () => void,
+    ) => {
+        return (e: React.KeyboardEvent) => {
+            if (e.key === "Escape") {
+                e.preventDefault();
+                (e.target as HTMLInputElement)?.blur();
+                return;
+            }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                if (colIndex === editableColumns.length - 1) {
+                    // Last editable column → save and move to next row
+                    if (saveAndLoopFn) {
+                        void saveAndLoopFn().then(() => focusNextRowFn?.());
+                    } else {
+                        saveFn();
+                        focusNextRowFn?.();
+                    }
+                } else {
+                    const nextCol = editableColumns[colIndex + 1];
+                    const nextKey =
+                        nextCol &&
+                        ("accessorKey" in nextCol ? String(nextCol.accessorKey) : nextCol.id);
+                    const nextInput = nextKey ? inputRefsMap.get(nextKey) : null;
+                    if (nextInput) nextInput.focus();
+                    else saveFn();
+                }
+            } else if (e.key === "Tab" && !e.shiftKey && colIndex === editableColumns.length - 1) {
+                e.preventDefault();
+                // Last column Tab → save and move to next row
+                if (saveAndLoopFn) {
+                    void saveAndLoopFn().then(() => focusNextRowFn?.());
+                } else if (focusNextRowFn) {
+                    saveFn();
+                    focusNextRowFn();
+                }
+            }
+        };
+    };
+
+    // ── Single new row save handler ─────────────────────────────
+    const handleSingleNewRowSave = React.useCallback(
+        (currentValues: Record<string, unknown> = singleNewRowValues) => {
+            // Validate
+            const newErrors: Record<string, string> = {};
+            let hasError = false;
+            for (const col of editableColumns) {
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                if (!key) continue;
+                const meta = col.meta;
+                if (meta?.validationSchema) {
+                    const result = meta.validationSchema.safeParse(currentValues[key]);
+                    if (!result.success) {
+                        newErrors[key] = result.error.issues[0]?.message ?? "Invalid";
+                        hasError = true;
+                    }
+                }
+            }
+            if (hasError) {
+                setSingleNewRowErrors(newErrors);
+                return;
+            }
+            setSingleNewRowErrors({});
+            onNewRowSave?.(currentValues);
+            // Reset
+            const reset: Record<string, unknown> = {};
+            for (const col of columns) {
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                if (key) reset[key] = "";
+            }
+            setSingleNewRowValues(reset);
+        },
+        [singleNewRowValues, editableColumns, columns, onNewRowSave],
     );
 
-    const multiNewRows = React.useMemo(
-        () =>
-            enableMultipleNewRows && onMultiRowSave && onMultiRowChange ? (
-                <DataTableMultiNewRows
-                    columns={columns}
-                    rowStates={multiRowStates}
-                    onRowChange={onMultiRowChange}
-                    onRowSave={onMultiRowSave}
-                    onRowFocus={onMultiRowFocus}
-                    onRowBlur={onMultiRowBlur}
-                    onRowFocusNext={onMultiRowFocusNext}
-                    onRowSaveAndLoop={onMultiRowSaveAndLoop}
-                    enableRowSelection={enableRowSelection}
-                    defaultValuesFactory={defaultValuesFactory}
-                    onNeedMoreRows={onNeedMoreRows ?? NOOP}
-                    dataRowCount={rows.length}
-                />
-            ) : null,
-        [
-            rows.length,
-            columns,
-            enableMultipleNewRows,
-            multiRowStates,
-            onMultiRowChange,
-            onMultiRowSave,
-            onMultiRowFocus,
-            onMultiRowBlur,
-            onMultiRowFocusNext,
-            onMultiRowSaveAndLoop,
-            enableRowSelection,
-            defaultValuesFactory,
-            onNeedMoreRows,
-        ],
-    );
+    // ── Multi new row cell renderer ─────────────────────────────
+    const renderMultiNewRowCells = (state: NewRowState, _stateIndex: number, rowIndex: number) => {
+        let editableIndex = 0;
 
-    const newRows = enableMultipleNewRows ? multiNewRows : singleNewRow;
-    const position = enableMultipleNewRows ? multiRowPosition : newRowPosition;
+        // Ensure refs map exists for this row
+        if (!multiRowInputRefs.current.has(state.id)) {
+            multiRowInputRefs.current.set(state.id, new Map());
+        }
+        const inputRefsMap = multiRowInputRefs.current.get(state.id)!;
 
-    if (rows.length === 0 && !enableNewRow && !enableMultipleNewRows) {
-        return (
-            <TableBody className={"select-none"}>
-                {position === "start" && newRows}
-                <TableRow>
+        return columns.map((col, colIndex) => {
+            const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+            if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
+
+            const meta = col.meta;
+            if (!meta?.editable) {
+                const val = state.values[key];
+                const displayVal =
+                    typeof val === "number"
+                        ? val.toLocaleString()
+                        : val !== undefined && val !== ""
+                          ? toDisplayString(val)
+                          : "";
+
+                return (
                     <TableCell
-                        colSpan={columns.length + (enableRowSelection ? 1 : 0)}
-                        className="h-24 text-center"
-                    >
-                        {translations?.noResults ?? "No results."}
-                    </TableCell>
-                </TableRow>
-                {position === "end" && newRows}
-            </TableBody>
-        );
-    }
-
-    // Virtualized mode — use padding to maintain scroll height while only
-    // rendering visible rows. Keeps normal <table> layout (no display:grid).
-    if (isVirtualActive) {
-        const virtualRows = virtualizer.getVirtualItems();
-        const totalSize = virtualizer.getTotalSize();
-        const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
-        const paddingBottom =
-            virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
-
-        return (
-            <TableBody ref={parentRef} className={"select-none"}>
-                {position === "start" && newRows}
-                {paddingTop > 0 && (
-                    <tr>
-                        <td style={{ height: paddingTop, padding: 0 }} />
-                    </tr>
-                )}
-                {virtualRows.map((virtualRow) => {
-                    const row = rows[virtualRow.index];
-                    return (
-                        <TableRow
-                            key={row.id}
-                            data-state={row.getIsSelected() ? "selected" : undefined}
-                            className={cn(onRowClick ? "cursor-pointer" : "")}
-                            onClick={() => onRowClick?.(row.original)}
-                        >
-                            {renderCells(row, virtualRow.index)}
-                        </TableRow>
-                    );
-                })}
-                {paddingBottom > 0 && (
-                    <tr>
-                        <td style={{ height: paddingBottom, padding: 0 }} />
-                    </tr>
-                )}
-                {position === "end" && newRows}
-            </TableBody>
-        );
-    }
-
-    // Show-all / paginated mode — same rendering, only virtualized differs
-    return (
-        <TableBody className={"select-none"}>
-            {position === "start" && newRows}
-            {rows.map((row, index) =>
-                enableInfiniteScroll ? (
-                    <tr
-                        key={row.id}
-                        data-state={row.getIsSelected() ? "selected" : undefined}
+                        key={key}
+                        data-row-index={rowIndex}
+                        data-column-id={key}
+                        tabIndex={-1}
                         className={cn(
-                            "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
-                            onRowClick ? "cursor-pointer" : "",
+                            "bg-muted text-sm",
+                            meta?.align === "right" && "text-right",
+                            meta?.align === "center" && "text-center",
+                            "text-muted-foreground",
+                            meta?.cellClassName,
                         )}
-                        onClick={() => onRowClick?.(row.original)}
                     >
-                        {renderCells(row, index)}
-                    </tr>
-                ) : (
+                        {state.isSaving && colIndex === 0 ? (
+                            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                        ) : (
+                            displayVal
+                        )}
+                    </TableCell>
+                );
+            }
+
+            const currentEditableIndex = editableIndex++;
+            const error = state.errors[key];
+
+            return (
+                <TableCell
+                    key={key}
+                    data-row-index={rowIndex}
+                    data-column-id={key}
+                    tabIndex={-1}
+                    className={cn("relative", meta?.cellClassName)}
+                >
+                    <DataTableCellInput
+                        meta={meta}
+                        value={state.values[key]}
+                        error={error}
+                        onChange={(newValue) => {
+                            onMultiRowChange?.(state.id, {
+                                ...state.values,
+                                [key]: newValue,
+                            });
+                        }}
+                        onKeyDown={makeNewRowKeyDown(
+                            state.id,
+                            currentEditableIndex,
+                            inputRefsMap,
+                            () => onMultiRowSave?.(state.id),
+                            onMultiRowSaveAndLoop
+                                ? () => onMultiRowSaveAndLoop(state.id)
+                                : undefined,
+                            () => onMultiRowFocusNext?.(state.id),
+                        )}
+                        inputRef={(el) => {
+                            if (el) inputRefsMap.set(key, el);
+                        }}
+                        className={GHOST_INPUT_CLASS}
+                    />
+                    {error && (
+                        <motion.p
+                            initial={{ opacity: 0, x: 0 }}
+                            animate={{ opacity: 1, x: [0, -4, 4, -4, 0] }}
+                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                            className="text-destructive absolute -bottom-1 left-2 text-xs"
+                        >
+                            {error}
+                        </motion.p>
+                    )}
+                </TableCell>
+            );
+        });
+    };
+
+    // ── Single new row cell renderer ────────────────────────────
+    const renderSingleNewRowCells = (rowIndex: number) => {
+        let editableIndex = 0;
+
+        return columns.map((col, colIndex) => {
+            const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+            if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
+
+            const meta = col.meta;
+            if (!meta?.editable) {
+                const val = singleNewRowValues[key];
+                const displayVal =
+                    typeof val === "number"
+                        ? val.toLocaleString()
+                        : val !== undefined && val !== ""
+                          ? toDisplayString(val)
+                          : "";
+
+                return (
+                    <TableCell
+                        key={key}
+                        data-row-index={rowIndex}
+                        data-column-id={key}
+                        tabIndex={-1}
+                        className={cn(
+                            "bg-muted text-sm",
+                            meta?.align === "right" && "text-right",
+                            meta?.align === "center" && "text-center",
+                            "text-muted-foreground",
+                            meta?.cellClassName,
+                        )}
+                    >
+                        {displayVal}
+                    </TableCell>
+                );
+            }
+
+            const currentEditableIndex = editableIndex++;
+            const error = singleNewRowErrors[key];
+
+            return (
+                <TableCell
+                    key={key}
+                    data-row-index={rowIndex}
+                    data-column-id={key}
+                    tabIndex={-1}
+                    className={cn("relative", meta?.cellClassName)}
+                >
+                    <DataTableCellInput
+                        meta={meta}
+                        value={singleNewRowValues[key]}
+                        error={error}
+                        onChange={(newValue) => {
+                            const updated = { ...singleNewRowValues, [key]: newValue };
+                            setSingleNewRowValues(updated);
+                            setSingleNewRowErrors((prev) => {
+                                const next = { ...prev };
+                                delete next[key];
+                                return next;
+                            });
+                            onNewRowChange?.(updated);
+                        }}
+                        onKeyDown={makeNewRowKeyDown(
+                            "new-row",
+                            currentEditableIndex,
+                            singleNewRowInputRefs.current,
+                            () => handleSingleNewRowSave(),
+                        )}
+                        inputRef={(el) => {
+                            if (el) singleNewRowInputRefs.current.set(key, el);
+                        }}
+                        className={GHOST_INPUT_CLASS}
+                    />
+                    {error && (
+                        <motion.p
+                            initial={{ opacity: 0, x: 0 }}
+                            animate={{ opacity: 1, x: [0, -4, 4, -4, 0] }}
+                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                            className="text-destructive absolute -bottom-1 left-2 text-xs"
+                        >
+                            {error}
+                        </motion.p>
+                    )}
+                </TableCell>
+            );
+        });
+    };
+
+    // ── Render a unified row by kind ────────────────────────────
+    const renderUnifiedRow = (item: UnifiedRow<TData>, useMotion: boolean) => {
+        if (item.kind === "data") {
+            const { row, rowIndex } = item;
+            if (useMotion) {
+                return (
                     <motion.tr
                         key={row.id}
                         initial={{ opacity: 0, y: -4 }}
@@ -540,11 +811,140 @@ export function DataTableBody<TData>({
                         )}
                         onClick={() => onRowClick?.(row.original)}
                     >
-                        {renderCells(row, index)}
+                        {renderCells(row, rowIndex)}
                     </motion.tr>
-                ),
+                );
+            }
+            return (
+                <tr
+                    key={row.id}
+                    data-state={row.getIsSelected() ? "selected" : undefined}
+                    className={cn(
+                        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+                        onRowClick ? "cursor-pointer" : "",
+                    )}
+                    onClick={() => onRowClick?.(row.original)}
+                >
+                    {renderCells(row, rowIndex)}
+                </tr>
+            );
+        }
+
+        if (item.kind === "new-multi") {
+            const { state, stateIndex, rowIndex } = item;
+            return (
+                <tr
+                    key={state.id}
+                    id={state.id}
+                    data-testid="new-row"
+                    data-row-id={state.id}
+                    onFocus={() => onMultiRowFocus?.(state.id)}
+                    onBlur={(e) => {
+                        if (!isBlurToPortal(e)) {
+                            setTimeout(() => onMultiRowBlur?.(state.id), 200);
+                        }
+                    }}
+                    className="border-b"
+                >
+                    {enableRowSelection && (
+                        <TableCell>
+                            <Checkbox />
+                        </TableCell>
+                    )}
+                    {renderMultiNewRowCells(state, stateIndex, rowIndex)}
+                </tr>
+            );
+        }
+
+        // kind === "new-single"
+        return (
+            <tr
+                key="new-row"
+                id="new-row"
+                data-testid="new-row"
+                data-row-id="new-row"
+                className="border-b"
+            >
+                {enableRowSelection && (
+                    <TableCell>
+                        <Checkbox />
+                    </TableCell>
+                )}
+                {renderSingleNewRowCells(item.rowIndex)}
+            </tr>
+        );
+    };
+
+    // ── Empty state ─────────────────────────────────────────────
+    if (rows.length === 0 && newRowMode === "none") {
+        return (
+            <TableBody className={"select-none"}>
+                <TableRow>
+                    <TableCell
+                        colSpan={columns.length + (enableRowSelection ? 1 : 0)}
+                        className="h-24 text-center"
+                    >
+                        {translations?.noResults ?? "No results."}
+                    </TableCell>
+                </TableRow>
+            </TableBody>
+        );
+    }
+
+    // ── Virtualized mode ────────────────────────────────────────
+    if (isVirtualActive) {
+        const virtualRows = virtualizer.getVirtualItems();
+        const totalSize = virtualizer.getTotalSize();
+        const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+        const paddingBottom =
+            virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
+
+        return (
+            <TableBody ref={parentRef} className={"select-none"}>
+                {paddingTop > 0 && (
+                    <tr>
+                        <td style={{ height: paddingTop, padding: 0 }} />
+                    </tr>
+                )}
+                {virtualRows.map((virtualRow) => {
+                    const item = unifiedRows[virtualRow.index];
+                    if (!item) return null;
+                    if (item.kind === "data") {
+                        return (
+                            <TableRow
+                                key={item.row.id}
+                                data-state={item.row.getIsSelected() ? "selected" : undefined}
+                                className={cn(onRowClick ? "cursor-pointer" : "")}
+                                onClick={() => onRowClick?.(item.row.original)}
+                            >
+                                {renderCells(item.row, item.rowIndex)}
+                            </TableRow>
+                        );
+                    }
+                    return renderUnifiedRow(item, false);
+                })}
+                {paddingBottom > 0 && (
+                    <tr>
+                        <td style={{ height: paddingBottom, padding: 0 }} />
+                    </tr>
+                )}
+            </TableBody>
+        );
+    }
+
+    // ── Non-virtual mode ────────────────────────────────────────
+    return (
+        <TableBody className={"select-none"}>
+            {unifiedRows.map((item) => renderUnifiedRow(item, !enableInfiniteScroll))}
+            {enableMultipleNewRows && !isVirtualActive && (
+                <tr
+                    ref={sentinelRef}
+                    style={{ height: 1, visibility: "hidden" }}
+                    aria-hidden="true"
+                >
+                    <td />
+                </tr>
             )}
-            {position === "end" && newRows}
         </TableBody>
     );
 }

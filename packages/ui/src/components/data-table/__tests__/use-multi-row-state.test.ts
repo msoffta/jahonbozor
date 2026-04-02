@@ -500,7 +500,7 @@ describe("useMultiRowState", () => {
             expect(onSave).toHaveBeenCalledWith({ name: "valid" }, rowId, undefined);
         });
 
-        test("resets row to defaults after successful save when not focused", async () => {
+        test("keeps row values and linkedId after successful save (deduplication handles removal)", async () => {
             const onSave = vi.fn().mockResolvedValue("saved-id-123");
 
             const { result } = await renderMultiRowHook({
@@ -519,10 +519,17 @@ describe("useMultiRowState", () => {
                 await result.current.handleSave(rowId);
             });
 
-            // Row should be reset to defaults since it returned an ID and was not focused
-            expect(result.current.rowStates[0].values).toEqual({ name: "", quantity: 0 });
-            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+            // Row stays in place with saved values — body deduplication removes it on refetch
+            expect(result.current.rowStates[0].values).toEqual({
+                name: "Saved Product",
+                quantity: 10,
+            });
+            expect(result.current.rowStates[0].linkedId).toBe("saved-id-123");
             expect(result.current.rowStates[0].isSaving).toBe(false);
+            expect(result.current.rowStates[0].lastSavedValues).toEqual({
+                name: "Saved Product",
+                quantity: 10,
+            });
         });
 
         test("keeps linkedId when row is still focused after save", async () => {
@@ -889,8 +896,9 @@ describe("useMultiRowState", () => {
                 await vi.advanceTimersByTimeAsync(0);
             });
 
-            // The row should be reset since focus was cleared and save returned an ID
-            expect(result.current.rowStates[0].values).toEqual({ name: "" });
+            // Row keeps its values and linkedId — deduplication handles removal
+            expect(result.current.rowStates[0].values).toEqual({ name: "blur-clear" });
+            expect(result.current.rowStates[0].linkedId).toBe("save-id");
         });
 
         test("triggers save when another row takes focus during delay", async () => {
@@ -1001,7 +1009,7 @@ describe("useMultiRowState", () => {
 
     // ── handleSaveAndLoop ────────────────────────────────────────
     describe("handleSaveAndLoop", () => {
-        test("saves and resets row to defaults on success", async () => {
+        test("saves row and keeps values with linkedId on success (deduplication handles removal)", async () => {
             const onSave = vi.fn().mockResolvedValue("created-id");
 
             const { result } = await renderMultiRowHook({
@@ -1027,15 +1035,21 @@ describe("useMultiRowState", () => {
                 rowId,
                 undefined,
             );
-            // Row should be reset to defaults
-            expect(result.current.rowStates[0].values).toEqual({ name: "", quantity: 0 });
-            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+            // Row stays in place — deduplication removes it on refetch
+            expect(result.current.rowStates[0].values).toEqual({
+                name: "Product A",
+                quantity: 5,
+            });
+            expect(result.current.rowStates[0].linkedId).toBe("created-id");
             expect(result.current.rowStates[0].errors).toEqual({});
             expect(result.current.rowStates[0].isSaving).toBe(false);
-            expect(result.current.rowStates[0].lastSavedValues).toEqual({ name: "", quantity: 0 });
+            expect(result.current.rowStates[0].lastSavedValues).toEqual({
+                name: "Product A",
+                quantity: 5,
+            });
         });
 
-        test("resets row even when it is focused", async () => {
+        test("keeps row values even when focused", async () => {
             const onSave = vi.fn().mockResolvedValue("id-123");
 
             const { result } = await renderMultiRowHook({
@@ -1046,7 +1060,6 @@ describe("useMultiRowState", () => {
 
             const rowId = result.current.rowStates[0].id;
 
-            // Focus the row (handleSave would NOT reset in this case)
             await act(async () => {
                 result.current.handleFocus(rowId);
             });
@@ -1059,13 +1072,13 @@ describe("useMultiRowState", () => {
                 saved = await result.current.handleSaveAndLoop(rowId);
             });
 
-            // Unlike handleSave, handleSaveAndLoop ALWAYS resets on success
+            // Row keeps values + linkedId — same as handleSave
             expect(saved!).toBe(true);
-            expect(result.current.rowStates[0].values).toEqual({ name: "" });
-            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+            expect(result.current.rowStates[0].values).toEqual({ name: "focused-item" });
+            expect(result.current.rowStates[0].linkedId).toBe("id-123");
         });
 
-        test("resets row with linkedId and no changes", async () => {
+        test("returns true for unchanged row with linkedId (already saved)", async () => {
             const onSave = vi.fn().mockResolvedValue("linked-42");
 
             const { result } = await renderMultiRowHook({
@@ -1076,7 +1089,7 @@ describe("useMultiRowState", () => {
 
             const rowId = result.current.rowStates[0].id;
 
-            // First: save to establish linkedId (via handleSave with focus)
+            // First: save to establish linkedId
             await act(async () => {
                 result.current.handleFocus(rowId);
             });
@@ -1094,10 +1107,10 @@ describe("useMultiRowState", () => {
                 saved = await result.current.handleSaveAndLoop(rowId);
             });
 
-            // Should reset because linkedId exists (user is done with this row)
+            // Returns true (already saved) — row keeps values, deduplication handles removal
             expect(saved!).toBe(true);
-            expect(result.current.rowStates[0].values).toEqual({ name: "" });
-            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+            expect(result.current.rowStates[0].values).toEqual({ name: "saved" });
+            expect(result.current.rowStates[0].linkedId).toBe("linked-42");
         });
 
         test("returns false for empty row", async () => {
@@ -1259,40 +1272,12 @@ describe("useMultiRowState", () => {
                 await result.current.handleSaveAndLoop(row0Id);
             });
 
-            // Row 0 should be reset
-            expect(result.current.rowStates[0].values).toEqual({ name: "default" });
+            // Row 0 keeps saved values (deduplication handles removal)
+            expect(result.current.rowStates[0].values).toEqual({ name: "changed-0" });
             // Row 1 should be untouched
             expect(result.current.rowStates[1].values).toEqual({ name: "changed-1" });
             // Row 2 should be untouched
             expect(result.current.rowStates[2].values).toEqual({ name: "default" });
-        });
-
-        test("uses function defaultValues with correct index on reset", async () => {
-            const defaultValuesFn = vi.fn((index: number) => ({ label: `Row ${index}` }));
-            const onSave = vi.fn().mockResolvedValue("id");
-
-            const { result } = await renderMultiRowHook({
-                initialCount: 3,
-                defaultValues: defaultValuesFn,
-                onSave,
-            });
-
-            // Save and loop row at index 1
-            const row1Id = result.current.rowStates[1].id;
-
-            await act(async () => {
-                result.current.handleChange(row1Id, { label: "edited" });
-            });
-
-            defaultValuesFn.mockClear();
-
-            await act(async () => {
-                await result.current.handleSaveAndLoop(row1Id);
-            });
-
-            // Should have called defaultValues with index 1 for the reset
-            expect(defaultValuesFn).toHaveBeenCalledWith(1);
-            expect(result.current.rowStates[1].values).toEqual({ label: "Row 1" });
         });
 
         test("returns false for non-existent row id", async () => {
@@ -1345,14 +1330,17 @@ describe("useMultiRowState", () => {
                 vi.advanceTimersByTime(200);
             });
 
-            // Row 0 should be saved AND reset (saveAndLoop behavior, like Tab)
+            // Row 0 should be saved — values stay, deduplication handles removal
             expect(onSave).toHaveBeenCalledWith(
                 { name: "Product A", quantity: 5 },
                 row0Id,
                 undefined,
             );
-            expect(result.current.rowStates[0].values).toEqual({ name: "", quantity: 0 });
-            expect(result.current.rowStates[0].linkedId).toBeUndefined();
+            expect(result.current.rowStates[0].values).toEqual({
+                name: "Product A",
+                quantity: 5,
+            });
+            expect(result.current.rowStates[0].linkedId).toBe("saved-id");
         });
 
         test("uses regular handleSave when focus leaves all new rows", async () => {
