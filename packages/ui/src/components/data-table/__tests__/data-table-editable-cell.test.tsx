@@ -1,4 +1,4 @@
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -66,7 +66,7 @@ describe("DataTableEditableCell", () => {
             expect(getByDisplayValue("Bob")).toBeDefined();
         });
 
-        test("should save on Enter and call onCellEdit", async () => {
+        test("should save on blur and call onCellEdit", async () => {
             const user = userEvent.setup();
             const { getByDisplayValue } = render(
                 <DataTable
@@ -80,7 +80,7 @@ describe("DataTableEditableCell", () => {
             const input = getByDisplayValue("Alice");
             await user.clear(input);
             await user.type(input, "Updated");
-            await user.keyboard("{Enter}");
+            fireEvent.blur(input);
 
             expect(onCellEdit).toHaveBeenCalledWith(0, "name", "Updated");
         });
@@ -165,7 +165,7 @@ describe("DataTableEditableCell", () => {
             const input = container.querySelector("input[type='number']")!;
             await user.clear(input);
             await user.type(input, "3000");
-            await user.keyboard("{Enter}");
+            fireEvent.blur(input);
 
             expect(onCellEdit).toHaveBeenCalledWith(0, "price", 3000);
         });
@@ -306,13 +306,14 @@ describe("DataTableEditableCell", () => {
             const input = getByDisplayValue("Alice");
             await user.clear(input);
             await user.type(input, "AB");
-            await user.keyboard("{Enter}");
+            fireEvent.blur(input);
             expect(queryByText("Min 3 chars")).toBeDefined();
 
             // Fix value and re-submit
+            await user.click(input);
             await user.clear(input);
             await user.type(input, "Valid");
-            await user.keyboard("{Enter}");
+            fireEvent.blur(input);
 
             expect(queryByText("Min 3 chars")).toBeNull();
             expect(onCellEdit).toHaveBeenCalledWith(0, "name", "Valid");

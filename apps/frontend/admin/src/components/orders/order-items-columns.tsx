@@ -82,6 +82,7 @@ export function getOrderItemColumns(
                 align: "left" as const,
                 editable: true,
                 inputType: "currency" as const,
+                skipOnEnter: true,
             },
         },
         {
@@ -107,6 +108,7 @@ export function getOrderItemColumns(
                 enableDragSum: true,
                 editable: true,
                 inputType: "currency" as const,
+                skipOnEnter: true,
             },
         },
         {

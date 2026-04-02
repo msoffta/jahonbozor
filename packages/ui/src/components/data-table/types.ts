@@ -41,6 +41,9 @@ export interface DataTableColumnMeta {
     /** Async search for combobox options — called with debounce when user types */
     onSearchOptions?: (query: string) => Promise<{ label: string; value: string }[]>;
 
+    /** Skip this column in Enter key navigation (e.g. auto-calculated fields like price/total) */
+    skipOnEnter?: boolean;
+
     // DatePicker — show time input (HH:mm) alongside calendar
     showTime?: boolean;
 }

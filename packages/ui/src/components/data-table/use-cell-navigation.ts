@@ -108,6 +108,52 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
             return combobox?.getAttribute("aria-expanded") === "true";
         }
 
+        /**
+         * Focus the next editable cell in horizontal order, skipping cells
+         * marked with `data-skip-on-enter`, wrapping to the next row.
+         *
+         * Focuses directly (no rAF) so the browser's implicit blur on the
+         * previous input carries the correct `relatedTarget`, which lets
+         * row-level blur handlers detect the focus moved to another row
+         * and trigger save.
+         *
+         * Returns true if focus moved, false if there's no next cell.
+         */
+        function advanceToNextEnterCell(currentRow: number, currentCol: string): boolean {
+            const freshCells = getAllCells();
+            const freshRowIndices = getRowIndices(freshCells);
+            const freshColumnIds = getColumnIds(freshCells);
+
+            const enterCells: { row: number; col: string; td: HTMLTableCellElement }[] = [];
+            for (const ri of freshRowIndices) {
+                for (const ci of freshColumnIds) {
+                    const c = getCell(ri, ci);
+                    if (c && findInputIn(c) && !c.hasAttribute("data-skip-on-enter")) {
+                        enterCells.push({ row: ri, col: ci, td: c });
+                    }
+                }
+            }
+
+            const currentIdx = enterCells.findIndex(
+                (c) => c.row === currentRow && c.col === currentCol,
+            );
+            if (currentIdx !== -1 && currentIdx + 1 < enterCells.length) {
+                focusCell(enterCells[currentIdx + 1].td, true);
+                return true;
+            }
+            return false;
+        }
+
+        /** Handle combobox-select custom event — auto-advance after selection */
+        function handleComboboxSelect(e: Event) {
+            const target = e.target as HTMLElement;
+            const td = target.closest<HTMLTableCellElement>(`td[${ROW_ATTR}]`);
+            if (!td) return;
+            const cellCoords = getCellCoords(td);
+            if (!cellCoords) return;
+            advanceToNextEnterCell(cellCoords.row, cellCoords.col);
+        }
+
         function handleKeyDown(e: KeyboardEvent) {
             const target = e.target as HTMLElement;
             const td = target.closest<HTMLTableCellElement>(`td[${ROW_ATTR}]`);
@@ -247,18 +293,17 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
                     e.preventDefault();
 
                     if (input) {
-                        // Already editing → save and move down
-                        input.blur();
-                        if (rowPos < rowIndices.length - 1) {
-                            const targetTd = getCell(rowIndices[rowPos + 1], coords.col);
-                            if (targetTd) {
-                                requestAnimationFrame(() => focusCell(targetTd));
-                            }
+                        // Focus next cell directly — browser auto-blurs the current
+                        // input with relatedTarget pointing to the new cell, which
+                        // lets row-level blur handlers detect cross-row navigation
+                        // and trigger save.
+                        if (!advanceToNextEnterCell(coords.row, coords.col)) {
+                            input.blur(); // No next cell — just blur
                         }
+                        e.stopImmediatePropagation();
                     } else {
                         // Cursor on <td> → enter edit mode if cell has input
                         focusCell(td, true);
-                        // Stop propagation so Enter doesn't reach the newly focused combobox
                         e.stopImmediatePropagation();
                     }
                     break;
@@ -305,6 +350,10 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
         }
 
         container.addEventListener("keydown", handleKeyDown, true);
-        return () => container.removeEventListener("keydown", handleKeyDown, true);
+        container.addEventListener("combobox-select", handleComboboxSelect);
+        return () => {
+            container.removeEventListener("keydown", handleKeyDown, true);
+            container.removeEventListener("combobox-select", handleComboboxSelect);
+        };
     }, [enabled, containerRef]);
 }

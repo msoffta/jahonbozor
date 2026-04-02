@@ -44,7 +44,7 @@ describe("DataTableCombobox", () => {
         expect(getByPlaceholderText("Search...")).toBeDefined();
     });
 
-    test("should call onChange when typing", async () => {
+    test("should not call onChange during typing (only on selection)", async () => {
         const user = userEvent.setup();
         const { getByRole } = render(
             <DataTableCombobox
@@ -58,7 +58,8 @@ describe("DataTableCombobox", () => {
         const input = getByRole("combobox");
         await user.type(input, "App");
 
-        expect(onChange).toHaveBeenCalled();
+        // onChange is not called during typing — only on explicit select
+        expect(onChange).not.toHaveBeenCalled();
     });
 
     test("should show dropdown when typing", async () => {

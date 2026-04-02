@@ -8,9 +8,6 @@ import { DataTableCellInput, GHOST_INPUT_CLASS, toDisplayString } from "./data-t
 
 import type { CellContext } from "@tanstack/react-table";
 
-/** Auto-save debounce delay for editable cells */
-const AUTO_SAVE_DEBOUNCE_MS = 500;
-
 interface DataTableEditableCellProps<TData> {
     cell: CellContext<TData, unknown>;
     enableEditing?: boolean;
@@ -32,16 +29,11 @@ export function DataTableEditableCell<TData>({
     const [value, setValue] = React.useState(editValue);
     const [error, setError] = React.useState<string | null>(null);
     const inputRef = React.useRef<HTMLInputElement>(null);
-    const hasMountedRef = React.useRef(false);
     const cancellingRef = React.useRef(false);
 
     React.useEffect(() => {
         setValue(meta?.editValueAccessor ? meta.editValueAccessor(cell.row.original) : rawValue);
     }, [rawValue, meta, cell.row.original]);
-
-    React.useEffect(() => {
-        hasMountedRef.current = true;
-    }, []);
 
     const handleSave = React.useCallback(
         (currentValue: unknown = value) => {
@@ -68,17 +60,6 @@ export function DataTableEditableCell<TData>({
         [value, editValue, meta, cell, onCellEdit],
     );
 
-    // Auto-save effect — fires when value changes (not on mount)
-    React.useEffect(() => {
-        if (!hasMountedRef.current || value === editValue) return;
-
-        const timer = setTimeout(() => {
-            handleSave(value);
-        }, AUTO_SAVE_DEBOUNCE_MS);
-
-        return () => clearTimeout(timer);
-    }, [value, editValue, handleSave]);
-
     const handleCancel = () => {
         cancellingRef.current = true;
         setValue(editValue);
@@ -90,11 +71,9 @@ export function DataTableEditableCell<TData>({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            handleSave(value);
-            inputRef.current?.blur();
-        } else if (e.key === "Escape") {
+        // Enter navigation handled by use-cell-navigation.ts (capture phase).
+        // Blur triggered by that handler already calls handleSave via onBlur.
+        if (e.key === "Escape") {
             e.preventDefault();
             handleCancel();
         }

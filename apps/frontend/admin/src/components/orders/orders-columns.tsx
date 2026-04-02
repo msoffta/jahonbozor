@@ -122,6 +122,7 @@ export function getOrderColumns(
                     align: "left" as const,
                     editable: true,
                     inputType: "currency" as const,
+                    skipOnEnter: true,
                 },
             },
             {
@@ -151,6 +152,7 @@ export function getOrderColumns(
                     enableDragSum: true,
                     editable: true,
                     inputType: "currency" as const,
+                    skipOnEnter: true,
                 },
             },
         );
@@ -192,6 +194,7 @@ export function getOrderColumns(
                 editable: showItemColumns,
                 inputType: "select" as const,
                 selectOptions: paymentOptions,
+                skipOnEnter: true,
                 filterVariant: "select" as const,
                 filterOptions: paymentOptions,
             },
@@ -206,6 +209,7 @@ export function getOrderColumns(
                 editable: showItemColumns,
                 inputType: "combobox" as const,
                 selectOptions: userOptions,
+                skipOnEnter: true,
             },
         },
         {
@@ -233,6 +237,7 @@ export function getOrderColumns(
                 flex: 1,
                 editable: showItemColumns,
                 inputType: "text" as const,
+                skipOnEnter: true,
             },
         },
         {

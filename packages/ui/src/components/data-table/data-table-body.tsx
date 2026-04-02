@@ -151,11 +151,11 @@ export function DataTableBody<TData>({
     multiRowStates = [],
     multiRowPosition = "end",
     onMultiRowChange,
-    onMultiRowSave,
+    onMultiRowSave: _onMultiRowSave,
     onMultiRowFocus,
     onMultiRowBlur,
-    onMultiRowFocusNext,
-    onMultiRowSaveAndLoop,
+    onMultiRowFocusNext: _onMultiRowFocusNext,
+    onMultiRowSaveAndLoop: _onMultiRowSaveAndLoop,
     onNeedMoreRows,
     onDragSumChange,
     onDragSelectionChange,
@@ -421,6 +421,7 @@ export function DataTableBody<TData>({
                     key={cell.id}
                     data-row-index={rowIndex}
                     data-column-id={cell.column.id}
+                    data-skip-on-enter={cell.column.columnDef.meta?.skipOnEnter ?? undefined}
                     tabIndex={-1}
                     style={{ width: cell.column.getSize(), ...extraCellStyle }}
                     className={cn(
@@ -525,49 +526,14 @@ export function DataTableBody<TData>({
         [columns],
     );
 
-    const makeNewRowKeyDown = (
-        _rowId: string,
-        colIndex: number,
-        inputRefsMap: Map<string, HTMLInputElement>,
-        saveFn: () => void,
-        saveAndLoopFn?: () => Promise<boolean>,
-        focusNextRowFn?: () => void,
-    ) => {
+    const makeNewRowKeyDown = () => {
         return (e: React.KeyboardEvent) => {
             if (e.key === "Escape") {
                 e.preventDefault();
                 (e.target as HTMLInputElement)?.blur();
-                return;
             }
-            if (e.key === "Enter") {
-                e.preventDefault();
-                if (colIndex === editableColumns.length - 1) {
-                    // Last editable column → save and move to next row
-                    if (saveAndLoopFn) {
-                        void saveAndLoopFn().then(() => focusNextRowFn?.());
-                    } else {
-                        saveFn();
-                        focusNextRowFn?.();
-                    }
-                } else {
-                    const nextCol = editableColumns[colIndex + 1];
-                    const nextKey =
-                        nextCol &&
-                        ("accessorKey" in nextCol ? String(nextCol.accessorKey) : nextCol.id);
-                    const nextInput = nextKey ? inputRefsMap.get(nextKey) : null;
-                    if (nextInput) nextInput.focus();
-                    else saveFn();
-                }
-            } else if (e.key === "Tab" && !e.shiftKey && colIndex === editableColumns.length - 1) {
-                e.preventDefault();
-                // Last column Tab → save and move to next row
-                if (saveAndLoopFn) {
-                    void saveAndLoopFn().then(() => focusNextRowFn?.());
-                } else if (focusNextRowFn) {
-                    saveFn();
-                    focusNextRowFn();
-                }
-            }
+            // Enter and Tab navigation handled by use-cell-navigation.ts (capture phase).
+            // Save is handled by blur-save in use-multi-row-state.ts handleBlur.
         };
     };
 
@@ -608,8 +574,6 @@ export function DataTableBody<TData>({
 
     // ── Multi new row cell renderer ─────────────────────────────
     const renderMultiNewRowCells = (state: NewRowState, _stateIndex: number, rowIndex: number) => {
-        let editableIndex = 0;
-
         // Ensure refs map exists for this row
         if (!multiRowInputRefs.current.has(state.id)) {
             multiRowInputRefs.current.set(state.id, new Map());
@@ -653,7 +617,6 @@ export function DataTableBody<TData>({
                 );
             }
 
-            const currentEditableIndex = editableIndex++;
             const error = state.errors[key];
 
             return (
@@ -661,6 +624,7 @@ export function DataTableBody<TData>({
                     key={key}
                     data-row-index={rowIndex}
                     data-column-id={key}
+                    data-skip-on-enter={meta?.skipOnEnter ?? undefined}
                     tabIndex={-1}
                     className={cn("relative", meta?.cellClassName)}
                 >
@@ -674,16 +638,7 @@ export function DataTableBody<TData>({
                                 [key]: newValue,
                             });
                         }}
-                        onKeyDown={makeNewRowKeyDown(
-                            state.id,
-                            currentEditableIndex,
-                            inputRefsMap,
-                            () => onMultiRowSave?.(state.id),
-                            onMultiRowSaveAndLoop
-                                ? () => onMultiRowSaveAndLoop(state.id)
-                                : undefined,
-                            () => onMultiRowFocusNext?.(state.id),
-                        )}
+                        onKeyDown={makeNewRowKeyDown()}
                         inputRef={(el) => {
                             if (el) inputRefsMap.set(key, el);
                         }}
@@ -706,8 +661,6 @@ export function DataTableBody<TData>({
 
     // ── Single new row cell renderer ────────────────────────────
     const renderSingleNewRowCells = (rowIndex: number) => {
-        let editableIndex = 0;
-
         return columns.map((col, colIndex) => {
             const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
             if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
@@ -741,7 +694,6 @@ export function DataTableBody<TData>({
                 );
             }
 
-            const currentEditableIndex = editableIndex++;
             const error = singleNewRowErrors[key];
 
             return (
@@ -749,6 +701,7 @@ export function DataTableBody<TData>({
                     key={key}
                     data-row-index={rowIndex}
                     data-column-id={key}
+                    data-skip-on-enter={meta?.skipOnEnter ?? undefined}
                     tabIndex={-1}
                     className={cn("relative", meta?.cellClassName)}
                 >
@@ -766,12 +719,7 @@ export function DataTableBody<TData>({
                             });
                             onNewRowChange?.(updated);
                         }}
-                        onKeyDown={makeNewRowKeyDown(
-                            "new-row",
-                            currentEditableIndex,
-                            singleNewRowInputRefs.current,
-                            () => handleSingleNewRowSave(),
-                        )}
+                        onKeyDown={makeNewRowKeyDown()}
                         inputRef={(el) => {
                             if (el) singleNewRowInputRefs.current.set(key, el);
                         }}
@@ -863,6 +811,11 @@ export function DataTableBody<TData>({
                 data-testid="new-row"
                 data-row-id="new-row"
                 className="border-b"
+                onBlur={(e) => {
+                    if (!isBlurToPortal(e)) {
+                        setTimeout(() => handleSingleNewRowSave(), 200);
+                    }
+                }}
             >
                 {enableRowSelection && (
                     <TableCell>

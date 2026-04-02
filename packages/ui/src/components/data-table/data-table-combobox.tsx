@@ -74,6 +74,14 @@ export function DataTableCombobox({
     // Async search results
     const [asyncOptions, setAsyncOptions] = React.useState<ComboboxOption[] | null>(null);
 
+    // Track whether the user is actively typing (search mode vs display mode).
+    // Prevents treating numeric search text as a selected option value
+    // (e.g. typing "123" should not match product ID 123).
+    const [isTyping, setIsTyping] = React.useState(false);
+    const isTypingRef = React.useRef(false);
+    const [searchQuery, setSearchQuery] = React.useState("");
+    const searchQueryRef = React.useRef("");
+
     // Merge static + async options for lookups (selected option label resolution)
     const allKnownOptions = React.useMemo(() => {
         if (!asyncOptions?.length) return options;
@@ -82,19 +90,20 @@ export function DataTableCombobox({
         return Array.from(map.values());
     }, [options, asyncOptions]);
 
-    // When value matches an option's value (e.g. selected ID), show the label instead
+    // When value matches an option's value (e.g. selected ID), show the label instead.
+    // Guarded by isTyping to prevent treating search text as a selection.
     const isSelectedOption = React.useMemo(
-        () => allKnownOptions.some((o) => o.value === value),
-        [value, allKnownOptions],
+        () => !isTyping && allKnownOptions.some((o) => o.value === value),
+        [value, allKnownOptions, isTyping],
     );
 
     const filtered = React.useMemo(() => {
         // When async search returned results, use them directly (server already filtered)
         if (onSearch && asyncOptions) return asyncOptions;
-        if (!value || isSelectedOption) return options;
-        const lower = value.toLowerCase();
+        if (!searchQuery || (isSelectedOption && !isTyping)) return options;
+        const lower = searchQuery.toLowerCase();
         return options.filter((o) => o.label.toLowerCase().includes(lower));
-    }, [value, options, asyncOptions, isSelectedOption, onSearch]);
+    }, [searchQuery, options, asyncOptions, isSelectedOption, isTyping, onSearch]);
 
     // Reset selected index when list filter changes
     React.useEffect(() => {
@@ -108,12 +117,10 @@ export function DataTableCombobox({
         option?.scrollIntoView({ block: "nearest" });
     }, [selectedIndex, visible, listboxId]);
 
-    const [searchQuery, setSearchQuery] = React.useState("");
-
     // Debounced async search
     React.useEffect(() => {
         if (!onSearch) return;
-        if (!searchQuery || isSelectedOption) {
+        if (!searchQuery || (isSelectedOption && !isTyping)) {
             setAsyncOptions(null);
             return;
         }
@@ -127,7 +134,7 @@ export function DataTableCombobox({
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [searchQuery, onSearch, isSelectedOption]);
+    }, [searchQuery, onSearch, isSelectedOption, isTyping]);
 
     const measurePos = React.useCallback(() => {
         const el = innerRef.current;
@@ -189,15 +196,22 @@ export function DataTableCombobox({
 
     const handleSelect = (optionValue: string) => {
         selectingRef.current = true;
+        isTypingRef.current = false;
+        setIsTyping(false);
         // Set label immediately so sync effect doesn't flash the ID
         const label = [...(asyncOptions ?? []), ...options].find(
             (o) => o.value === optionValue,
         )?.label;
-        if (label) setSearchQuery(label);
+        if (label) {
+            setSearchQuery(label);
+            searchQueryRef.current = label;
+        }
         onChange(optionValue);
         onSelect?.(optionValue);
         setShowList(false);
         setAsyncOptions(null);
+        // Dispatch custom event for cell-navigation auto-advance after selection
+        innerRef.current?.dispatchEvent(new CustomEvent("combobox-select", { bubbles: true }));
         setTimeout(() => {
             selectingRef.current = false;
         }, 0);
@@ -212,6 +226,12 @@ export function DataTableCombobox({
         setTimeout(() => {
             if (selectingRef.current) return;
             setShowList(false);
+            // If user was typing and cleared the input, clear the value
+            if (isTypingRef.current && !searchQueryRef.current) {
+                onChange("");
+            }
+            isTypingRef.current = false;
+            setIsTyping(false);
             onBlur?.();
         }, COMBOBOX_BLUR_DELAY_MS);
     };
@@ -249,15 +269,19 @@ export function DataTableCombobox({
 
     // Maintain query in sync with value/external reset
     React.useEffect(() => {
+        if (isTyping) return; // Don't overwrite search text while user is typing
         if (!value) {
             setSearchQuery("");
-        } else if (value && isSelectedOption) {
+            searchQueryRef.current = "";
+        } else if (isSelectedOption) {
             const label = allKnownOptions.find((o) => o.value === value)?.label ?? value;
             setSearchQuery(label);
+            searchQueryRef.current = label;
         } else {
             setSearchQuery(value);
+            searchQueryRef.current = value;
         }
-    }, [value, isSelectedOption, allKnownOptions]);
+    }, [value, isSelectedOption, allKnownOptions, isTyping]);
 
     return (
         <>
@@ -276,7 +300,14 @@ export function DataTableCombobox({
                 onChange={(e) => {
                     const q = e.target.value;
                     setSearchQuery(q);
-                    onChange(q);
+                    searchQueryRef.current = q;
+                    if (!isTypingRef.current) {
+                        isTypingRef.current = true;
+                        setIsTyping(true);
+                    }
+                    // Don't forward search text to parent — value changes only on
+                    // explicit select or blur-clear. This prevents numeric search text
+                    // (e.g. "123") from being interpreted as a product ID.
                     if (!showList) {
                         measurePos();
                         setShowList(true);

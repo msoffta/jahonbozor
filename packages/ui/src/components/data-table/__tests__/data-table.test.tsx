@@ -214,7 +214,7 @@ describe("DataTable", () => {
         expect(checkboxes[1].checked).toBe(true);
     });
 
-    test("should render ghost inputs and save on Enter", async () => {
+    test("should render ghost inputs and save on blur", async () => {
         const user = userEvent.setup();
         const onCellEdit = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
@@ -241,12 +241,12 @@ describe("DataTable", () => {
         const input = getByDisplayValue("Alice");
         await user.clear(input);
         await user.type(input, "Updated");
-        await user.keyboard("{Enter}");
+        fireEvent.blur(input);
 
         expect(onCellEdit).toHaveBeenCalledWith(0, "name", "Updated");
     });
 
-    test("should save new row on Enter and call onNewRowSave", async () => {
+    test("should save new row on blur and call onNewRowSave", async () => {
         const user = userEvent.setup();
         const onNewRowSave = vi.fn();
         const editableColumns: ColumnDef<TestRow, any>[] = [
@@ -285,12 +285,22 @@ describe("DataTable", () => {
         );
 
         const inputs = getAllByRole("textbox");
-        const lastInput = inputs[inputs.length - 1];
+        // Fill in data and trigger blur-save by clicking outside the new row
+        await user.type(inputs[0], "1");
+        await user.type(inputs[1], "Test");
+        await user.type(inputs[2], "25");
+        await user.type(inputs[3], "active");
 
-        lastInput.focus();
-        await user.keyboard("{Enter}");
+        // Blur the new row — triggers save via <tr> onBlur handler
+        fireEvent.blur(inputs[3]);
 
-        expect(onNewRowSave).toHaveBeenCalled();
+        // Allow the 200ms blur timeout to fire
+        await vi.waitFor(
+            () => {
+                expect(onNewRowSave).toHaveBeenCalled();
+            },
+            { timeout: 500 },
+        );
     });
 
     test("should show all rows when 'Show All' is selected in pagination", async () => {
