@@ -423,11 +423,28 @@ jobs:
             (crontab -l 2>/dev/null | grep -v 'backup.sh' ; echo '0 */6 * * * ${{ secrets.VPS_DEPLOY_PATH }}/scripts/backup.sh >> ${{ secrets.VPS_DEPLOY_PATH }}/logs/backup.log 2>&1') | crontab -
           EOF
 
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs:
+      [
+        lint-typecheck,
+        test-backend,
+        test-bot,
+        test-ui,
+        test-frontend-admin,
+        test-frontend-user,
+        build-images,
+        deploy,
+      ]
+    if: always()
+    steps:
       - name: Send Telegram notification
-        if: always()
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
           message: |
-            ${{ job.status == 'success' && '✅ Deploy success' || '❌ Deploy failed' }}
+            ${{ (needs.deploy.result == 'success' && '✅ Deploy success') || (needs.deploy.result == 'skipped' && contains(needs.*.result, 'failure') && '❌ CI failed (deploy skipped)') || (needs.deploy.result == 'failure' && '❌ Deploy failed') || (contains(needs.*.result, 'failure') && '❌ Pipeline failed') || '✅ CI passed' }}
+            📦 ${{ github.repository }}@${{ github.ref_name }}
+            💬 ${{ github.event.head_commit.message }}
