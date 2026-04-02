@@ -186,14 +186,13 @@ export function DataTableBody<TData>({
     // ── Multi new row input refs (keyed by row ID) ──────────────
     const multiRowInputRefs = React.useRef<Map<string, Map<string, HTMLInputElement>>>(new Map());
 
-    // ── Deduplication: filter out new rows whose linkedId is already in data ──
+    // ── Filter out saved new rows (linkedId set = already persisted) ──
+    // Row stays visible while isSaving, hidden once save completes (linkedId set).
+    // Deduplication is implicit: saved rows disappear, data rows appear on refetch.
     const visibleNewRows = React.useMemo(() => {
         if (!enableMultipleNewRows || !multiRowStates.length) return [];
-        const dataIds = new Set(
-            rows.map((r) => (r.original as { id?: unknown }).id).filter(Boolean),
-        );
-        return multiRowStates.filter((r) => !r.linkedId || !dataIds.has(r.linkedId));
-    }, [rows, multiRowStates, enableMultipleNewRows]);
+        return multiRowStates.filter((r) => !r.linkedId);
+    }, [multiRowStates, enableMultipleNewRows]);
 
     // ── Unified row list ────────────────────────────────────────
     const newRowMode = enableMultipleNewRows
