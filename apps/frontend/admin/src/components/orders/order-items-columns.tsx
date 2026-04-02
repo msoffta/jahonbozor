@@ -41,7 +41,7 @@ export function getOrderItemColumns(
         },
         {
             id: "product",
-            accessorFn: (row) => row.product?.name ?? "—",
+            accessorFn: (row) => row.product?.name ?? "",
             header: t("order_product"),
             size: 250,
             meta: {
@@ -57,7 +57,7 @@ export function getOrderItemColumns(
             accessorKey: "quantity",
             header: t("order_quantity"),
             size: 100,
-            cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? "—",
+            cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? "",
             meta: {
                 flex: 1,
                 align: "left" as const,
@@ -73,7 +73,7 @@ export function getOrderItemColumns(
                 const price = getValue<number>();
                 return (
                     <span className="font-medium">
-                        {price ? formatCurrency(price, t("common:sum")) : "—"}
+                        {price ? formatCurrency(price, t("common:sum")) : ""}
                     </span>
                 );
             },
@@ -120,7 +120,7 @@ export function getOrderItemColumns(
                 const costprice = getValue<number>();
                 return (
                     <span className="costprice-value">
-                        {costprice ? formatCurrency(costprice, t("common:sum")) : "—"}
+                        {costprice ? formatCurrency(costprice, t("common:sum")) : ""}
                     </span>
                 );
             },

@@ -38,6 +38,8 @@ export function getIncomeColumns(
                 editable: true,
                 inputType: "combobox" as const,
                 selectOptions,
+                editValueAccessor: (row: HistoryEntryItem) =>
+                    row.productId ? String(row.productId) : "",
             },
         },
         {

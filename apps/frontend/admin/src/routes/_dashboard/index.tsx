@@ -202,6 +202,22 @@ function OrdersPage() {
             if (columnId === "user") {
                 body.userId = value === "" ? null : Number(value);
             } else if (columnId === "product") {
+                const item = order.items[0];
+                if (!item) return;
+                const newProductId = Number(value);
+                const newProduct = products.find((p) => p.id === newProductId);
+                updateOrder.mutate({
+                    id: order.id,
+                    items: order.items.map((it, i) =>
+                        i === 0
+                            ? {
+                                  productId: newProductId,
+                                  quantity: it.quantity,
+                                  price: newProduct?.price ?? it.price,
+                              }
+                            : { productId: it.productId, quantity: it.quantity, price: it.price },
+                    ),
+                });
                 return;
             } else if (columnId === "price" || columnId === "quantity" || columnId === "total") {
                 // Price/quantity/total edits require sending items array
@@ -239,7 +255,7 @@ function OrdersPage() {
 
             updateOrder.mutate({ id: order.id, ...body });
         },
-        [orders, updateOrder, navigate, t],
+        [orders, products, updateOrder, navigate, t],
     );
 
     const handleNewRowSave = useCallback(

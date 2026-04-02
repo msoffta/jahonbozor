@@ -80,7 +80,7 @@ export function getOrderColumns(
         columns.push(
             {
                 id: "product",
-                accessorFn: (row) => row.items[0]?.product?.name ?? "—",
+                accessorFn: (row) => row.items[0]?.product?.name ?? "",
                 header: t("order_product"),
                 size: 250,
                 meta: {
@@ -88,6 +88,8 @@ export function getOrderColumns(
                     editable: true,
                     inputType: "combobox" as const,
                     selectOptions: productOptions,
+                    editValueAccessor: (row: AdminOrderItem) =>
+                        row.items[0]?.productId ? String(row.items[0].productId) : "",
                     enableDragSum: true,
                 },
             },
@@ -113,7 +115,7 @@ export function getOrderColumns(
                     const price = getValue<number>();
                     return (
                         <span className="font-medium">
-                            {price ? formatCurrency(price, t("common:sum")) : "—"}
+                            {price ? formatCurrency(price, t("common:sum")) : ""}
                         </span>
                     );
                 },
@@ -201,7 +203,7 @@ export function getOrderColumns(
         },
         {
             id: "user",
-            accessorFn: (row) => row.user?.fullname ?? "—",
+            accessorFn: (row) => row.user?.fullname ?? "",
             header: t("order_client"),
             size: 180,
             meta: {
@@ -209,6 +211,7 @@ export function getOrderColumns(
                 editable: showItemColumns,
                 inputType: "combobox" as const,
                 selectOptions: userOptions,
+                editValueAccessor: (row: AdminOrderItem) => (row.userId ? String(row.userId) : ""),
                 skipOnEnter: true,
             },
         },
@@ -230,7 +233,7 @@ export function getOrderColumns(
                         {comment}
                     </span>
                 ) : (
-                    "—"
+                    ""
                 );
             },
             meta: {
@@ -256,7 +259,7 @@ export function getOrderColumns(
                 const costprice = getValue<number>();
                 return (
                     <span className="costprice-value">
-                        {costprice ? formatCurrency(costprice, t("common:sum")) : "—"}
+                        {costprice ? formatCurrency(costprice, t("common:sum")) : ""}
                     </span>
                 );
             },

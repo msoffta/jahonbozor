@@ -93,6 +93,8 @@ export function getProductColumns(
                 editable: true,
                 inputType: "combobox" as const,
                 selectOptions,
+                editValueAccessor: (row: AdminProductItem) =>
+                    row.categoryId ? String(row.categoryId) : "",
             },
         },
         {

@@ -33,6 +33,7 @@ export const UpdateOrderBody = Order.pick({
 })
     .partial()
     .extend({
+        userId: z.number().nullish(),
         items: z.array(CreateOrderItemBody).min(1).optional(),
     });
 

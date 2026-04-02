@@ -210,10 +210,15 @@ export function DataTableCombobox({
         onSelect?.(optionValue);
         setShowList(false);
         setAsyncOptions(null);
-        // Dispatch custom event for cell-navigation auto-advance after selection
-        innerRef.current?.dispatchEvent(new CustomEvent("combobox-select", { bubbles: true }));
         setTimeout(() => {
             selectingRef.current = false;
+            // Extra rAF ensures React has flushed state updates from onChange
+            // before focus advances (prevents stale closure reading old row values)
+            requestAnimationFrame(() => {
+                innerRef.current?.dispatchEvent(
+                    new CustomEvent("combobox-select", { bubbles: true }),
+                );
+            });
         }, 0);
     };
 

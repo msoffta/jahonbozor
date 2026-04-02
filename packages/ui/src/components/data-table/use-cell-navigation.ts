@@ -187,9 +187,9 @@ export function useCellNavigation({
         }
 
         function handleKeyDown(e: KeyboardEvent) {
-            // Ctrl+Z — undo last delete
+            // Ctrl+Z — undo last delete (e.code is layout-independent)
             if (
-                e.key === "z" &&
+                e.code === "KeyZ" &&
                 (e.ctrlKey || e.metaKey) &&
                 !e.shiftKey &&
                 lastDeletedIdRef.current != null &&
@@ -368,6 +368,11 @@ export function useCellNavigation({
                     if (!input && onRowDeleteRef.current) {
                         e.preventDefault();
                         lastDeletedIdRef.current = onRowDeleteRef.current(coords.row);
+                        // Move cursor to next row (or first new/empty row below)
+                        if (rowPos < rowIndices.length - 1) {
+                            const target = getCell(rowIndices[rowPos + 1], coords.col);
+                            if (target) target.focus();
+                        }
                     }
                     break;
                 }

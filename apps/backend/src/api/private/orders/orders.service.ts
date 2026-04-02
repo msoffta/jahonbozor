@@ -531,6 +531,9 @@ export abstract class OrdersService {
                         ...(orderData.paymentType && {
                             paymentType: orderData.paymentType,
                         }),
+                        ...(orderData.userId !== undefined && {
+                            userId: orderData.userId ?? null,
+                        }),
                         ...(orderData.comment !== undefined && {
                             comment: orderData.comment,
                         }),

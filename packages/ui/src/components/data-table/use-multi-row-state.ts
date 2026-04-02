@@ -34,6 +34,10 @@ export function useMultiRowState({
     onError,
 }: UseMultiRowStateOptions) {
     const [rowStates, setRowStates] = React.useState<NewRowState[]>([]);
+    const rowStatesRef = React.useRef(rowStates);
+    React.useEffect(() => {
+        rowStatesRef.current = rowStates;
+    });
     const [, setFocusedRowId] = React.useState<string | null>(null);
     const focusedRowIdRef = React.useRef<string | null>(null);
     const savingRowsRef = React.useRef<Set<string>>(new Set());
@@ -80,7 +84,7 @@ export function useMultiRowState({
         async (rowId: string) => {
             if (savingRowsRef.current.has(rowId)) return;
 
-            const rowState = rowStates.find((s) => s.id === rowId);
+            const rowState = rowStatesRef.current.find((s) => s.id === rowId);
             if (!rowState || rowState.isSaving) return;
 
             const isChanged = Object.keys(rowState.values).some(
@@ -139,7 +143,7 @@ export function useMultiRowState({
                 savingRowsRef.current.delete(rowId);
             }
         },
-        [rowStates, validate, onSave, onError],
+        [validate, onSave, onError],
     );
 
     const handleFocus = React.useCallback((rowId: string) => {
@@ -149,11 +153,12 @@ export function useMultiRowState({
 
     const handleFocusNext = React.useCallback(
         (rowId: string) => {
-            const index = rowStates.findIndex((r) => r.id === rowId);
+            const states = rowStatesRef.current;
+            const index = states.findIndex((r) => r.id === rowId);
             if (index === -1) return;
 
             // Find the next visible row (without linkedId — saved rows are hidden)
-            const nextRow = rowStates.slice(index + 1).find((r) => !r.linkedId);
+            const nextRow = states.slice(index + 1).find((r) => !r.linkedId);
             if (!nextRow) return;
 
             navigatingFromRowRef.current = rowId;
@@ -165,14 +170,14 @@ export function useMultiRowState({
                 firstInput?.focus();
             }, 0);
         },
-        [rowStates, handleSave],
+        [handleSave],
     );
 
     const handleSaveAndLoop = React.useCallback(
         async (rowId: string): Promise<boolean> => {
             if (savingRowsRef.current.has(rowId)) return false;
 
-            const rowState = rowStates.find((s) => s.id === rowId);
+            const rowState = rowStatesRef.current.find((s) => s.id === rowId);
             if (!rowState || rowState.isSaving) return false;
 
             const isEmpty = Object.values(rowState.values).every(
@@ -239,7 +244,7 @@ export function useMultiRowState({
                 savingRowsRef.current.delete(rowId);
             }
         },
-        [rowStates, validate, onSave, onError],
+        [validate, onSave, onError],
     );
 
     const handleBlur = React.useCallback(
@@ -291,7 +296,7 @@ export function useMultiRowState({
     }, [maxCount, increment, defaultValues]);
 
     const flushPendingRows = React.useCallback(async () => {
-        const pendingRows = rowStates.filter((row) => {
+        const pendingRows = rowStatesRef.current.filter((row) => {
             if (row.isSaving || savingRowsRef.current.has(row.id)) return false;
             const isEmpty = Object.values(row.values).every(
                 (v) => v === "" || v === null || v === undefined,
@@ -302,7 +307,7 @@ export function useMultiRowState({
             return !isEmpty && isChanged;
         });
         await Promise.all(pendingRows.map((row) => handleSave(row.id)));
-    }, [rowStates, handleSave]);
+    }, [handleSave]);
 
     return {
         rowStates,

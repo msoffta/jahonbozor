@@ -30,10 +30,15 @@ export function DataTableEditableCell<TData>({
     const [error, setError] = React.useState<string | null>(null);
     const inputRef = React.useRef<HTMLInputElement>(null);
     const cancellingRef = React.useRef(false);
+    const prevEditValueRef = React.useRef(editValue);
 
+    // Sync from external data only when the actual value changes (not on every render)
     React.useEffect(() => {
-        setValue(meta?.editValueAccessor ? meta.editValueAccessor(cell.row.original) : rawValue);
-    }, [rawValue, meta, cell.row.original]);
+        if (prevEditValueRef.current !== editValue) {
+            prevEditValueRef.current = editValue;
+            setValue(editValue);
+        }
+    }, [editValue]);
 
     const handleSave = React.useCallback(
         (currentValue: unknown = value) => {

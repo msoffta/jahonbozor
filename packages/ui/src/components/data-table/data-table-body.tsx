@@ -638,6 +638,16 @@ export function DataTableBody<TData>({
                                 [key]: newValue,
                             });
                         }}
+                        onSelect={
+                            meta.inputType === "combobox" || meta.inputType === "select"
+                                ? (newValue) => {
+                                      onMultiRowChange?.(state.id, {
+                                          ...state.values,
+                                          [key]: newValue,
+                                      });
+                                  }
+                                : undefined
+                        }
                         onKeyDown={makeNewRowKeyDown()}
                         inputRef={(el) => {
                             if (el) inputRefsMap.set(key, el);

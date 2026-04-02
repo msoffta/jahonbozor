@@ -145,20 +145,36 @@ export const DataTableCellInput = React.memo(function DataTableCellInput({
     }
 
     // Default: text / number / date input
+    const isNumber = meta.inputType === "number";
     return (
         <Input
             ref={(el) => inputRef?.(el)}
-            type={
-                meta.inputType === "number" ? "number" : meta.inputType === "date" ? "date" : "text"
-            }
+            type={meta.inputType === "date" ? "date" : "text"}
+            inputMode={isNumber ? "numeric" : undefined}
             value={toDisplayString(value)}
             onChange={(e) => {
-                const newValue =
-                    meta.inputType === "number" ? Number(e.target.value) : e.target.value;
-                onChange(newValue);
+                if (isNumber) {
+                    const raw = e.target.value.replace(/[^\d]/g, "");
+                    onChange(raw === "" ? "" : Number(raw));
+                } else {
+                    onChange(e.target.value);
+                }
+            }}
+            onKeyDown={(e) => {
+                // Block non-numeric keys in number inputs
+                if (
+                    isNumber &&
+                    e.key.length === 1 &&
+                    !/\d/.test(e.key) &&
+                    !e.ctrlKey &&
+                    !e.metaKey
+                ) {
+                    e.preventDefault();
+                    return;
+                }
+                onKeyDown?.(e);
             }}
             onBlur={onBlur}
-            onKeyDown={onKeyDown}
             placeholder={resolvedPlaceholder}
             className={cn(ghost, error && "border-destructive")}
         />
