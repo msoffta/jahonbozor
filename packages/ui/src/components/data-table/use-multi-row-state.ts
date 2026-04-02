@@ -157,6 +157,7 @@ export function useMultiRowState({
             if (!nextRow) return;
 
             navigatingFromRowRef.current = rowId;
+            void handleSave(rowId);
 
             setTimeout(() => {
                 const nextRowEl = document.getElementById(nextRow.id);
@@ -164,7 +165,7 @@ export function useMultiRowState({
                 firstInput?.focus();
             }, 0);
         },
-        [rowStates],
+        [rowStates, handleSave],
     );
 
     const handleSaveAndLoop = React.useCallback(
