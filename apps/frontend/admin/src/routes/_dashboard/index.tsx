@@ -24,6 +24,7 @@ import {
     ordersInfiniteQueryOptions,
     useCreateOrder,
     useDeleteOrder,
+    useRestoreOrder,
     useUpdateOrder,
 } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
@@ -133,6 +134,7 @@ function OrdersPage() {
     );
 
     const deleteOrder = useDeleteOrder();
+    const restoreOrder = useRestoreOrder();
     const updateOrder = useUpdateOrder();
     const createOrder = useCreateOrder();
 
@@ -437,8 +439,15 @@ function OrdersPage() {
                             onCellEdit={handleCellEdit}
                             onRowDelete={
                                 canDelete
-                                    ? (rowIndex) => actions.onDelete(orders[rowIndex].id)
+                                    ? (rowIndex) => {
+                                          const id = orders[rowIndex].id;
+                                          deleteOrder.mutate(id);
+                                          return id;
+                                      }
                                     : undefined
+                            }
+                            onRowRestore={
+                                canDelete ? (id) => restoreOrder.mutate(id as number) : undefined
                             }
                             onMultiRowSave={handleNewRowSave}
                             onMultiRowChange={handleNewRowChange}

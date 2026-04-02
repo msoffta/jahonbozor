@@ -259,8 +259,15 @@ function ExpensePage() {
                             onCellEdit={handleCellEdit}
                             onRowDelete={
                                 canDelete
-                                    ? (rowIndex) => actions.onDelete(expenses[rowIndex].id)
+                                    ? (rowIndex) => {
+                                          const id = expenses[rowIndex].id;
+                                          deleteExpense.mutate(id);
+                                          return id;
+                                      }
                                     : undefined
+                            }
+                            onRowRestore={
+                                canDelete ? (id) => restoreExpense.mutate(id as number) : undefined
                             }
                             onMultiRowSave={handleNewRowSave}
                             multiRowDefaultValues={multiRowDefaultValues}

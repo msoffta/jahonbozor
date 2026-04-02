@@ -133,8 +133,10 @@ export interface DataTableProps<TData> {
     // Editing
     enableEditing?: boolean;
     onCellEdit?: (rowIndex: number, columnId: string, value: unknown) => void;
-    /** Called when Delete key is pressed on a focused row (cursor mode). Receives the row index. */
-    onRowDelete?: (rowIndex: number) => void;
+    /** Called when Delete key is pressed on a focused row (cursor mode). Return entity ID for undo. */
+    onRowDelete?: (rowIndex: number) => unknown;
+    /** Called on Ctrl+Z to restore the last deleted row. Receives the ID returned by onRowDelete. */
+    onRowRestore?: (id: unknown) => void;
     enableNewRow?: boolean;
     newRowPosition?: "start" | "end";
     onNewRowSave?: (data: Record<string, unknown>) => void;

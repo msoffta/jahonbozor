@@ -242,3 +242,24 @@ export function useDeleteOrder() {
         },
     });
 }
+
+export const restoreOrderFn = async (id: number) => {
+    const { data, error } = await api.api.private.orders({ id }).restore.post();
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data;
+};
+
+export function useRestoreOrder() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationKey: ["orders", "restore"],
+        mutationFn: restoreOrderFn,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
+    });
+}

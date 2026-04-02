@@ -247,8 +247,15 @@ function ProductsPage() {
                             onCellEdit={handleCellEdit}
                             onRowDelete={
                                 canDelete
-                                    ? (rowIndex) => actions.onDelete(products[rowIndex].id)
+                                    ? (rowIndex) => {
+                                          const id = products[rowIndex].id;
+                                          deleteProduct.mutate(id);
+                                          return id;
+                                      }
                                     : undefined
+                            }
+                            onRowRestore={
+                                canDelete ? (id) => restoreProduct.mutate(id as number) : undefined
                             }
                             onMultiRowSave={handleNewRowSave}
                             loadingRowIds={loadingRowIds}

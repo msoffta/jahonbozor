@@ -233,8 +233,15 @@ function UsersPage() {
                             onCellEdit={handleCellEdit}
                             onRowDelete={
                                 canDelete
-                                    ? (rowIndex) => actions.onDelete(clients[rowIndex].id)
+                                    ? (rowIndex) => {
+                                          const id = clients[rowIndex].id;
+                                          deleteClient.mutate(id);
+                                          return id;
+                                      }
                                     : undefined
+                            }
+                            onRowRestore={
+                                canDelete ? (id) => restoreClient.mutate(id as number) : undefined
                             }
                             onMultiRowSave={handleNewRowSave}
                             loadingRowIds={loadingRowIds}

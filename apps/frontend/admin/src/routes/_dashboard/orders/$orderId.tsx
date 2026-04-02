@@ -424,7 +424,10 @@ function OrderDetailPage() {
                 {...(canUpdate && {
                     enableEditing: true,
                     onCellEdit: handleCellEdit,
-                    onRowDelete: handleDeleteItem,
+                    onRowDelete: (rowIndex: number) => {
+                        handleDeleteItem(rowIndex);
+                        return rowIndex;
+                    },
                     enableMultipleNewRows: true,
                     multiRowCount: 50,
                     multiRowMaxCount: 50,

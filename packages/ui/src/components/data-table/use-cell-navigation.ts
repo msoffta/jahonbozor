@@ -7,7 +7,10 @@ const COL_ATTR = "data-column-id";
 interface UseCellNavigationOptions {
     enabled: boolean;
     containerRef: React.RefObject<HTMLElement | null>;
-    onRowDelete?: (rowIndex: number) => void;
+    /** Return entity ID for Ctrl+Z undo */
+    onRowDelete?: (rowIndex: number) => unknown;
+    /** Called on Ctrl+Z to restore the last deleted row */
+    onRowRestore?: (id: unknown) => void;
 }
 
 /**
@@ -26,7 +29,18 @@ export function useCellNavigation({
     enabled,
     containerRef,
     onRowDelete,
+    onRowRestore,
 }: UseCellNavigationOptions) {
+    // Track last deleted entity ID for Ctrl+Z undo (persists across effect re-runs)
+    const lastDeletedIdRef = React.useRef<unknown>(null);
+    // Stable refs for callbacks to avoid effect re-runs on inline functions
+    const onRowDeleteRef = React.useRef(onRowDelete);
+    const onRowRestoreRef = React.useRef(onRowRestore);
+    React.useEffect(() => {
+        onRowDeleteRef.current = onRowDelete;
+        onRowRestoreRef.current = onRowRestore;
+    });
+
     React.useEffect(() => {
         if (!enabled) return;
         const container = containerRef.current;
@@ -146,6 +160,19 @@ export function useCellNavigation({
                 focusCell(enterCells[currentIdx + 1].td, true);
                 return true;
             }
+            // Current cell has skipOnEnter — find next enter-flow cell after this position
+            if (currentIdx === -1) {
+                const colPos = freshColumnIds.indexOf(currentCol);
+                const next = enterCells.find(
+                    (c) =>
+                        c.row > currentRow ||
+                        (c.row === currentRow && freshColumnIds.indexOf(c.col) > colPos),
+                );
+                if (next) {
+                    focusCell(next.td, true);
+                    return true;
+                }
+            }
             return false;
         }
 
@@ -160,6 +187,20 @@ export function useCellNavigation({
         }
 
         function handleKeyDown(e: KeyboardEvent) {
+            // Ctrl+Z — undo last delete
+            if (
+                e.key === "z" &&
+                (e.ctrlKey || e.metaKey) &&
+                !e.shiftKey &&
+                lastDeletedIdRef.current != null &&
+                onRowRestoreRef.current
+            ) {
+                e.preventDefault();
+                onRowRestoreRef.current(lastDeletedIdRef.current);
+                lastDeletedIdRef.current = null;
+                return;
+            }
+
             const target = e.target as HTMLElement;
             const td = target.closest<HTMLTableCellElement>(`td[${ROW_ATTR}]`);
             if (!td) return;
@@ -324,9 +365,9 @@ export function useCellNavigation({
                 }
 
                 case "Delete": {
-                    if (!input && onRowDelete) {
+                    if (!input && onRowDeleteRef.current) {
                         e.preventDefault();
-                        onRowDelete(coords.row);
+                        lastDeletedIdRef.current = onRowDeleteRef.current(coords.row);
                     }
                     break;
                 }
@@ -367,5 +408,5 @@ export function useCellNavigation({
             container.removeEventListener("keydown", handleKeyDown, true);
             container.removeEventListener("combobox-select", handleComboboxSelect);
         };
-    }, [enabled, containerRef, onRowDelete]);
+    }, [enabled, containerRef]);
 }

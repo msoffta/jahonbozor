@@ -60,6 +60,7 @@ export function DataTable<TData>({
     enableEditing = false,
     onCellEdit,
     onRowDelete,
+    onRowRestore,
     enableNewRow = false,
     newRowPosition = "end",
     onNewRowSave,
@@ -162,6 +163,7 @@ export function DataTable<TData>({
         enabled: !!enableEditing,
         containerRef: containerRef as React.RefObject<HTMLElement | null>,
         onRowDelete,
+        onRowRestore,
     });
 
     // Sync external data
