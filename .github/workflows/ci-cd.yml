@@ -430,11 +430,9 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
           message: |
-            🚀 Deployment ${{ job.status }}
+            ${{ job.status == 'success' && '✅ Deploy successful' || '❌ Deploy failed' }} — ${{ github.event.repository.name }}
 
-            Repository: ${{ github.repository }}
-            Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
+            Message: ${{ github.event.head_commit.message }}
+            Branch: ${{ github.ref_name }}
             Author: ${{ github.actor }}
-
-            ${{ job.status == 'success' && '✅ All services are running' || '❌ Deployment failed' }}
