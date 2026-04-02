@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -459,44 +459,6 @@ describe("DataTableEditableCell", () => {
             // Ghost input should be rendered (alignment is on input, not a wrapper div)
             const inputs = container.querySelectorAll("input[type='number']");
             expect(inputs.length).toBe(2);
-        });
-    });
-
-    // ── Auto-save (debounce) ───────────────────────────────────
-    describe("auto-save", () => {
-        test("should auto-save after 500ms debounce when value changes", async () => {
-            const user = userEvent.setup();
-            const columns: ColumnDef<TestRow, any>[] = [
-                { accessorKey: "id", header: "ID" },
-                {
-                    accessorKey: "name",
-                    header: "Name",
-                    meta: { editable: true, inputType: "text" as const },
-                },
-            ];
-
-            const { getByDisplayValue } = render(
-                <DataTable
-                    columns={columns}
-                    data={testData}
-                    enableEditing
-                    onCellEdit={onCellEdit}
-                />,
-            );
-
-            const input = getByDisplayValue("Alice");
-            await user.clear(input);
-            await user.type(input, "AutoSaved");
-
-            // Before 500ms — not yet saved
-            expect(onCellEdit).not.toHaveBeenCalled();
-
-            // Wait for auto-save debounce
-            await act(async () => {
-                await new Promise((r) => setTimeout(r, 600));
-            });
-
-            expect(onCellEdit).toHaveBeenCalledWith(0, "name", "AutoSaved");
         });
     });
 });

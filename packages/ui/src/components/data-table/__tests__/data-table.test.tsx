@@ -291,8 +291,11 @@ describe("DataTable", () => {
         await user.type(inputs[2], "25");
         await user.type(inputs[3], "active");
 
-        // Blur the new row — triggers save via <tr> onBlur handler
-        fireEvent.blur(inputs[3]);
+        // Blur with relatedTarget outside the <tr> so isBlurToPortal returns false
+        const externalTarget = document.createElement("div");
+        document.body.appendChild(externalTarget);
+        fireEvent.blur(inputs[3], { relatedTarget: externalTarget });
+        externalTarget.remove();
 
         // Allow the 200ms blur timeout to fire
         await vi.waitFor(

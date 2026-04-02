@@ -343,9 +343,9 @@ describe("DataTableCombobox", () => {
         const listbox = document.querySelector("[role='listbox']");
         expect(listbox).toBeDefined();
 
-        // Options should have role="option"
+        // Options should have role="option" (filtered by "a": Apple, Banana, Date)
         const optionElements = document.querySelectorAll("[role='option']");
-        expect(optionElements.length).toBe(4);
+        expect(optionElements.length).toBe(3);
 
         // First option should have aria-selected="true"
         expect(optionElements[0].getAttribute("aria-selected")).toBe("true");
