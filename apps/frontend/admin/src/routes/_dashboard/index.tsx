@@ -435,6 +435,11 @@ function OrdersPage() {
                             multiRowCount={50}
                             multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
+                            onRowDelete={
+                                canDelete
+                                    ? (rowIndex) => actions.onDelete(orders[rowIndex].id)
+                                    : undefined
+                            }
                             onMultiRowSave={handleNewRowSave}
                             onMultiRowChange={handleNewRowChange}
                             multiRowDefaultValues={newRowDefaultValues}

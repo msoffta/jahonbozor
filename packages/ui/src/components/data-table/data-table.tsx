@@ -59,6 +59,7 @@ export function DataTable<TData>({
     enableRowSelection = false,
     enableEditing = false,
     onCellEdit,
+    onRowDelete,
     enableNewRow = false,
     newRowPosition = "end",
     onNewRowSave,
@@ -160,6 +161,7 @@ export function DataTable<TData>({
     useCellNavigation({
         enabled: !!enableEditing,
         containerRef: containerRef as React.RefObject<HTMLElement | null>,
+        onRowDelete,
     });
 
     // Sync external data

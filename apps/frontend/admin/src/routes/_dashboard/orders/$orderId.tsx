@@ -424,6 +424,7 @@ function OrderDetailPage() {
                 {...(canUpdate && {
                     enableEditing: true,
                     onCellEdit: handleCellEdit,
+                    onRowDelete: handleDeleteItem,
                     enableMultipleNewRows: true,
                     multiRowCount: 50,
                     multiRowMaxCount: 50,

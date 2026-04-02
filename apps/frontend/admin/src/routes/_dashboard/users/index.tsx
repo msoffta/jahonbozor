@@ -231,6 +231,11 @@ function UsersPage() {
                             multiRowCount={50}
                             multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
+                            onRowDelete={
+                                canDelete
+                                    ? (rowIndex) => actions.onDelete(clients[rowIndex].id)
+                                    : undefined
+                            }
                             onMultiRowSave={handleNewRowSave}
                             loadingRowIds={loadingRowIds}
                             translations={translations}

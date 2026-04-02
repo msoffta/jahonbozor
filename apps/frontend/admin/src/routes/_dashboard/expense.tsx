@@ -257,6 +257,11 @@ function ExpensePage() {
                             multiRowCount={50}
                             multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
+                            onRowDelete={
+                                canDelete
+                                    ? (rowIndex) => actions.onDelete(expenses[rowIndex].id)
+                                    : undefined
+                            }
                             onMultiRowSave={handleNewRowSave}
                             multiRowDefaultValues={multiRowDefaultValues}
                             loadingRowIds={loadingRowIds}

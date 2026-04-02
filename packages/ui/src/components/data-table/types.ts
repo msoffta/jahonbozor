@@ -133,6 +133,8 @@ export interface DataTableProps<TData> {
     // Editing
     enableEditing?: boolean;
     onCellEdit?: (rowIndex: number, columnId: string, value: unknown) => void;
+    /** Called when Delete key is pressed on a focused row (cursor mode). Receives the row index. */
+    onRowDelete?: (rowIndex: number) => void;
     enableNewRow?: boolean;
     newRowPosition?: "start" | "end";
     onNewRowSave?: (data: Record<string, unknown>) => void;

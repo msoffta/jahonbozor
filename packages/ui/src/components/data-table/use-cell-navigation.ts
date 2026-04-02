@@ -7,6 +7,7 @@ const COL_ATTR = "data-column-id";
 interface UseCellNavigationOptions {
     enabled: boolean;
     containerRef: React.RefObject<HTMLElement | null>;
+    onRowDelete?: (rowIndex: number) => void;
 }
 
 /**
@@ -21,7 +22,11 @@ interface UseCellNavigationOptions {
  *
  * Cells must have `data-row-index` and `data-column-id` attributes on the `<td>`.
  */
-export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOptions) {
+export function useCellNavigation({
+    enabled,
+    containerRef,
+    onRowDelete,
+}: UseCellNavigationOptions) {
     React.useEffect(() => {
         if (!enabled) return;
         const container = containerRef.current;
@@ -318,7 +323,14 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
                     return;
                 }
 
-                case "Delete":
+                case "Delete": {
+                    if (!input && onRowDelete) {
+                        e.preventDefault();
+                        onRowDelete(coords.row);
+                    }
+                    break;
+                }
+
                 case "Backspace": {
                     if (!input) {
                         // Cursor mode → clear cell value and enter edit mode
@@ -355,5 +367,5 @@ export function useCellNavigation({ enabled, containerRef }: UseCellNavigationOp
             container.removeEventListener("keydown", handleKeyDown, true);
             container.removeEventListener("combobox-select", handleComboboxSelect);
         };
-    }, [enabled, containerRef]);
+    }, [enabled, containerRef, onRowDelete]);
 }

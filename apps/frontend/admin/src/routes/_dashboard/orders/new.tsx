@@ -365,6 +365,7 @@ function NewOrderPage() {
                             data={items}
                             enableEditing
                             onCellEdit={handleCellEdit}
+                            onRowDelete={handleDeleteItem}
                             enableMultipleNewRows
                             multiRowCount={50}
                             multiRowMaxCount={50}
