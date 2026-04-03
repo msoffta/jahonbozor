@@ -164,6 +164,15 @@ export function RolesTab() {
                             enableColumnResizing
                             enableEditing
                             onCellEdit={handleCellEdit}
+                            onRowDelete={
+                                canDelete
+                                    ? (rowIndex) => {
+                                          const id = roles[rowIndex].id;
+                                          deleteRole.mutate(id);
+                                          return id;
+                                      }
+                                    : undefined
+                            }
                             translations={translations}
                         />
                     </motion.div>

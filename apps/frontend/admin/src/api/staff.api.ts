@@ -57,7 +57,7 @@ export const staffInfiniteQueryOptions = (params?: {
             const { data, error } = await api.api.private.staff.get({
                 query: {
                     page: pageParam,
-                    limit: params?.limit ?? 1000,
+                    limit: params?.limit ?? 10000,
                     sortBy: "id",
                     sortOrder: "asc" as const,
                     ...params,
@@ -69,7 +69,7 @@ export const staffInfiniteQueryOptions = (params?: {
         },
         initialPageParam: 1,
         getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-            const loaded = lastPageParam * (params?.limit ?? 50);
+            const loaded = lastPageParam * (params?.limit ?? 10000);
             return loaded < lastPage.count ? lastPageParam + 1 : undefined;
         },
     });

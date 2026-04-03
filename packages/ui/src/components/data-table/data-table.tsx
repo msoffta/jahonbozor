@@ -13,7 +13,7 @@ import {
     useReactTable,
     type VisibilityState,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
@@ -81,6 +81,7 @@ export function DataTable<TData>({
     // Infinite scroll
     enableInfiniteScroll = false,
     onFetchNextPage,
+    onFetchAllPages,
     hasNextPage,
     isFetchingNextPage,
     totalCount,
@@ -315,6 +316,7 @@ export function DataTable<TData>({
     // Scroll-to-top/bottom button state
     const [isNearBottom, setIsNearBottom] = React.useState(false);
     const [showScrollBtn, setShowScrollBtn] = React.useState(false);
+    const [isScrollingToEnd, setIsScrollingToEnd] = React.useState(false);
 
     const handleScroll = React.useCallback(
         (e: React.UIEvent<HTMLDivElement>) => {
@@ -338,15 +340,27 @@ export function DataTable<TData>({
         [enableInfiniteScroll, hasNextPage, isFetchingNextPage, onFetchNextPage],
     );
 
-    const scrollToEdge = React.useCallback(() => {
+    const scrollToEdge = React.useCallback(async () => {
         const el = containerRef.current;
         if (!el) return;
         if (isNearBottom) {
             el.scrollTo({ top: 0, behavior: "smooth" });
         } else {
-            el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+            if (onFetchAllPages && hasNextPage) {
+                setIsScrollingToEnd(true);
+                await onFetchAllPages();
+                setIsScrollingToEnd(false);
+            }
+            requestAnimationFrame(() => {
+                const firstNewRow = el.querySelector<HTMLElement>('[data-testid="new-row"]');
+                if (firstNewRow) {
+                    firstNewRow.scrollIntoView({ block: "start", behavior: "instant" });
+                } else {
+                    el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
+                }
+            });
         }
-    }, [isNearBottom]);
+    }, [isNearBottom, onFetchAllPages, hasNextPage]);
 
     const rows = table.getRowModel().rows;
     const isVirtualActive =
@@ -478,8 +492,11 @@ export function DataTable<TData>({
                                 size="icon"
                                 className="bg-background/90 h-8 w-8 rounded-full shadow-md backdrop-blur-sm"
                                 onClick={scrollToEdge}
+                                disabled={isScrollingToEnd}
                             >
-                                {isNearBottom ? (
+                                {isScrollingToEnd ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : isNearBottom ? (
                                     <ChevronUp className="h-4 w-4" />
                                 ) : (
                                     <ChevronDown className="h-4 w-4" />

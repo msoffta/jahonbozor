@@ -1,13 +1,21 @@
 import { format } from "date-fns";
+import { Trash2 } from "lucide-react";
+
+import { Button, motion } from "@jahonbozor/ui";
 
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { HistoryEntryItem } from "@jahonbozor/schemas/src/products/product-history.dto";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
 
+export interface IncomeActions {
+    onDelete?: (id: number) => void;
+}
+
 export function getIncomeColumns(
     t: TFunction,
     products: AdminProductItem[],
+    actions?: IncomeActions,
 ): ColumnDef<HistoryEntryItem, unknown>[] {
     const selectOptions = products.map((p) => ({
         label: p.name,
@@ -58,7 +66,14 @@ export function getIncomeColumns(
             accessorKey: "changeReason",
             header: t("income_reason"),
             size: 200,
-            cell: ({ getValue }) => getValue<string | null>() ?? "—",
+            cell: ({ getValue }) => {
+                const raw = getValue<string | null>();
+                if (!raw) return "";
+                // Localize system-generated reasons (order:123, order_update:123, etc.)
+                const match = /^(order|order_update|order_delete|order_restore):(\d+)$/.exec(raw);
+                if (match) return t(`reason_${match[1]}`, { id: match[2] });
+                return raw;
+            },
             meta: { flex: 2, editable: true, inputType: "text" as const },
         },
         {
@@ -83,5 +98,31 @@ export function getIncomeColumns(
                 showTime: true,
             },
         },
+        ...(actions?.onDelete
+            ? [
+                  {
+                      id: "actions",
+                      header: "",
+                      size: 50,
+                      meta: { align: "center" as const },
+                      cell: ({ row }: { row: { original: HistoryEntryItem } }) => (
+                          <motion.div
+                              whileTap={{ scale: 0.9 }}
+                              className="inline-flex w-full justify-center"
+                          >
+                              <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-muted-foreground hover:text-destructive h-8 w-8"
+                                  onClick={() => actions.onDelete!(row.original.id)}
+                                  title={t("common:delete")}
+                              >
+                                  <Trash2 className="h-4 w-4" />
+                              </Button>
+                          </motion.div>
+                      ),
+                  } as ColumnDef<HistoryEntryItem, unknown>,
+              ]
+            : []),
     ];
 }

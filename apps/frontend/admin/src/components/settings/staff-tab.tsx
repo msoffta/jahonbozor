@@ -173,6 +173,12 @@ export function StaffTab() {
                             data={staff}
                             enableInfiniteScroll
                             onFetchNextPage={fetchNextPage}
+                            onFetchAllPages={async () => {
+                                let result = await fetchNextPage();
+                                while (result.hasNextPage) {
+                                    result = await fetchNextPage();
+                                }
+                            }}
                             hasNextPage={hasNextPage}
                             isFetchingNextPage={isFetchingNextPage}
                             totalCount={totalCount}
@@ -184,6 +190,15 @@ export function StaffTab() {
                             enableColumnResizing
                             enableEditing
                             onCellEdit={handleCellEdit}
+                            onRowDelete={
+                                canDelete
+                                    ? (rowIndex) => {
+                                          const id = staff[rowIndex].id;
+                                          deleteStaff.mutate(id);
+                                          return id;
+                                      }
+                                    : undefined
+                            }
                             translations={translations}
                         />
                     </motion.div>

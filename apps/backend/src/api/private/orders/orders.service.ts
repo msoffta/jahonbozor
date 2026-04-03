@@ -320,7 +320,7 @@ export abstract class OrdersService {
                             quantity: item.quantity,
                             previousData: { remaining: previousRemaining },
                             newData: { remaining: newRemaining },
-                            changeReason: `Order #${newOrder.id}`,
+                            changeReason: `order:${newOrder.id}`,
                         },
                     });
                 }
@@ -478,7 +478,7 @@ export abstract class OrdersService {
                                     quantity: item.quantity,
                                     previousData: { remaining: previousRemaining },
                                     newData: { remaining: newRemaining },
-                                    changeReason: `Order #${orderId} items updated (restored)`,
+                                    changeReason: `order_update:${orderId}`,
                                 },
                             });
                         }
@@ -519,7 +519,7 @@ export abstract class OrdersService {
                                 quantity: item.quantity,
                                 previousData: { remaining: previousRemaining },
                                 newData: { remaining: newRemaining },
-                                changeReason: `Order #${orderId} items updated (deducted)`,
+                                changeReason: `order_update:${orderId}`,
                             },
                         });
                     }
@@ -650,7 +650,7 @@ export abstract class OrdersService {
                                 quantity: item.quantity,
                                 previousData: { remaining: previousRemaining },
                                 newData: { remaining: newRemaining },
-                                changeReason: `Order #${orderId} deleted`,
+                                changeReason: `order_delete:${orderId}`,
                             },
                         });
                     }
@@ -735,7 +735,7 @@ export abstract class OrdersService {
                                 quantity: item.quantity,
                                 previousData: { remaining: previousRemaining },
                                 newData: { remaining: newRemaining },
-                                changeReason: `Order #${orderId} restored`,
+                                changeReason: `order_restore:${orderId}`,
                             },
                         });
                     }

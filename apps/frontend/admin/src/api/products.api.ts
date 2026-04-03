@@ -65,7 +65,7 @@ export const productsInfiniteQueryOptions = (params?: {
             const { data, error } = await api.api.private.products.get({
                 query: {
                     page: pageParam,
-                    limit: params?.limit ?? 1000,
+                    limit: params?.limit ?? 10000,
                     searchQuery: "",
                     sortBy: "id",
                     sortOrder: "asc" as const,
@@ -79,7 +79,7 @@ export const productsInfiniteQueryOptions = (params?: {
         },
         initialPageParam: 1,
         getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-            const loaded = lastPageParam * (params?.limit ?? 50);
+            const loaded = lastPageParam * (params?.limit ?? 10000);
             return loaded < lastPage.count ? lastPageParam + 1 : undefined;
         },
     });

@@ -55,4 +55,32 @@ export const history = new Elysia()
             permissions: [Permission.PRODUCT_HISTORY_READ],
             params: historyIdParams,
         },
+    )
+    .delete(
+        "/history/:historyId",
+        async ({ params, user, set, requestId, logger }): Promise<HistoryDetailResponse> => {
+            try {
+                const result = await HistoryService.deleteHistoryEntry(
+                    params.historyId,
+                    { staffId: user.id, user, requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    set.status = result.error === "History entry not found" ? 404 : 400;
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("History: Unhandled error in DELETE /history/:historyId", {
+                    historyId: params.historyId,
+                    error,
+                });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.PRODUCT_HISTORY_LIST],
+            params: historyIdParams,
+        },
     );

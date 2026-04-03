@@ -17,7 +17,7 @@ import {
     useIsMobile,
 } from "@jahonbozor/ui";
 
-import { incomeInfiniteQueryOptions, useCreateIncome } from "@/api/income.api";
+import { incomeInfiniteQueryOptions, useCreateIncome, useDeleteIncome } from "@/api/income.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getIncomeColumns } from "@/components/income/income-columns";
 import { useDataTableTranslations } from "@/hooks/use-data-table-translations";
@@ -54,14 +54,22 @@ function IncomePage() {
     );
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({ limit: 100, includeDeleted: false }),
+        productsListQueryOptions({ limit: 10000, includeDeleted: false }),
     );
 
     const createIncome = useCreateIncome();
+    const deleteIncome = useDeleteIncome();
 
     const products = productsData?.products ?? [];
 
-    const columns = useMemo(() => getIncomeColumns(t, products), [t, products]);
+    const actions = useMemo(
+        () => ({
+            onDelete: (id: number) => deleteIncome.mutate(id),
+        }),
+        [deleteIncome],
+    );
+
+    const columns = useMemo(() => getIncomeColumns(t, products, actions), [t, products, actions]);
 
     const history = useMemo(() => incomeData?.pages.flatMap((p) => p.history) ?? [], [incomeData]);
     const totalCount = incomeData?.pages[0]?.count ?? 0;
@@ -173,6 +181,12 @@ function IncomePage() {
                             data={history}
                             enableInfiniteScroll
                             onFetchNextPage={fetchNextPage}
+                            onFetchAllPages={async () => {
+                                let result = await fetchNextPage();
+                                while (result.hasNextPage) {
+                                    result = await fetchNextPage();
+                                }
+                            }}
                             hasNextPage={hasNextPage}
                             isFetchingNextPage={isFetchingNextPage}
                             totalCount={totalCount}
@@ -182,7 +196,12 @@ function IncomePage() {
                             enableFiltering
                             enableColumnVisibility
                             enableColumnResizing
-                            enableEditing={false}
+                            enableEditing
+                            onRowDelete={(rowIndex) => {
+                                const id = history[rowIndex]?.id;
+                                if (id) deleteIncome.mutate(id);
+                                return id;
+                            }}
                             enableMultipleNewRows={canCreate}
                             multiRowCount={50}
                             multiRowMaxCount={50}

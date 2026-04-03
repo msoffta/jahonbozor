@@ -74,7 +74,7 @@ export const incomeInfiniteQueryOptions = (params?: {
                 query: {
                     operation: "INVENTORY_ADD",
                     page: pageParam,
-                    limit: params?.limit ?? 1000,
+                    limit: params?.limit ?? 10000,
                     searchQuery: params?.searchQuery ?? "",
                     sortBy: "id",
                     sortOrder: "asc" as const,
@@ -90,7 +90,7 @@ export const incomeInfiniteQueryOptions = (params?: {
         },
         initialPageParam: 1,
         getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-            const loaded = lastPageParam * (params?.limit ?? 50);
+            const loaded = lastPageParam * (params?.limit ?? 10000);
             return loaded < lastPage.count ? lastPageParam + 1 : undefined;
         },
     });
@@ -110,6 +110,29 @@ export const createIncomeFn = async (body: {
     if (error) throw error;
     if (!data.success) throw new Error("Request failed");
     return data.data;
+};
+
+export const deleteIncomeFn = async (historyId: number) => {
+    const { data, error } = await api.api.private.products.history({ historyId }).delete();
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data;
+};
+
+export const useDeleteIncome = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationKey: ["income", "delete"],
+        mutationFn: deleteIncomeFn,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: incomeKeys.all });
+            queryClient.invalidateQueries({ queryKey: productKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
+    });
 };
 
 export const useCreateIncome = () => {

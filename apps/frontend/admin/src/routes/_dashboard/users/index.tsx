@@ -217,6 +217,12 @@ function UsersPage() {
                             data={clients}
                             enableInfiniteScroll
                             onFetchNextPage={fetchNextPage}
+                            onFetchAllPages={async () => {
+                                let result = await fetchNextPage();
+                                while (result.hasNextPage) {
+                                    result = await fetchNextPage();
+                                }
+                            }}
                             hasNextPage={hasNextPage}
                             isFetchingNextPage={isFetchingNextPage}
                             totalCount={totalCount}

@@ -55,7 +55,7 @@ function NewOrderPage() {
     const { data: clientData } = useQuery(clientDetailQueryOptions(userId ?? 0));
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({ limit: 50, includeDeleted: false }),
+        productsListQueryOptions({ limit: 10000, includeDeleted: false }),
     );
 
     const createOrder = useCreateOrder();

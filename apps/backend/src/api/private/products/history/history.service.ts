@@ -278,4 +278,76 @@ export abstract class HistoryService {
             return { success: false, error };
         }
     }
+
+    static async deleteHistoryEntry(
+        historyId: number,
+        context: ServiceContext,
+        logger: Logger,
+    ): Promise<HistoryDetailResponse> {
+        try {
+            const entry = await prisma.productHistory.findUnique({
+                where: { id: historyId },
+                include: { product: true },
+            });
+
+            if (!entry) {
+                logger.warn("History: Entry not found for deletion", { historyId });
+                return { success: false, error: "History entry not found" };
+            }
+
+            // Reverse the inventory change
+            const quantity = entry.quantity ?? 0;
+            const reverseQuantity = entry.operation === "INVENTORY_ADD" ? -quantity : quantity;
+
+            const newRemaining = entry.product.remaining + reverseQuantity;
+
+            await prisma.$transaction(async (transaction) => {
+                await transaction.product.update({
+                    where: { id: entry.productId },
+                    data: { remaining: newRemaining },
+                });
+
+                await transaction.productHistory.delete({
+                    where: { id: historyId },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId: context.requestId, user: context.user, logger },
+                    {
+                        entityType: "product",
+                        entityId: entry.productId,
+                        action: "INVENTORY_ADJUST",
+                        previousData: { remaining: entry.product.remaining },
+                        newData: { remaining: newRemaining },
+                    },
+                );
+            });
+
+            logger.info("History: Entry deleted and inventory reversed", {
+                historyId,
+                productId: entry.productId,
+                operation: entry.operation,
+                quantity: entry.quantity,
+                previousRemaining: entry.product.remaining,
+                newRemaining,
+            });
+
+            return {
+                success: true,
+                data: {
+                    ...entry,
+                    product: {
+                        id: entry.product.id,
+                        name: entry.product.name,
+                        price: Number(entry.product.price),
+                        deletedAt: entry.product.deletedAt,
+                    },
+                },
+            };
+        } catch (error) {
+            logger.error("History: Error in deleteHistoryEntry", { historyId, error });
+            return { success: false, error };
+        }
+    }
 }

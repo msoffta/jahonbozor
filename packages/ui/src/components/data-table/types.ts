@@ -165,6 +165,8 @@ export interface DataTableProps<TData> {
     // Infinite scroll
     enableInfiniteScroll?: boolean;
     onFetchNextPage?: () => void;
+    /** Load all remaining pages. Called by scroll-to-end button. */
+    onFetchAllPages?: () => Promise<void>;
     hasNextPage?: boolean;
     isFetchingNextPage?: boolean;
     totalCount?: number;

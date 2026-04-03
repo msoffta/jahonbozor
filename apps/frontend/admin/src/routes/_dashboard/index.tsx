@@ -126,7 +126,7 @@ function OrdersPage() {
     );
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({ limit: 100, includeDeleted: false }),
+        productsListQueryOptions({ limit: 10000, includeDeleted: false }),
     );
 
     const { data: clientsData, isLoading: isClientsLoading } = useQuery(
@@ -439,6 +439,12 @@ function OrdersPage() {
                             data={orders}
                             enableInfiniteScroll
                             onFetchNextPage={fetchNextPage}
+                            onFetchAllPages={async () => {
+                                let result = await fetchNextPage();
+                                while (result.hasNextPage) {
+                                    result = await fetchNextPage();
+                                }
+                            }}
                             hasNextPage={hasNextPage}
                             isFetchingNextPage={isFetchingNextPage}
                             totalCount={totalCount}

@@ -365,7 +365,7 @@ export function useCellNavigation({
                 }
 
                 case "Delete": {
-                    if (!input && onRowDeleteRef.current) {
+                    if (onRowDeleteRef.current) {
                         e.preventDefault();
                         lastDeletedIdRef.current = onRowDeleteRef.current(coords.row);
                         // Move cursor to next row (or first new/empty row below)

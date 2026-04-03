@@ -55,7 +55,7 @@ function OrderDetailPage() {
     const { data: order, isLoading } = useQuery(orderDetailQueryOptions(numericId));
 
     const { data: productsData } = useQuery(
-        productsListQueryOptions({ limit: 50, includeDeleted: false }),
+        productsListQueryOptions({ limit: 10000, includeDeleted: false }),
     );
 
     const deleteOrder = useDeleteOrder();
