@@ -249,6 +249,10 @@ export function DataTableCombobox({
                 for (let i = prev + 1; i < filtered.length; i++) {
                     if (!filtered[i].disabled) return i;
                 }
+                // Wrap to start
+                for (let i = 0; i < prev; i++) {
+                    if (!filtered[i].disabled) return i;
+                }
                 return prev;
             });
         } else if (e.key === "ArrowUp") {
@@ -256,6 +260,10 @@ export function DataTableCombobox({
             setShowList(true);
             setSelectedIndex((prev) => {
                 for (let i = prev - 1; i >= 0; i--) {
+                    if (!filtered[i].disabled) return i;
+                }
+                // Wrap to end
+                for (let i = filtered.length - 1; i > prev; i--) {
                     if (!filtered[i].disabled) return i;
                 }
                 return prev;
