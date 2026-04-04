@@ -1,7 +1,7 @@
 import jwt from "@elysiajs/jwt";
 import { Elysia, t } from "elysia";
 
-import { TelegramLoginBody } from "@jahonbozor/schemas/src/users";
+import { TelegramLoginBody, TelegramWebAppAuthBody } from "@jahonbozor/schemas/src/users";
 
 import { authMiddleware } from "@backend/lib/middleware";
 import { requestContext } from "@backend/lib/request-context";
@@ -84,6 +84,66 @@ export const publicUsers = new Elysia({ prefix: "/users" })
         },
         {
             body: TelegramLoginBody,
+            cookie: authCookieSchema,
+        },
+    )
+    .post(
+        "/telegram-webapp",
+        async ({
+            body,
+            cookie: { auth },
+            jwt,
+            set,
+            logger,
+            requestId,
+        }): Promise<TelegramAuthResponse> => {
+            try {
+                const result = await PublicUsersService.authenticateWithWebApp(
+                    body,
+                    jwt,
+                    { requestId },
+                    logger,
+                );
+
+                if (!result.success) {
+                    const error = result.error as string;
+                    if (
+                        error === "Server configuration error" ||
+                        error === "Internal Server Error"
+                    ) {
+                        set.status = 500;
+                    } else if (error === "Invalid authentication data") {
+                        set.status = 401;
+                    } else {
+                        set.status = 400;
+                    }
+                    return { success: false, error };
+                }
+
+                const { user, accessToken, refreshToken, refreshTokenExp } = result.data;
+
+                auth.set({
+                    path: "/api/public/auth",
+                    secure: process.env.NODE_ENV !== "development",
+                    httpOnly: true,
+                    expires: refreshTokenExp,
+                    maxAge: 30 * 24 * 60 * 60,
+                    value: refreshToken,
+                    sameSite: true,
+                });
+
+                return {
+                    success: true,
+                    data: { user, token: accessToken },
+                };
+            } catch (error) {
+                logger.error("PublicUsers: Unhandled error in POST /telegram-webapp", { error });
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
+            }
+        },
+        {
+            body: TelegramWebAppAuthBody,
             cookie: authCookieSchema,
         },
     )

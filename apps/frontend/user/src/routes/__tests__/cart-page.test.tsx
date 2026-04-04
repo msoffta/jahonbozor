@@ -38,6 +38,7 @@ vi.mock("@tanstack/react-router", () => ({
         </a>
     ),
     useNavigate: () => mockNavigate,
+    useRouter: () => ({ history: { back: vi.fn() } }),
     redirect: () => {},
 }));
 

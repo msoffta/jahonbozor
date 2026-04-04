@@ -11,10 +11,24 @@ vi.mock("grammy", () => ({
         on() {}
         command() {}
         catch() {}
-        api = { setWebhook: mockSetWebhook };
+        api = {
+            setWebhook: mockSetWebhook,
+            setChatMenuButton: vi.fn(() => Promise.resolve()),
+        };
     },
     GrammyError: class GrammyError extends Error {},
     HttpError: class HttpError extends Error {},
+    InlineKeyboard: class MockInlineKeyboard {
+        webApp() {
+            return this;
+        }
+        row() {
+            return this;
+        }
+        url() {
+            return this;
+        }
+    },
     webhookCallback: () => () => mockHandleUpdate(),
 }));
 

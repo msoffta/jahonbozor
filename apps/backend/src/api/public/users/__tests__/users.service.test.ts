@@ -16,6 +16,14 @@ vi.mock("@backend/lib/telegram", () => ({
     sendContactRequest: vi.fn(() => Promise.resolve()),
 }));
 
+// Mock @telegram-apps/init-data-node/web
+const mockValidate = vi.fn();
+const mockParse = vi.fn();
+vi.mock("@telegram-apps/init-data-node/web", () => ({
+    validate: (...args: unknown[]) => mockValidate(...args),
+    parse: (...args: unknown[]) => mockParse(...args),
+}));
+
 // Mock user data
 const mockUser: UsersType = {
     id: 1,
@@ -432,6 +440,241 @@ describe("PublicUsersService", () => {
             // Act
             await PublicUsersService.authenticateWithTelegram(
                 body,
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert — jwt.sign called twice: once for refresh, once for access
+            expect(mockJwt.sign).toHaveBeenCalledTimes(2);
+
+            saveTokenSpy.mockRestore();
+        });
+    });
+
+    describe("authenticateWithWebApp", () => {
+        const validInitData =
+            "query_id=AAHdF6IQ&user=%7B%22id%22%3A123456789%7D&auth_date=1662771648&hash=abc";
+        const parsedInitData = {
+            auth_date: new Date("2024-01-01T00:00:00Z"),
+            hash: "abc123",
+            user: {
+                id: 123456789,
+                first_name: "John",
+                last_name: "Doe",
+                username: "johndoe",
+                photo_url: "https://photo.url/avatar.jpg",
+            },
+        };
+
+        beforeEach(() => {
+            mockValidate.mockReset();
+            mockParse.mockReset();
+        });
+
+        test("should authenticate user with valid initData", async () => {
+            // Arrange
+            mockValidate.mockResolvedValue(undefined);
+            mockParse.mockReturnValue(parsedInitData);
+            prismaMock.users.findUnique.mockResolvedValue(null);
+            mockTransaction({
+                users: { create: () => Promise.resolve(mockUser) },
+                auditLog: { create: () => Promise.resolve({}) },
+            });
+            const saveTokenSpy = vi.spyOn(AuthService, "saveRefreshToken").mockResolvedValue(true);
+
+            // Act
+            const result = await PublicUsersService.authenticateWithWebApp(
+                { initData: validInitData },
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data).toHaveProperty("user");
+            expect(success.data).toHaveProperty("accessToken");
+            expect(success.data).toHaveProperty("refreshToken");
+            expect(mockValidate).toHaveBeenCalledWith(validInitData, TEST_BOT_TOKEN, {
+                expiresIn: 86400,
+            });
+            expect(mockLogger.info).toHaveBeenCalled();
+
+            saveTokenSpy.mockRestore();
+        });
+
+        test("should return failure for invalid initData signature", async () => {
+            // Arrange
+            mockValidate.mockRejectedValue(new Error("Signature is invalid"));
+
+            // Act
+            const result = await PublicUsersService.authenticateWithWebApp(
+                { initData: "invalid-data" },
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Invalid authentication data");
+            expect(mockLogger.warn).toHaveBeenCalled();
+        });
+
+        test("should return failure for expired initData", async () => {
+            // Arrange
+            mockValidate.mockRejectedValue(new Error("Init data has expired"));
+
+            // Act
+            const result = await PublicUsersService.authenticateWithWebApp(
+                { initData: "expired-data" },
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Invalid authentication data");
+        });
+
+        test("should return failure when initData has no user", async () => {
+            // Arrange
+            mockValidate.mockResolvedValue(undefined);
+            mockParse.mockReturnValue({ auth_date: new Date(), hash: "abc", user: undefined });
+
+            // Act
+            const result = await PublicUsersService.authenticateWithWebApp(
+                { initData: validInitData },
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Invalid authentication data");
+            expect(mockLogger.warn).toHaveBeenCalled();
+        });
+
+        test("should return failure when TELEGRAM_BOT_TOKEN is not configured", async () => {
+            // Arrange
+            delete process.env.TELEGRAM_BOT_TOKEN;
+
+            // Act
+            const result = await PublicUsersService.authenticateWithWebApp(
+                { initData: validInitData },
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Server configuration error");
+            expect(mockLogger.error).toHaveBeenCalled();
+        });
+
+        test("should return sendContactRequest flag when user has no phone", async () => {
+            // Arrange
+            mockValidate.mockResolvedValue(undefined);
+            mockParse.mockReturnValue(parsedInitData);
+            prismaMock.users.findUnique.mockResolvedValue(null);
+            mockTransaction({
+                users: { create: () => Promise.resolve(mockUserNoPhone) },
+                auditLog: { create: () => Promise.resolve({}) },
+            });
+            const saveTokenSpy = vi.spyOn(AuthService, "saveRefreshToken").mockResolvedValue(true);
+
+            // Act
+            const result = await PublicUsersService.authenticateWithWebApp(
+                { initData: validInitData },
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert
+            const success = expectSuccess(result);
+            expect(success.data).toHaveProperty("shouldSendContactRequest", true);
+
+            saveTokenSpy.mockRestore();
+        });
+
+        test("should return failure when saveRefreshToken fails", async () => {
+            // Arrange
+            mockValidate.mockResolvedValue(undefined);
+            mockParse.mockReturnValue(parsedInitData);
+            prismaMock.users.findUnique.mockResolvedValue(null);
+            mockTransaction({
+                users: { create: () => Promise.resolve(mockUser) },
+                auditLog: { create: () => Promise.resolve({}) },
+            });
+            const saveTokenSpy = vi.spyOn(AuthService, "saveRefreshToken").mockResolvedValue(null);
+
+            // Act
+            const result = await PublicUsersService.authenticateWithWebApp(
+                { initData: validInitData },
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert
+            const failure = expectFailure(result);
+            expect(failure.error).toBe("Internal Server Error");
+
+            saveTokenSpy.mockRestore();
+        });
+
+        test("should pass language to createOrUpdateFromTelegram", async () => {
+            // Arrange
+            mockValidate.mockResolvedValue(undefined);
+            mockParse.mockReturnValue(parsedInitData);
+            prismaMock.users.findUnique.mockResolvedValue(null);
+            mockTransaction({
+                users: { create: () => Promise.resolve(mockUser) },
+                auditLog: { create: () => Promise.resolve({}) },
+            });
+            const saveTokenSpy = vi.spyOn(AuthService, "saveRefreshToken").mockResolvedValue(true);
+            const createOrUpdateSpy = vi.spyOn(UsersService, "createOrUpdateFromTelegram");
+
+            // Act
+            await PublicUsersService.authenticateWithWebApp(
+                { initData: validInitData, language: "ru" },
+                mockJwt,
+                { requestId: "test-req" },
+                mockLogger,
+            );
+
+            // Assert
+            expect(createOrUpdateSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ id: "123456789", first_name: "John" }),
+                expect.anything(),
+                undefined,
+                "test-req",
+                "ru",
+            );
+
+            saveTokenSpy.mockRestore();
+            createOrUpdateSpy.mockRestore();
+        });
+
+        test("should generate both access and refresh JWT tokens", async () => {
+            // Arrange
+            mockValidate.mockResolvedValue(undefined);
+            mockParse.mockReturnValue(parsedInitData);
+            prismaMock.users.findUnique.mockResolvedValue(null);
+            mockTransaction({
+                users: { create: () => Promise.resolve(mockUser) },
+                auditLog: { create: () => Promise.resolve({}) },
+            });
+            const saveTokenSpy = vi.spyOn(AuthService, "saveRefreshToken").mockResolvedValue(true);
+
+            // Act
+            await PublicUsersService.authenticateWithWebApp(
+                { initData: validInitData },
                 mockJwt,
                 { requestId: "test-req" },
                 mockLogger,

@@ -41,6 +41,7 @@ vi.mock("@tanstack/react-router", () => ({
     createFileRoute: () => (config: any) => config,
     lazyRouteComponent: (component: any) => component,
     useNavigate: () => mockNavigate,
+    useRouter: () => ({ history: { back: vi.fn() } }),
 }));
 
 vi.mock("@tanstack/react-query", () => ({

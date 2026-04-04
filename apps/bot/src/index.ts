@@ -43,7 +43,7 @@ export const server = Bun.serve({
 
 // Register webhook with Telegram on startup
 void bot.api
-    .setWebhook(webhookUrl, { secret_token: webhookSecret })
+    .setWebhook(webhookUrl, { secret_token: webhookSecret, drop_pending_updates: true })
     .then(() => {
         logger.info("Bot: Webhook registered", { webhookUrl });
     })

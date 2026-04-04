@@ -26,6 +26,11 @@ export const TelegramLoginBody = TelegramAuthBody.extend({
     language: LanguageSchema.optional(),
 });
 
+export const TelegramWebAppAuthBody = z.object({
+    initData: z.string().min(1),
+    language: LanguageSchema.optional(),
+});
+
 export const UsersPagination = PaginationQuery.extend({
     searchQuery: z.string().optional(),
     includeOrders: z.preprocess((val) => {
@@ -42,6 +47,7 @@ export type CreateUserBody = z.infer<typeof CreateUserBody>;
 export type UpdateUserBody = z.infer<typeof UpdateUserBody>;
 export type TelegramAuthBody = z.infer<typeof TelegramAuthBody>;
 export type TelegramLoginBody = z.infer<typeof TelegramLoginBody>;
+export type TelegramWebAppAuthBody = z.infer<typeof TelegramWebAppAuthBody>;
 export type UsersPagination = z.infer<typeof UsersPagination>;
 
 // --- Response types ---
