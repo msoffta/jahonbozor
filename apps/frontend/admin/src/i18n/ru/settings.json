@@ -54,11 +54,15 @@
   "permission_group_analytics": "Аналитика",
   "permission_group_producthistory": "История товаров",
   "permission_group_auditlogs": "Журнал аудита",
+  "permission_group_telegram_sessions": "Telegram сессии",
+  "permission_group_broadcast_templates": "Шаблоны рассылок",
+  "permission_group_broadcasts": "Рассылки",
 
   "permission_section_people": "Управление людьми",
   "permission_section_catalog": "Каталог",
   "permission_section_sales_finance": "Продажи и финансы",
   "permission_section_system": "Система",
+  "permission_section_broadcasts": "Рассылки",
 
   "perm_users": {
     "create": { "title": "Создание", "desc": "Регистрация новых клиентов в системе" },
@@ -193,5 +197,31 @@
       "title": "Просмотр отчетов",
       "desc": "Доступ к финансовой аналитике, графикам и статистике продаж"
     }
+  },
+
+  "perm_telegram-sessions": {
+    "create": { "title": "Создание", "desc": "Добавление новых Telegram сессий через QR-код" },
+    "read": { "title": "Просмотр", "desc": "Просмотр деталей Telegram сессий" },
+    "update": {
+      "title": "Редактирование",
+      "desc": "Изменение названия, подключение/отключение сессий"
+    },
+    "delete": { "title": "Удаление", "desc": "Удаление Telegram сессий" },
+    "list": { "title": "Список", "desc": "Просмотр списка всех Telegram сессий" }
+  },
+  "perm_broadcast-templates": {
+    "create": { "title": "Создание", "desc": "Создание новых шаблонов сообщений для рассылки" },
+    "read": { "title": "Просмотр", "desc": "Просмотр деталей шаблонов рассылок" },
+    "update": { "title": "Редактирование", "desc": "Изменение существующих шаблонов рассылок" },
+    "delete": { "title": "Удаление", "desc": "Удаление шаблонов рассылок" },
+    "list": { "title": "Список", "desc": "Просмотр списка всех шаблонов рассылок" }
+  },
+  "perm_broadcasts": {
+    "create": { "title": "Создание", "desc": "Создание новых рассылок с выбором получателей" },
+    "read": { "title": "Просмотр", "desc": "Просмотр деталей и прогресса рассылок" },
+    "update": { "title": "Редактирование", "desc": "Изменение черновиков рассылок" },
+    "delete": { "title": "Удаление", "desc": "Удаление рассылок" },
+    "list": { "title": "Список", "desc": "Просмотр списка всех рассылок" },
+    "send": { "title": "Отправка", "desc": "Запуск, пауза, возобновление и повтор рассылок" }
   }
 }

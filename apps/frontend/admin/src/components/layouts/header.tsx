@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Link } from "@tanstack/react-router";
-import { LogOut, Settings, User } from "lucide-react";
+import { LogOut, MessageSquare, Settings, Smartphone, User } from "lucide-react";
 
+import { Permission } from "@jahonbozor/schemas";
 import {
     cn,
     DropdownMenu,
@@ -16,6 +17,7 @@ import {
 } from "@jahonbozor/ui";
 
 import { useLogout } from "@/hooks/use-auth";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { useAuthStore } from "@/stores/auth.store";
 
 export function Header() {
@@ -23,6 +25,8 @@ export function Header() {
     const { t } = useTranslation();
     const user = useAuthStore((s) => s.user);
     const { mutate: logout } = useLogout();
+    const hasBroadcastPermission = useHasPermission(Permission.BROADCASTS_LIST);
+    const hasSessionsPermission = useHasPermission(Permission.TELEGRAM_SESSIONS_LIST);
 
     useEffect(() => {
         const HEADER_SHADOW_SCROLL_THRESHOLD_PX = 8;
@@ -88,6 +92,22 @@ export function Header() {
                                 <DropdownMenuLabel>{user.fullname}</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                             </>
+                        )}
+                        {hasSessionsPermission && (
+                            <DropdownMenuItem asChild>
+                                <Link to="/sessions">
+                                    <Smartphone className="h-4 w-4" />
+                                    {t("broadcasts:sessions_title")}
+                                </Link>
+                            </DropdownMenuItem>
+                        )}
+                        {hasBroadcastPermission && (
+                            <DropdownMenuItem asChild>
+                                <Link to="/broadcasts">
+                                    <MessageSquare className="h-4 w-4" />
+                                    {t("broadcasts:title")}
+                                </Link>
+                            </DropdownMenuItem>
                         )}
                         <DropdownMenuItem asChild>
                             <Link to="/settings">

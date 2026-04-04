@@ -3,6 +3,7 @@ import { initReactI18next } from "react-i18next";
 import i18n from "i18next";
 
 import ruAnalytics from "@/i18n/ru/analytics.json";
+import ruBroadcasts from "@/i18n/ru/broadcasts.json";
 import ruClients from "@/i18n/ru/clients.json";
 import ruCommon from "@/i18n/ru/common.json";
 import ruExpenses from "@/i18n/ru/expenses.json";
@@ -11,6 +12,7 @@ import ruOrders from "@/i18n/ru/orders.json";
 import ruProducts from "@/i18n/ru/products.json";
 import ruSettings from "@/i18n/ru/settings.json";
 import uzAnalytics from "@/i18n/uz/analytics.json";
+import uzBroadcasts from "@/i18n/uz/broadcasts.json";
 import uzClients from "@/i18n/uz/clients.json";
 import uzCommon from "@/i18n/uz/common.json";
 import uzExpenses from "@/i18n/uz/expenses.json";
@@ -30,6 +32,7 @@ const resources = {
         orders: uzOrders,
         settings: uzSettings,
         analytics: uzAnalytics,
+        broadcasts: uzBroadcasts,
     },
     ru: {
         common: ruCommon,
@@ -40,6 +43,7 @@ const resources = {
         orders: ruOrders,
         settings: ruSettings,
         analytics: ruAnalytics,
+        broadcasts: ruBroadcasts,
     },
 };
 

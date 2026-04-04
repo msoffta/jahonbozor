@@ -8,9 +8,10 @@ model Users {
   language   String    @default("uz")
   deletedAt  DateTime?
 
-  orders       Order[]
-  debtPayments DebtPayment[]
-  refreshToken RefreshToken[]
+  orders              Order[]
+  debtPayments        DebtPayment[]
+  refreshToken        RefreshToken[]
+  broadcastRecipients BroadcastRecipient[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

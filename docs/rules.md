@@ -331,6 +331,9 @@ ActorType:     STAFF | USER | SYSTEM
 Operation:     CREATE | UPDATE | DELETE | RESTORE | INVENTORY_ADD | INVENTORY_REMOVE
 PaymentType:   CASH | CREDIT_CARD
 OrderStatus:   NEW | ACCEPTED
+TelegramSessionStatus: ACTIVE | DISCONNECTED | BANNED
+BroadcastStatus:       DRAFT | SCHEDULED | SENDING | PAUSED | COMPLETED | FAILED
+BroadcastRecipientStatus: PENDING | SENT | FAILED
 ```
 
 ## Request Context

@@ -102,3 +102,47 @@ export function createDebtPaymentSnapshot(payment: DebtPaymentModel) {
         comment: payment.comment,
     };
 }
+
+export function createTelegramSessionSnapshot(session: {
+    name: string;
+    phone: string;
+    status: string;
+}) {
+    return {
+        name: session.name,
+        phone: session.phone,
+        status: session.status,
+    };
+}
+
+export function createBroadcastTemplateSnapshot(template: {
+    name: string;
+    content: string;
+    media: unknown;
+    buttons: unknown;
+}) {
+    return {
+        name: template.name,
+        content: template.content,
+        media: template.media,
+        buttons: template.buttons,
+    };
+}
+
+export function createBroadcastSnapshot(broadcast: {
+    name: string;
+    status: string;
+    sendVia: string;
+    sessionId: number | null;
+    templateId: number | null;
+    scheduledAt: Date | null;
+}) {
+    return {
+        name: broadcast.name,
+        status: broadcast.status,
+        sendVia: broadcast.sendVia,
+        sessionId: broadcast.sessionId,
+        templateId: broadcast.templateId,
+        scheduledAt: broadcast.scheduledAt,
+    };
+}

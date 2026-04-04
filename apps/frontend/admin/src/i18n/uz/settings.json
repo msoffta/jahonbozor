@@ -42,6 +42,9 @@
   "no_permissions_found": "Huquqlar topilmadi",
   "permission_group_producthistory": "Mahsulotlar tarixi",
   "permission_group_auditlogs": "Audit jurnali",
+  "permission_group_telegram_sessions": "Telegram sessiyalar",
+  "permission_group_broadcast_templates": "Xabar shablonlari",
+  "permission_group_broadcasts": "Xabar tarqatish",
 
   "edit_permissions_title": "Huquqlar: {{roleName}}",
   "permission_group_users": "Mijozlar",
@@ -58,6 +61,7 @@
   "permission_section_catalog": "Katalog",
   "permission_section_sales_finance": "Savdo va moliya",
   "permission_section_system": "Tizim",
+  "permission_section_broadcasts": "Xabar tarqatish",
 
   "perm_users": {
     "create": { "title": "Yaratish", "desc": "Tizimda yangi mijozlarni ro'yxatdan o'tkazish" },
@@ -200,6 +204,35 @@
     "view": {
       "title": "Hisobotlarni ko'rish",
       "desc": "Moliyaviy tahlil, grafiklar va savdo statistikasiga kirish"
+    }
+  },
+
+  "perm_telegram-sessions": {
+    "create": { "title": "Yaratish", "desc": "QR-kod orqali yangi Telegram sessiya qo'shish" },
+    "read": { "title": "Ko'rish", "desc": "Telegram sessiya tafsilotlarini ko'rish" },
+    "update": { "title": "Tahrirlash", "desc": "Nomini o'zgartirish, ulash/uzish" },
+    "delete": { "title": "O'chirish", "desc": "Telegram sessiyalarni o'chirish" },
+    "list": { "title": "Ro'yxat", "desc": "Barcha Telegram sessiyalar ro'yxatini ko'rish" }
+  },
+  "perm_broadcast-templates": {
+    "create": { "title": "Yaratish", "desc": "Xabar tarqatish uchun yangi shablonlar yaratish" },
+    "read": { "title": "Ko'rish", "desc": "Shablon tafsilotlarini ko'rish" },
+    "update": { "title": "Tahrirlash", "desc": "Mavjud shablonlarni o'zgartirish" },
+    "delete": { "title": "O'chirish", "desc": "Shablonlarni o'chirish" },
+    "list": { "title": "Ro'yxat", "desc": "Barcha shablonlar ro'yxatini ko'rish" }
+  },
+  "perm_broadcasts": {
+    "create": {
+      "title": "Yaratish",
+      "desc": "Qabul qiluvchilarni tanlash bilan yangi xabar tarqatish yaratish"
+    },
+    "read": { "title": "Ko'rish", "desc": "Xabar tarqatish tafsilotlari va jarayonini ko'rish" },
+    "update": { "title": "Tahrirlash", "desc": "Qoralama xabar tarqatishlarni o'zgartirish" },
+    "delete": { "title": "O'chirish", "desc": "Xabar tarqatishlarni o'chirish" },
+    "list": { "title": "Ro'yxat", "desc": "Barcha xabar tarqatishlar ro'yxatini ko'rish" },
+    "send": {
+      "title": "Yuborish",
+      "desc": "Xabar tarqatishlarni boshlash, to'xtatish, davom ettirish va qaytarish"
     }
   }
 }

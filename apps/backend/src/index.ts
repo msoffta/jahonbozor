@@ -19,6 +19,7 @@ import staticPlugin from "@elysiajs/static";
 
 import { privateRoutes } from "./api/private";
 import { publicRoutes } from "./api/public";
+import { startBroadcastScheduler } from "./lib/broadcast-worker";
 import { baseLogger } from "./lib/logger";
 import { prisma } from "./lib/prisma";
 import { requestContext } from "./lib/request-context";
@@ -86,5 +87,9 @@ prisma
     .$connect()
     .then(() => baseLogger.info("Prisma connected to database"))
     .catch((err: unknown) => baseLogger.error("Prisma connection failed", { error: err }));
+
+// Start broadcast scheduler for scheduled sends
+startBroadcastScheduler(baseLogger);
+baseLogger.info("Broadcast scheduler started");
 
 export type App = typeof app;
