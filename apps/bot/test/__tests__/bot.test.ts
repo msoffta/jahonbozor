@@ -74,6 +74,7 @@ function createCommandContext(fromId: number) {
     return {
         from: { id: fromId },
         reply: vi.fn((_text: string, _opts?: unknown): Promise<void> => Promise.resolve()),
+        setChatMenuButton: vi.fn((_opts?: unknown): Promise<void> => Promise.resolve()),
     };
 }
 
