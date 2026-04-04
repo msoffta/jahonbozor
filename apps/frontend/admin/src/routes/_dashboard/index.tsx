@@ -291,19 +291,15 @@ function OrdersPage() {
                 return result?.id;
             }
 
-            // For creation, product is strictly required
-            if (!data.product) {
-                return; // Wait for product selection
-            }
-
             const paymentType = (data.paymentType as "CASH" | "CREDIT_CARD" | "DEBT") || "CASH";
             if (paymentType === "DEBT" && !data.user) {
                 toast.error(t("error_debt_requires_user"));
                 throw new Error("Validation failed");
             }
 
-            const productId = Number(data.product);
-            const product = products.find((p) => p.id === productId);
+            const productId = data.product ? Number(data.product) : null;
+            const product =
+                productId != null ? products.find((p) => p.id === productId) : undefined;
             const price =
                 data.price != null && data.price !== ""
                     ? Number(data.price)
@@ -348,7 +344,9 @@ function OrdersPage() {
                 };
             }
 
-            return values;
+            const price = Number(values.price) || 0;
+            const newTotal = price * currentQuantity;
+            return { ...values, quantity: currentQuantity, total: newTotal };
         },
         [products],
     );

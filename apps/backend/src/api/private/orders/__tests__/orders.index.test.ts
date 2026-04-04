@@ -83,7 +83,7 @@ const createTestApp = () => {
             return await OrdersService.createOrder(
                 body as {
                     paymentType: "CASH" | "CREDIT_CARD";
-                    items: { productId: number; quantity: number; price: number }[];
+                    items: { productId: number | null; quantity: number; price: number }[];
                 },
                 { staffId: user.id, user, requestId },
                 logger,
@@ -544,6 +544,184 @@ describe("Orders Service Integration", () => {
             expect.objectContaining({ staffId: 1, requestId: "test-request-id" }),
             expect.anything(),
         );
+
+        spy.mockRestore();
+    });
+});
+
+describe("Orders API — null-product items", () => {
+    let app: ReturnType<typeof createTestApp>;
+
+    beforeEach(() => {
+        app = createTestApp();
+    });
+
+    const mockOrderWithNullProduct = {
+        ...mockOrderWithRelations,
+        items: [
+            {
+                id: 1,
+                orderId: 1,
+                productId: null,
+                quantity: 3,
+                price: 150,
+                data: null,
+                product: null,
+            },
+        ],
+    };
+
+    const mockOrderWithMixedItems = {
+        ...mockOrderWithRelations,
+        items: [
+            {
+                id: 1,
+                orderId: 1,
+                productId: 1,
+                quantity: 2,
+                price: 100,
+                data: null,
+                product: { id: 1, name: "Test Product", price: 100, remaining: 10 },
+            },
+            {
+                id: 2,
+                orderId: 1,
+                productId: null,
+                quantity: 5,
+                price: 200,
+                data: null,
+                product: null,
+            },
+        ],
+    };
+
+    test("POST /orders with null-product item should succeed", async () => {
+        const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
+            success: true,
+            data: mockOrderWithNullProduct,
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    paymentType: "CASH",
+                    items: [{ productId: null, quantity: 3, price: 150 }],
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.data.items[0].productId).toBeNull();
+        expect(body.data.items[0].product).toBeNull();
+        expect(body.data.items[0].price).toBe(150);
+
+        spy.mockRestore();
+    });
+
+    test("POST /orders with mixed items (product + null) should succeed", async () => {
+        const spy = vi.spyOn(OrdersService, "createOrder").mockResolvedValue({
+            success: true,
+            data: mockOrderWithMixedItems,
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    paymentType: "CASH",
+                    items: [
+                        { productId: 1, quantity: 2, price: 100 },
+                        { productId: null, quantity: 5, price: 200 },
+                    ],
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.data.items).toHaveLength(2);
+        expect(body.data.items[0].productId).toBe(1);
+        expect(body.data.items[0].product).not.toBeNull();
+        expect(body.data.items[1].productId).toBeNull();
+        expect(body.data.items[1].product).toBeNull();
+
+        spy.mockRestore();
+    });
+
+    test("GET /orders should return orders with null-product items", async () => {
+        const spy = vi.spyOn(OrdersService, "getAllOrders").mockResolvedValue({
+            success: true,
+            data: { count: 1, orders: [mockOrderWithNullProduct] },
+        });
+
+        const response = await app.handle(new Request("http://localhost/orders"));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.data.orders[0].items[0].product).toBeNull();
+        expect(body.data.orders[0].items[0].productId).toBeNull();
+
+        spy.mockRestore();
+    });
+
+    test("GET /orders/:id should return order with null-product item", async () => {
+        const spy = vi.spyOn(OrdersService, "getOrder").mockResolvedValue({
+            success: true,
+            data: mockOrderWithNullProduct,
+        });
+
+        const response = await app.handle(new Request("http://localhost/orders/1"));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.data.items[0].product).toBeNull();
+
+        spy.mockRestore();
+    });
+
+    test("PATCH /orders/:id — bind product to null-product item should succeed", async () => {
+        const spy = vi.spyOn(OrdersService, "updateOrder").mockResolvedValue({
+            success: true,
+            data: mockOrderWithRelations, // now has product bound
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/orders/1", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    items: [{ productId: 1, quantity: 3, price: 150 }],
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.data.items[0].productId).toBe(1);
+
+        spy.mockRestore();
+    });
+
+    test("DELETE /orders/:id with null-product items should succeed", async () => {
+        const spy = vi.spyOn(OrdersService, "deleteOrder").mockResolvedValue({
+            success: true,
+            data: { orderId: 1, deleted: true },
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/orders/1", { method: "DELETE" }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
 
         spy.mockRestore();
     });

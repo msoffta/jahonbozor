@@ -1160,4 +1160,336 @@ describe("Orders Service", () => {
             expect(success.data).toEqual({ orderId: 1, deleted: true });
         });
     });
+
+    describe("null-product items (productId = null)", () => {
+        const mockOrderItemNullProduct = {
+            ...mockOrderItem,
+            productId: null,
+            product: null,
+        };
+
+        const mockOrderWithNullProductItem = {
+            ...mockOrder,
+            items: [
+                {
+                    ...mockOrderItemNullProduct,
+                    price: 150 as unknown as Prisma.Decimal,
+                },
+            ],
+            user: null,
+            staff: { id: 1, fullname: "Test Staff" },
+        };
+
+        describe("createOrder", () => {
+            test("should create order with null-product item (no stock deduction)", async () => {
+                // Arrange — no product lookup needed
+                prismaMock.order.create.mockResolvedValueOnce(
+                    mockOrderWithNullProductItem as unknown as Order,
+                );
+                prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+                // Act
+                const result = await OrdersService.createOrder(
+                    { paymentType: "CASH", items: [{ productId: null, quantity: 3, price: 150 }] },
+                    mockContext,
+                    mockLogger,
+                );
+
+                // Assert
+                expectSuccess(result);
+                // No product.findMany needed (no items with productId)
+                expect(prismaMock.product.findMany).not.toHaveBeenCalled();
+                // No stock deduction
+                expect(prismaMock.product.update).not.toHaveBeenCalled();
+                expect(prismaMock.productHistory.create).not.toHaveBeenCalled();
+            });
+
+            test("should create order with mixed items (product + null-product)", async () => {
+                // Arrange
+                const mixedOrderResponse = {
+                    ...mockOrder,
+                    items: [
+                        {
+                            ...mockOrderItem,
+                            product: {
+                                id: 1,
+                                name: "Test Product",
+                                price: 100,
+                                costprice: 80,
+                                remaining: 8,
+                            },
+                        },
+                        {
+                            ...mockOrderItemNullProduct,
+                            id: 2,
+                            price: 200 as unknown as Prisma.Decimal,
+                        },
+                    ],
+                    user: null,
+                    staff: { id: 1, fullname: "Test Staff" },
+                };
+
+                prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
+                prismaMock.order.create.mockResolvedValueOnce(
+                    mixedOrderResponse as unknown as Order,
+                );
+                prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+                prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+                prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+                // Act
+                const result = await OrdersService.createOrder(
+                    {
+                        paymentType: "CASH",
+                        items: [
+                            { productId: 1, quantity: 2, price: 100 },
+                            { productId: null, quantity: 5, price: 200 },
+                        ],
+                    },
+                    mockContext,
+                    mockLogger,
+                );
+
+                // Assert
+                expectSuccess(result);
+                // product.findMany called for the one item with productId
+                expect(prismaMock.product.findMany).toHaveBeenCalledTimes(1);
+                // Stock deducted only for product item, not for null-product item
+                expect(prismaMock.product.update).toHaveBeenCalledTimes(1);
+                expect(prismaMock.product.update).toHaveBeenCalledWith({
+                    where: { id: 1 },
+                    data: { remaining: { decrement: 2 } },
+                });
+            });
+
+            test("should not merge items with null productId", async () => {
+                // Arrange — two null-product items should stay separate
+                const twoNullItems = {
+                    ...mockOrder,
+                    items: [
+                        { ...mockOrderItemNullProduct, id: 1 },
+                        { ...mockOrderItemNullProduct, id: 2 },
+                    ],
+                    user: null,
+                    staff: { id: 1, fullname: "Test Staff" },
+                };
+
+                prismaMock.order.create.mockResolvedValueOnce(twoNullItems as unknown as Order);
+                prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+                // Act
+                const result = await OrdersService.createOrder(
+                    {
+                        paymentType: "CASH",
+                        items: [
+                            { productId: null, quantity: 1, price: 100 },
+                            { productId: null, quantity: 2, price: 200 },
+                        ],
+                    },
+                    mockContext,
+                    mockLogger,
+                );
+
+                // Assert — both items created (not merged)
+                expectSuccess(result);
+                const createCall = prismaMock.order.create.mock.calls[0][0];
+                const createdItems = (createCall as { data: { items: { create: unknown[] } } }).data
+                    .items.create;
+                expect(createdItems).toHaveLength(2);
+            });
+        });
+
+        describe("getAllOrders / getOrder", () => {
+            test("getAllOrders should return null product in response mapping", async () => {
+                // Arrange
+                prismaMock.$transaction.mockResolvedValueOnce([1, [mockOrderWithNullProductItem]]);
+
+                // Act
+                const result = await OrdersService.getAllOrders(
+                    {
+                        page: 1,
+                        limit: 20,
+                        sortBy: "id",
+                        sortOrder: "asc" as const,
+                        searchQuery: "",
+                    },
+                    1,
+                    [Permission.ORDERS_LIST_OWN],
+                    mockLogger,
+                );
+
+                // Assert
+                const success = expectSuccess(result);
+                const items = success.data?.orders[0].items;
+                expect(items?.[0].product).toBeNull();
+            });
+
+            test("getOrder should return null product in response mapping", async () => {
+                // Arrange
+                prismaMock.order.findUnique.mockResolvedValueOnce(
+                    mockOrderWithNullProductItem as unknown as Order,
+                );
+
+                // Act
+                const result = await OrdersService.getOrder(
+                    1,
+                    1,
+                    [Permission.ORDERS_READ_OWN],
+                    mockLogger,
+                );
+
+                // Assert
+                const success = expectSuccess(result);
+                expect(success.data?.items[0].product).toBeNull();
+            });
+        });
+
+        describe("deleteOrder / restoreOrder", () => {
+            const mockOrderWithNullProductForDelete = {
+                ...mockOrder,
+                items: [
+                    {
+                        ...mockOrderItemNullProduct,
+                        product: null,
+                    },
+                ],
+            };
+
+            test("deleteOrder should skip stock restore for null-product items", async () => {
+                // Arrange
+                prismaMock.order.findUnique.mockResolvedValueOnce(
+                    mockOrderWithNullProductForDelete as unknown as Order,
+                );
+                prismaMock.order.update.mockResolvedValueOnce(mockOrder);
+                prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+                // Act
+                const result = await OrdersService.deleteOrder(1, mockContext, mockLogger);
+
+                // Assert
+                expectSuccess(result);
+                expect(prismaMock.product.update).not.toHaveBeenCalled();
+                expect(prismaMock.productHistory.create).not.toHaveBeenCalled();
+            });
+
+            test("restoreOrder should skip stock deduction for null-product items", async () => {
+                // Arrange
+                prismaMock.order.findFirst.mockResolvedValueOnce(
+                    mockOrderWithNullProductForDelete as unknown as Order,
+                );
+                prismaMock.order.update.mockResolvedValueOnce(mockOrder);
+                prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+                // Act
+                const result = await OrdersService.restoreOrder(1, mockContext, mockLogger);
+
+                // Assert
+                expectSuccess(result);
+                expect(prismaMock.product.update).not.toHaveBeenCalled();
+                expect(prismaMock.productHistory.create).not.toHaveBeenCalled();
+            });
+
+            test("deleteOrder with mixed items should only restore stock for product-bound items", async () => {
+                // Arrange
+                const mixedOrder = {
+                    ...mockOrder,
+                    items: [
+                        {
+                            ...mockOrderItem,
+                            product: { id: 1, remaining: 10, deletedAt: null },
+                        },
+                        {
+                            ...mockOrderItemNullProduct,
+                            id: 2,
+                            product: null,
+                        },
+                    ],
+                };
+                prismaMock.order.findUnique.mockResolvedValueOnce(mixedOrder as unknown as Order);
+                prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+                prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+                prismaMock.order.update.mockResolvedValueOnce(mockOrder);
+                prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+                // Act
+                await OrdersService.deleteOrder(1, mockContext, mockLogger);
+
+                // Assert — stock restored only for item with productId=1
+                expect(prismaMock.product.update).toHaveBeenCalledTimes(1);
+                expect(prismaMock.product.update).toHaveBeenCalledWith({
+                    where: { id: 1 },
+                    data: { remaining: { increment: 2 } },
+                });
+            });
+        });
+
+        describe("updateOrder — bind product to null-product item", () => {
+            test("should deduct stock when binding product to previously null-product item", async () => {
+                // Arrange — existing order has a null-product item
+                const orderWithNullItem = {
+                    ...mockOrder,
+                    items: [
+                        {
+                            ...mockOrderItemNullProduct,
+                            product: null,
+                        },
+                    ],
+                };
+
+                const updatedOrderWithProduct = {
+                    ...mockOrder,
+                    items: [
+                        {
+                            ...mockOrderItem,
+                            product: {
+                                id: 1,
+                                name: "Test Product",
+                                price: 100,
+                                costprice: 80,
+                                remaining: 8,
+                            },
+                        },
+                    ],
+                    user: null,
+                    staff: { id: 1, fullname: "Test Staff" },
+                };
+
+                prismaMock.order.findUnique.mockResolvedValueOnce(
+                    orderWithNullItem as unknown as Order,
+                );
+                prismaMock.product.findMany.mockResolvedValueOnce([mockProduct]);
+                // No old stock restore (null product)
+                // Delete old items
+                prismaMock.orderItem.deleteMany.mockResolvedValueOnce({ count: 1 });
+                // Create new item + deduct stock
+                prismaMock.orderItem.create.mockResolvedValueOnce({} as never);
+                prismaMock.product.update.mockResolvedValueOnce(mockProduct);
+                prismaMock.productHistory.create.mockResolvedValueOnce({} as never);
+                // Update order
+                prismaMock.order.update.mockResolvedValueOnce(
+                    updatedOrderWithProduct as unknown as Order,
+                );
+                prismaMock.auditLog.create.mockResolvedValueOnce({} as AuditLog);
+
+                // Act
+                const result = await OrdersService.updateOrder(
+                    1,
+                    { items: [{ productId: 1, quantity: 2, price: 100 }] },
+                    mockContext,
+                    [Permission.ORDERS_UPDATE_OWN],
+                    mockLogger,
+                );
+
+                // Assert
+                expectSuccess(result);
+                // No old stock restore (null product item)
+                // Stock deducted for the newly bound product
+                expect(prismaMock.product.update).toHaveBeenCalledTimes(1);
+                expect(prismaMock.product.update).toHaveBeenCalledWith({
+                    where: { id: 1 },
+                    data: { remaining: { decrement: 2 } },
+                });
+            });
+        });
+    });
 });

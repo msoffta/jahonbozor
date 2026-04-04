@@ -134,6 +134,34 @@ describe("OrderReceipt", () => {
         expect(receipt?.getAttribute("aria-hidden")).toBe("true");
     });
 
+    test("renders placeholder for item with no product name", () => {
+        const propsWithNullProduct: OrderReceiptProps = {
+            ...baseProps,
+            items: [
+                { name: "", quantity: 3, price: 15000 },
+                { name: "Tovar 2", quantity: 1, price: 25000 },
+            ],
+            totalSum: 70000,
+        };
+        const { getByText } = render(<OrderReceipt {...propsWithNullProduct} />);
+        expect(getByText("Tovar 2")).toBeDefined();
+    });
+
+    test("renders correctly when all items have empty product name", () => {
+        const propsAllEmpty: OrderReceiptProps = {
+            ...baseProps,
+            items: [
+                { name: "", quantity: 2, price: 10000 },
+                { name: "", quantity: 5, price: 20000 },
+            ],
+            totalSum: 120000,
+        };
+        const { container } = render(<OrderReceipt {...propsAllEmpty} />);
+        const rows = container.querySelectorAll("tr");
+        // 1 header + 2 data rows
+        expect(rows).toHaveLength(3);
+    });
+
     test("renders item price formatted with currency", () => {
         const { container } = render(<OrderReceipt {...baseProps} />);
         // formatCurrency mock returns "10000 common:sum" (locale may add spaces)

@@ -10,10 +10,16 @@ import type { TFunction } from "i18next";
 
 export interface OrderItemRow {
     id: number;
-    productId: number;
+    productId: number | null;
     quantity: number;
     price: number;
-    product: { id: number; name: string; price?: number; remaining?: number; costprice?: number };
+    product: {
+        id: number;
+        name: string;
+        price?: number;
+        remaining?: number;
+        costprice?: number;
+    } | null;
 }
 
 export interface OrderItemActions {
@@ -49,7 +55,8 @@ export function getOrderItemColumns(
                 editable: true,
                 inputType: "combobox" as const,
                 selectOptions,
-                editValueAccessor: (row: OrderItemRow) => String(row.productId),
+                editValueAccessor: (row: OrderItemRow) =>
+                    row.productId != null ? String(row.productId) : "",
                 onSearchOptions: actions?.onSearchProducts,
             },
         },

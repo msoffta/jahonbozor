@@ -34,10 +34,16 @@ import type { DataTableRef } from "@jahonbozor/ui";
 
 interface LocalItem {
     id: number;
-    productId: number;
+    productId: number | null;
     quantity: number;
     price: number;
-    product: { id: number; name: string; price?: number; remaining?: number; costprice?: number };
+    product: {
+        id: number;
+        name: string;
+        price?: number;
+        remaining?: number;
+        costprice?: number;
+    } | null;
 }
 
 function OrderDetailPage() {
@@ -150,21 +156,23 @@ function OrderDetailPage() {
                 };
             }
 
-            return values;
+            const price = Number(values.price) || 0;
+            const newTotal = price * currentQuantity;
+            return { ...values, quantity: currentQuantity, total: newTotal };
         },
         [products],
     );
 
     const handleNewRowSave = useCallback(
         (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
-            if (!data.product) return;
-
-            const productId = Number(data.product);
-            const product = products.find((p) => p.id === productId);
-            if (!product) return;
+            const productId = data.product ? Number(data.product) : null;
+            const product =
+                productId != null ? (products.find((p) => p.id === productId) ?? null) : null;
 
             const userPrice =
-                data.price != null && data.price !== "" ? Number(data.price) : product.price;
+                data.price != null && data.price !== ""
+                    ? Number(data.price)
+                    : (product?.price ?? 0);
 
             if (linkedId) {
                 setEditItems((prev) =>
@@ -175,13 +183,15 @@ function OrderDetailPage() {
                                   productId,
                                   quantity: Number(data.quantity) || 0,
                                   price: userPrice,
-                                  product: {
-                                      id: product.id,
-                                      name: product.name,
-                                      price: product.price,
-                                      remaining: product.remaining,
-                                      costprice: product.costprice,
-                                  },
+                                  product: product
+                                      ? {
+                                            id: product.id,
+                                            name: product.name,
+                                            price: product.price,
+                                            remaining: product.remaining,
+                                            costprice: product.costprice,
+                                        }
+                                      : null,
                               }
                             : item,
                     ),
@@ -195,13 +205,15 @@ function OrderDetailPage() {
                 productId,
                 quantity: Number(data.quantity) || 0,
                 price: userPrice,
-                product: {
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    remaining: product.remaining,
-                    costprice: product.costprice,
-                },
+                product: product
+                    ? {
+                          id: product.id,
+                          name: product.name,
+                          price: product.price,
+                          remaining: product.remaining,
+                          costprice: product.costprice,
+                      }
+                    : null,
             };
 
             setEditItems((prev) => [...prev, newItem]);

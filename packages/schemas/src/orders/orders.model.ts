@@ -5,7 +5,7 @@ import { PaymentType } from "../common/enums";
 
 export const OrderItem = BaseModel.extend({
     orderId: z.number(),
-    productId: z.number(),
+    productId: z.number().nullable(),
     quantity: z.number().nonnegative(),
     price: z.number().positive(),
     data: z.record(z.string(), z.unknown()).nullable(),

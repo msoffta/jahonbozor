@@ -8,7 +8,7 @@ interface OrderWithItems extends Pick<
     Order,
     "userId" | "staffId" | "paymentType" | "comment" | "data"
 > {
-    items?: { productId: number; quantity: number; price: unknown }[];
+    items?: { productId: number | null; quantity: number; price: unknown }[];
 }
 
 export function createOrderSnapshot(order: OrderWithItems) {

@@ -27,12 +27,20 @@ export abstract class PublicOrdersService {
     ): Promise<UserOrderCreateResponse> {
         try {
             const { userId, user, requestId } = context;
-            const mergedItems = orderData.items.reduce<typeof orderData.items>((acc, item) => {
-                const existing = acc.find((i) => i.productId === item.productId);
+
+            // Public API requires productId for all items
+            if (orderData.items.some((item) => item.productId == null)) {
+                return { success: false, error: "Product is required for all items" };
+            }
+
+            const mergedItems = orderData.items.reduce<
+                { productId: number; quantity: number; price: number; data?: unknown }[]
+            >((acc, item) => {
+                const existing = acc.find((i) => i.productId === item.productId!);
                 if (existing) {
                     existing.quantity += item.quantity;
                 } else {
-                    acc.push({ ...item });
+                    acc.push({ ...item, productId: item.productId! });
                 }
                 return acc;
             }, []);
@@ -212,7 +220,9 @@ export abstract class PublicOrdersService {
                 items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
-                    product: { ...item.product, price: Number(item.product.price) },
+                    product: item.product
+                        ? { ...item.product, price: Number(item.product.price) }
+                        : null,
                 })),
             }));
 
@@ -257,7 +267,9 @@ export abstract class PublicOrdersService {
             const mappedItems = order.items.map((item) => ({
                 ...item,
                 price: Number(item.price),
-                product: { ...item.product, price: Number(item.product.price) },
+                product: item.product
+                    ? { ...item.product, price: Number(item.product.price) }
+                    : null,
             }));
 
             return { success: true, data: { ...order, items: mappedItems } };
@@ -302,7 +314,7 @@ export abstract class PublicOrdersService {
 
             await prisma.$transaction(async (transaction) => {
                 for (const item of existingOrder.items) {
-                    if (!item.product.deletedAt) {
+                    if (item.productId != null && item.product && !item.product.deletedAt) {
                         const previousRemaining = item.product.remaining;
                         const newRemaining = previousRemaining + item.quantity;
 

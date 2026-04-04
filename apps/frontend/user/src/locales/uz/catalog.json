@@ -5,5 +5,6 @@
   "remaining": "Qoldiq",
   "ordered": "Buyurtma qilingan",
   "see_all": "Hammasini ko'rish",
-  "product_fallback": "Mahsulot #{{id}}"
+  "product_fallback": "Mahsulot #{{id}}",
+  "product_no_name": "Nomsiz mahsulot"
 }

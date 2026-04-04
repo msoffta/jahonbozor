@@ -142,11 +142,13 @@ export abstract class OrdersService {
                 items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
-                    product: {
-                        ...item.product,
-                        price: Number(item.product.price),
-                        costprice: Number(item.product.costprice),
-                    },
+                    product: item.product
+                        ? {
+                              ...item.product,
+                              price: Number(item.product.price),
+                              costprice: Number(item.product.costprice),
+                          }
+                        : null,
                 })),
             }));
 
@@ -205,11 +207,13 @@ export abstract class OrdersService {
                 items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
-                    product: {
-                        ...item.product,
-                        price: Number(item.product.price),
-                        costprice: Number(item.product.costprice),
-                    },
+                    product: item.product
+                        ? {
+                              ...item.product,
+                              price: Number(item.product.price),
+                              costprice: Number(item.product.costprice),
+                          }
+                        : null,
                 })),
             };
 
@@ -228,7 +232,10 @@ export abstract class OrdersService {
         try {
             const { staffId, user, requestId } = context;
             const mergedItems = orderData.items.reduce<typeof orderData.items>((acc, item) => {
-                const existing = acc.find((i) => i.productId === item.productId);
+                const existing =
+                    item.productId != null
+                        ? acc.find((i) => i.productId === item.productId)
+                        : undefined;
                 if (existing) {
                     existing.quantity += item.quantity;
                 } else {
@@ -236,15 +243,19 @@ export abstract class OrdersService {
                 }
                 return acc;
             }, []);
-            const productIds = mergedItems.map((item) => item.productId);
 
-            const products = await prisma.product.findMany({
-                where: {
-                    id: { in: productIds },
-                    deletedAt: null,
-                },
-                select: { id: true, name: true, price: true, remaining: true },
-            });
+            const itemsWithProduct = mergedItems.filter((i) => i.productId != null);
+            const productIds = itemsWithProduct.map((i) => i.productId!);
+
+            const products = productIds.length
+                ? await prisma.product.findMany({
+                      where: {
+                          id: { in: productIds },
+                          deletedAt: null,
+                      },
+                      select: { id: true, name: true, price: true, remaining: true },
+                  })
+                : [];
 
             if (products.length !== productIds.length) {
                 const foundIds = products.map((product) => product.id);
@@ -258,7 +269,6 @@ export abstract class OrdersService {
                 };
             }
 
-            // All productIds are guaranteed to exist in the map (validated by length check above)
             const productMap = new Map(products.map((product) => [product.id, product]));
 
             const order = await prisma.$transaction(async (transaction) => {
@@ -271,11 +281,14 @@ export abstract class OrdersService {
                         data: (orderData.data as Prisma.JsonObject) ?? {},
                         items: {
                             create: mergedItems.map((item) => {
-                                const product = productMap.get(item.productId)!;
+                                const product =
+                                    item.productId != null
+                                        ? productMap.get(item.productId)
+                                        : undefined;
                                 return {
-                                    productId: item.productId,
+                                    productId: item.productId ?? null,
                                     quantity: item.quantity,
-                                    price: product.price,
+                                    price: product ? product.price : item.price,
                                     data: (item.data as Prisma.JsonObject) ?? null,
                                 };
                             }),
@@ -302,19 +315,19 @@ export abstract class OrdersService {
                     },
                 });
 
-                for (const item of mergedItems) {
-                    const product = productMap.get(item.productId)!;
+                for (const item of mergedItems.filter((i) => i.productId != null)) {
+                    const product = productMap.get(item.productId!)!;
                     const previousRemaining = product.remaining;
                     const newRemaining = previousRemaining - item.quantity;
 
                     await transaction.product.update({
-                        where: { id: item.productId },
+                        where: { id: item.productId! },
                         data: { remaining: { decrement: item.quantity } },
                     });
 
                     await transaction.productHistory.create({
                         data: {
-                            productId: item.productId,
+                            productId: item.productId!,
                             staffId,
                             operation: "INVENTORY_REMOVE",
                             quantity: item.quantity,
@@ -350,11 +363,13 @@ export abstract class OrdersService {
                 items: order.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
-                    product: {
-                        ...item.product,
-                        price: Number(item.product.price),
-                        costprice: Number(item.product.costprice),
-                    },
+                    product: item.product
+                        ? {
+                              ...item.product,
+                              price: Number(item.product.price),
+                              costprice: Number(item.product.costprice),
+                          }
+                        : null,
                 })),
             };
 
@@ -420,7 +435,7 @@ export abstract class OrdersService {
                 // Build map of old quantities per product for effective stock calculation
                 const oldQuantityMap = new Map<number, number>();
                 for (const item of existingOrder.items) {
-                    if (!item.product.deletedAt) {
+                    if (item.productId != null && item.product && !item.product.deletedAt) {
                         oldQuantityMap.set(
                             item.productId,
                             (oldQuantityMap.get(item.productId) ?? 0) + item.quantity,
@@ -429,7 +444,10 @@ export abstract class OrdersService {
                 }
 
                 mergedItems = orderData.items.reduce<typeof orderData.items>((acc, item) => {
-                    const existing = acc.find((i) => i.productId === item.productId);
+                    const existing =
+                        item.productId != null
+                            ? acc.find((i) => i.productId === item.productId)
+                            : undefined;
                     if (existing) {
                         existing.quantity += item.quantity;
                     } else {
@@ -437,11 +455,15 @@ export abstract class OrdersService {
                     }
                     return acc;
                 }, []);
-                const productIds = mergedItems.map((item) => item.productId);
-                const products = await prisma.product.findMany({
-                    where: { id: { in: productIds }, deletedAt: null },
-                    select: { id: true, name: true, price: true, remaining: true },
-                });
+
+                const itemsWithProduct = mergedItems.filter((i) => i.productId != null);
+                const productIds = itemsWithProduct.map((i) => i.productId!);
+                const products = productIds.length
+                    ? await prisma.product.findMany({
+                          where: { id: { in: productIds }, deletedAt: null },
+                          select: { id: true, name: true, price: true, remaining: true },
+                      })
+                    : [];
 
                 if (products.length !== productIds.length) {
                     const foundIds = products.map((p) => p.id);
@@ -459,9 +481,9 @@ export abstract class OrdersService {
             const [updatedOrder] = await prisma.$transaction(async (transaction) => {
                 // Replace items if provided
                 if (orderData.items && productMap) {
-                    // 1. Restore old stock
+                    // 1. Restore old stock (only for items with a product)
                     for (const item of existingOrder.items) {
-                        if (!item.product.deletedAt) {
+                        if (item.productId != null && item.product && !item.product.deletedAt) {
                             const previousRemaining = item.product.remaining;
                             const newRemaining = previousRemaining + item.quantity;
 
@@ -489,39 +511,40 @@ export abstract class OrdersService {
                         where: { orderId },
                     });
 
-                    // 3. Create new items + deduct stock
+                    // 3. Create new items + deduct stock (only for items with a product)
                     for (const item of mergedItems!) {
-                        const product = productMap.get(item.productId)!;
-
                         await transaction.orderItem.create({
                             data: {
                                 orderId,
-                                productId: item.productId,
+                                productId: item.productId ?? null,
                                 quantity: item.quantity,
                                 price: item.price,
                                 data: (item.data as Prisma.JsonObject) ?? null,
                             },
                         });
 
-                        const previousRemaining = product.remaining;
-                        const newRemaining = previousRemaining - item.quantity;
+                        if (item.productId != null) {
+                            const product = productMap.get(item.productId)!;
+                            const previousRemaining = product.remaining;
+                            const newRemaining = previousRemaining - item.quantity;
 
-                        await transaction.product.update({
-                            where: { id: item.productId },
-                            data: { remaining: { decrement: item.quantity } },
-                        });
+                            await transaction.product.update({
+                                where: { id: item.productId },
+                                data: { remaining: { decrement: item.quantity } },
+                            });
 
-                        await transaction.productHistory.create({
-                            data: {
-                                productId: item.productId,
-                                staffId,
-                                operation: "INVENTORY_REMOVE",
-                                quantity: item.quantity,
-                                previousData: { remaining: previousRemaining },
-                                newData: { remaining: newRemaining },
-                                changeReason: `order_update:${orderId}`,
-                            },
-                        });
+                            await transaction.productHistory.create({
+                                data: {
+                                    productId: item.productId,
+                                    staffId,
+                                    operation: "INVENTORY_REMOVE",
+                                    quantity: item.quantity,
+                                    previousData: { remaining: previousRemaining },
+                                    newData: { remaining: newRemaining },
+                                    changeReason: `order_update:${orderId}`,
+                                },
+                            });
+                        }
                     }
                 }
 
@@ -587,11 +610,13 @@ export abstract class OrdersService {
                 items: updatedOrder.items.map((item) => ({
                     ...item,
                     price: Number(item.price),
-                    product: {
-                        ...item.product,
-                        price: Number(item.product.price),
-                        costprice: Number(item.product.costprice),
-                    },
+                    product: item.product
+                        ? {
+                              ...item.product,
+                              price: Number(item.product.price),
+                              costprice: Number(item.product.costprice),
+                          }
+                        : null,
                 })),
             };
             return { success: true, data: mapped };
@@ -633,7 +658,7 @@ export abstract class OrdersService {
 
             await prisma.$transaction(async (transaction) => {
                 for (const item of existingOrder.items) {
-                    if (!item.product.deletedAt) {
+                    if (item.productId != null && item.product && !item.product.deletedAt) {
                         const previousRemaining = item.product.remaining;
                         const newRemaining = previousRemaining + item.quantity;
 
@@ -718,7 +743,7 @@ export abstract class OrdersService {
 
             await prisma.$transaction(async (transaction) => {
                 for (const item of existingOrder.items) {
-                    if (!item.product.deletedAt) {
+                    if (item.productId != null && item.product && !item.product.deletedAt) {
                         const previousRemaining = item.product.remaining;
                         const newRemaining = previousRemaining - item.quantity;
 
