@@ -310,7 +310,7 @@ describe("broadcasts.api", () => {
             expect(result).toBe(3000);
         });
 
-        test("refetchInterval should return false when status is DRAFT", () => {
+        test("refetchInterval should return 5000 when status is DRAFT", () => {
             const options = broadcastDetailQueryOptions(1);
             const refetchInterval = options.refetchInterval as (query: {
                 state: { data?: { status: string } };
@@ -318,7 +318,7 @@ describe("broadcasts.api", () => {
             const result = refetchInterval({
                 state: { data: { status: "DRAFT" } },
             });
-            expect(result).toBe(false);
+            expect(result).toBe(5000);
         });
 
         test("refetchInterval should return false when status is COMPLETED", () => {
