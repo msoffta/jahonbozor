@@ -64,7 +64,35 @@ vi.mock("@/hooks/use-permissions", () => ({
     useHasPermission: (permission: string) => permissionMocks[permission] || false,
 }));
 
-const mockOrder = {
+interface MockOrderItem {
+    id: number;
+    productId: number | null;
+    quantity: number;
+    price: number;
+    product: {
+        id: number;
+        name: string;
+        price: number;
+        remaining: number;
+        costprice: number;
+    } | null;
+}
+
+interface MockOrder {
+    id: number;
+    userId: null;
+    staffId: number;
+    paymentType: string;
+    comment: string | null;
+    data: null;
+    createdAt: string;
+    updatedAt: string;
+    items: MockOrderItem[];
+    user: null;
+    staff: { id: number; fullname: string };
+}
+
+const mockOrder: MockOrder = {
     id: 1,
     userId: null,
     staffId: 1,
@@ -86,7 +114,7 @@ const mockOrder = {
     staff: { id: 1, fullname: "Staff 1" },
 };
 
-let queryData: typeof mockOrder | null = mockOrder;
+let queryData: MockOrder | null = mockOrder;
 let isLoading = false;
 
 vi.mock("@tanstack/react-query", () => ({
@@ -210,14 +238,14 @@ describe("OrderDetailPage", () => {
     });
 
     test("should not show comment text when order has no comment and no update permission", () => {
-        queryData = { ...mockOrder, comment: null as unknown as string };
+        queryData = { ...mockOrder, comment: null };
         permissionMocks = {};
         const { queryByText } = render(<OrderDetailPage />);
         expect(queryByText("Test comment")).toBeNull();
     });
 
     test("should show empty input placeholder when order has no comment but user has update permission", () => {
-        queryData = { ...mockOrder, comment: null as unknown as string };
+        queryData = { ...mockOrder, comment: null };
         permissionMocks = { "orders:update:own": true };
         const { getByPlaceholderText } = render(<OrderDetailPage />);
         expect(getByPlaceholderText("order_comment")).toBeDefined();
@@ -238,5 +266,67 @@ describe("OrderDetailPage", () => {
             b.getAttribute("class")?.includes("destructive"),
         );
         expect(destructiveButton).toBeUndefined();
+    });
+
+    describe("null-product items", () => {
+        const mockOrderWithNullProduct = {
+            ...mockOrder,
+            items: [
+                {
+                    id: 1,
+                    productId: null,
+                    quantity: 3,
+                    price: 150,
+                    product: null,
+                },
+            ],
+        };
+
+        const mockOrderWithMixedItems = {
+            ...mockOrder,
+            items: [
+                {
+                    id: 1,
+                    productId: 1,
+                    quantity: 2,
+                    price: 100,
+                    product: { id: 1, name: "Product 1", price: 100, remaining: 10, costprice: 50 },
+                },
+                {
+                    id: 2,
+                    productId: null,
+                    quantity: 5,
+                    price: 200,
+                    product: null,
+                },
+            ],
+        };
+
+        test("should render order with null-product item", () => {
+            queryData = mockOrderWithNullProduct;
+            const { getByText } = render(<OrderDetailPage />);
+            expect(getByText("lists_title #1")).toBeDefined();
+        });
+
+        test("should calculate total sum including null-product items", () => {
+            queryData = mockOrderWithNullProduct;
+            const { container } = render(<OrderDetailPage />);
+            // 150 * 3 = 450
+            expect(container.textContent).toContain("450");
+        });
+
+        test("should calculate total sum for mixed items correctly", () => {
+            queryData = mockOrderWithMixedItems;
+            const { container } = render(<OrderDetailPage />);
+            // (100 * 2) + (200 * 5) = 200 + 1000 = 1200
+            expect(container.textContent).toContain("1200");
+        });
+
+        test("should render receipt for order with null-product items", () => {
+            queryData = mockOrderWithNullProduct;
+            render(<OrderDetailPage />);
+            const receiptContainer = document.body.querySelector(".print-receipt-container");
+            expect(receiptContainer).toBeDefined();
+        });
     });
 });

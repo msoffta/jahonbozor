@@ -9,7 +9,9 @@ import { Button, motion, Toaster } from "@jahonbozor/ui";
 
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Header } from "@/components/layout/header";
+import { useTelegramBackButton } from "@/hooks/use-telegram-back-button";
 import { tryRefreshToken } from "@/lib/api-client";
+import { getIsMiniApp } from "@/lib/telegram";
 import { useAuthStore } from "@/stores/auth.store";
 
 import type { QueryClient } from "@tanstack/react-query";
@@ -61,6 +63,8 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
 function RootLayout() {
     const pathname = useRouterState({ select: (state) => state.location.pathname });
     const isLogin = pathname === "/login";
+    const isMiniApp = getIsMiniApp();
+    useTelegramBackButton();
 
     if (isLogin) {
         return (
@@ -72,9 +76,20 @@ function RootLayout() {
     }
 
     return (
-        <div className="flex min-h-screen flex-col">
-            <Header />
-            <main className="bg-background flex-1 pb-24">
+        <div
+            className="flex min-h-screen flex-col"
+            style={
+                isMiniApp
+                    ? {
+                          paddingTop:
+                              "calc(var(--tg-viewport-safe-area-inset-top, 0px) + var(--tg-viewport-content-safe-area-inset-top, 0px))",
+                          paddingBottom: "var(--tg-viewport-safe-area-inset-bottom, 0px)",
+                      }
+                    : undefined
+            }
+        >
+            {!isMiniApp && <Header />}
+            <main className="bg-background flex-1 pb-20">
                 <Outlet />
             </main>
             <BottomNav />

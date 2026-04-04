@@ -228,6 +228,29 @@ describe("orders.api", () => {
                 }),
             ).rejects.toBeDefined();
         });
+
+        test("should accept null productId for items without a product", async () => {
+            const body = {
+                userId: null,
+                paymentType: "CASH" as const,
+                items: [{ productId: null, quantity: 3, price: 150 }],
+            };
+            await createOrderFn(body);
+            expect(mockPost).toHaveBeenCalledWith(body);
+        });
+
+        test("should accept mixed items (product + null-product)", async () => {
+            const body = {
+                userId: null,
+                paymentType: "CASH" as const,
+                items: [
+                    { productId: 1, quantity: 2, price: 100 },
+                    { productId: null, quantity: 5, price: 200 },
+                ],
+            };
+            await createOrderFn(body);
+            expect(mockPost).toHaveBeenCalledWith(body);
+        });
     });
 
     describe("updateOrderFn", () => {
@@ -244,6 +267,26 @@ describe("orders.api", () => {
             await expect(updateOrderFn({ id: 1, paymentType: "DEBT" })).rejects.toThrow(
                 "Request failed",
             );
+        });
+
+        test("should accept items with null productId (bind later)", async () => {
+            await updateOrderFn({
+                id: 1,
+                items: [{ productId: null, quantity: 3, price: 150 }],
+            });
+            expect(mockPatch).toHaveBeenCalledWith({
+                items: [{ productId: null, quantity: 3, price: 150 }],
+            });
+        });
+
+        test("should accept items binding a product to previously null item", async () => {
+            await updateOrderFn({
+                id: 1,
+                items: [{ productId: 5, quantity: 3, price: 150 }],
+            });
+            expect(mockPatch).toHaveBeenCalledWith({
+                items: [{ productId: 5, quantity: 3, price: 150 }],
+            });
         });
     });
 

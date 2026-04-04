@@ -13,6 +13,19 @@ const mockLogger = vi.hoisted(() => ({
 }));
 vi.mock("@bot/lib/logger", () => ({ logger: mockLogger }));
 
+// Mock keyboards module — shopKeyboard returns inline keyboard with shop button
+const mockShopKeyboard = vi.hoisted(() =>
+    vi.fn(() => ({ buttons: [[{ text: "Shop", web_app: { url: "https://test.com" } }]] })),
+);
+vi.mock("@bot/lib/keyboards", () => ({
+    shopKeyboard: mockShopKeyboard,
+    contactKeyboard: vi.fn(() => ({
+        keyboard: [[{ text: "Share", request_contact: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+    })),
+}));
+
 import { handleContact } from "@bot/handlers/contact.handler";
 
 // Helper to create a mock grammY context — single boundary cast for external library type
@@ -38,7 +51,7 @@ describe("handleContact", () => {
         vi.mocked(mockLogger.error).mockReset();
     });
 
-    test("saves phone and replies with success when own contact shared", async () => {
+    test("saves phone and replies with success + shop button when own contact shared", async () => {
         // getUserInfo lookup
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser());
         // PhoneService lookups
@@ -53,10 +66,16 @@ describe("handleContact", () => {
 
         await handleContact(ctx);
 
-        expect(ctx.reply).toHaveBeenCalledTimes(1);
-        const replyCall = vi.mocked(ctx.reply).mock.calls[0];
-        expect(replyCall[0]).toContain("saqlandi");
-        expect(replyCall[1]).toEqual({ reply_markup: { remove_keyboard: true } });
+        // 1st reply: success message with remove_keyboard
+        expect(ctx.reply).toHaveBeenCalledTimes(2);
+        const firstReplyCall = vi.mocked(ctx.reply).mock.calls[0];
+        expect(firstReplyCall[0]).toContain("saqlandi");
+        expect(firstReplyCall[1]).toEqual({ reply_markup: { remove_keyboard: true } });
+
+        // 2nd reply: shop prompt with inline keyboard
+        const secondReplyCall = vi.mocked(ctx.reply).mock.calls[1];
+        expect(secondReplyCall[0]).toContain("Buyurtma berish");
+        expect(secondReplyCall[1]).toHaveProperty("reply_markup");
     });
 
     test("rejects when user shares someone else's contact", async () => {
@@ -193,7 +212,8 @@ describe("handleContact", () => {
 
         await handleContact(ctx);
 
-        expect(ctx.reply).toHaveBeenCalledTimes(1);
+        // 1st reply: success, 2nd reply: shop prompt
+        expect(ctx.reply).toHaveBeenCalledTimes(2);
         const replyCall = vi.mocked(ctx.reply).mock.calls[0];
         expect(replyCall[0]).toContain("сохранён");
         expect(replyCall[0]).not.toContain("saqlandi");
@@ -214,7 +234,8 @@ describe("handleContact", () => {
 
         await handleContact(ctx);
 
-        expect(ctx.reply).toHaveBeenCalledTimes(1);
+        // 1st reply: success, 2nd reply: shop prompt
+        expect(ctx.reply).toHaveBeenCalledTimes(2);
         const replyCall = vi.mocked(ctx.reply).mock.calls[0];
         expect(replyCall[0]).toContain("saqlandi");
     });
@@ -249,7 +270,7 @@ describe("handleContact", () => {
             contact: { phone_number: "+998901234567", user_id: 100, first_name: "Test" },
             from: { id: 100 },
         });
-        // First ctx.reply throws (Telegram API failure), second (fallback) succeeds
+        // First ctx.reply throws (Telegram API failure), fallback succeeds
         vi.mocked(ctx.reply).mockRejectedValueOnce(new Error("Telegram API unavailable"));
 
         await expect(handleContact(ctx)).resolves.toBeUndefined();
@@ -257,7 +278,7 @@ describe("handleContact", () => {
             "Bot: Failed to handle contact",
             expect.objectContaining({ error: expect.any(Error) }),
         );
-        // Fallback reply was attempted
+        // 1st (failed) + fallback reply
         expect(ctx.reply).toHaveBeenCalledTimes(2);
         const fallbackText = vi.mocked(ctx.reply).mock.calls[1][0];
         expect(fallbackText).toContain("Xatolik yuz berdi");
@@ -307,7 +328,8 @@ describe("handleContact", () => {
 
         await handleContact(ctx);
 
-        expect(ctx.reply).toHaveBeenCalledTimes(1);
+        // 1st reply: success, 2nd reply: shop prompt
+        expect(ctx.reply).toHaveBeenCalledTimes(2);
         const replyText = vi.mocked(ctx.reply).mock.calls[0][0];
         // Should fall back to Uzbek
         expect(replyText).toContain("saqlandi");

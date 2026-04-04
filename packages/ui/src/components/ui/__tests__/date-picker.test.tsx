@@ -85,11 +85,13 @@ describe("DatePicker", () => {
             expect(input.placeholder).toBe("Pick a date");
         });
 
-        test("applies custom className to input", () => {
+        test("applies custom className to wrapper", () => {
             render(<DatePicker onChange={vi.fn()} className="my-custom-class" />);
             const input = getInput();
-            expect(input.className).toContain("my-custom-class");
-            // Also contains the default pr-8
+            // className is on the wrapper div, not the input itself
+            const wrapper = input.parentElement!;
+            expect(wrapper.className).toContain("my-custom-class");
+            // Input still has pr-8 for the calendar icon
             expect(input.className).toContain("pr-8");
         });
 

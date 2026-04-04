@@ -38,6 +38,20 @@ vi.mock("grammy", () => ({
     },
     GrammyError: MockGrammyError,
     HttpError: MockHttpError,
+    InlineKeyboard: class MockInlineKeyboard {
+        buttons: { text: string; web_app?: { url: string }; url?: string }[][] = [];
+        webApp(text: string, url: string) {
+            this.buttons.push([{ text, web_app: { url } }]);
+            return this;
+        }
+        row() {
+            return this;
+        }
+        url(text: string, url: string) {
+            this.buttons.push([{ text, url }]);
+            return this;
+        }
+    },
 }));
 
 // Mock logger before importing bot — vi.hoisted so it's available in hoisted vi.mock factory
@@ -49,8 +63,9 @@ const mockLogger = vi.hoisted(() => ({
 }));
 vi.mock("@bot/lib/logger", () => ({ logger: mockLogger }));
 
-// Set token before bot.ts import
+// Set token and webapp URL before bot.ts import
 process.env.TELEGRAM_BOT_TOKEN = "test-token";
+process.env.WEBAPP_URL = "https://test-shop.example.com";
 
 import { bot } from "@bot/bot";
 
@@ -59,6 +74,7 @@ function createCommandContext(fromId: number) {
     return {
         from: { id: fromId },
         reply: vi.fn((_text: string, _opts?: unknown): Promise<void> => Promise.resolve()),
+        setChatMenuButton: vi.fn((_opts?: unknown): Promise<void> => Promise.resolve()),
     };
 }
 
@@ -117,14 +133,16 @@ describe("/start command handler", () => {
         prismaMock.users.findFirst.mockReset();
     });
 
-    test("shows keyboard when user has no phone", async () => {
+    test("shows contact keyboard and shop button when user has no phone", async () => {
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser());
 
         const ctx = createCommandContext(100);
         await handlers.commands.start(ctx);
 
-        expect(ctx.reply).toHaveBeenCalledTimes(1);
-        expect(ctx.reply).toHaveBeenCalledWith(
+        // 1st reply: contact keyboard, 2nd reply: shop button
+        expect(ctx.reply).toHaveBeenCalledTimes(2);
+        expect(ctx.reply).toHaveBeenNthCalledWith(
+            1,
             expect.stringContaining("Assalomu alaykum"),
             expect.objectContaining({
                 reply_markup: expect.objectContaining({
@@ -136,19 +154,41 @@ describe("/start command handler", () => {
                 }),
             }),
         );
+        expect(ctx.reply).toHaveBeenNthCalledWith(
+            2,
+            expect.stringContaining("Buyurtma berish"),
+            expect.objectContaining({
+                reply_markup: expect.objectContaining({
+                    buttons: expect.any(Array),
+                }),
+            }),
+        );
     });
 
-    test("shows phone-saved message when user already has phone", async () => {
+    test("shows welcome message with shop button when user already has phone", async () => {
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
 
         const ctx = createCommandContext(100);
         await handlers.commands.start(ctx);
 
         expect(ctx.reply).toHaveBeenCalledTimes(1);
-        expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining("saqlangan"));
+        expect(ctx.reply).toHaveBeenCalledWith(
+            expect.stringContaining("xush kelibsiz"),
+            expect.objectContaining({
+                reply_markup: expect.objectContaining({
+                    buttons: expect.arrayContaining([
+                        expect.arrayContaining([
+                            expect.objectContaining({
+                                web_app: { url: "https://test-shop.example.com" },
+                            }),
+                        ]),
+                    ]),
+                }),
+            }),
+        );
     });
 
-    test("uses Russian messages for ru-language user", async () => {
+    test("uses Russian messages for ru-language user without phone", async () => {
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser({ language: "ru" }));
 
         const ctx = createCommandContext(100);
@@ -206,19 +246,30 @@ describe("generic message handler", () => {
         );
     });
 
-    test("shows phone-saved message and removes keyboard when user has phone", async () => {
+    test("shows shop button when user has phone", async () => {
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser({ phone: "+998901234567" }));
 
         const ctx = createCommandContext(100);
         await handlers.events.message(ctx);
 
         expect(ctx.reply).toHaveBeenCalledTimes(1);
-        expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining("allaqachon saqlangan"), {
-            reply_markup: { remove_keyboard: true },
-        });
+        expect(ctx.reply).toHaveBeenCalledWith(
+            expect.stringContaining("tugmani bosing"),
+            expect.objectContaining({
+                reply_markup: expect.objectContaining({
+                    buttons: expect.arrayContaining([
+                        expect.arrayContaining([
+                            expect.objectContaining({
+                                web_app: { url: "https://test-shop.example.com" },
+                            }),
+                        ]),
+                    ]),
+                }),
+            }),
+        );
     });
 
-    test("uses Russian messages for ru-language user", async () => {
+    test("uses Russian messages for ru-language user without phone", async () => {
         prismaMock.users.findFirst.mockResolvedValueOnce(mockUser({ language: "ru" }));
 
         const ctx = createCommandContext(100);

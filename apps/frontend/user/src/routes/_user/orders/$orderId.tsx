@@ -131,7 +131,9 @@ function OrderDetailPage() {
                                 variant="order"
                                 name={
                                     item.product?.name ??
-                                    t("product_fallback", { id: item.productId })
+                                    (item.productId != null
+                                        ? t("product_fallback", { id: item.productId })
+                                        : t("product_no_name"))
                                 }
                                 price={item.price}
                                 quantity={item.quantity}

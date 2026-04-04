@@ -23,7 +23,10 @@ apps/backend/src/
 │       ├── categories/    # /api/private/categories/* (hierarchical)
 │       ├── expenses/      # /api/private/expenses/*
 │       ├── analytics/     # /api/private/analytics/*
-│       └── audit-logs/    # /api/private/audit-logs/*
+│       ├── audit-logs/    # /api/private/audit-logs/*
+│       ├── telegram-sessions/ # /api/private/telegram-sessions/*
+│       ├── broadcast-templates/ # /api/private/broadcast-templates/*
+│       └── broadcasts/    # /api/private/broadcasts/*
 ├── lib/
 │   ├── middleware.ts      # Auth macros (auth, permissions)
 │   ├── prisma.ts          # Prisma client (PrismaPg adapter)
@@ -32,6 +35,9 @@ apps/backend/src/
 │   ├── snapshots.ts       # Data snapshot creators for audit trails
 │   ├── categories.ts      # Hierarchical category traversal
 │   ├── telegram.ts        # Telegram Bot API helpers
+│   ├── mtproto.ts         # MTProto client pool (gramjs) for user accounts
+│   ├── broadcast-worker.ts # Broadcast sender + croner scheduler
+│   ├── crypto.ts          # AES-256-GCM session string encryption
 │   └── logger.ts          # Base logger instance
 └── generated/prisma/      # Generated Prisma client + enums
 ```
@@ -665,4 +671,76 @@ Uses 6 parallel `$queryRaw` queries for server-side aggregation (no in-memory pr
     topProducts: [{ productId, productName, quantitySold, totalRevenue }],
     categoryBreakdown: [{ categoryId, categoryName, totalRevenue, orderCount }],
 }
+```
+
+## Broadcast / Mailing
+
+Рассылка сообщений клиентам через MTProto user accounts (не бот API).
+
+### Модули
+
+**telegram-sessions** — управление Telegram user account сессиями:
+
+- QR code auth flow (POST `/qr/start` → GET `/qr/status` polling)
+- Session string encrypted via AES-256-GCM (`SESSION_ENCRYPTION_KEY` env)
+- Connect/disconnect/reconnect management
+- `SAFE_SELECT` — никогда не expose `sessionString`, `apiId`, `apiHash`
+
+**broadcast-templates** — шаблоны сообщений:
+
+- HTML content (Telegram subset: `<b>`, `<i>`, `<u>`, `<s>`, `<a>`, `<code>`, `<pre>`, `<blockquote>`)
+- Media attachments (JSON: `[{ type, url }]`)
+- Inline buttons (JSON: `[{ text, url }]`)
+- Soft delete + restore
+
+**broadcasts** — кампании рассылки:
+
+- Status lifecycle: `DRAFT → SCHEDULED → SENDING → PAUSED → COMPLETED/FAILED`
+- Recipients: creates `BroadcastRecipient` per user (denormalized `telegramId`)
+- Stats: `computeStats()` counts total/sent/failed/pending per broadcast
+- Send: `void executeBroadcast()` for immediate, `SCHEDULED` for deferred
+- Pause/resume: in-memory `Map<broadcastId, { paused, abortController }>`
+- Retry: resets `FAILED` recipients to `PENDING`, status back to `DRAFT`
+
+### Infrastructure
+
+**mtproto.ts** — gramjs client pool:
+
+- `clientPool: Map<sessionId, TelegramClient>` — in-memory, lazy reconnect
+- `pendingQrLogins: Map<token, PendingQrLogin>` — temporary QR auth state (60s TTL)
+- `sendMessage()` — sends via MTProto with inline keyboard buttons
+
+**broadcast-worker.ts** — async broadcast sender:
+
+- `croner` scheduler: `*/30 * * * * *` — picks up `SCHEDULED` broadcasts
+- Rate limiting: 35ms delay per message (~28/sec, under Telegram 30/sec limit)
+- FloodWait handling: extracts wait time, sleeps, retries
+- Pause check after each message send
+
+**crypto.ts** — session encryption:
+
+- AES-256-GCM, key from `SESSION_ENCRYPTION_KEY` env (32-byte hex)
+- Format: `iv:authTag:ciphertext` (all hex)
+
+### Permissions
+
+```
+TELEGRAM_SESSIONS_LIST / CREATE / READ / UPDATE / DELETE
+BROADCAST_TEMPLATES_LIST / CREATE / READ / UPDATE / DELETE
+BROADCASTS_LIST / CREATE / READ / UPDATE / DELETE / SEND
+```
+
+### Database Models
+
+```
+TelegramSession    — id, name, phone, apiId, apiHash, sessionString, status, lastUsedAt
+BroadcastTemplate  — id, name, content, media(Json), buttons(Json)
+Broadcast          — id, name, content, media, buttons, templateId, sessionId, status, scheduledAt, startedAt, completedAt, createdById
+BroadcastRecipient — id, broadcastId, userId, telegramId, status, errorMessage, sentAt
+```
+
+### Environment Variables
+
+```
+SESSION_ENCRYPTION_KEY  # 64-char hex (openssl rand -hex 32)
 ```

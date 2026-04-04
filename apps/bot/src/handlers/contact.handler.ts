@@ -1,5 +1,6 @@
+import { shopKeyboard } from "@bot/lib/keyboards";
 import { logger } from "@bot/lib/logger";
-import { contactMessages } from "@bot/lib/messages";
+import { botMessages, contactMessages } from "@bot/lib/messages";
 import { normalizePhone, validatePhone } from "@bot/lib/phone-validation";
 import { savePhone } from "@bot/services/phone.service";
 import { getUserInfo } from "@bot/services/user.service";
@@ -48,6 +49,12 @@ export async function handleContact(ctx: Context): Promise<void> {
             await ctx.reply(msg.success, {
                 reply_markup: { remove_keyboard: true },
             });
+            const shop = shopKeyboard(language);
+            if (shop) {
+                await ctx.reply(botMessages[language].shopPrompt, {
+                    reply_markup: shop,
+                });
+            }
         } else if (result.error === "PHONE_TAKEN") {
             await ctx.reply(msg.phoneTaken, {
                 reply_markup: { remove_keyboard: true },

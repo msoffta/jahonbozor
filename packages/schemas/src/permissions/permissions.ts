@@ -72,6 +72,28 @@ export const Permission = {
 
     // === ANALYTICS ===
     ANALYTICS_VIEW: "analytics:view",
+
+    // === TELEGRAM SESSIONS ===
+    TELEGRAM_SESSIONS_CREATE: "telegram-sessions:create",
+    TELEGRAM_SESSIONS_READ: "telegram-sessions:read",
+    TELEGRAM_SESSIONS_UPDATE: "telegram-sessions:update",
+    TELEGRAM_SESSIONS_DELETE: "telegram-sessions:delete",
+    TELEGRAM_SESSIONS_LIST: "telegram-sessions:list",
+
+    // === BROADCAST TEMPLATES ===
+    BROADCAST_TEMPLATES_CREATE: "broadcast-templates:create",
+    BROADCAST_TEMPLATES_READ: "broadcast-templates:read",
+    BROADCAST_TEMPLATES_UPDATE: "broadcast-templates:update",
+    BROADCAST_TEMPLATES_DELETE: "broadcast-templates:delete",
+    BROADCAST_TEMPLATES_LIST: "broadcast-templates:list",
+
+    // === BROADCASTS ===
+    BROADCASTS_CREATE: "broadcasts:create",
+    BROADCASTS_READ: "broadcasts:read",
+    BROADCASTS_UPDATE: "broadcasts:update",
+    BROADCASTS_DELETE: "broadcasts:delete",
+    BROADCASTS_LIST: "broadcasts:list",
+    BROADCASTS_SEND: "broadcasts:send",
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -138,4 +160,26 @@ export const PermissionGroups = {
     AUDIT_LOGS_ALL: [Permission.AUDIT_LOGS_LIST, Permission.AUDIT_LOGS_READ],
     DEBTS_ALL: [Permission.DEBTS_LIST, Permission.DEBTS_READ, Permission.DEBTS_CREATE_PAYMENT],
     ANALYTICS_ALL: [Permission.ANALYTICS_VIEW],
+    TELEGRAM_SESSIONS_ALL: [
+        Permission.TELEGRAM_SESSIONS_CREATE,
+        Permission.TELEGRAM_SESSIONS_READ,
+        Permission.TELEGRAM_SESSIONS_UPDATE,
+        Permission.TELEGRAM_SESSIONS_DELETE,
+        Permission.TELEGRAM_SESSIONS_LIST,
+    ],
+    BROADCAST_TEMPLATES_ALL: [
+        Permission.BROADCAST_TEMPLATES_CREATE,
+        Permission.BROADCAST_TEMPLATES_READ,
+        Permission.BROADCAST_TEMPLATES_UPDATE,
+        Permission.BROADCAST_TEMPLATES_DELETE,
+        Permission.BROADCAST_TEMPLATES_LIST,
+    ],
+    BROADCASTS_ALL: [
+        Permission.BROADCASTS_CREATE,
+        Permission.BROADCASTS_READ,
+        Permission.BROADCASTS_UPDATE,
+        Permission.BROADCASTS_DELETE,
+        Permission.BROADCASTS_LIST,
+        Permission.BROADCASTS_SEND,
+    ],
 } as const;

@@ -41,9 +41,17 @@ src/
 │       ├── users/
 │       │   ├── index.tsx             # /users (list)
 │       │   └── $userId.tsx           # /users/$userId
-│       └── audit-logs/
-│           ├── index.tsx             # /audit-logs (list + filters)
-│           └── $logId.tsx            # /audit-logs/$logId
+│       ├── audit-logs/
+│       │   ├── index.tsx             # /audit-logs (list + filters)
+│       │   └── $logId.tsx            # /audit-logs/$logId
+│       ├── broadcasts/
+│       │   ├── index.tsx             # /broadcasts (list)
+│       │   ├── new.tsx               # /broadcasts/new (multi-step create)
+│       │   └── $broadcastId.tsx      # /broadcasts/$broadcastId (detail + progress)
+│       ├── templates/
+│       │   └── index.tsx             # /templates (template list + drawer create/edit)
+│       └── sessions/
+│           └── index.tsx             # /sessions (Telegram session management)
 ├── api/
 │   ├── client.ts                     # Fetch wrapper with auth headers + token refresh
 │   ├── auth.api.ts                   # login, refresh, logout, me
@@ -52,7 +60,10 @@ src/
 │   ├── orders.api.ts
 │   ├── staff.api.ts
 │   ├── users.api.ts
-│   └── audit-logs.api.ts
+│   ├── audit-logs.api.ts
+│   ├── sessions.api.ts               # Telegram sessions (QR auth, connect/disconnect)
+│   ├── templates.api.ts              # Broadcast templates CRUD
+│   └── broadcasts.api.ts             # Broadcasts CRUD + send/pause/resume/retry
 ├── stores/
 │   ├── auth.store.ts                 # token, user, permissions, isAuthenticated
 │   └── ui.store.ts                   # sidebar, locale
@@ -64,10 +75,20 @@ src/
 │   │   ├── dashboard-layout.tsx      # Sidebar + header + Outlet
 │   │   ├── sidebar.tsx
 │   │   └── header.tsx
-│   └── {domain}/                     # Domain-specific components
-│       ├── {domain}-form.tsx         # Create/edit form
-│       ├── {domain}-table.tsx        # TanStack Table
-│       └── {domain}-columns.tsx      # Column definitions
+│   ├── {domain}/                     # Domain-specific components
+│   │   ├── {domain}-form.tsx         # Create/edit form
+│   │   ├── {domain}-table.tsx        # TanStack Table
+│   │   └── {domain}-columns.tsx      # Column definitions
+│   └── broadcasts/                   # Broadcast/mailing feature components
+│       ├── telegram-rich-editor.tsx  # TipTap editor (Telegram HTML subset)
+│       ├── telegram-preview.tsx      # Telegram message bubble preview
+│       ├── inline-button-builder.tsx # Dynamic inline button list builder
+│       ├── template-drawer.tsx       # Create/edit template drawer
+│       ├── templates-list.tsx        # Template card grid
+│       ├── session-card.tsx          # Session card with actions
+│       ├── add-session-drawer.tsx    # Multi-step QR auth drawer
+│       ├── broadcast-progress.tsx    # Animated progress bar + stat cards
+│       └── create-broadcast-steps.tsx # Multi-step broadcast creation
 ├── i18n/
 │   ├── config.ts                     # i18next initialization
 │   ├── uz/                           # Uzbek translations
@@ -159,6 +180,7 @@ Each domain in `api/` contains:
 | lucide-react        | Icons                                       | -       |
 | Motion              | Animations (via @jahonbozor/ui)             | v12     |
 | Elysia Eden         | Type-safe API client (treaty)               | v1      |
+| TipTap              | Rich text editor (Telegram HTML subset)     | v3      |
 | vite-tsconfig-paths | Path alias resolution from tsconfig         | -       |
 
 ## Frontend Routing
@@ -605,7 +627,8 @@ i18n/
 │   ├── categories.json
 │   ├── orders.json
 │   ├── staff.json
-│   └── audit-logs.json
+│   ├── audit-logs.json
+│   └── broadcasts.json   # Sessions + templates + broadcasts (one namespace)
 └── ru/
     ├── common.json
     ├── auth.json

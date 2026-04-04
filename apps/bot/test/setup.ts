@@ -6,6 +6,7 @@ import type { Logger } from "@jahonbozor/logger";
 
 // Set env vars before any module imports
 process.env.TELEGRAM_BOT_TOKEN ??= "test-token-for-tests";
+process.env.WEBAPP_URL ??= "https://test-shop.example.com";
 
 export const prismaMock = mockDeep<PrismaClient>();
 

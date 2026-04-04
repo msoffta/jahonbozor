@@ -58,7 +58,7 @@ import type { ReturnSchema } from "../common/base.model";
 
 export interface OrderItemResponse {
     id: number;
-    productId: number;
+    productId: number | null;
     quantity: number;
     price: number;
     data: unknown;
@@ -68,7 +68,7 @@ export interface OrderItemResponse {
         price?: number;
         remaining?: number;
         costprice?: number;
-    };
+    } | null;
 }
 
 // Public (user) API responses

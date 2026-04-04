@@ -207,6 +207,36 @@ Frontend tsconfig: @/* (own src) + @backend/lib/*, @backend/api/*, @backend/gene
 
 > Frontend tsconfigs must include backend aliases for Eden Treaty type resolution. See [docs/frontend.md](docs/frontend.md#eden-treaty-type-resolution).
 
+### Broadcast / Mailing Feature
+
+Рассылка сообщений клиентам через MTProto user accounts (не через бот).
+
+**Backend modules** (`apps/backend/src/api/private/`):
+
+- `telegram-sessions/` — управление Telegram MTProto сессиями (QR auth, connect/disconnect)
+- `broadcast-templates/` — шаблоны сообщений (HTML + медиа + inline кнопки)
+- `broadcasts/` — кампании рассылки (create → send → pause/resume → complete, per-recipient tracking)
+
+**Infrastructure** (`apps/backend/src/lib/`):
+
+- `mtproto.ts` — gramjs client pool, QR login flow, message sending
+- `broadcast-worker.ts` — croner scheduler (каждые 30с) + async sender с rate limiting
+- `crypto.ts` — AES-256-GCM шифрование session strings
+
+**Frontend** (`apps/frontend/admin/`):
+
+- Routes: `/sessions`, `/templates`, `/broadcasts`, `/broadcasts/new`, `/broadcasts/$broadcastId`
+- TipTap rich editor для Telegram HTML
+- i18n namespace: `broadcasts` (uz/ru)
+
+**Dependencies:** `telegram` (gramjs) в backend, `@tiptap/*` в admin frontend
+
+**Env vars:** `SESSION_ENCRYPTION_KEY` — 64-char hex для шифрования Telegram session strings
+
+**Permissions:** `TELEGRAM_SESSIONS_*`, `BROADCAST_TEMPLATES_*`, `BROADCASTS_*` (включая `BROADCASTS_SEND`)
+
+Подробности: [docs/backend.md](docs/backend.md#broadcast--mailing)
+
 ## Detailed Documentation
 
 | Document                                             | Contents                                                                                                                                                                                                                                                                                   |
@@ -252,6 +282,7 @@ Frontend tsconfig: @/* (own src) + @backend/lib/*, @backend/api/*, @backend/gene
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_URL`
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT` (optional)
 - `VITE_TELEGRAM_BOT_USERNAME`
+- `SESSION_ENCRYPTION_KEY` — AES-256 key for Telegram session encryption (generate: `openssl rand -hex 32`)
 
 **Notifications & Backup:**
 

@@ -163,6 +163,9 @@ function DatePicker({
     };
 
     const handleBlur = () => {
+        // Don't resync while popover is open (focus may move to calendar/time)
+        if (open) return;
+
         // Resync input text from value on blur (fixes invalid intermediate text)
         if (value) {
             const d = toDate(value);
@@ -191,7 +194,7 @@ function DatePicker({
     return (
         <Popover open={open} onOpenChange={handleOpenChange}>
             <PopoverAnchor asChild>
-                <div className="relative">
+                <div className={cn("relative", className)}>
                     <Input
                         ref={setRef}
                         value={inputText}
@@ -201,7 +204,7 @@ function DatePicker({
                         onKeyDown={handleInputKeyDown}
                         placeholder={placeholder ?? displayFormat}
                         disabled={disabled}
-                        className={cn("pr-8", className)}
+                        className="pr-8"
                     />
                     <PopoverTrigger asChild>
                         <button
@@ -219,6 +222,12 @@ function DatePicker({
                 className="w-auto p-0"
                 align="start"
                 onOpenAutoFocus={(e) => e.preventDefault()}
+                onInteractOutside={(e) => {
+                    // Don't close if interacting with the input
+                    if (innerRef.current?.contains(e.target as Node)) {
+                        e.preventDefault();
+                    }
+                }}
             >
                 <Calendar
                     mode="single"

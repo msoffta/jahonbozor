@@ -12,7 +12,7 @@ interface OrderItem {
     id: number;
     quantity: number;
     price: number;
-    product?: { name: string };
+    product?: { name: string } | null;
 }
 
 interface OrderCardProps {

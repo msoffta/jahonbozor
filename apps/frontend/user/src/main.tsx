@@ -9,7 +9,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 
 import { queryClient } from "@/lib/query-client";
+import { getRawInitData, initTelegramApp } from "@/lib/telegram";
 import { useAuthStore } from "@/stores/auth.store";
+import { useUIStore } from "@/stores/ui.store";
 
 import { routeTree } from "./routeTree.gen";
 
@@ -80,25 +82,86 @@ const TanStackDevtools = import.meta.env.PROD
           ),
       );
 
-function App() {
-    const auth = useAuthStore();
-
-    return (
-        <QueryClientProvider client={queryClient}>
-            <RouterProvider router={router} context={{ auth }} />
-            <Suspense>
-                <TanStackDevtools />
-            </Suspense>
-        </QueryClientProvider>
-    );
+interface WebAppAuthResponse {
+    success?: boolean;
+    data?: {
+        token?: string;
+        user?: {
+            id: number;
+            fullname: string;
+            telegramId: string | number;
+            phone: string | null;
+            language: string;
+        };
+    };
 }
 
-const rootElement = document.getElementById("root")!;
-if (!rootElement.innerHTML) {
-    const root = ReactDOM.createRoot(rootElement);
-    root.render(
-        <StrictMode>
-            <App />
-        </StrictMode>,
-    );
+async function authenticateWithMiniApp(): Promise<void> {
+    const initData = getRawInitData();
+    if (!initData) return;
+
+    const language = useUIStore.getState().locale;
+
+    const response = await fetch("/api/public/users/telegram-webapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData, language }),
+        credentials: "include",
+    });
+
+    if (!response.ok) return;
+
+    const data: WebAppAuthResponse = (await response.json()) as WebAppAuthResponse;
+    if (!data.success || !data.data?.token || !data.data.user) return;
+
+    const { token, user } = data.data;
+    const lang = user.language === "ru" ? "ru" : "uz";
+
+    useAuthStore.getState().login(token, {
+        id: user.id,
+        name: user.fullname,
+        telegramId: String(user.telegramId),
+        phone: user.phone ?? null,
+        language: lang,
+        type: "user",
+    });
+    useUIStore.getState().setLocale(lang);
+    Sentry.setUser({ id: String(user.id), username: user.fullname });
 }
+
+async function bootstrap() {
+    const isMiniApp = await initTelegramApp();
+
+    if (isMiniApp && !useAuthStore.getState().isAuthenticated) {
+        try {
+            await authenticateWithMiniApp();
+        } catch {
+            // Silent fail — user will see login page as fallback
+        }
+    }
+
+    function App() {
+        const auth = useAuthStore();
+
+        return (
+            <QueryClientProvider client={queryClient}>
+                <RouterProvider router={router} context={{ auth }} />
+                <Suspense>
+                    <TanStackDevtools />
+                </Suspense>
+            </QueryClientProvider>
+        );
+    }
+
+    const rootElement = document.getElementById("root")!;
+    if (!rootElement.innerHTML) {
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(
+            <StrictMode>
+                <App />
+            </StrictMode>,
+        );
+    }
+}
+
+void bootstrap();

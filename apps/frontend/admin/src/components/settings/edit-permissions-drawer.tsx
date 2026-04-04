@@ -9,10 +9,13 @@ import {
     History,
     Key,
     Layers,
+    MessageSquare,
     Package,
     Search,
+    Send,
     ShieldCheck,
     ShoppingCart,
+    Smartphone,
     Users,
 } from "lucide-react";
 
@@ -43,6 +46,10 @@ const PERMISSION_SECTIONS = [
     { key: "catalog", groupKeys: ["products", "categories", "producthistory"] },
     { key: "sales_finance", groupKeys: ["orders", "debts", "expenses"] },
     { key: "system", groupKeys: ["auditlogs", "analytics"] },
+    {
+        key: "broadcasts",
+        groupKeys: ["telegram_sessions", "broadcast_templates", "broadcasts"],
+    },
 ];
 
 interface EditPermissionsDrawerProps {
@@ -126,6 +133,17 @@ export function EditPermissionsDrawer({
                 permissions: PermissionGroups.AUDIT_LOGS_ALL ?? [],
             },
             { key: "analytics", icon: BarChart3, permissions: PermissionGroups.ANALYTICS_ALL },
+            {
+                key: "telegram_sessions",
+                icon: Smartphone,
+                permissions: PermissionGroups.TELEGRAM_SESSIONS_ALL,
+            },
+            {
+                key: "broadcast_templates",
+                icon: MessageSquare,
+                permissions: PermissionGroups.BROADCAST_TEMPLATES_ALL,
+            },
+            { key: "broadcasts", icon: Send, permissions: PermissionGroups.BROADCASTS_ALL },
         ],
         [],
     );

@@ -8,7 +8,7 @@ interface OrderWithItems extends Pick<
     Order,
     "userId" | "staffId" | "paymentType" | "comment" | "data"
 > {
-    items?: { productId: number; quantity: number; price: unknown }[];
+    items?: { productId: number | null; quantity: number; price: unknown }[];
 }
 
 export function createOrderSnapshot(order: OrderWithItems) {
@@ -100,5 +100,49 @@ export function createDebtPaymentSnapshot(payment: DebtPaymentModel) {
         amount: Number(payment.amount),
         staffId: payment.staffId,
         comment: payment.comment,
+    };
+}
+
+export function createTelegramSessionSnapshot(session: {
+    name: string;
+    phone: string;
+    status: string;
+}) {
+    return {
+        name: session.name,
+        phone: session.phone,
+        status: session.status,
+    };
+}
+
+export function createBroadcastTemplateSnapshot(template: {
+    name: string;
+    content: string;
+    media: unknown;
+    buttons: unknown;
+}) {
+    return {
+        name: template.name,
+        content: template.content,
+        media: template.media,
+        buttons: template.buttons,
+    };
+}
+
+export function createBroadcastSnapshot(broadcast: {
+    name: string;
+    status: string;
+    sendVia: string;
+    sessionId: number | null;
+    templateId: number | null;
+    scheduledAt: Date | null;
+}) {
+    return {
+        name: broadcast.name,
+        status: broadcast.status,
+        sendVia: broadcast.sendVia,
+        sessionId: broadcast.sessionId,
+        templateId: broadcast.templateId,
+        scheduledAt: broadcast.scheduledAt,
     };
 }
