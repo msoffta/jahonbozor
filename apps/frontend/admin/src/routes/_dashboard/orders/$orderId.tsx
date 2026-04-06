@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ArrowLeft, Printer, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Printer, Save, Trash2 } from "lucide-react";
 
 import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
 import {
@@ -20,7 +20,12 @@ import {
     useIsMobile,
 } from "@jahonbozor/ui";
 
-import { orderDetailQueryOptions, useDeleteOrder, useUpdateOrder } from "@/api/orders.api";
+import {
+    orderDetailQueryOptions,
+    useDeleteOrder,
+    useFinalizeDraft,
+    useUpdateOrder,
+} from "@/api/orders.api";
 import { productsListQueryOptions, searchProductsFn } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
 import { OrderReceiptContainer } from "@/components/orders/order-receipt";
@@ -66,6 +71,7 @@ function OrderDetailPage() {
 
     const deleteOrder = useDeleteOrder();
     const updateOrder = useUpdateOrder();
+    const finalizeDraft = useFinalizeDraft();
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const serverComment = order?.comment ?? "";
     const [editComment, setEditComment] = useState(serverComment);
@@ -367,6 +373,14 @@ function OrderDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-3">
+                    {order.status === "DRAFT" && (
+                        <Badge
+                            variant="secondary"
+                            className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                        >
+                            {t("status_draft")}
+                        </Badge>
+                    )}
                     <Badge variant="secondary">
                         {t(`payment_${order.paymentType.toLowerCase()}`)}
                     </Badge>
@@ -388,6 +402,28 @@ function OrderDetailPage() {
                             </motion.div>
                         )}
                     </AnimatePresence>
+                    {order.status === "DRAFT" && canUpdate && (
+                        <motion.div whileTap={{ scale: 0.95 }}>
+                            <Button
+                                onClick={() => {
+                                    if (editItems.length < 1) {
+                                        toast.error(t("finalize_min_items"));
+                                        return;
+                                    }
+                                    finalizeDraft.mutate(order.id, {
+                                        onSuccess: () => {
+                                            toast.success(t("draft_finalized"));
+                                        },
+                                    });
+                                }}
+                                disabled={finalizeDraft.isPending}
+                                className="gap-2"
+                            >
+                                <Check className="h-4 w-4" />
+                                {t("finalize")}
+                            </Button>
+                        </motion.div>
+                    )}
                     <motion.div whileTap={{ scale: 0.9 }}>
                         <Button
                             variant="outline"

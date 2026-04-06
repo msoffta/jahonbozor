@@ -30,6 +30,7 @@ vi.mock("@/api/orders.api", () => ({
     orderDetailQueryOptions: () => ({}),
     useDeleteOrder: () => ({ mutate: mockDeleteMutate, isPending: false }),
     useUpdateOrder: () => ({ mutate: mockMutate, isPending: false }),
+    useFinalizeDraft: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock("@/api/products.api", () => ({
@@ -82,6 +83,7 @@ interface MockOrder {
     id: number;
     userId: null;
     staffId: number;
+    status: string;
     paymentType: string;
     comment: string | null;
     data: null;
@@ -96,6 +98,7 @@ const mockOrder: MockOrder = {
     id: 1,
     userId: null,
     staffId: 1,
+    status: "COMPLETED",
     paymentType: "CASH",
     comment: "Test comment",
     data: null,

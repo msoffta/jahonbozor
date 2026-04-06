@@ -56,6 +56,7 @@ export const ordersListQueryOptions = (params?: {
     userId?: number;
     staffId?: number;
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
+    status?: "DRAFT" | "COMPLETED";
     dateFrom?: string;
     dateTo?: string;
     itemsCount?: number;
@@ -89,6 +90,7 @@ export const ordersInfiniteQueryOptions = (params?: {
     userId?: number;
     staffId?: number;
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
+    status?: "DRAFT" | "COMPLETED";
     dateFrom?: string;
     dateTo?: string;
     itemsCount?: number;
@@ -162,6 +164,7 @@ export const createOrderFn = async (body: {
     userId?: number | null;
     paymentType: "CASH" | "CREDIT_CARD" | "DEBT";
     comment?: string | null;
+    status?: "DRAFT" | "COMPLETED";
     items: { productId: number | null; quantity: number; price: number }[];
 }) => {
     const { data, error } = await api.api.private.orders.post(body);
@@ -240,6 +243,26 @@ export function useDeleteOrder() {
         onError: () => {
             toast.error(i18n.t("error"));
         },
+    });
+}
+
+export const finalizeOrderFn = async (id: number) => {
+    const { data, error } = await api.api.private.orders({ id }).finalize.post();
+    if (error) throw error;
+    if (!data.success) throw data.error;
+    return data.data as AdminOrderItem;
+};
+
+export function useFinalizeDraft() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationKey: ["orders", "finalize"],
+        mutationFn: finalizeOrderFn,
+        onSuccess: (updatedOrder) => {
+            queryClient.setQueryData(orderKeys.detail(updatedOrder.id), updatedOrder);
+            queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+        },
+        onError: handleOrderError,
     });
 }
 

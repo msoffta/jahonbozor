@@ -24,6 +24,7 @@ interface OrderColumnsData {
 interface OrderColumnsOptions {
     showItemColumns?: boolean;
     canDelete?: boolean;
+    showStaff?: boolean;
 }
 
 export function getOrderColumns(
@@ -32,7 +33,7 @@ export function getOrderColumns(
     data: OrderColumnsData,
     options?: OrderColumnsOptions,
 ): ColumnDef<AdminOrderItem, unknown>[] {
-    const { showItemColumns = true, canDelete = true } = options ?? {};
+    const { showItemColumns = true, canDelete = true, showStaff = false } = options ?? {};
     const productOptions = data.products.map((p) => ({
         label: p.name,
         value: String(p.id),
@@ -215,6 +216,19 @@ export function getOrderColumns(
                 skipOnEnter: true,
             },
         },
+    );
+
+    if (showStaff) {
+        columns.push({
+            id: "staff",
+            accessorFn: (row) => row.staff?.fullname ?? "—",
+            header: t("order_staff"),
+            size: 140,
+            meta: { flex: 1 },
+        });
+    }
+
+    columns.push(
         {
             accessorKey: "createdAt",
             header: t("order_date"),

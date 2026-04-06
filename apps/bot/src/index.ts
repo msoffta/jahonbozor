@@ -3,7 +3,7 @@ import { webhookCallback } from "grammy";
 import { bot } from "@bot/bot";
 import { logger } from "@bot/lib/logger";
 import { prisma } from "@bot/lib/prisma";
-import { startDebtReminderScheduler } from "@bot/lib/scheduler";
+import { catchUpMissedReminder, startDebtReminderScheduler } from "@bot/lib/scheduler";
 
 const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -54,6 +54,13 @@ void bot.api
 // Start debt reminder scheduler (daily at 10:00 AM Asia/Samarkand)
 const debtReminderJob = startDebtReminderScheduler(bot, logger);
 logger.info("Bot: Debt reminder scheduler started");
+
+// Catch up missed reminder if deploying after 10:00 AM
+setTimeout(() => {
+    void catchUpMissedReminder(bot, logger).catch((err: unknown) => {
+        logger.error("Bot: Catch-up reminder failed", { error: err });
+    });
+}, 5000);
 
 // Graceful shutdown
 const shutdown = async () => {

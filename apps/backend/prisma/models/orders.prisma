@@ -4,10 +4,16 @@ enum PaymentType {
   DEBT
 }
 
+enum OrderStatus {
+  DRAFT
+  COMPLETED
+}
+
 model Order {
-  id          Int         @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   userId      Int?
   staffId     Int?
+  status      OrderStatus  @default(COMPLETED)
   items       OrderItem[]
   paymentType PaymentType
   comment     String?
@@ -23,6 +29,7 @@ model Order {
 
   @@index([userId])
   @@index([staffId])
+  @@index([status])
   @@index([deletedAt])
 }
 

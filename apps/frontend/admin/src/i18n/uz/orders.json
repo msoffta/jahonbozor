@@ -58,5 +58,14 @@
   "receipt_item_total": "Summa",
   "receipt_total": "JAMI",
   "receipt_thank_you": "Xaridingiz uchun rahmat!",
-  "receipt_comment": "Izoh"
+  "receipt_comment": "Izoh",
+  "order_staff": "Xodim",
+  "save_draft": "Qoralama",
+  "finalize": "Rasmiylashtirish",
+  "status_draft": "Qoralama",
+  "status_completed": "Rasmiylashtirilgan",
+  "drafts": "Qoralamalar",
+  "draft_finalized": "Ro'yxat rasmiylashtirildi",
+  "draft_saved": "Qoralama saqlandi",
+  "finalize_min_items": "Rasmiylashtirish uchun kamida 1 pozitsiya qo'shing"
 }

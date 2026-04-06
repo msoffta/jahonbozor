@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, FileText, Save } from "lucide-react";
 import z from "zod";
 
 import { hasPermission, Permission } from "@jahonbozor/schemas";
@@ -263,6 +263,33 @@ function NewOrderPage() {
         );
     }
 
+    async function handleSaveDraft() {
+        await tableRef.current?.flushPendingRows();
+
+        createOrder.mutate(
+            {
+                userId: userId ?? null,
+                paymentType,
+                status: "DRAFT",
+                comment: comment.trim() || null,
+                items: items.map((item) => ({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    price: item.price,
+                })),
+            },
+            {
+                onSuccess: (order) => {
+                    toast.success(t("draft_saved"));
+                    void navigate({
+                        to: "/orders/$orderId",
+                        params: { orderId: String(order.id) },
+                    });
+                },
+            },
+        );
+    }
+
     const totalSum = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
@@ -325,6 +352,17 @@ function NewOrderPage() {
                         </motion.button>
                     </div>
 
+                    <motion.div whileTap={{ scale: 0.95 }}>
+                        <Button
+                            variant="outline"
+                            onClick={handleSaveDraft}
+                            disabled={createOrder.isPending}
+                            className="gap-2"
+                        >
+                            <FileText className="h-4 w-4" />
+                            {t("save_draft")}
+                        </Button>
+                    </motion.div>
                     <Button
                         onClick={handleSaveList}
                         disabled={items.length < 1 || createOrder.isPending}

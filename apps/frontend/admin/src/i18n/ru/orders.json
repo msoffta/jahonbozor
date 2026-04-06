@@ -58,5 +58,14 @@
   "receipt_item_total": "Сумма",
   "receipt_total": "ИТОГО",
   "receipt_thank_you": "Спасибо за покупку!",
-  "receipt_comment": "Комментарий"
+  "receipt_comment": "Комментарий",
+  "order_staff": "Сотрудник",
+  "save_draft": "Черновик",
+  "finalize": "Оформить",
+  "status_draft": "Черновик",
+  "status_completed": "Оформлен",
+  "drafts": "Черновики",
+  "draft_finalized": "Список оформлен",
+  "draft_saved": "Черновик сохранён",
+  "finalize_min_items": "Добавьте минимум 1 позицию для оформления"
 }

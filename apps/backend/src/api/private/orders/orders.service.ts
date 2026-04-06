@@ -32,6 +32,7 @@ export abstract class OrdersService {
                 userId,
                 staffId: filterStaffId,
                 paymentType,
+                status,
                 dateFrom,
                 dateTo,
                 itemsCount,
@@ -43,6 +44,7 @@ export abstract class OrdersService {
             const whereClause: Prisma.OrderWhereInput = {
                 deletedAt: null,
                 ...(paymentType && { paymentType }),
+                ...(status && { status }),
                 ...((dateFrom ?? dateTo) && {
                     createdAt: {
                         ...(dateFrom && { gte: dateFrom }),
@@ -231,6 +233,13 @@ export abstract class OrdersService {
     ): Promise<AdminOrderDetailResponse> {
         try {
             const { staffId, user, requestId } = context;
+            const isDraft = orderData.status === "DRAFT";
+
+            // Non-draft orders require at least 1 item
+            if (!isDraft && orderData.items.length < 1) {
+                return { success: false, error: "At least 1 item is required" };
+            }
+
             const mergedItems = orderData.items.reduce<typeof orderData.items>((acc, item) => {
                 const existing =
                     item.productId != null
@@ -244,6 +253,7 @@ export abstract class OrdersService {
                 return acc;
             }, []);
 
+            // Only validate products for non-draft orders
             const itemsWithProduct = mergedItems.filter((i) => i.productId != null);
             const productIds = itemsWithProduct.map((i) => i.productId!);
 
@@ -257,7 +267,7 @@ export abstract class OrdersService {
                   })
                 : [];
 
-            if (products.length !== productIds.length) {
+            if (!isDraft && products.length !== productIds.length) {
                 const foundIds = products.map((product) => product.id);
                 const missingIds = productIds.filter((id) => !foundIds.includes(id));
                 logger.warn("Orders: Products not found or deleted", {
@@ -276,6 +286,7 @@ export abstract class OrdersService {
                     data: {
                         userId: orderData.userId ?? null,
                         staffId,
+                        status: isDraft ? "DRAFT" : "COMPLETED",
                         paymentType: orderData.paymentType,
                         comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
@@ -315,27 +326,30 @@ export abstract class OrdersService {
                     },
                 });
 
-                for (const item of mergedItems.filter((i) => i.productId != null)) {
-                    const product = productMap.get(item.productId!)!;
-                    const previousRemaining = product.remaining;
-                    const newRemaining = previousRemaining - item.quantity;
+                // Only deduct inventory for non-draft orders
+                if (!isDraft) {
+                    for (const item of mergedItems.filter((i) => i.productId != null)) {
+                        const product = productMap.get(item.productId!)!;
+                        const previousRemaining = product.remaining;
+                        const newRemaining = previousRemaining - item.quantity;
 
-                    await transaction.product.update({
-                        where: { id: item.productId! },
-                        data: { remaining: { decrement: item.quantity } },
-                    });
+                        await transaction.product.update({
+                            where: { id: item.productId! },
+                            data: { remaining: { decrement: item.quantity } },
+                        });
 
-                    await transaction.productHistory.create({
-                        data: {
-                            productId: item.productId!,
-                            staffId,
-                            operation: "INVENTORY_REMOVE",
-                            quantity: item.quantity,
-                            previousData: { remaining: previousRemaining },
-                            newData: { remaining: newRemaining },
-                            changeReason: `order:${newOrder.id}`,
-                        },
-                    });
+                        await transaction.productHistory.create({
+                            data: {
+                                productId: item.productId!,
+                                staffId,
+                                operation: "INVENTORY_REMOVE",
+                                quantity: item.quantity,
+                                previousData: { remaining: previousRemaining },
+                                newData: { remaining: newRemaining },
+                                changeReason: `order:${newOrder.id}`,
+                            },
+                        });
+                    }
                 }
 
                 await auditInTransaction(
@@ -355,6 +369,7 @@ export abstract class OrdersService {
             logger.info("Orders: Order created", {
                 orderId: order.id,
                 staffId,
+                status: isDraft ? "DRAFT" : "COMPLETED",
                 itemCount: order.items.length,
             });
 
@@ -376,6 +391,160 @@ export abstract class OrdersService {
             return { success: true, data: mapped };
         } catch (error) {
             logger.error("Orders: Error in createOrder", { error });
+            return { success: false, error };
+        }
+    }
+
+    static async finalizeDraft(
+        orderId: number,
+        context: ServiceContext,
+        permissions: Permission[],
+        logger: Logger,
+    ): Promise<AdminOrderDetailResponse> {
+        try {
+            const { staffId, user, requestId } = context;
+
+            const existingOrder = await prisma.order.findUnique({
+                where: { id: orderId, deletedAt: null },
+                include: {
+                    items: {
+                        include: {
+                            product: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    price: true,
+                                    remaining: true,
+                                    costprice: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            if (!existingOrder) {
+                return { success: false, error: "Order not found" };
+            }
+
+            if (existingOrder.status !== "DRAFT") {
+                return { success: false, error: "Order is not a draft" };
+            }
+
+            const canUpdateAll = hasAnyPermission(permissions, [Permission.ORDERS_UPDATE_ALL]);
+            if (!canUpdateAll && existingOrder.staffId !== staffId) {
+                return { success: false, error: "Forbidden" };
+            }
+
+            if (existingOrder.items.length < 1) {
+                return { success: false, error: "At least 1 item is required to finalize" };
+            }
+
+            // Validate all products exist and have stock
+            const itemsWithProduct = existingOrder.items.filter((i) => i.productId != null);
+            const productIds = itemsWithProduct.map((i) => i.productId!);
+
+            const products = productIds.length
+                ? await prisma.product.findMany({
+                      where: { id: { in: productIds }, deletedAt: null },
+                      select: { id: true, name: true, price: true, remaining: true },
+                  })
+                : [];
+
+            if (products.length !== productIds.length) {
+                const foundIds = products.map((p) => p.id);
+                const missingIds = productIds.filter((id) => !foundIds.includes(id));
+                return {
+                    success: false,
+                    error: `Products not found: ${missingIds.join(", ")}`,
+                };
+            }
+
+            const productMap = new Map(products.map((p) => [p.id, p]));
+
+            const order = await prisma.$transaction(async (transaction) => {
+                // Deduct inventory
+                for (const item of itemsWithProduct) {
+                    const product = productMap.get(item.productId!)!;
+                    const previousRemaining = product.remaining;
+                    const newRemaining = previousRemaining - item.quantity;
+
+                    await transaction.product.update({
+                        where: { id: item.productId! },
+                        data: { remaining: { decrement: item.quantity } },
+                    });
+
+                    await transaction.productHistory.create({
+                        data: {
+                            productId: item.productId!,
+                            staffId,
+                            operation: "INVENTORY_REMOVE",
+                            quantity: item.quantity,
+                            previousData: { remaining: previousRemaining },
+                            newData: { remaining: newRemaining },
+                            changeReason: `order_finalize:${orderId}`,
+                        },
+                    });
+                }
+
+                // Transition status
+                const updated = await transaction.order.update({
+                    where: { id: orderId },
+                    data: { status: "COMPLETED" },
+                    include: {
+                        items: {
+                            include: {
+                                product: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        price: true,
+                                        remaining: true,
+                                        costprice: true,
+                                    },
+                                },
+                            },
+                        },
+                        user: { select: { id: true, fullname: true, phone: true } },
+                        staff: { select: { id: true, fullname: true } },
+                    },
+                });
+
+                await auditInTransaction(
+                    transaction,
+                    { requestId, user, logger },
+                    {
+                        entityType: "order",
+                        entityId: orderId,
+                        action: "UPDATE",
+                        previousData: createOrderSnapshot(existingOrder),
+                        newData: createOrderSnapshot(updated),
+                    },
+                );
+
+                return updated;
+            });
+
+            logger.info("Orders: Draft finalized", { orderId, staffId });
+
+            const mapped = {
+                ...order,
+                items: order.items.map((item) => ({
+                    ...item,
+                    price: Number(item.price),
+                    product: item.product
+                        ? {
+                              ...item.product,
+                              price: Number(item.product.price),
+                              costprice: Number(item.product.costprice),
+                          }
+                        : null,
+                })),
+            };
+
+            return { success: true, data: mapped };
+        } catch (error) {
+            logger.error("Orders: Error in finalizeDraft", { orderId, error });
             return { success: false, error };
         }
     }
@@ -478,12 +647,19 @@ export abstract class OrdersService {
                 productMap = new Map(products.map((p) => [p.id, p]));
             }
 
+            const isDraftOrder = existingOrder.status === "DRAFT";
+
             const [updatedOrder] = await prisma.$transaction(async (transaction) => {
                 // Replace items if provided
                 if (orderData.items && productMap) {
-                    // 1. Restore old stock (only for items with a product)
+                    // 1. Restore old stock (only for non-draft orders with a product)
                     for (const item of existingOrder.items) {
-                        if (item.productId != null && item.product && !item.product.deletedAt) {
+                        if (
+                            !isDraftOrder &&
+                            item.productId != null &&
+                            item.product &&
+                            !item.product.deletedAt
+                        ) {
                             const previousRemaining = item.product.remaining;
                             const newRemaining = previousRemaining + item.quantity;
 
@@ -511,7 +687,7 @@ export abstract class OrdersService {
                         where: { orderId },
                     });
 
-                    // 3. Create new items + deduct stock (only for items with a product)
+                    // 3. Create new items + deduct stock (only for non-draft orders with a product)
                     for (const item of mergedItems!) {
                         await transaction.orderItem.create({
                             data: {
@@ -523,7 +699,7 @@ export abstract class OrdersService {
                             },
                         });
 
-                        if (item.productId != null) {
+                        if (!isDraftOrder && item.productId != null) {
                             const product = productMap.get(item.productId)!;
                             const previousRemaining = product.remaining;
                             const newRemaining = previousRemaining - item.quantity;
@@ -656,28 +832,33 @@ export abstract class OrdersService {
                 return { success: false, error: "Order not found" };
             }
 
+            const isDraftOrder = existingOrder.status === "DRAFT";
+
             await prisma.$transaction(async (transaction) => {
-                for (const item of existingOrder.items) {
-                    if (item.productId != null && item.product && !item.product.deletedAt) {
-                        const previousRemaining = item.product.remaining;
-                        const newRemaining = previousRemaining + item.quantity;
+                // Only restore stock for non-draft orders (drafts never deducted)
+                if (!isDraftOrder) {
+                    for (const item of existingOrder.items) {
+                        if (item.productId != null && item.product && !item.product.deletedAt) {
+                            const previousRemaining = item.product.remaining;
+                            const newRemaining = previousRemaining + item.quantity;
 
-                        await transaction.product.update({
-                            where: { id: item.productId },
-                            data: { remaining: { increment: item.quantity } },
-                        });
+                            await transaction.product.update({
+                                where: { id: item.productId },
+                                data: { remaining: { increment: item.quantity } },
+                            });
 
-                        await transaction.productHistory.create({
-                            data: {
-                                productId: item.productId,
-                                staffId,
-                                operation: "INVENTORY_ADD",
-                                quantity: item.quantity,
-                                previousData: { remaining: previousRemaining },
-                                newData: { remaining: newRemaining },
-                                changeReason: `order_delete:${orderId}`,
-                            },
-                        });
+                            await transaction.productHistory.create({
+                                data: {
+                                    productId: item.productId,
+                                    staffId,
+                                    operation: "INVENTORY_ADD",
+                                    quantity: item.quantity,
+                                    previousData: { remaining: previousRemaining },
+                                    newData: { remaining: newRemaining },
+                                    changeReason: `order_delete:${orderId}`,
+                                },
+                            });
+                        }
                     }
                 }
 
@@ -698,9 +879,10 @@ export abstract class OrdersService {
                 );
             });
 
-            logger.info("Orders: Order deleted and stock restored", {
+            logger.info("Orders: Order deleted", {
                 orderId,
-                itemsRestored: existingOrder.items.length,
+                wasDraft: isDraftOrder,
+                itemsRestored: isDraftOrder ? 0 : existingOrder.items.length,
                 staffId,
             });
 

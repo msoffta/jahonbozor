@@ -10,6 +10,9 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
     envDir: resolve(process.cwd(), "../../.."),
+    resolve: {
+        dedupe: ["react", "react-dom", "react/jsx-runtime"],
+    },
     build: {
         sourcemap: "hidden",
         rollupOptions: {
