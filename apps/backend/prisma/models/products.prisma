@@ -4,10 +4,12 @@ model Product {
   price      Decimal   @db.Decimal(10, 2)
   costprice  Decimal   @db.Decimal(10, 2)
   categoryId Int?
+  staffId    Int?
   remaining  Int       @default(0)
   deletedAt  DateTime?
 
   category         Category?        @relation(fields: [categoryId], references: [id])
+  staff            Staff?           @relation(fields: [staffId], references: [id])
   productHistories ProductHistory[]
   orderItems       OrderItem[]
 
@@ -16,6 +18,7 @@ model Product {
 
   @@index([deletedAt])
   @@index([categoryId])
+  @@index([staffId])
 }
 
 model Category {

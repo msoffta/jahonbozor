@@ -207,6 +207,12 @@ Frontend tsconfig: @/* (own src) + @backend/lib/*, @backend/api/*, @backend/gene
 
 > Frontend tsconfigs must include backend aliases for Eden Treaty type resolution. See [docs/frontend.md](docs/frontend.md#eden-treaty-type-resolution).
 
+### Терминология: Заказы vs Списки
+
+- **Заказ** — единичный order_item (1 позиция). Страница: `_dashboard/index.tsx`
+- **Список** — order с 2+ order_items. Страница: `_dashboard/orders/index.tsx`
+- Оба используют `getOrderColumns()` из `components/orders/orders-columns.tsx` с разными options
+
 ### Broadcast / Mailing Feature
 
 Рассылка сообщений клиентам через MTProto user accounts (не через бот).

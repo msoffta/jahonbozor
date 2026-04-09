@@ -130,6 +130,13 @@ export function getProductColumns(
             },
         },
         {
+            id: "staff",
+            accessorFn: (row) => row.staff?.fullname ?? "—",
+            header: t("product_staff"),
+            size: 140,
+            meta: { flex: 1 },
+        },
+        {
             accessorKey: "createdAt",
             header: t("product_created"),
             size: 140,

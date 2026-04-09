@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
 
-import { Button, motion } from "@jahonbozor/ui";
+import { Badge, Button, motion } from "@jahonbozor/ui";
 
 import { formatCurrency } from "@/lib/format";
 
@@ -24,6 +24,8 @@ interface OrderColumnsData {
 interface OrderColumnsOptions {
     showItemColumns?: boolean;
     canDelete?: boolean;
+    showStaff?: boolean;
+    showStatus?: boolean;
 }
 
 export function getOrderColumns(
@@ -32,7 +34,12 @@ export function getOrderColumns(
     data: OrderColumnsData,
     options?: OrderColumnsOptions,
 ): ColumnDef<AdminOrderItem, unknown>[] {
-    const { showItemColumns = true, canDelete = true } = options ?? {};
+    const {
+        showItemColumns = true,
+        canDelete = true,
+        showStaff = false,
+        showStatus = false,
+    } = options ?? {};
     const productOptions = data.products.map((p) => ({
         label: p.name,
         value: String(p.id),
@@ -215,6 +222,50 @@ export function getOrderColumns(
                 skipOnEnter: true,
             },
         },
+    );
+
+    if (showStaff) {
+        columns.push({
+            id: "staff",
+            accessorFn: (row) => row.staff?.fullname ?? "—",
+            header: t("order_staff"),
+            size: 140,
+            meta: { flex: 1 },
+        });
+    }
+
+    if (showStatus) {
+        columns.push({
+            id: "status",
+            accessorFn: (row) => row.status,
+            header: t("order_status"),
+            size: 120,
+            cell: ({ getValue }) => {
+                const status = getValue<string>();
+                return (
+                    <Badge
+                        variant={status === "DRAFT" ? "secondary" : "default"}
+                        className={
+                            status === "DRAFT"
+                                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                : ""
+                        }
+                    >
+                        {t(`status_${status.toLowerCase()}`)}
+                    </Badge>
+                );
+            },
+            meta: {
+                filterVariant: "select" as const,
+                filterOptions: [
+                    { label: t("status_draft"), value: "DRAFT" },
+                    { label: t("status_completed"), value: "COMPLETED" },
+                ],
+            },
+        });
+    }
+
+    columns.push(
         {
             accessorKey: "createdAt",
             header: t("order_date"),

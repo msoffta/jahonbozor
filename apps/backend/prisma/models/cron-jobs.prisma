@@ -1,0 +1,7 @@
+model CronJobRun {
+  id      Int      @id @default(autoincrement())
+  jobName String
+  ranAt   DateTime @default(now())
+
+  @@index([jobName, ranAt])
+}

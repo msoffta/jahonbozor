@@ -56,10 +56,12 @@ export const ordersListQueryOptions = (params?: {
     userId?: number;
     staffId?: number;
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
+    status?: "DRAFT" | "COMPLETED";
     dateFrom?: string;
     dateTo?: string;
-    itemsCount?: number;
-    minItemsCount?: number;
+    type?: "ORDER" | "LIST";
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
 }) =>
     queryOptions({
         queryKey: orderKeys.list(params),
@@ -89,10 +91,10 @@ export const ordersInfiniteQueryOptions = (params?: {
     userId?: number;
     staffId?: number;
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
+    status?: "DRAFT" | "COMPLETED";
     dateFrom?: string;
     dateTo?: string;
-    itemsCount?: number;
-    minItemsCount?: number;
+    type?: "ORDER" | "LIST";
 }) =>
     infiniteQueryOptions({
         queryKey: orderKeys.list({ ...params, infinite: true }),
@@ -162,6 +164,8 @@ export const createOrderFn = async (body: {
     userId?: number | null;
     paymentType: "CASH" | "CREDIT_CARD" | "DEBT";
     comment?: string | null;
+    status?: "DRAFT" | "COMPLETED";
+    type?: "ORDER" | "LIST";
     items: { productId: number | null; quantity: number; price: number }[];
 }) => {
     const { data, error } = await api.api.private.orders.post(body);
@@ -175,26 +179,8 @@ export function useCreateOrder() {
     return useMutation({
         mutationKey: ["orders", "create"],
         mutationFn: createOrderFn,
-        onSuccess: (newOrder) => {
-            // Optimistic: append new order to cache without full refetch
-            queryClient.setQueriesData<{
-                pages: { count: number; orders: AdminOrderItem[] }[];
-                pageParams: number[];
-            }>({ queryKey: orderKeys.all }, (old) => {
-                if (!old?.pages?.length) return old;
-                const lastPage = old.pages[old.pages.length - 1];
-                return {
-                    ...old,
-                    pages: [
-                        ...old.pages.slice(0, -1),
-                        {
-                            ...lastPage,
-                            count: lastPage.count + 1,
-                            orders: [...lastPage.orders, newOrder],
-                        },
-                    ],
-                };
-            });
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: orderKeys.all });
         },
         onError: handleOrderError,
     });
@@ -243,6 +229,26 @@ export function useDeleteOrder() {
     });
 }
 
+export const finalizeOrderFn = async (id: number) => {
+    const { data, error } = await api.api.private.orders({ id }).finalize.post();
+    if (error) throw error;
+    if (!data.success) throw data.error;
+    return data.data as AdminOrderItem;
+};
+
+export function useFinalizeDraft() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationKey: ["orders", "finalize"],
+        mutationFn: finalizeOrderFn,
+        onSuccess: (updatedOrder) => {
+            queryClient.setQueryData(orderKeys.detail(updatedOrder.id), updatedOrder);
+            queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+        },
+        onError: handleOrderError,
+    });
+}
+
 export const restoreOrderFn = async (id: number) => {
     const { data, error } = await api.api.private.orders({ id }).restore.post();
     if (error) throw error;
@@ -257,6 +263,33 @@ export function useRestoreOrder() {
         mutationFn: restoreOrderFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        },
+        onError: () => {
+            toast.error(i18n.t("error"));
+        },
+    });
+}
+
+export const deleteEmptyDraftsFn = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (api.api.private.orders as any)["empty-drafts"].delete();
+    if (error) throw error;
+    if (!data.success) throw new Error("Request failed");
+    return data.data as { deleted: number };
+};
+
+export function useDeleteEmptyDrafts() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationKey: ["orders", "delete-empty-drafts"],
+        mutationFn: deleteEmptyDraftsFn,
+        onSuccess: (result) => {
+            queryClient.invalidateQueries({ queryKey: orderKeys.all });
+            if (result.deleted > 0) {
+                toast.success(i18n.t("orders:empty_drafts_deleted", { count: result.deleted }));
+            } else {
+                toast.info(i18n.t("orders:no_empty_drafts"));
+            }
         },
         onError: () => {
             toast.error(i18n.t("error"));

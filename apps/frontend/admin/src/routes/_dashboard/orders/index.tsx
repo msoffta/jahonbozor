@@ -18,7 +18,7 @@ import {
 } from "@jahonbozor/ui";
 
 import { clientsListQueryOptions } from "@/api/clients.api";
-import { ordersInfiniteQueryOptions, useDeleteOrder } from "@/api/orders.api";
+import { ordersInfiniteQueryOptions, useDeleteEmptyDrafts, useDeleteOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderColumns } from "@/components/orders/orders-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
@@ -33,8 +33,9 @@ function ListsPage() {
     const isReady = useDeferredReady(300);
     const translations = useDataTableTranslations(t("lists_empty"));
 
-    // Permission check for delete action
+    // Permission checks
     const canDelete = useHasPermission(Permission.ORDERS_DELETE);
+    const deleteEmptyDrafts = useDeleteEmptyDrafts();
 
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -45,6 +46,7 @@ function ListsPage() {
 
     const [dateFrom, setDateFrom] = useState(monthStart);
     const [dateTo, setDateTo] = useState(monthEnd);
+    const [statusFilter, setStatusFilter] = useState<"ALL" | "DRAFT" | "COMPLETED">("ALL");
 
     const {
         data: ordersData,
@@ -54,10 +56,11 @@ function ListsPage() {
         isFetchingNextPage,
     } = useInfiniteQuery(
         ordersInfiniteQueryOptions({
-            minItemsCount: 2,
+            type: "LIST",
             searchQuery,
             dateFrom,
             dateTo,
+            ...(statusFilter !== "ALL" && { status: statusFilter }),
         }),
     );
 
@@ -104,7 +107,7 @@ function ListsPage() {
             t,
             actions,
             { products, users },
-            { showItemColumns: false, canDelete },
+            { showItemColumns: false, canDelete, showStaff: true, showStatus: true },
         );
     }, [t, actions, products, users, isReady, canDelete]);
 
@@ -123,6 +126,25 @@ function ListsPage() {
                 <h1 className="text-xl font-bold md:text-2xl">{t("lists_title")}</h1>
 
                 <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                    <div className="border-border flex overflow-hidden rounded-lg border">
+                        {(["ALL", "DRAFT", "COMPLETED"] as const).map((status) => (
+                            <motion.button
+                                key={status}
+                                type="button"
+                                className={`px-3 py-1.5 text-xs font-medium ${
+                                    statusFilter === status
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-muted-foreground"
+                                }`}
+                                onClick={() => setStatusFilter(status)}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                {status === "ALL"
+                                    ? t("table_show_all")
+                                    : t(`status_${status.toLowerCase()}`)}
+                            </motion.button>
+                        ))}
+                    </div>
                     <div className="flex items-center gap-2">
                         <DatePicker
                             value={dateFrom}
@@ -150,6 +172,17 @@ function ListsPage() {
                     >
                         {t("common:this_month")}
                     </Button>
+                    {canDelete && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground"
+                            onClick={() => deleteEmptyDrafts.mutate()}
+                            disabled={deleteEmptyDrafts.isPending}
+                        >
+                            {t("delete_empty_drafts")}
+                        </Button>
+                    )}
                 </div>
             </div>
 

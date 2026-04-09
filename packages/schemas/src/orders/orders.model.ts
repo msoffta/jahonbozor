@@ -1,7 +1,7 @@
 import z from "zod";
 
 import { BaseModel } from "../common/base.model";
-import { PaymentType } from "../common/enums";
+import { OrderStatus, OrderType, PaymentType } from "../common/enums";
 
 export const OrderItem = BaseModel.extend({
     orderId: z.number(),
@@ -14,6 +14,8 @@ export const OrderItem = BaseModel.extend({
 export const Order = BaseModel.extend({
     userId: z.number().nullable(),
     staffId: z.number().nullable(),
+    status: OrderStatus.default("COMPLETED"),
+    type: OrderType.default("ORDER"),
     paymentType: PaymentType,
     comment: z.string().nullish(),
     data: z.record(z.string(), z.unknown()).nullable(),

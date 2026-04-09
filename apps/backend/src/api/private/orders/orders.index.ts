@@ -8,6 +8,7 @@ import { authMiddleware } from "@backend/lib/middleware";
 import { OrdersService } from "./orders.service";
 
 import type {
+    AdminDeleteEmptyDraftsResponse,
     AdminOrderDeleteResponse,
     AdminOrderDetailResponse,
     AdminOrdersListResponse,
@@ -32,6 +33,20 @@ export const orders = new Elysia({ prefix: "/orders" })
         {
             permissions: [Permission.ORDERS_LIST_OWN],
             query: OrdersPagination,
+        },
+    )
+    .delete(
+        "/empty-drafts",
+        async ({ logger }): Promise<AdminDeleteEmptyDraftsResponse> => {
+            try {
+                return await OrdersService.deleteEmptyDrafts(logger);
+            } catch (error) {
+                logger.error("Orders: Unhandled error in DELETE /empty-drafts", { error });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.ORDERS_DELETE],
         },
     )
     .get(
@@ -158,6 +173,49 @@ export const orders = new Elysia({ prefix: "/orders" })
         },
         {
             permissions: [Permission.ORDERS_DELETE],
+            params: orderIdParams,
+        },
+    )
+    .post(
+        "/:id/finalize",
+        async ({
+            params,
+            user,
+            permissions,
+            set,
+            logger,
+            requestId,
+        }): Promise<AdminOrderDetailResponse> => {
+            try {
+                const result = await OrdersService.finalizeDraft(
+                    params.id,
+                    { staffId: user.id, user, requestId },
+                    permissions,
+                    logger,
+                );
+
+                if (!result.success) {
+                    const error = typeof result.error === "string" ? result.error : "";
+                    if (error === "Forbidden") {
+                        set.status = 403;
+                    } else if (error === "Order not found") {
+                        set.status = 404;
+                    } else {
+                        set.status = 400;
+                    }
+                }
+
+                return result;
+            } catch (error) {
+                logger.error("Orders: Unhandled error in POST /:id/finalize", {
+                    id: params.id,
+                    error,
+                });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.ORDERS_CREATE],
             params: orderIdParams,
         },
     )

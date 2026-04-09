@@ -78,6 +78,9 @@ export abstract class ProductsService {
                                 parent: { select: { id: true, name: true } },
                             },
                         },
+                        staff: {
+                            select: { id: true, fullname: true },
+                        },
                     },
                     orderBy: { [sortBy]: sortOrder },
                 }),
@@ -114,6 +117,9 @@ export abstract class ProductsService {
                             name: true,
                             parent: { select: { id: true, name: true } },
                         },
+                    },
+                    staff: {
+                        select: { id: true, fullname: true },
                     },
                 },
             });
@@ -163,6 +169,7 @@ export abstract class ProductsService {
                         costprice: productData.costprice,
                         categoryId: productData.categoryId ?? null,
                         remaining: productData.remaining ?? 0,
+                        staffId: context.staffId,
                     },
                 });
 
@@ -480,6 +487,7 @@ export abstract class ProductsService {
                                     price: row.price,
                                     costprice: row.costprice,
                                     remaining: row.remaining,
+                                    staffId: context.staffId,
                                 },
                             });
 

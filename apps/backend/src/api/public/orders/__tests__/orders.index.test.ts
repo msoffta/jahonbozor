@@ -10,6 +10,8 @@ const mockOrderWithRelations = {
     userId: 1,
     staffId: null,
     paymentType: "CASH",
+    status: "COMPLETED",
+    type: "ORDER",
     comment: null,
     data: {},
     items: [

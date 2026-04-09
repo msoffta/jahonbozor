@@ -25,6 +25,8 @@ const mockOrder: Order = {
     userId: null,
     staffId: 1,
     paymentType: "CASH",
+    status: "COMPLETED",
+    type: "ORDER",
     comment: null,
     data: {},
     deletedAt: null,
@@ -354,6 +356,7 @@ describe("Orders Service", () => {
                 orderId: 1,
                 staffId: 1,
                 itemCount: 1,
+                status: "COMPLETED",
             });
         });
 
@@ -943,14 +946,12 @@ describe("Orders Service", () => {
             // Assert
             const success = expectSuccess(result);
             expect(success.data).toEqual({ orderId: 1, deleted: true });
-            expect(mockLogger.info).toHaveBeenCalledWith(
-                "Orders: Order deleted and stock restored",
-                {
-                    orderId: 1,
-                    itemsRestored: 1,
-                    staffId: 1,
-                },
-            );
+            expect(mockLogger.info).toHaveBeenCalledWith("Orders: Order deleted", {
+                orderId: 1,
+                itemsRestored: 1,
+                staffId: 1,
+                wasDraft: false,
+            });
         });
 
         test("should create ProductHistory for stock restoration", async () => {

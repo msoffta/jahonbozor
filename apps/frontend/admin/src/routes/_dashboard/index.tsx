@@ -118,7 +118,7 @@ function OrdersPage() {
         isFetchingNextPage,
     } = useInfiniteQuery(
         ordersInfiniteQueryOptions({
-            itemsCount: 1,
+            type: "ORDER",
             searchQuery,
             dateFrom,
             dateTo,
@@ -165,7 +165,7 @@ function OrdersPage() {
 
     const columns = useMemo(() => {
         if (!isReady) return [];
-        return getOrderColumns(t, actions, { products, users }, { canDelete });
+        return getOrderColumns(t, actions, { products, users }, { canDelete, showStaff: true });
     }, [t, actions, products, users, isReady, canDelete]);
 
     const orders = useMemo(() => ordersData?.pages.flatMap((p) => p.orders) ?? [], [ordersData]);
