@@ -19,17 +19,37 @@ export default defineConfig({
         sourcemap: "hidden",
         rollupOptions: {
             output: {
-                manualChunks(id) {
-                    if (!id.includes("node_modules")) return;
-                    if (id.includes("react-dom")) return "vendor-react-dom";
-                    if (id.includes("/react/")) return "vendor-react";
-                    if (id.includes("@tanstack/react-router") || id.includes("@tanstack/router"))
-                        return "vendor-tanstack-router";
-                    if (id.includes("@tanstack")) return "vendor-tanstack";
-                    if (id.includes("@radix-ui")) return "vendor-radix";
-                    if (id.includes("motion")) return "vendor-motion";
-                    if (id.includes("@sentry")) return "vendor-sentry";
-                    if (id.includes("i18next")) return "vendor-i18n";
+                manualChunks: {
+                    "vendor-react": [
+                        "react",
+                        "react-dom",
+                        "react/jsx-runtime",
+                        "react-i18next",
+                        "i18next",
+                    ],
+                    "vendor-radix": [
+                        "@radix-ui/react-avatar",
+                        "@radix-ui/react-checkbox",
+                        "@radix-ui/react-dropdown-menu",
+                        "@radix-ui/react-popover",
+                        "@radix-ui/react-select",
+                        "@radix-ui/react-separator",
+                        "@radix-ui/react-slot",
+                        "@radix-ui/react-tabs",
+                        "@radix-ui/react-tooltip",
+                    ],
+                    "vendor-tanstack-router": ["@tanstack/react-router", "@tanstack/router-core"],
+                    "vendor-tanstack": ["@tanstack/react-query", "@tanstack/query-core"],
+                    "vendor-motion": ["motion"],
+                    "vendor-utils": [
+                        "date-fns",
+                        "lucide-react",
+                        "sonner",
+                        "clsx",
+                        "tailwind-merge",
+                        "class-variance-authority",
+                    ],
+                    "vendor-sentry": ["@sentry/react", "@sentry/browser", "@sentry/core"],
                 },
             },
         },
