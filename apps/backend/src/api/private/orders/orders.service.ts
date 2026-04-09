@@ -33,10 +33,9 @@ export abstract class OrdersService {
                 staffId: filterStaffId,
                 paymentType,
                 status,
+                type,
                 dateFrom,
                 dateTo,
-                itemsCount,
-                minItemsCount,
             } = query;
 
             const canListAll = hasAnyPermission(permissions, [Permission.ORDERS_LIST_ALL]);
@@ -45,6 +44,7 @@ export abstract class OrdersService {
                 deletedAt: null,
                 ...(paymentType && { paymentType }),
                 ...(status && { status }),
+                ...(type && { type }),
                 ...((dateFrom ?? dateTo) && {
                     createdAt: {
                         ...(dateFrom && { gte: dateFrom }),
@@ -52,56 +52,6 @@ export abstract class OrdersService {
                     },
                 }),
             };
-
-            // Filter by exact items count
-            if (itemsCount !== undefined) {
-                const orderGroups = await prisma.orderItem.groupBy({
-                    by: ["orderId"],
-                    _count: {
-                        id: true,
-                    },
-                    having: {
-                        id: {
-                            _count: {
-                                equals: itemsCount,
-                            },
-                        },
-                    },
-                });
-                const orderIds = orderGroups.map((g) => g.orderId);
-                whereClause.id = { in: orderIds };
-            }
-
-            // Filter by minimum items count (for "lists" = orders with >1 item)
-            if (minItemsCount !== undefined) {
-                const orderGroups = await prisma.orderItem.groupBy({
-                    by: ["orderId"],
-                    _count: {
-                        id: true,
-                    },
-                    having: {
-                        id: {
-                            _count: {
-                                gte: minItemsCount,
-                            },
-                        },
-                    },
-                });
-                const orderIds = orderGroups.map((g) => g.orderId);
-                // Merge with existing id filter if present
-                if (
-                    whereClause.id &&
-                    typeof whereClause.id !== "number" &&
-                    "in" in whereClause.id
-                ) {
-                    const existingIds = whereClause.id.in as number[];
-                    whereClause.id = {
-                        in: existingIds.filter((id) => orderIds.includes(id)),
-                    };
-                } else {
-                    whereClause.id = { in: orderIds };
-                }
-            }
 
             if (canListAll) {
                 if (userId) whereClause.userId = userId;
@@ -287,6 +237,7 @@ export abstract class OrdersService {
                         userId: orderData.userId ?? null,
                         staffId,
                         status: isDraft ? "DRAFT" : "COMPLETED",
+                        type: orderData.type ?? "ORDER",
                         paymentType: orderData.paymentType,
                         comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},
@@ -974,6 +925,39 @@ export abstract class OrdersService {
             return { success: true, data: { orderId, deleted: false } };
         } catch (error) {
             logger.error("Orders: Error in restoreOrder", { orderId, error });
+            return { success: false, error };
+        }
+    }
+
+    static async deleteEmptyDrafts(
+        logger: Logger,
+    ): Promise<{ success: true; data: { deleted: number } } | { success: false; error: unknown }> {
+        try {
+            // Find DRAFT orders with 0 items
+            const emptyDrafts = await prisma.order.findMany({
+                where: {
+                    status: "DRAFT",
+                    deletedAt: null,
+                    items: { none: {} },
+                },
+                select: { id: true },
+            });
+
+            if (emptyDrafts.length === 0) {
+                return { success: true, data: { deleted: 0 } };
+            }
+
+            const ids = emptyDrafts.map((o) => o.id);
+
+            await prisma.order.deleteMany({
+                where: { id: { in: ids } },
+            });
+
+            logger.info("Orders: Empty drafts deleted", { count: ids.length, ids });
+
+            return { success: true, data: { deleted: ids.length } };
+        } catch (error) {
+            logger.error("Orders: Error in deleteEmptyDrafts", { error });
             return { success: false, error };
         }
     }

@@ -6,6 +6,9 @@ export type PaymentType = z.infer<typeof PaymentType>;
 export const OrderStatus = z.enum(["DRAFT", "COMPLETED"]);
 export type OrderStatus = z.infer<typeof OrderStatus>;
 
+export const OrderType = z.enum(["ORDER", "LIST"]);
+export type OrderType = z.infer<typeof OrderType>;
+
 export const Operation = z.enum([
     "CREATE",
     "UPDATE",

@@ -15,6 +15,7 @@ const mockProduct = {
     price: 100,
     costprice: 50,
     categoryId: 1,
+    staffId: 1,
     remaining: 10,
     deletedAt: null,
     createdAt: new Date("2024-01-01"),
@@ -24,6 +25,7 @@ const mockProduct = {
         name: "Electronics",
         parent: null,
     },
+    staff: { id: 1, fullname: "Root Admin" },
 };
 
 const mockProductHistory = {

@@ -26,6 +26,7 @@ const mockOrder: Order = {
     staffId: 1,
     paymentType: "CASH",
     status: "COMPLETED",
+    type: "ORDER",
     comment: null,
     data: {},
     deletedAt: null,

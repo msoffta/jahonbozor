@@ -381,9 +381,29 @@ function OrderDetailPage() {
                             {t("status_draft")}
                         </Badge>
                     )}
-                    <Badge variant="secondary">
-                        {t(`payment_${order.paymentType.toLowerCase()}`)}
-                    </Badge>
+                    {order.status === "DRAFT" && canUpdate ? (
+                        <div className="border-border flex overflow-hidden rounded-lg border">
+                            {(["CASH", "CREDIT_CARD", "DEBT"] as const).map((type) => (
+                                <motion.button
+                                    key={type}
+                                    type="button"
+                                    className={`px-3 py-1.5 text-xs font-medium ${order.paymentType === type ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                                    onClick={() => {
+                                        if (order.paymentType !== type) {
+                                            updateOrder.mutate({ id: order.id, paymentType: type });
+                                        }
+                                    }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    {t(`payment_${type.toLowerCase()}`)}
+                                </motion.button>
+                            ))}
+                        </div>
+                    ) : (
+                        <Badge variant="secondary">
+                            {t(`payment_${order.paymentType.toLowerCase()}`)}
+                        </Badge>
+                    )}
                     <AnimatePresence>
                         {canUpdate && itemsChanged && (
                             <motion.div

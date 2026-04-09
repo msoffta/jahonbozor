@@ -59,6 +59,8 @@ export type PublicProductDetailResponse = ReturnSchema<PublicProductItem>;
 // Admin API (include — all fields)
 export interface AdminProductItem extends PublicProductItem {
     costprice: number;
+    staffId: number | null;
+    staff?: { id: number; fullname: string } | null;
     deletedAt: Date | string | null;
 }
 

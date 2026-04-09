@@ -8,6 +8,7 @@ import { authMiddleware } from "@backend/lib/middleware";
 import { OrdersService } from "./orders.service";
 
 import type {
+    AdminDeleteEmptyDraftsResponse,
     AdminOrderDeleteResponse,
     AdminOrderDetailResponse,
     AdminOrdersListResponse,
@@ -32,6 +33,20 @@ export const orders = new Elysia({ prefix: "/orders" })
         {
             permissions: [Permission.ORDERS_LIST_OWN],
             query: OrdersPagination,
+        },
+    )
+    .delete(
+        "/empty-drafts",
+        async ({ logger }): Promise<AdminDeleteEmptyDraftsResponse> => {
+            try {
+                return await OrdersService.deleteEmptyDrafts(logger);
+            } catch (error) {
+                logger.error("Orders: Unhandled error in DELETE /empty-drafts", { error });
+                return { success: false, error };
+            }
+        },
+        {
+            permissions: [Permission.ORDERS_DELETE],
         },
     )
     .get(

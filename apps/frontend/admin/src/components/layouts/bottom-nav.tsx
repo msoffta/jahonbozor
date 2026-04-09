@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useRouterState } from "@tanstack/react-router";
-import { format, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { Home } from "lucide-react";
 
 import { Permission } from "@jahonbozor/schemas";
@@ -106,10 +106,9 @@ export function BottomNav() {
     const activeOrderId = params?.orderId ? Number(params.orderId) : null;
     const isOrderView = pathname.startsWith("/orders/") && activeOrderId !== null;
 
-    // Fetch today's lists (orders with >1 item)
-    const todayStart = useMemo(() => startOfDay(new Date()).toISOString(), []);
+    // Fetch most recently updated lists
     const { data: recentListsData } = useQuery(
-        ordersListQueryOptions({ limit: 5, minItemsCount: 2, dateFrom: todayStart }),
+        ordersListQueryOptions({ limit: 5, type: "LIST", sortBy: "updatedAt", sortOrder: "desc" }),
     );
 
     const recentListsRaw = recentListsData?.orders ?? [];

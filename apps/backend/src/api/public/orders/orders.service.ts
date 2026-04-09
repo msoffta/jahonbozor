@@ -99,6 +99,7 @@ export abstract class PublicOrdersService {
                     data: {
                         userId,
                         staffId: null,
+                        type: orderData.type ?? "ORDER",
                         paymentType: orderData.paymentType,
                         comment: orderData.comment ?? null,
                         data: (orderData.data as Prisma.JsonObject) ?? {},

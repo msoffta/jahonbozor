@@ -60,6 +60,7 @@
   "receipt_thank_you": "Спасибо за покупку!",
   "receipt_comment": "Комментарий",
   "order_staff": "Сотрудник",
+  "order_status": "Статус",
   "save_draft": "Черновик",
   "finalize": "Оформить",
   "status_draft": "Черновик",
@@ -67,5 +68,8 @@
   "drafts": "Черновики",
   "draft_finalized": "Список оформлен",
   "draft_saved": "Черновик сохранён",
-  "finalize_min_items": "Добавьте минимум 1 позицию для оформления"
+  "finalize_min_items": "Добавьте минимум 1 позицию для оформления",
+  "delete_empty_drafts": "Удалить пустые",
+  "empty_drafts_deleted": "Удалено пустых черновиков: {{count}}",
+  "no_empty_drafts": "Пустых черновиков нет"
 }

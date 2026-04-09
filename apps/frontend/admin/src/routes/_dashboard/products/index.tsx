@@ -126,7 +126,15 @@ function ProductsPage() {
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
         (): Record<string, boolean> =>
-            isMobile ? { costprice: false, category: false, status: false, createdAt: false } : {},
+            isMobile
+                ? {
+                      costprice: false,
+                      category: false,
+                      status: false,
+                      staff: false,
+                      createdAt: false,
+                  }
+                : {},
         [isMobile],
     );
 

@@ -27,6 +27,7 @@ const createMockOrder = (overrides: Partial<Order> = {}): Order => ({
     staffId: 1,
     paymentType: "DEBT",
     status: "COMPLETED",
+    type: "ORDER",
     comment: null,
     data: {},
     deletedAt: null,

@@ -18,7 +18,7 @@ import {
 } from "@jahonbozor/ui";
 
 import { clientsListQueryOptions } from "@/api/clients.api";
-import { ordersInfiniteQueryOptions, useDeleteOrder } from "@/api/orders.api";
+import { ordersInfiniteQueryOptions, useDeleteEmptyDrafts, useDeleteOrder } from "@/api/orders.api";
 import { productsListQueryOptions } from "@/api/products.api";
 import { getOrderColumns } from "@/components/orders/orders-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
@@ -35,7 +35,7 @@ function ListsPage() {
 
     // Permission checks
     const canDelete = useHasPermission(Permission.ORDERS_DELETE);
-    const canListAll = useHasPermission(Permission.ORDERS_LIST_ALL);
+    const deleteEmptyDrafts = useDeleteEmptyDrafts();
 
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -56,7 +56,7 @@ function ListsPage() {
         isFetchingNextPage,
     } = useInfiniteQuery(
         ordersInfiniteQueryOptions({
-            minItemsCount: 2,
+            type: "LIST",
             searchQuery,
             dateFrom,
             dateTo,
@@ -107,9 +107,9 @@ function ListsPage() {
             t,
             actions,
             { products, users },
-            { showItemColumns: false, canDelete, showStaff: canListAll },
+            { showItemColumns: false, canDelete, showStaff: true, showStatus: true },
         );
-    }, [t, actions, products, users, isReady, canDelete, canListAll]);
+    }, [t, actions, products, users, isReady, canDelete]);
 
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
@@ -172,6 +172,17 @@ function ListsPage() {
                     >
                         {t("common:this_month")}
                     </Button>
+                    {canDelete && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground"
+                            onClick={() => deleteEmptyDrafts.mutate()}
+                            disabled={deleteEmptyDrafts.isPending}
+                        >
+                            {t("delete_empty_drafts")}
+                        </Button>
+                    )}
                 </div>
             </div>
 

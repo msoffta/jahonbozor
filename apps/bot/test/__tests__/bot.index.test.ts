@@ -51,12 +51,12 @@ vi.mock("@bot/lib/logger", () => ({ logger: mockLogger }));
 // Mock Bun.serve — capture the fetch handler so we can call it directly
 let serverFetch: (req: Request) => Response | Promise<Response>;
 const mockServer = { port: 3099, stop: vi.fn() };
-vi.stubGlobal("Bun", {
-    serve: vi.fn((opts: { fetch: (req: Request) => Response | Promise<Response> }) => {
-        serverFetch = opts.fetch;
-        return mockServer;
-    }),
-});
+vi.spyOn(Bun, "serve").mockImplementation(((opts: {
+    fetch: (req: Request) => Response | Promise<Response>;
+}) => {
+    serverFetch = opts.fetch;
+    return mockServer;
+}) as typeof Bun.serve);
 
 // Set required env vars
 process.env.TELEGRAM_BOT_TOKEN = "test-token";

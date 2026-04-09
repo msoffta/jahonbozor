@@ -43,6 +43,7 @@ const createMockProduct = (overrides: Partial<Product> = {}): Product => ({
     price: 100 as unknown as Product["price"],
     costprice: 50 as unknown as Product["costprice"],
     categoryId: 1,
+    staffId: null,
     remaining: 10,
     deletedAt: null,
     createdAt: new Date("2024-01-01"),
