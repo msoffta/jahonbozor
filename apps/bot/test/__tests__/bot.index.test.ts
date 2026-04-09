@@ -51,12 +51,16 @@ vi.mock("@bot/lib/logger", () => ({ logger: mockLogger }));
 // Mock Bun.serve — capture the fetch handler so we can call it directly
 let serverFetch: (req: Request) => Response | Promise<Response>;
 const mockServer = { port: 3099, stop: vi.fn() };
-vi.spyOn(Bun, "serve").mockImplementation(((opts: {
-    fetch: (req: Request) => Response | Promise<Response>;
-}) => {
+const mockServe = vi.fn((opts: { fetch: (req: Request) => Response | Promise<Response> }) => {
     serverFetch = opts.fetch;
     return mockServer;
-}) as typeof Bun.serve);
+});
+// Bun global is non-configurable in Bun runtime but undefined in Node.js (CI)
+if (typeof globalThis.Bun === "undefined") {
+    vi.stubGlobal("Bun", { serve: mockServe });
+} else {
+    vi.spyOn(globalThis.Bun, "serve").mockImplementation(mockServe as typeof Bun.serve);
+}
 
 // Set required env vars
 process.env.TELEGRAM_BOT_TOKEN = "test-token";
