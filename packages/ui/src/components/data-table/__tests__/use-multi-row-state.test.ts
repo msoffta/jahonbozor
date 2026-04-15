@@ -764,6 +764,130 @@ describe("useMultiRowState", () => {
         });
     });
 
+    // ── appendRow ────────────────────────────────────────────────
+    describe("appendRow", () => {
+        test("appends a single new row and returns its id", async () => {
+            const { result } = await renderMultiRowHook({
+                initialCount: 2,
+                increment: 5,
+                maxCount: 10,
+            });
+
+            expect(result.current.rowStates).toHaveLength(2);
+
+            let newId: string | null = null;
+            await act(async () => {
+                newId = result.current.appendRow();
+            });
+
+            expect(newId).toMatch(/^__new_row_\d+_\d+$/);
+            expect(result.current.rowStates).toHaveLength(3);
+            expect(result.current.rowStates[2].id).toBe(newId);
+        });
+
+        test("appends exactly one row (not `increment` rows)", async () => {
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                increment: 10,
+                maxCount: 20,
+            });
+
+            await act(async () => {
+                result.current.appendRow();
+            });
+
+            expect(result.current.rowStates).toHaveLength(2);
+        });
+
+        test("uses defaultValues for new row", async () => {
+            const { result } = await renderMultiRowHook({
+                initialCount: 1,
+                defaultValues: { name: "default", count: 0 },
+            });
+
+            await act(async () => {
+                result.current.appendRow();
+            });
+
+            expect(result.current.rowStates[1].values).toEqual({ name: "default", count: 0 });
+            expect(result.current.rowStates[1].errors).toEqual({});
+        });
+
+        test("passes index to defaultValues function", async () => {
+            const defaultValuesFn = vi.fn((index: number) => ({ order: index }));
+            const { result } = await renderMultiRowHook({
+                initialCount: 2,
+                defaultValues: defaultValuesFn,
+            });
+
+            defaultValuesFn.mockClear();
+
+            await act(async () => {
+                result.current.appendRow();
+            });
+
+            expect(defaultValuesFn).toHaveBeenCalledWith(2);
+            expect(result.current.rowStates[2].values).toEqual({ order: 2 });
+        });
+
+        test("returns null and does not append when maxCount reached", async () => {
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                maxCount: 3,
+            });
+
+            expect(result.current.rowStates).toHaveLength(3);
+
+            let newId: string | null | undefined;
+            await act(async () => {
+                newId = result.current.appendRow();
+            });
+
+            expect(newId).toBeNull();
+            expect(result.current.rowStates).toHaveLength(3);
+        });
+
+        test("returns null when over maxCount", async () => {
+            const { result } = await renderMultiRowHook({
+                initialCount: 3,
+                increment: 5,
+                maxCount: 4,
+            });
+
+            // First handleNeedMoreRows pushes past maxCount (gate-only check)
+            await act(async () => {
+                result.current.handleNeedMoreRows();
+            });
+            expect(result.current.rowStates.length).toBeGreaterThan(4);
+
+            let newId: string | null | undefined;
+            await act(async () => {
+                newId = result.current.appendRow();
+            });
+
+            expect(newId).toBeNull();
+        });
+
+        test("produces unique ids for multiple synchronous calls", async () => {
+            const { result } = await renderMultiRowHook({
+                initialCount: 0,
+                maxCount: 10,
+            });
+
+            let firstId: string | null = null;
+            let secondId: string | null = null;
+            await act(async () => {
+                firstId = result.current.appendRow();
+                secondId = result.current.appendRow();
+            });
+
+            expect(firstId).not.toBeNull();
+            expect(secondId).not.toBeNull();
+            expect(firstId).not.toBe(secondId);
+            expect(result.current.rowStates).toHaveLength(2);
+        });
+    });
+
     // ── handleFocus ──────────────────────────────────────────────
     describe("handleFocus", () => {
         test("tracks focused row (prevents reset on save)", async () => {
@@ -1415,6 +1539,7 @@ describe("useMultiRowState", () => {
             expect(typeof result.current.handleFocusNext).toBe("function");
             expect(typeof result.current.handleSaveAndLoop).toBe("function");
             expect(typeof result.current.handleNeedMoreRows).toBe("function");
+            expect(typeof result.current.appendRow).toBe("function");
         });
     });
 });

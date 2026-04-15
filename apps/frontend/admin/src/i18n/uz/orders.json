@@ -37,9 +37,6 @@
   "filter_client": "Mijoz",
   "all_clients": "Barcha mijozlar",
   "total_sum": "Jami",
-  "save_list": "Ro'yxatni saqlash",
-  "items_saved": "Pozitsiyalar saqlandi",
-  "min_items_required": "Kamida 2 pozitsiya qo'shing",
   "error_product_required": "Iltimos, mahsulotni tanlang",
   "back_to_lists": "Ro'yxatlarga qaytish",
   "order_total": "Summa",
@@ -59,17 +56,5 @@
   "receipt_total": "JAMI",
   "receipt_thank_you": "Xaridingiz uchun rahmat!",
   "receipt_comment": "Izoh",
-  "order_staff": "Xodim",
-  "order_status": "Holati",
-  "save_draft": "Qoralama",
-  "finalize": "Rasmiylashtirish",
-  "status_draft": "Qoralama",
-  "status_completed": "Rasmiylashtirilgan",
-  "drafts": "Qoralamalar",
-  "draft_finalized": "Ro'yxat rasmiylashtirildi",
-  "draft_saved": "Qoralama saqlandi",
-  "finalize_min_items": "Rasmiylashtirish uchun kamida 1 pozitsiya qo'shing",
-  "delete_empty_drafts": "Bo'shlarni o'chirish",
-  "empty_drafts_deleted": "Bo'sh qoralamalar o'chirildi: {{count}}",
-  "no_empty_drafts": "Bo'sh qoralamalar yo'q"
+  "order_staff": "Xodim"
 }

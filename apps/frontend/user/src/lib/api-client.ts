@@ -35,7 +35,7 @@ export const api = treaty<App>(window.location.origin, {
         if (
             response.status === 401 &&
             !isRefreshing &&
-            !response.url.includes("/auth/refresh") &&
+            !response.url.includes("/users/refresh") &&
             !response.url.includes("/auth/me")
         ) {
             void tryRefreshToken();
@@ -51,7 +51,7 @@ export async function tryRefreshToken(): Promise<boolean> {
     isRefreshing = true;
 
     try {
-        const response = await fetch("/api/public/auth/refresh", {
+        const response = await fetch("/api/public/users/refresh", {
             method: "POST",
             credentials: "include",
         });

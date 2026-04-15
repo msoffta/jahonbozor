@@ -52,11 +52,11 @@ vi.mock("@/lib/api-client", () => ({
                             }),
                         ),
                     },
-                    logout: { post: mockLogoutPost },
                 },
                 users: {
                     telegram: { post: mockTelegramPost },
                     language: { put: mockLanguagePut },
+                    logout: { post: mockLogoutPost },
                 },
             },
         },

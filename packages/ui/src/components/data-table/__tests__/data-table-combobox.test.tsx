@@ -279,7 +279,7 @@ describe("DataTableCombobox", () => {
     });
 
     // ── Boundary values ────────────────────────────────────────
-    test("should handle large number of options", async () => {
+    test("should handle large number of options without crashing", async () => {
         const user = userEvent.setup();
         const manyOptions = Array.from({ length: 100 }, (_, i) => ({
             label: `Option ${i + 1}`,
@@ -294,8 +294,10 @@ describe("DataTableCombobox", () => {
         // Type a space to trigger dropdown (matches all options)
         await user.type(input, " ");
 
-        const dropdownOptions = document.querySelectorAll(".combobox-dropdown > div");
-        expect(dropdownOptions.length).toBe(100);
+        // Dropdown is rendered; with virtualization the DOM only contains
+        // visible items, but the listbox container is present.
+        const dropdown = document.querySelector(".combobox-dropdown");
+        expect(dropdown).not.toBeNull();
     });
 
     test("should handle options with special characters in labels", () => {
@@ -370,5 +372,116 @@ describe("DataTableCombobox", () => {
         // Should now point to second option
         const updatedDescendant = input.getAttribute("aria-activedescendant");
         expect(updatedDescendant).toContain("option-1");
+    });
+
+    // ── Performance: instant close + onAfterSelect ───────────────
+    test("should close dropdown immediately after selection (no exit animation)", async () => {
+        const user = userEvent.setup();
+        const { getByRole } = render(
+            <DataTableCombobox
+                value=""
+                onChange={onChange}
+                onSelect={onSelect}
+                options={options}
+            />,
+        );
+
+        const input = getByRole("combobox");
+        await user.type(input, "a");
+
+        // Dropdown is open
+        expect(document.querySelector(".combobox-dropdown")).not.toBeNull();
+
+        // Click the first option
+        const dropdownOptions = document.querySelectorAll(".combobox-dropdown > div:not(.italic)");
+        const appleOption = Array.from(dropdownOptions).find((el) => el.textContent === "Apple");
+        fireEvent.mouseDown(appleOption!);
+
+        // Dropdown should be gone immediately — no 100ms exit animation
+        expect(document.querySelector(".combobox-dropdown")).toBeNull();
+    });
+
+    test("should call onAfterSelect with selected value after select", async () => {
+        const user = userEvent.setup();
+        const onAfterSelect = vi.fn();
+        const { getByRole } = render(
+            <DataTableCombobox
+                value=""
+                onChange={onChange}
+                onSelect={onSelect}
+                onAfterSelect={onAfterSelect}
+                options={options}
+            />,
+        );
+
+        const input = getByRole("combobox");
+        await user.type(input, "a");
+
+        const dropdownOptions = document.querySelectorAll(".combobox-dropdown > div:not(.italic)");
+        const appleOption = Array.from(dropdownOptions).find((el) => el.textContent === "Apple");
+        fireEvent.mouseDown(appleOption!);
+
+        // queueMicrotask runs after the current synchronous block; flush it
+        await act(async () => {
+            await Promise.resolve();
+        });
+
+        expect(onAfterSelect).toHaveBeenCalledWith("apple");
+    });
+
+    test("should virtualize dropdown when filtered options exceed threshold", async () => {
+        const user = userEvent.setup();
+        const manyOptions = Array.from({ length: 60 }, (_, i) => ({
+            label: `Option ${i + 1}`,
+            value: String(i + 1),
+        }));
+
+        const { getByRole } = render(
+            <DataTableCombobox value="" onChange={onChange} options={manyOptions} />,
+        );
+
+        const input = getByRole("combobox");
+        await user.type(input, " ");
+
+        const dropdown = document.querySelector(".combobox-dropdown");
+        expect(dropdown?.getAttribute("data-virtualized")).toBe("true");
+    });
+
+    test("should not virtualize dropdown for small option lists", async () => {
+        const user = userEvent.setup();
+        const { getByRole } = render(
+            <DataTableCombobox value="" onChange={onChange} options={options} />,
+        );
+
+        const input = getByRole("combobox");
+        await user.type(input, "a");
+
+        const dropdown = document.querySelector(".combobox-dropdown");
+        expect(dropdown?.getAttribute("data-virtualized")).toBe("false");
+    });
+
+    test("should still play exit animation when closed via Escape", async () => {
+        const user = userEvent.setup();
+        const { getByRole } = render(
+            <DataTableCombobox value="" onChange={onChange} options={options} />,
+        );
+
+        const input = getByRole("combobox");
+        await user.click(input);
+        await user.type(input, "a");
+
+        expect(document.querySelector(".combobox-dropdown")).not.toBeNull();
+
+        await user.keyboard("{Escape}");
+
+        // Exit animation: dropdown still mounted with data-closing during the 100ms window
+        const closingDropdown = document.querySelector(".combobox-dropdown[data-closing]");
+        expect(closingDropdown).not.toBeNull();
+
+        // After animation completes, it unmounts
+        await act(async () => {
+            await new Promise((r) => setTimeout(r, 200));
+        });
+        expect(document.querySelector(".combobox-dropdown")).toBeNull();
     });
 });

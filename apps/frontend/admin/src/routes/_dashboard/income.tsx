@@ -54,7 +54,7 @@ function IncomePage() {
     );
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({ limit: 10000, includeDeleted: false }),
+        productsListQueryOptions({ limit: 50, includeDeleted: false }),
     );
 
     const createIncome = useCreateIncome();
@@ -203,7 +203,7 @@ function IncomePage() {
                                 return id;
                             }}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={50}
+                            multiRowCount={10}
                             multiRowMaxCount={50}
                             onMultiRowSave={handleNewRowSave}
                             multiRowDefaultValues={multiRowDefaultValues}

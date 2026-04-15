@@ -8,7 +8,6 @@ const { mockNavigate, mockLogoutMutate, mockUpdateLanguageMutate, mocks } = vi.h
         profileData: undefined as
             | {
                   fullname: string;
-                  username?: string;
                   photo?: string | null;
                   createdAt?: string;
                   telegramId?: string | number;
@@ -120,7 +119,6 @@ describe("ProfilePage", () => {
 
         mocks.profileData = {
             fullname: "Test User",
-            username: "testuser",
             photo: null,
             createdAt: "2025-01-15T10:30:00.000Z",
             telegramId: "123456",

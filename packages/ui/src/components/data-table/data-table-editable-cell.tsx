@@ -146,6 +146,7 @@ export function DataTableEditableCell<TData>({
                     (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
                 }}
                 className={GHOST_INPUT_CLASS}
+                labelOverride={meta?.resolveLabel?.(cell.row.original)}
             />
             {error && (
                 <motion.p

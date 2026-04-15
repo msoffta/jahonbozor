@@ -19,7 +19,6 @@ const mockUserToken: Token = {
     id: 42,
     type: "user",
     fullname: "User",
-    username: "testuser",
     phone: null,
     telegramId: null,
 };

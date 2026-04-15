@@ -65,8 +65,10 @@ export function useCellNavigation({
             return { row: Number(row), col };
         }
 
-        function findInputIn(td: HTMLTableCellElement): HTMLInputElement | null {
-            return td.querySelector<HTMLInputElement>('input, [role="combobox"]');
+        function findInputIn(td: HTMLTableCellElement): HTMLElement | null {
+            // Match either text-like inputs or combobox triggers. The latter
+            // may be a <button> (Radix Select) or <input> (DataTableCombobox).
+            return td.querySelector<HTMLElement>('input, [role="combobox"]');
         }
 
         /** Move cursor to cell. editMode=true focuses the input for editing. */
@@ -75,7 +77,11 @@ export function useCellNavigation({
                 const input = findInputIn(td);
                 if (input) {
                     input.focus();
-                    input.select();
+                    // Only HTMLInputElement supports `.select()`; button-based
+                    // combobox triggers (Radix Select) don't.
+                    if (input instanceof HTMLInputElement) {
+                        input.select();
+                    }
                     return;
                 }
             }
@@ -344,12 +350,80 @@ export function useCellNavigation({
                         // lets row-level blur handlers detect cross-row navigation
                         // and trigger save.
                         if (!advanceToNextEnterCell(coords.row, coords.col)) {
-                            input.blur(); // No next cell — just blur
+                            // No next enter-cell — ask the table to append a new
+                            // pending row and focus its first enter-cell. Table
+                            // owner listens to this event; if it can't append
+                            // (e.g. maxCount reached) the input stays focused.
+                            container!.dispatchEvent(
+                                new CustomEvent("datatable:request-append-row", {
+                                    detail: { fromRow: coords.row, fromCol: coords.col },
+                                }),
+                            );
                         }
                         e.stopImmediatePropagation();
                     } else {
-                        // Cursor on <td> → enter edit mode if cell has input
-                        focusCell(td, true);
+                        // Cursor on <td>. Behavior depends on what the cell hosts:
+                        //   • Radix Select trigger (<button role="combobox">) —
+                        //     click it so its dropdown opens (it has no `.value`
+                        //     property, so the advance-heuristic below doesn't apply).
+                        //   • Our DataTableCombobox (<input role="combobox">) that
+                        //     already has a non-empty value — advance to the next
+                        //     enter-cell (spreadsheet convention).
+                        //   • Any other editable cell — enter edit mode.
+                        const cellCombobox = td.querySelector<HTMLElement>('[role="combobox"]');
+                        const comboboxEl =
+                            target.getAttribute("role") === "combobox" ? target : cellCombobox;
+
+                        if (comboboxEl instanceof HTMLButtonElement) {
+                            // Radix Select trigger. Figure out whether the cell
+                            // already has a value: Radix marks the inner
+                            // SelectValue element with `data-placeholder` when
+                            // no value is set.
+                            const isEmpty =
+                                comboboxEl.querySelector("[data-placeholder]") !== null ||
+                                comboboxEl.hasAttribute("data-placeholder");
+
+                            if (isEmpty) {
+                                // No value yet — open the dropdown. Radix
+                                // Select's onClick handler calls handleOpen()
+                                // when pointerType !== "mouse" (undefined when
+                                // no pointerdown preceded), so a bare .click()
+                                // reliably opens the menu without triggering
+                                // our own capture-phase keydown listener.
+                                comboboxEl.focus();
+                                comboboxEl.click();
+                            } else {
+                                // Value already set — behave like a regular cell:
+                                // advance to the next enter-flow cell (spreadsheet
+                                // convention).
+                                if (!advanceToNextEnterCell(coords.row, coords.col)) {
+                                    container!.dispatchEvent(
+                                        new CustomEvent("datatable:request-append-row", {
+                                            detail: { fromRow: coords.row, fromCol: coords.col },
+                                        }),
+                                    );
+                                }
+                            }
+                            e.stopImmediatePropagation();
+                            break;
+                        }
+
+                        const closedInputComboboxWithValue =
+                            comboboxEl instanceof HTMLInputElement &&
+                            comboboxEl.getAttribute("aria-expanded") !== "true" &&
+                            comboboxEl.value !== "";
+                        if (closedInputComboboxWithValue) {
+                            if (!advanceToNextEnterCell(coords.row, coords.col)) {
+                                container!.dispatchEvent(
+                                    new CustomEvent("datatable:request-append-row", {
+                                        detail: { fromRow: coords.row, fromCol: coords.col },
+                                    }),
+                                );
+                            }
+                        } else {
+                            // Cursor on <td> → enter edit mode if cell has input
+                            focusCell(td, true);
+                        }
                         e.stopImmediatePropagation();
                     }
                     break;
@@ -379,12 +453,18 @@ export function useCellNavigation({
 
                 case "Backspace": {
                     if (!input) {
-                        // Cursor mode → clear cell value and enter edit mode
+                        // Cursor mode → clear cell value and enter edit mode.
+                        // Only meaningful for text-like inputs; Radix Select
+                        // button triggers manage value via React state.
                         const cellInput = findInputIn(td);
-                        if (cellInput) {
+                        if (cellInput instanceof HTMLInputElement) {
                             e.preventDefault();
                             cellInput.value = "";
                             cellInput.dispatchEvent(new Event("input", { bubbles: true }));
+                            cellInput.focus();
+                        } else if (cellInput) {
+                            // Button combobox — just focus; let component handle it.
+                            e.preventDefault();
                             cellInput.focus();
                         }
                     }
@@ -395,11 +475,15 @@ export function useCellNavigation({
                     // Printable character on <td> → enter edit mode, clear value, type
                     if (!input && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
                         const cellInput = findInputIn(td);
-                        if (cellInput) {
+                        if (cellInput instanceof HTMLInputElement) {
                             cellInput.value = "";
                             cellInput.dispatchEvent(new Event("input", { bubbles: true }));
                             cellInput.focus();
                             // Don't preventDefault — let the character be typed into the input
+                        } else if (cellInput) {
+                            // Button combobox (Radix Select) — just focus so
+                            // keyboard interaction (letters/space) can open it.
+                            cellInput.focus();
                         }
                     }
                     break;

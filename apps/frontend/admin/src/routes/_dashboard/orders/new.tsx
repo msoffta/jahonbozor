@@ -22,7 +22,6 @@ export const Route = createFileRoute("/_dashboard/orders/new")({
         const order = await createOrderFn({
             userId: search.userId ?? null,
             paymentType: "CASH",
-            status: "DRAFT",
             type: "LIST",
             items: [],
         });

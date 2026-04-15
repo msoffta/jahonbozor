@@ -1,5 +1,4 @@
 import { Check, Settings2, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
@@ -62,132 +61,107 @@ export function DataTableToolbar<TData>({
                 />
             )}
 
-            <AnimatePresence>
-                {filterColumns.map((column) => {
-                    const meta = column.columnDef.meta;
-                    if (!meta?.filterVariant) return null;
-                    const label = getColumnLabel(column);
+            {filterColumns.map((column) => {
+                const meta = column.columnDef.meta;
+                if (!meta?.filterVariant) return null;
+                const label = getColumnLabel(column);
 
-                    if (meta.filterVariant === "select" && meta.filterOptions) {
-                        const currentValue = (column.getFilterValue() as string) ?? "";
-                        return (
-                            <motion.div
-                                key={column.id}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            >
-                                <Select
-                                    value={currentValue || "__all__"}
-                                    onValueChange={(value) =>
-                                        column.setFilterValue(
-                                            value === "__all__" ? undefined : value,
-                                        )
-                                    }
-                                >
-                                    <SelectTrigger className="h-9 min-w-[130px]">
-                                        <SelectValue placeholder={label} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="__all__">
-                                            {label}: {translations?.filterAll ?? "All"}
-                                        </SelectItem>
-                                        {meta.filterOptions.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </motion.div>
-                        );
-                    }
-
-                    if (meta.filterVariant === "range") {
-                        const filterValue = (column.getFilterValue() as [number, number]) ?? [
-                            undefined,
-                            undefined,
-                        ];
-                        return (
-                            <motion.div
-                                key={column.id}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="flex items-center gap-1"
-                            >
-                                <Input
-                                    type="number"
-                                    value={filterValue[0] ?? ""}
-                                    onChange={(e) =>
-                                        column.setFilterValue((old: [number, number]) => [
-                                            e.target.value ? Number(e.target.value) : undefined,
-                                            old?.[1],
-                                        ])
-                                    }
-                                    placeholder={`${label} ${translations?.filterMin ?? "min"}`}
-                                    className="h-9 w-24"
-                                />
-                                <span className="text-muted-foreground text-sm">–</span>
-                                <Input
-                                    type="number"
-                                    value={filterValue[1] ?? ""}
-                                    onChange={(e) =>
-                                        column.setFilterValue((old: [number, number]) => [
-                                            old?.[0],
-                                            e.target.value ? Number(e.target.value) : undefined,
-                                        ])
-                                    }
-                                    placeholder={translations?.filterMax ?? "max"}
-                                    className="h-9 w-24"
-                                />
-                            </motion.div>
-                        );
-                    }
-
-                    // Default: text filter
+                if (meta.filterVariant === "select" && meta.filterOptions) {
+                    const currentValue = (column.getFilterValue() as string) ?? "";
                     return (
-                        <motion.div
+                        <div key={column.id} className="animate-in fade-in-0 duration-150">
+                            <Select
+                                value={currentValue || "__all__"}
+                                onValueChange={(value) =>
+                                    column.setFilterValue(value === "__all__" ? undefined : value)
+                                }
+                            >
+                                <SelectTrigger className="h-9 min-w-[130px]">
+                                    <SelectValue placeholder={label} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__all__">
+                                        {label}: {translations?.filterAll ?? "All"}
+                                    </SelectItem>
+                                    {meta.filterOptions.map((opt) => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    );
+                }
+
+                if (meta.filterVariant === "range") {
+                    const filterValue = (column.getFilterValue() as [number, number]) ?? [
+                        undefined,
+                        undefined,
+                    ];
+                    return (
+                        <div
                             key={column.id}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="animate-in fade-in-0 flex items-center gap-1 duration-150"
                         >
                             <Input
-                                value={(column.getFilterValue() as string) ?? ""}
-                                onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-                                placeholder={`${translations?.filter ?? "Filter"} ${label.toLowerCase()}...`}
-                                className="h-9 max-w-[150px]"
-                            />
-                        </motion.div>
-                    );
-                })}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {hasActiveFilters && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    >
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 px-2"
-                            onClick={() => {
-                                for (const col of filterColumns) {
-                                    col.setFilterValue(undefined);
+                                type="number"
+                                value={filterValue[0] ?? ""}
+                                onChange={(e) =>
+                                    column.setFilterValue((old: [number, number]) => [
+                                        e.target.value ? Number(e.target.value) : undefined,
+                                        old?.[1],
+                                    ])
                                 }
-                            }}
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                placeholder={`${label} ${translations?.filterMin ?? "min"}`}
+                                className="h-9 w-24"
+                            />
+                            <span className="text-muted-foreground text-sm">–</span>
+                            <Input
+                                type="number"
+                                value={filterValue[1] ?? ""}
+                                onChange={(e) =>
+                                    column.setFilterValue((old: [number, number]) => [
+                                        old?.[0],
+                                        e.target.value ? Number(e.target.value) : undefined,
+                                    ])
+                                }
+                                placeholder={translations?.filterMax ?? "max"}
+                                className="h-9 w-24"
+                            />
+                        </div>
+                    );
+                }
+
+                // Default: text filter
+                return (
+                    <div key={column.id} className="animate-in fade-in-0 duration-150">
+                        <Input
+                            value={(column.getFilterValue() as string) ?? ""}
+                            onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+                            placeholder={`${translations?.filter ?? "Filter"} ${label.toLowerCase()}...`}
+                            className="h-9 max-w-[150px]"
+                        />
+                    </div>
+                );
+            })}
+
+            {hasActiveFilters && (
+                <div className="animate-in fade-in-0 duration-150">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 px-2"
+                        onClick={() => {
+                            for (const col of filterColumns) {
+                                col.setFilterValue(undefined);
+                            }
+                        }}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
 
             {enableColumnVisibility && (
                 <DropdownMenu>

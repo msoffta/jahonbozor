@@ -89,7 +89,6 @@ export abstract class PublicUsersService {
             const accessToken = await jwt.sign({
                 id: user.id,
                 fullname: user.fullname,
-                username: user.username,
                 phone: user.phone,
                 telegramId: String(user.telegramId),
                 type: "user",
@@ -167,7 +166,6 @@ export abstract class PublicUsersService {
                       id: number;
                       first_name: string;
                       last_name?: string;
-                      username?: string;
                       photo_url?: string;
                   }
                 | undefined;
@@ -183,7 +181,6 @@ export abstract class PublicUsersService {
                 id: String(tgUser.id),
                 first_name: tgUser.first_name,
                 last_name: tgUser.last_name ?? undefined,
-                username: tgUser.username ?? undefined,
                 photo_url: tgUser.photo_url ?? undefined,
                 auth_date: authDate.getTime() / 1000,
                 hash: initData.hash,
@@ -215,7 +212,6 @@ export abstract class PublicUsersService {
             const accessToken = await jwt.sign({
                 id: user.id,
                 fullname: user.fullname,
-                username: user.username,
                 phone: user.phone,
                 telegramId: String(user.telegramId),
                 type: "user",

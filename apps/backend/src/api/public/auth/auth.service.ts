@@ -216,7 +216,6 @@ export abstract class AuthService {
                 select: {
                     id: true,
                     fullname: true,
-                    username: true,
                     phone: true,
                     telegramId: true,
                     photo: true,
@@ -289,9 +288,19 @@ export abstract class AuthService {
         refreshTokenValue: string,
         jwt: JwtSigner,
         logger: Logger,
+        expectedType?: "staff" | "user",
     ): Promise<ReturnSchema<RefreshResult>> {
         const tokenRecord = await AuthService.validateRefreshToken(refreshTokenValue, logger);
         if (!tokenRecord || (!tokenRecord.staffId && !tokenRecord.userId)) {
+            return { success: false, error: "Unauthorized" };
+        }
+
+        if (expectedType === "staff" && !tokenRecord.staffId) {
+            logger.warn("Auth: Refresh token type mismatch (expected staff)");
+            return { success: false, error: "Unauthorized" };
+        }
+        if (expectedType === "user" && !tokenRecord.userId) {
+            logger.warn("Auth: Refresh token type mismatch (expected user)");
             return { success: false, error: "Unauthorized" };
         }
 
@@ -357,7 +366,6 @@ export abstract class AuthService {
         const newAccessToken = await jwt.sign({
             id: userData.id,
             fullname: userData.fullname,
-            username: userData.username,
             phone: userData.phone,
             telegramId: String(userData.telegramId),
             type: "user",
@@ -390,8 +398,19 @@ export abstract class AuthService {
     static async logout(
         refreshTokenValue: string,
         logger: Logger,
+        expectedType?: "staff" | "user",
     ): Promise<ReturnSchema<LogoutResult>> {
         const tokenRecord = await AuthService.validateRefreshToken(refreshTokenValue, logger);
+
+        if (expectedType === "staff" && !tokenRecord?.staffId) {
+            logger.warn("Auth: Logout type mismatch (expected staff)");
+            return { success: false, error: "Unauthorized" };
+        }
+        if (expectedType === "user" && !tokenRecord?.userId) {
+            logger.warn("Auth: Logout type mismatch (expected user)");
+            return { success: false, error: "Unauthorized" };
+        }
+
         await AuthService.revokeRefreshToken(refreshTokenValue, logger);
 
         if (tokenRecord?.staffId) {

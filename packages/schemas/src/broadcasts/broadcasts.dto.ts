@@ -60,7 +60,7 @@ export interface BroadcastRecipientItem {
     status: string;
     errorMessage: string | null;
     sentAt: Date | string | null;
-    user?: { id: number; fullname: string; username: string };
+    user?: { id: number; fullname: string };
 }
 
 export interface BroadcastStats {

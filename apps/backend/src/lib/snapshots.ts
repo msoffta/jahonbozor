@@ -52,7 +52,6 @@ export function createUserSnapshot(user: UsersModel) {
     return {
         id: user.id,
         fullname: user.fullname,
-        username: user.username,
         phone: user.phone,
         photo: user.photo,
         telegramId: user.telegramId,

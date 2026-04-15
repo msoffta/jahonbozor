@@ -11,7 +11,6 @@ import type { Users as UsersType } from "@backend/generated/prisma/client";
 const mockUser: UsersType = {
     id: 1,
     fullname: "John Doe",
-    username: "johndoe",
     phone: "+998901234567",
     photo: "https://photo.url/avatar.jpg",
     telegramId: "123456789",
@@ -262,7 +261,6 @@ describe("Public Users API - Telegram Authentication", () => {
                 ...mockUser,
                 id: 2,
                 fullname: "Jane",
-                username: "987654321",
                 telegramId: "987654321",
             };
 
@@ -301,7 +299,6 @@ describe("Public Users API - Telegram Authentication", () => {
                 ...mockUser,
                 id: 2,
                 fullname: "Jane",
-                username: "987654321",
                 telegramId: "987654321",
                 photo: null,
             };

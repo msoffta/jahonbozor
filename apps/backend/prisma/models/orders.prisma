@@ -4,11 +4,6 @@ enum PaymentType {
   DEBT
 }
 
-enum OrderStatus {
-  DRAFT
-  COMPLETED
-}
-
 enum OrderType {
   ORDER
   LIST
@@ -18,7 +13,6 @@ model Order {
   id          Int         @id @default(autoincrement())
   userId      Int?
   staffId     Int?
-  status      OrderStatus @default(COMPLETED)
   type        OrderType   @default(ORDER)
   items       OrderItem[]
   paymentType PaymentType
@@ -35,7 +29,6 @@ model Order {
 
   @@index([userId])
   @@index([staffId])
-  @@index([status])
   @@index([type])
   @@index([deletedAt])
 }

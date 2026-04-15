@@ -25,7 +25,6 @@ const mockOrder: Order = {
     userId: null,
     staffId: 1,
     paymentType: "CASH",
-    status: "COMPLETED",
     type: "ORDER",
     comment: null,
     data: {},
@@ -356,7 +355,6 @@ describe("Orders Service", () => {
                 orderId: 1,
                 staffId: 1,
                 itemCount: 1,
-                status: "COMPLETED",
             });
         });
 
@@ -950,7 +948,6 @@ describe("Orders Service", () => {
                 orderId: 1,
                 itemsRestored: 1,
                 staffId: 1,
-                wasDraft: false,
             });
         });
 

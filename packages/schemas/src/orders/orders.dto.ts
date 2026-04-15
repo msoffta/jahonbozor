@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { OrderStatus, OrderType, PaymentType } from "../common/enums";
+import { OrderType, PaymentType } from "../common/enums";
 import { PaginationQuery } from "../common/pagination.model";
 import { Order, OrderItem } from "./orders.model";
 
@@ -19,13 +19,11 @@ export const CreateOrderBody = Order.omit({
     updatedAt: true,
     staffId: true,
     items: true,
-    status: true,
     type: true,
 }).extend({
     userId: z.number().nullish(),
     comment: z.string().nullish(),
     data: z.record(z.string(), z.unknown()).nullish(),
-    status: OrderStatus.optional(),
     type: OrderType.optional(),
     items: z.array(CreateOrderItemBody),
 });
@@ -45,7 +43,6 @@ export const OrdersPagination = PaginationQuery.extend({
     userId: z.coerce.number().optional(),
     staffId: z.coerce.number().optional(),
     paymentType: PaymentType.optional(),
-    status: OrderStatus.optional(),
     dateFrom: z.string().datetime().optional(),
     dateTo: z.string().datetime().optional(),
     type: OrderType.optional(),
@@ -78,7 +75,6 @@ export interface OrderItemResponse {
 // Public (user) API responses
 export interface UserOrderItem {
     id: number;
-    status: string;
     type: string;
     paymentType: string;
     comment: string | null;
@@ -116,4 +112,3 @@ export type AdminOrderDeleteResponse = ReturnSchema<{
     orderId: number;
     deleted: boolean;
 }>;
-export type AdminDeleteEmptyDraftsResponse = ReturnSchema<{ deleted: number }>;

@@ -1,9 +1,10 @@
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
 
-import { Badge, Button, motion } from "@jahonbozor/ui";
+import { Button } from "@jahonbozor/ui";
 
 import { formatCurrency } from "@/lib/format";
+import { calcOrderCostprice, calcOrderTotal } from "@/lib/order-totals";
 
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
@@ -14,6 +15,8 @@ import type { TFunction } from "i18next";
 export interface OrderActions {
     onDelete: (id: number) => void;
     onNavigate?: (id: number) => void;
+    onSearchProducts?: (query: string) => Promise<{ label: string; value: string }[]>;
+    onSearchClients?: (query: string) => Promise<{ label: string; value: string }[]>;
 }
 
 interface OrderColumnsData {
@@ -25,7 +28,6 @@ interface OrderColumnsOptions {
     showItemColumns?: boolean;
     canDelete?: boolean;
     showStaff?: boolean;
-    showStatus?: boolean;
 }
 
 export function getOrderColumns(
@@ -34,12 +36,7 @@ export function getOrderColumns(
     data: OrderColumnsData,
     options?: OrderColumnsOptions,
 ): ColumnDef<AdminOrderItem, unknown>[] {
-    const {
-        showItemColumns = true,
-        canDelete = true,
-        showStaff = false,
-        showStatus = false,
-    } = options ?? {};
+    const { showItemColumns = true, canDelete = true, showStaff = false } = options ?? {};
     const productOptions = data.products.map((p) => ({
         label: p.name,
         value: String(p.id),
@@ -98,6 +95,7 @@ export function getOrderColumns(
                     editValueAccessor: (row: AdminOrderItem) =>
                         row.items[0]?.productId ? String(row.items[0].productId) : "",
                     enableDragSum: true,
+                    onSearchOptions: actions.onSearchProducts,
                 },
             },
             {
@@ -179,11 +177,7 @@ export function getOrderColumns(
             },
             {
                 id: "total",
-                accessorFn: (row) =>
-                    row.items.reduce(
-                        (sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1),
-                        0,
-                    ),
+                accessorFn: (row) => calcOrderTotal(row.items),
                 header: t("order_total"),
                 size: 130,
                 cell: ({ getValue }) => formatCurrency(getValue<number>(), t("common:sum")),
@@ -220,6 +214,7 @@ export function getOrderColumns(
                 selectOptions: userOptions,
                 editValueAccessor: (row: AdminOrderItem) => (row.userId ? String(row.userId) : ""),
                 skipOnEnter: true,
+                onSearchOptions: actions.onSearchClients,
             },
         },
     );
@@ -231,37 +226,6 @@ export function getOrderColumns(
             header: t("order_staff"),
             size: 140,
             meta: { flex: 1 },
-        });
-    }
-
-    if (showStatus) {
-        columns.push({
-            id: "status",
-            accessorFn: (row) => row.status,
-            header: t("order_status"),
-            size: 120,
-            cell: ({ getValue }) => {
-                const status = getValue<string>();
-                return (
-                    <Badge
-                        variant={status === "DRAFT" ? "secondary" : "default"}
-                        className={
-                            status === "DRAFT"
-                                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                : ""
-                        }
-                    >
-                        {t(`status_${status.toLowerCase()}`)}
-                    </Badge>
-                );
-            },
-            meta: {
-                filterVariant: "select" as const,
-                filterOptions: [
-                    { label: t("status_draft"), value: "DRAFT" },
-                    { label: t("status_completed"), value: "COMPLETED" },
-                ],
-            },
         });
     }
 
@@ -299,11 +263,7 @@ export function getOrderColumns(
             accessorFn: (row) =>
                 showItemColumns
                     ? (row.items[0]?.product?.costprice ?? 0)
-                    : row.items.reduce(
-                          (sum, item) =>
-                              sum + (item.product?.costprice ?? 0) * (item.quantity ?? 1),
-                          0,
-                      ),
+                    : calcOrderCostprice(row.items),
             header: t("order_costprice"),
             size: 110,
             cell: ({ getValue }) => {
@@ -332,7 +292,7 @@ export function getOrderColumns(
             size: 80,
             meta: { flex: 1, align: "center" as const },
             cell: ({ row }) => (
-                <motion.div whileTap={{ scale: 0.9 }} className="inline-flex w-full justify-center">
+                <div className="inline-flex w-full justify-center transition-transform active:scale-90">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -346,7 +306,7 @@ export function getOrderColumns(
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>
-                </motion.div>
+                </div>
             ),
         });
     }

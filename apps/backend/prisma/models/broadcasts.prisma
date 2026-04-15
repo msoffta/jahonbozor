@@ -1,109 +1,109 @@
 enum TelegramSessionStatus {
-    ACTIVE
-    DISCONNECTED
-    BANNED
+  ACTIVE
+  DISCONNECTED
+  BANNED
 }
 
 enum BroadcastStatus {
-    DRAFT
-    SCHEDULED
-    SENDING
-    PAUSED
-    COMPLETED
-    FAILED
+  DRAFT
+  SCHEDULED
+  SENDING
+  PAUSED
+  COMPLETED
+  FAILED
 }
 
 enum BroadcastRecipientStatus {
-    PENDING
-    SENT
-    FAILED
+  PENDING
+  SENT
+  FAILED
 }
 
 enum BroadcastSendVia {
-    BOT
-    SESSION
+  BOT
+  SESSION
 }
 
 model TelegramSession {
-    id            Int                   @id @default(autoincrement())
-    name          String
-    phone         String
-    apiId         Int
-    apiHash       String
-    sessionString String // AES-256-GCM encrypted
-    status        TelegramSessionStatus @default(ACTIVE)
-    lastUsedAt    DateTime?
+  id            Int                   @id @default(autoincrement())
+  name          String
+  phone         String
+  apiId         Int
+  apiHash       String
+  sessionString String // AES-256-GCM encrypted
+  status        TelegramSessionStatus @default(ACTIVE)
+  lastUsedAt    DateTime?
 
-    broadcasts Broadcast[]
+  broadcasts Broadcast[]
 
-    deletedAt DateTime?
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-    @@index([status])
-    @@index([deletedAt])
+  @@index([status])
+  @@index([deletedAt])
 }
 
 model BroadcastTemplate {
-    id      Int    @id @default(autoincrement())
-    name    String
-    content String // Telegram-compatible HTML
-    media   Json? // [{ type: "photo"|"video"|"document", url: string }]
-    buttons Json? // [{ text: string, url: string }]
+  id      Int    @id @default(autoincrement())
+  name    String
+  content String // Telegram-compatible HTML
+  media   Json? // [{ type: "photo"|"video"|"document", url: string }]
+  buttons Json? // [{ text: string, url: string }]
 
-    broadcasts Broadcast[]
+  broadcasts Broadcast[]
 
-    deletedAt DateTime?
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-    @@index([deletedAt])
+  @@index([deletedAt])
 }
 
 model Broadcast {
-    id          Int             @id @default(autoincrement())
-    name        String
-    content     String?
-    media       Json?
-    buttons     Json?
-    templateId  Int?
-    sessionId   Int?
-    sendVia     BroadcastSendVia @default(SESSION)
-    status      BroadcastStatus  @default(DRAFT)
-    scheduledAt DateTime?
-    startedAt   DateTime?
-    completedAt DateTime?
-    createdById Int
+  id          Int              @id @default(autoincrement())
+  name        String
+  content     String?
+  media       Json?
+  buttons     Json?
+  templateId  Int?
+  sessionId   Int?
+  sendVia     BroadcastSendVia @default(SESSION)
+  status      BroadcastStatus  @default(DRAFT)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdById Int
 
-    template   BroadcastTemplate? @relation(fields: [templateId], references: [id])
-    session    TelegramSession?   @relation(fields: [sessionId], references: [id])
-    recipients BroadcastRecipient[]
+  template   BroadcastTemplate?   @relation(fields: [templateId], references: [id])
+  session    TelegramSession?     @relation(fields: [sessionId], references: [id])
+  recipients BroadcastRecipient[]
 
-    deletedAt DateTime?
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-    @@index([status])
-    @@index([scheduledAt])
-    @@index([sessionId])
-    @@index([deletedAt])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([sessionId])
+  @@index([deletedAt])
 }
 
 model BroadcastRecipient {
-    id           Int                      @id @default(autoincrement())
-    broadcastId  Int
-    userId       Int
-    telegramId   String // denormalized for sending without JOIN
-    status       BroadcastRecipientStatus @default(PENDING)
-    errorMessage String?
-    sentAt       DateTime?
+  id           Int                      @id @default(autoincrement())
+  broadcastId  Int
+  userId       Int
+  telegramId   String // denormalized for sending without JOIN
+  status       BroadcastRecipientStatus @default(PENDING)
+  errorMessage String?
+  sentAt       DateTime?
 
-    broadcast Broadcast @relation(fields: [broadcastId], references: [id])
-    user      Users     @relation(fields: [userId], references: [id])
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id])
+  user      Users     @relation(fields: [userId], references: [id])
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    @@unique([broadcastId, userId])
-    @@index([broadcastId, status])
+  @@unique([broadcastId, userId])
+  @@index([broadcastId, status])
 }

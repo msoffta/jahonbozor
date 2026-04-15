@@ -12,6 +12,11 @@ import { i18n } from "@/i18n/config";
 
 import type { ExpenseItem } from "@jahonbozor/schemas/src/expenses";
 
+interface ExpensesInfiniteCache {
+    pages: { count: number; expenses: ExpenseItem[] }[];
+    pageParams: number[];
+}
+
 export const expenseKeys = {
     all: ["expenses"] as const,
     lists: () => [...expenseKeys.all, "list"] as const,
@@ -146,8 +151,26 @@ export const useCreateExpense = () => {
     return useMutation({
         mutationKey: ["expenses", "create"],
         mutationFn: createExpenseFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        onSuccess: (newExpense) => {
+            queryClient.setQueriesData<ExpensesInfiniteCache>(
+                { queryKey: expenseKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    const lastIdx = old.pages.length - 1;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page, index) =>
+                            index === lastIdx
+                                ? {
+                                      count: page.count + 1,
+                                      expenses: [...page.expenses, newExpense],
+                                  }
+                                : page,
+                        ),
+                    };
+                },
+            );
+            queryClient.setQueryData(expenseKeys.detail(newExpense.id), newExpense);
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -161,8 +184,23 @@ export const useUpdateExpense = () => {
     return useMutation({
         mutationKey: ["expenses", "update"],
         mutationFn: updateExpenseFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        onSuccess: (updatedExpense) => {
+            queryClient.setQueriesData<ExpensesInfiniteCache>(
+                { queryKey: expenseKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => ({
+                            ...page,
+                            expenses: page.expenses.map((e) =>
+                                e.id === updatedExpense.id ? updatedExpense : e,
+                            ),
+                        })),
+                    };
+                },
+            );
+            queryClient.setQueryData(expenseKeys.detail(updatedExpense.id), updatedExpense);
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -176,8 +214,29 @@ export const useDeleteExpense = () => {
     return useMutation({
         mutationKey: ["expenses", "delete"],
         mutationFn: deleteExpenseFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        onSuccess: (deletedExpense) => {
+            const deletedId = deletedExpense?.id;
+            if (deletedId == null) return;
+            queryClient.setQueriesData<ExpensesInfiniteCache>(
+                { queryKey: expenseKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => {
+                            const filtered = page.expenses.filter((e) => e.id !== deletedId);
+                            return {
+                                count: Math.max(
+                                    0,
+                                    page.count - (page.expenses.length - filtered.length),
+                                ),
+                                expenses: filtered,
+                            };
+                        }),
+                    };
+                },
+            );
+            queryClient.removeQueries({ queryKey: expenseKeys.detail(deletedId) });
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -191,8 +250,25 @@ export const useRestoreExpense = () => {
     return useMutation({
         mutationKey: ["expenses", "restore"],
         mutationFn: restoreExpenseFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        onSuccess: (restoredExpense) => {
+            queryClient.setQueriesData<ExpensesInfiniteCache>(
+                { queryKey: expenseKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => ({
+                            ...page,
+                            expenses: page.expenses.map((e) =>
+                                e.id === restoredExpense.id
+                                    ? { ...e, ...restoredExpense, deletedAt: null }
+                                    : e,
+                            ),
+                        })),
+                    };
+                },
+            );
+            queryClient.setQueryData(expenseKeys.detail(restoredExpense.id), restoredExpense);
         },
         onError: () => {
             toast.error(i18n.t("error"));

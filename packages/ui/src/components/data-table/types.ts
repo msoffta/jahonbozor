@@ -38,6 +38,9 @@ export interface DataTableColumnMeta {
     /** Override cell.getValue() when entering edit mode (e.g. return productId instead of product name) */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- row type varies per table
     editValueAccessor?: (row: any) => unknown;
+    /** Resolve the display label for a combobox value from the row itself — fallback when the value is not in selectOptions */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- row type varies per table
+    resolveLabel?: (row: any) => string;
     /** Async search for combobox options — called with debounce when user types */
     onSearchOptions?: (query: string) => Promise<{ label: string; value: string }[]>;
 
@@ -46,6 +49,14 @@ export interface DataTableColumnMeta {
 
     // DatePicker — show time input (HH:mm) alongside calendar
     showTime?: boolean;
+
+    /**
+     * Pin this column to the left or right edge of the scrollable table so it
+     * stays visible during horizontal scroll (similar to Excel frozen panes).
+     * Multiple left/right pinned columns stack automatically using their
+     * configured `size`.
+     */
+    sticky?: "left" | "right";
 }
 
 // ── TanStack module augmentation ───────────────────────────────
@@ -104,6 +115,12 @@ export interface DataTableTranslations {
 export interface DataTableRef {
     /** Save all non-empty, changed new rows that haven't been committed yet */
     flushPendingRows: () => Promise<void>;
+    /**
+     * Append a single new pending row and return its id (or null if
+     * `multiRowMaxCount` has been reached). Only meaningful when
+     * `enableMultipleNewRows` is true.
+     */
+    appendRow: () => string | null;
 }
 
 // ── Props ──────────────────────────────────────────────────────

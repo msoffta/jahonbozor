@@ -1,7 +1,6 @@
 model Users {
   id         Int       @id @default(autoincrement())
   fullname   String
-  username   String
   phone      String?   @unique
   photo      String?
   telegramId String?   @unique

@@ -397,7 +397,7 @@ export abstract class BroadcastsService {
                     take: limit,
                     where: whereClause,
                     include: {
-                        user: { select: { id: true, fullname: true, username: true } },
+                        user: { select: { id: true, fullname: true } },
                     },
                     orderBy: { [sortBy]: sortOrder },
                 }),

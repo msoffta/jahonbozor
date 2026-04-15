@@ -58,7 +58,6 @@ const mockStaffWithRole = {
 const mockUserDb: Users = {
     id: 1,
     fullname: "Test User",
-    username: "testuser",
     phone: "+998901234567",
     telegramId: "987654321",
     photo: null,
@@ -71,7 +70,6 @@ const mockUserDb: Users = {
 const mockUserResult = {
     id: 1,
     fullname: "Test User",
-    username: "testuser",
     phone: "+998901234567",
     telegramId: "987654321",
     photo: null,

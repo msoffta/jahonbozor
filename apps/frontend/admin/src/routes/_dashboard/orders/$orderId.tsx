@@ -4,11 +4,10 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ArrowLeft, Check, Printer, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Printer, Trash2 } from "lucide-react";
 
 import { hasAnyPermission, Permission } from "@jahonbozor/schemas";
 import {
-    AnimatePresence,
     Badge,
     Button,
     DataTable,
@@ -16,16 +15,10 @@ import {
     Input,
     motion,
     PageTransition,
-    toast,
     useIsMobile,
 } from "@jahonbozor/ui";
 
-import {
-    orderDetailQueryOptions,
-    useDeleteOrder,
-    useFinalizeDraft,
-    useUpdateOrder,
-} from "@/api/orders.api";
+import { orderDetailQueryOptions, useDeleteOrder, useUpdateOrder } from "@/api/orders.api";
 import { productsListQueryOptions, searchProductsFn } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
 import { OrderReceiptContainer } from "@/components/orders/order-receipt";
@@ -35,90 +28,83 @@ import { useHasPermission } from "@/hooks/use-permissions";
 import { formatCurrency } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth.store";
 
-import type { DataTableRef } from "@jahonbozor/ui";
-
-interface LocalItem {
-    id: number;
-    productId: number | null;
-    quantity: number;
-    price: number;
-    product: {
-        id: number;
-        name: string;
-        price?: number;
-        remaining?: number;
-        costprice?: number;
-    } | null;
-}
-
 function OrderDetailPage() {
     const { orderId } = Route.useParams();
     const { t } = useTranslation("orders");
     const navigate = useNavigate();
     const translations = useDataTableTranslations(t("no_items"));
-    const tableRef = useRef<DataTableRef>(null);
     const numericId = Number(orderId);
 
-    // Permission checks
     const canDelete = useHasPermission(Permission.ORDERS_DELETE);
     const canUpdate = useHasPermission(Permission.ORDERS_UPDATE_OWN);
 
     const { data: order, isLoading } = useQuery(orderDetailQueryOptions(numericId));
 
     const { data: productsData } = useQuery(
-        productsListQueryOptions({ limit: 10000, includeDeleted: false }),
+        productsListQueryOptions({ limit: 50, includeDeleted: false }),
     );
 
-    const deleteOrder = useDeleteOrder();
     const updateOrder = useUpdateOrder();
-    const finalizeDraft = useFinalizeDraft();
+    const deleteOrder = useDeleteOrder();
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-    const serverComment = order?.comment ?? "";
-    const [editComment, setEditComment] = useState(serverComment);
-    const [prevServerComment, setPrevServerComment] = useState(serverComment);
 
-    if (serverComment !== prevServerComment) {
-        setPrevServerComment(serverComment);
-        setEditComment(serverComment);
-    }
+    const commentInputRef = useRef<HTMLInputElement>(null);
 
-    const products = productsData?.products ?? [];
+    const items = useMemo(() => order?.items ?? [], [order]);
+    const products = useMemo(() => {
+        const base = productsData?.products ?? [];
+        const existingIds = new Set(base.map((product) => product.id));
+        const extras = items
+            .map((item) => item.product)
+            .filter(
+                (product): product is NonNullable<typeof product> =>
+                    product != null && !existingIds.has(product.id),
+            )
+            .map((product) => ({
+                id: product.id,
+                name: product.name,
+                price: product.price ?? 0,
+                remaining: product.remaining ?? 0,
+                costprice: product.costprice ?? 0,
+                categoryId: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                staffId: null,
+                deletedAt: null,
+            }));
+        return [...base, ...extras];
+    }, [productsData, items]);
 
-    // Server items → local editable state (same sync pattern as editComment)
-    const serverItems: LocalItem[] = useMemo(() => {
-        if (!order?.items) return [];
-        return order.items.map((item) => ({
-            id: item.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            product: item.product,
-        }));
-    }, [order]);
+    const persistItems = useCallback(
+        (
+            nextItems: {
+                productId: number | null;
+                quantity: number;
+                price: number;
+            }[],
+        ) => {
+            if (!order) return;
+            // Normalize to the API payload shape; callers may pass through
+            // enriched item objects (including `id`, `product`, …) so that
+            // untouched rows keep their reference identity for memoization.
+            const payload = nextItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.price,
+            }));
+            updateOrder.mutate({ id: order.id, items: payload });
+        },
+        [order, updateOrder],
+    );
 
-    const [editItems, setEditItems] = useState<LocalItem[]>(serverItems);
-    const [prevServerItems, setPrevServerItems] = useState(serverItems);
-
-    if (serverItems !== prevServerItems) {
-        setPrevServerItems(serverItems);
-        setEditItems(serverItems);
-    }
-
-    const itemsChanged = useMemo(() => {
-        if (editItems.length !== serverItems.length) return true;
-        return editItems.some((item, i) => {
-            const server = serverItems[i];
-            return (
-                item.productId !== server.productId ||
-                item.quantity !== server.quantity ||
-                item.price !== server.price
-            );
-        });
-    }, [editItems, serverItems]);
-
-    const handleDeleteItem = useCallback((index: number) => {
-        setEditItems((prev) => prev.filter((_, i) => i !== index));
-    }, []);
+    const handleDeleteItem = useCallback(
+        (index: number) => {
+            // Filter-only keeps untouched item identities stable.
+            const nextItems = items.filter((_, i) => i !== index);
+            persistItems(nextItems);
+        },
+        [items, persistItems],
+    );
 
     const columns = useMemo(
         () =>
@@ -143,11 +129,13 @@ function OrderDetailPage() {
     const handleNewRowChange = useCallback(
         (values: Record<string, unknown>, _rowId: string) => {
             const currentQuantity = Number(values.quantity) || 0;
+            const userPriceProvided = values.price != null && values.price !== "";
+            const userPrice = userPriceProvided ? Number(values.price) : null;
 
             if (values.product) {
                 const productId = Number(values.product);
-                const product = products.find((p) => p.id === productId);
-                const price = product?.price ?? 0;
+                const product = products.find((candidate) => candidate.id === productId);
+                const price = userPrice ?? product?.price ?? 0;
                 const remaining = product?.remaining ?? 0;
                 const costprice = product?.costprice ?? 0;
                 const newTotal = price * currentQuantity;
@@ -162,7 +150,7 @@ function OrderDetailPage() {
                 };
             }
 
-            const price = Number(values.price) || 0;
+            const price = userPrice ?? 0;
             const newTotal = price * currentQuantity;
             return { ...values, quantity: currentQuantity, total: newTotal };
         },
@@ -170,145 +158,84 @@ function OrderDetailPage() {
     );
 
     const handleNewRowSave = useCallback(
-        (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
+        async (data: Record<string, unknown>, _rowId: string, linkedId?: unknown) => {
+            if (!order) return undefined;
+
             const productId = data.product ? Number(data.product) : null;
             const product =
-                productId != null ? (products.find((p) => p.id === productId) ?? null) : null;
+                productId != null
+                    ? (products.find((candidate) => candidate.id === productId) ?? null)
+                    : null;
 
             const userPrice =
                 data.price != null && data.price !== ""
                     ? Number(data.price)
                     : (product?.price ?? 0);
+            const quantity = Number(data.quantity) || 0;
 
-            if (linkedId) {
-                setEditItems((prev) =>
-                    prev.map((item) =>
-                        item.id === linkedId
-                            ? {
-                                  ...item,
-                                  productId,
-                                  quantity: Number(data.quantity) || 0,
-                                  price: userPrice,
-                                  product: product
-                                      ? {
-                                            id: product.id,
-                                            name: product.name,
-                                            price: product.price,
-                                            remaining: product.remaining,
-                                            costprice: product.costprice,
-                                        }
-                                      : null,
-                              }
-                            : item,
-                    ),
+            if (productId == null || quantity <= 0) return undefined;
+
+            const baseItems = items.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.price,
+            }));
+
+            if (linkedId && typeof linkedId === "number") {
+                const nextItems = baseItems.map((item, i) =>
+                    items[i]?.id === linkedId ? { productId, quantity, price: userPrice } : item,
                 );
+                await updateOrder.mutateAsync({ id: order.id, items: nextItems });
                 return linkedId;
             }
 
-            const newId = Date.now() + Math.round(performance.now() * 1000);
-            const newItem: LocalItem = {
-                id: newId,
-                productId,
-                quantity: Number(data.quantity) || 0,
-                price: userPrice,
-                product: product
-                    ? {
-                          id: product.id,
-                          name: product.name,
-                          price: product.price,
-                          remaining: product.remaining,
-                          costprice: product.costprice,
-                      }
-                    : null,
-            };
-
-            setEditItems((prev) => [...prev, newItem]);
-            return newId;
+            const updated = await updateOrder.mutateAsync({
+                id: order.id,
+                items: [...baseItems, { productId, quantity, price: userPrice }],
+            });
+            return updated.items[updated.items.length - 1]?.id;
         },
-        [products],
+        [items, order, products, updateOrder],
     );
 
     const handleCellEdit = useCallback(
         (rowIndex: number, columnId: string, value: unknown) => {
+            const current = items[rowIndex];
+            if (!current) return;
+
+            let nextItem = {
+                productId: current.productId,
+                quantity: current.quantity,
+                price: current.price,
+            };
+
             if (columnId === "product") {
                 const productId = Number(value);
                 const product = products.find((p) => p.id === productId);
                 if (!product) return;
-                setEditItems((prev) =>
-                    prev.map((item, i) =>
-                        i === rowIndex
-                            ? {
-                                  ...item,
-                                  productId,
-                                  price: product.price,
-                                  product: {
-                                      id: product.id,
-                                      name: product.name,
-                                      price: product.price,
-                                      remaining: product.remaining,
-                                      costprice: product.costprice,
-                                  },
-                              }
-                            : item,
-                    ),
-                );
+                nextItem = { ...nextItem, productId, price: product.price };
             } else if (columnId === "quantity") {
-                setEditItems((prev) =>
-                    prev.map((item, i) =>
-                        i === rowIndex ? { ...item, quantity: Number(value) || 0 } : item,
-                    ),
-                );
+                nextItem = { ...nextItem, quantity: Number(value) || 0 };
             } else if (columnId === "price") {
-                setEditItems((prev) =>
-                    prev.map((item, i) =>
-                        i === rowIndex ? { ...item, price: Number(value) || 0 } : item,
-                    ),
-                );
+                nextItem = { ...nextItem, price: Number(value) || 0 };
             } else if (columnId === "total") {
                 const newTotal = Number(value) || 0;
-                setEditItems((prev) =>
-                    prev.map((item, i) => {
-                        if (i !== rowIndex) return item;
-                        const newPrice =
-                            item.quantity > 0 ? Math.round(newTotal / item.quantity) : newTotal;
-                        return { ...item, price: newPrice };
-                    }),
-                );
+                const newPrice =
+                    nextItem.quantity > 0 ? Math.round(newTotal / nextItem.quantity) : newTotal;
+                nextItem = { ...nextItem, price: newPrice };
+            } else {
+                return;
             }
+
+            // Preserve identity of untouched items so memoized rows can bail
+            // out — only the edited row gets a new reference.
+            const nextItems = items.map((item, i) => (i === rowIndex ? nextItem : item));
+            persistItems(nextItems);
         },
-        [products],
+        [items, persistItems, products],
     );
 
-    async function handleSaveItems() {
-        await tableRef.current?.flushPendingRows();
-
-        if (editItems.length < 1) {
-            toast.error(t("min_items_required"));
-            return;
-        }
-
-        updateOrder.mutate(
-            {
-                id: order!.id,
-                items: editItems.map((item) => ({
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    price: item.price,
-                })),
-            },
-            {
-                onSuccess: () => {
-                    toast.success(t("items_saved"));
-                },
-            },
-        );
-    }
-
-    const totalSum = editItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-    function handleDelete() {
-        setDeleteConfirmOpen(true);
-    }
+    const totalSum = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     if (isLoading) {
         return (
@@ -328,7 +255,6 @@ function OrderDetailPage() {
 
     return (
         <PageTransition className="flex min-h-0 flex-1 flex-col p-2 md:p-4">
-            {/* Header */}
             <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
                     <motion.button
@@ -351,11 +277,12 @@ function OrderDetailPage() {
                         </div>
                         {canUpdate ? (
                             <Input
+                                ref={commentInputRef}
                                 placeholder={t("order_comment")}
-                                value={editComment}
-                                onChange={(e) => setEditComment(e.target.value)}
+                                defaultValue={order.comment ?? ""}
                                 onBlur={() => {
-                                    const newComment = editComment.trim() || null;
+                                    const value = commentInputRef.current?.value ?? "";
+                                    const newComment = value.trim() || null;
                                     if (newComment !== (order.comment ?? null)) {
                                         updateOrder.mutate({ id: order.id, comment: newComment });
                                     }
@@ -373,15 +300,7 @@ function OrderDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-3">
-                    {order.status === "DRAFT" && (
-                        <Badge
-                            variant="secondary"
-                            className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                        >
-                            {t("status_draft")}
-                        </Badge>
-                    )}
-                    {order.status === "DRAFT" && canUpdate ? (
+                    {canUpdate ? (
                         <div className="border-border flex overflow-hidden rounded-lg border">
                             {(["CASH", "CREDIT_CARD", "DEBT"] as const).map((type) => (
                                 <motion.button
@@ -404,46 +323,6 @@ function OrderDetailPage() {
                             {t(`payment_${order.paymentType.toLowerCase()}`)}
                         </Badge>
                     )}
-                    <AnimatePresence>
-                        {canUpdate && itemsChanged && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.8 }}
-                            >
-                                <Button
-                                    onClick={handleSaveItems}
-                                    disabled={editItems.length < 1 || updateOrder.isPending}
-                                    className="gap-2"
-                                >
-                                    <Save className="h-4 w-4" />
-                                    {t("save_list")}
-                                </Button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                    {order.status === "DRAFT" && canUpdate && (
-                        <motion.div whileTap={{ scale: 0.95 }}>
-                            <Button
-                                onClick={() => {
-                                    if (editItems.length < 1) {
-                                        toast.error(t("finalize_min_items"));
-                                        return;
-                                    }
-                                    finalizeDraft.mutate(order.id, {
-                                        onSuccess: () => {
-                                            toast.success(t("draft_finalized"));
-                                        },
-                                    });
-                                }}
-                                disabled={finalizeDraft.isPending}
-                                className="gap-2"
-                            >
-                                <Check className="h-4 w-4" />
-                                {t("finalize")}
-                            </Button>
-                        </motion.div>
-                    )}
                     <motion.div whileTap={{ scale: 0.9 }}>
                         <Button
                             variant="outline"
@@ -458,7 +337,7 @@ function OrderDetailPage() {
                         <Button
                             variant="destructive"
                             size="icon"
-                            onClick={handleDelete}
+                            onClick={() => setDeleteConfirmOpen(true)}
                             disabled={deleteOrder.isPending}
                         >
                             <Trash2 className="h-4 w-4" />
@@ -467,7 +346,6 @@ function OrderDetailPage() {
                 </div>
             </div>
 
-            {/* Total */}
             <motion.div
                 className="mb-4 flex items-center justify-end gap-2 text-lg font-semibold"
                 initial={{ opacity: 0, y: -10 }}
@@ -476,28 +354,27 @@ function OrderDetailPage() {
                 <span className="text-muted-foreground">{t("total_sum")}:</span>
                 <span>{formatCurrency(totalSum, t("common:sum"))}</span>
                 <span className="text-muted-foreground text-sm">
-                    ({editItems.length} {t("order_items_count").toLowerCase()})
+                    ({items.length} {t("order_items_count").toLowerCase()})
                 </span>
             </motion.div>
 
-            {/* Items table */}
             <DataTable
-                ref={tableRef}
                 className="costprice-table flex-1"
                 columns={columns}
                 initialColumnVisibility={initialColumnVisibility}
-                data={editItems}
+                data={items}
                 enableSorting={false}
                 translations={translations}
                 {...(canUpdate && {
                     enableEditing: true,
                     onCellEdit: handleCellEdit,
                     onRowDelete: (rowIndex: number) => {
+                        const id = items[rowIndex]?.id;
                         handleDeleteItem(rowIndex);
-                        return rowIndex;
+                        return id;
                     },
                     enableMultipleNewRows: true,
-                    multiRowCount: 50,
+                    multiRowCount: 10,
                     multiRowMaxCount: 50,
                     onMultiRowSave: handleNewRowSave,
                     onMultiRowChange: handleNewRowChange,
@@ -523,15 +400,12 @@ function OrderDetailPage() {
                         date: order.createdAt,
                         paymentType: order.paymentType,
                         comment: order.comment,
-                        items: serverItems.map((item) => ({
+                        items: items.map((item) => ({
                             name: item.product?.name ?? "—",
                             quantity: item.quantity,
                             price: item.price,
                         })),
-                        totalSum: serverItems.reduce(
-                            (sum, item) => sum + item.price * item.quantity,
-                            0,
-                        ),
+                        totalSum,
                     },
                 ]}
             />

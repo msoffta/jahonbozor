@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
 
-import { Button, motion } from "@jahonbozor/ui";
+import { Button } from "@jahonbozor/ui";
 
 import type { AdminProductItem } from "@jahonbozor/schemas/src/products";
 import type { HistoryEntryItem } from "@jahonbozor/schemas/src/products/product-history.dto";
@@ -106,10 +106,7 @@ export function getIncomeColumns(
                       size: 50,
                       meta: { align: "center" as const },
                       cell: ({ row }: { row: { original: HistoryEntryItem } }) => (
-                          <motion.div
-                              whileTap={{ scale: 0.9 }}
-                              className="inline-flex w-full justify-center"
-                          >
+                          <div className="inline-flex w-full justify-center transition-transform active:scale-90">
                               <Button
                                   variant="ghost"
                                   size="icon"
@@ -119,7 +116,7 @@ export function getIncomeColumns(
                               >
                                   <Trash2 className="h-4 w-4" />
                               </Button>
-                          </motion.div>
+                          </div>
                       ),
                   } as ColumnDef<HistoryEntryItem, unknown>,
               ]

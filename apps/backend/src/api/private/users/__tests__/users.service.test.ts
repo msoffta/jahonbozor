@@ -23,7 +23,6 @@ const mockUser = {
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     fullname: "John Doe",
-    username: "johndoe",
     phone: "+998901234567",
     photo: null,
     telegramId: "123456789",
@@ -246,7 +245,6 @@ describe("Users Service", () => {
             // Arrange
             const userData = {
                 fullname: "Jane Doe",
-                username: "janedoe",
                 phone: "+998901234568",
                 photo: null,
                 telegramId: null,
@@ -281,7 +279,6 @@ describe("Users Service", () => {
             // Arrange
             const userData = {
                 fullname: "Jane Doe",
-                username: "janedoe",
                 phone: "+998901234568",
                 photo: null,
                 telegramId: null,
@@ -604,7 +601,6 @@ describe("Users Service", () => {
             const newUser = {
                 id: 2,
                 fullname: "John Doe",
-                username: "johndoe",
                 phone: null,
                 telegramId: "123456789",
                 photo: "https://photo.url/avatar.jpg",
@@ -642,7 +638,6 @@ describe("Users Service", () => {
             const newUser = {
                 id: 3,
                 fullname: "Jane Smith",
-                username: "johndoe",
                 phone: null,
                 telegramId: "123456789",
                 photo: "https://photo.url/avatar.jpg",
@@ -668,48 +663,11 @@ describe("Users Service", () => {
             expect(success.data?.fullname).toBe("Jane Smith");
         });
 
-        test("should use telegramId as username when username is not provided", async () => {
-            // Arrange
-            const telegramDataNoUsername = {
-                ...telegramData,
-                username: null,
-            };
-
-            const newUser = {
-                id: 4,
-                fullname: "John Doe",
-                username: "123456789",
-                phone: null,
-                telegramId: "123456789",
-                photo: "https://photo.url/avatar.jpg",
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                deletedAt: null,
-            };
-
-            prismaMock.users.findUnique.mockResolvedValue(null);
-            mockTransaction({
-                users: { create: vi.fn(() => Promise.resolve(newUser)) },
-                auditLog: { create: vi.fn(() => Promise.resolve({})) },
-            });
-
-            // Act
-            const result = await UsersService.createOrUpdateFromTelegram(
-                telegramDataNoUsername,
-                mockLogger,
-            );
-
-            // Assert
-            const success = expectSuccess(result);
-            expect(success.data?.username).toBe("123456789");
-        });
-
         test("should save language when creating new user", async () => {
             // Arrange
             const newUser = {
                 id: 5,
                 fullname: "John Doe",
-                username: "johndoe",
                 phone: null,
                 telegramId: "123456789",
                 photo: "https://photo.url/avatar.jpg",
@@ -781,7 +739,6 @@ describe("Users Service", () => {
             const newUser = {
                 id: 6,
                 fullname: "John Doe",
-                username: "johndoe",
                 phone: null,
                 telegramId: "123456789",
                 photo: "https://photo.url/avatar.jpg",

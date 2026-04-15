@@ -29,7 +29,6 @@ const now = new Date("2024-01-01");
 export const mockUser = (overrides: Partial<Users> = {}): Users => ({
     id: 1,
     fullname: "Test User",
-    username: "testuser",
     phone: null,
     photo: null,
     telegramId: "123456",

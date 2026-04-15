@@ -15,7 +15,7 @@ import type { NewRowState } from "./types";
 import type { ColumnDef, Row, Table as TanStackTable } from "@tanstack/react-table";
 
 const VIRTUAL_ROW_HEIGHT_PX = 36;
-const VIRTUALIZER_OVERSCAN = 20;
+const VIRTUALIZER_OVERSCAN = 12;
 /** How close to the end of new rows to trigger lazy loading (virtual mode) */
 const LAZY_LOAD_THRESHOLD = 5;
 
@@ -84,6 +84,117 @@ function buildUnifiedRows<TData>(
     }));
     return [...dataItems, ...reindexed];
 }
+
+// ── MemoizedDataRow ─────────────────────────────────────────────
+// Wraps a single data <tr>. Skips re-render unless the row's data, selection,
+// loading flag, or className changes. `renderCells` and `onRowClick` are
+// expected to be stable callbacks (the parent threads them through refs).
+
+interface MemoizedDataRowProps {
+    row: Row<unknown>;
+    rowIndex: number;
+    isSelected: boolean;
+    isLoading: boolean;
+    className: string;
+    onRowClick?: (data: unknown) => void;
+    renderCells: (row: Row<unknown>, rowIndex: number) => React.ReactNode;
+}
+
+const MemoizedDataRow = React.memo(
+    function MemoizedDataRow({
+        row,
+        rowIndex,
+        isSelected,
+        className,
+        onRowClick,
+        renderCells,
+    }: MemoizedDataRowProps) {
+        const handleClick = onRowClick ? () => onRowClick(row.original) : undefined;
+        return (
+            <tr
+                data-state={isSelected ? "selected" : undefined}
+                className={className}
+                onClick={handleClick}
+            >
+                {renderCells(row, rowIndex)}
+            </tr>
+        );
+    },
+    (prev, next) =>
+        // Don't compare `row` by reference — TanStack Table may recreate Row
+        // instances between renders even when the underlying data is stable.
+        // `row.original` identity plus `row.id` is the reliable signal.
+        prev.row.id === next.row.id &&
+        prev.row.original === next.row.original &&
+        prev.rowIndex === next.rowIndex &&
+        prev.isSelected === next.isSelected &&
+        prev.isLoading === next.isLoading &&
+        prev.className === next.className &&
+        prev.onRowClick === next.onRowClick &&
+        prev.renderCells === next.renderCells,
+);
+
+// ── MemoizedMultiNewRow ─────────────────────────────────────────
+// Wraps a single draft <tr> for multi-row entry. useMultiRowState keeps the
+// identity of untouched NewRowState entries stable (prev.map returns `row`
+// as-is when id doesn't match), so a keystroke in one draft row doesn't
+// force the others to re-render.
+
+interface MemoizedMultiNewRowProps {
+    state: NewRowState;
+    rowIndex: number;
+    stateIndex: number;
+    enableRowSelection: boolean;
+    onFocus?: (rowId: string) => void;
+    onBlur?: (rowId: string) => void;
+    renderCells: (state: NewRowState, stateIndex: number, rowIndex: number) => React.ReactNode;
+}
+
+const MemoizedMultiNewRow = React.memo(
+    function MemoizedMultiNewRow({
+        state,
+        rowIndex,
+        stateIndex,
+        enableRowSelection,
+        onFocus,
+        onBlur,
+        renderCells,
+    }: MemoizedMultiNewRowProps) {
+        return (
+            <tr
+                id={state.id}
+                data-testid="new-row"
+                data-row-id={state.id}
+                onFocus={onFocus ? () => onFocus(state.id) : undefined}
+                onBlur={
+                    onBlur
+                        ? (e) => {
+                              if (!isBlurToPortal(e)) {
+                                  setTimeout(() => onBlur(state.id), 200);
+                              }
+                          }
+                        : undefined
+                }
+                className="border-b"
+            >
+                {enableRowSelection && (
+                    <TableCell>
+                        <Checkbox />
+                    </TableCell>
+                )}
+                {renderCells(state, stateIndex, rowIndex)}
+            </tr>
+        );
+    },
+    (prev, next) =>
+        prev.state === next.state &&
+        prev.rowIndex === next.rowIndex &&
+        prev.stateIndex === next.stateIndex &&
+        prev.enableRowSelection === next.enableRowSelection &&
+        prev.onFocus === next.onFocus &&
+        prev.onBlur === next.onBlur &&
+        prev.renderCells === next.renderCells,
+);
 
 // ── Component ───────────────────────────────────────────────────
 
@@ -160,7 +271,7 @@ export function DataTableBody<TData>({
     onDragSumChange,
     onDragSelectionChange,
     dragSumFilter,
-    enableInfiniteScroll,
+    enableInfiniteScroll: _enableInfiniteScroll,
     loadingRowIds,
 }: DataTableBodyProps<TData>) {
     const rows = table.getRowModel().rows;
@@ -205,6 +316,46 @@ export function DataTableBody<TData>({
     const unifiedRows = React.useMemo(
         () => buildUnifiedRows(rows, position, newRowMode, visibleNewRows),
         [rows, position, newRowMode, visibleNewRows],
+    );
+
+    // ── Sticky column offsets ────────────────────────────────────
+    // Map<columnId, { side, offset }>. Offsets accumulate from the outer
+    // edge: the first left-sticky column sits at left:0, the second stacks
+    // behind it at `col1.size`, and so on. Right-sticky offsets count from
+    // the right edge in reverse column order.
+    const stickyMap = React.useMemo(() => {
+        const map = new Map<string, { side: "left" | "right"; offset: number }>();
+        let leftOffset = 0;
+        for (const col of columns) {
+            const meta = col.meta;
+            if (meta?.sticky !== "left") continue;
+            const id = ("accessorKey" in col ? String(col.accessorKey) : col.id) ?? "";
+            if (!id) continue;
+            map.set(id, { side: "left", offset: leftOffset });
+            leftOffset += col.size ?? 150;
+        }
+        let rightOffset = 0;
+        for (let i = columns.length - 1; i >= 0; i--) {
+            const col = columns[i];
+            const meta = col.meta;
+            if (meta?.sticky !== "right") continue;
+            const id = ("accessorKey" in col ? String(col.accessorKey) : col.id) ?? "";
+            if (!id) continue;
+            map.set(id, { side: "right", offset: rightOffset });
+            rightOffset += col.size ?? 150;
+        }
+        return map;
+    }, [columns]);
+
+    const getStickyStyle = React.useCallback(
+        (columnId: string): React.CSSProperties | undefined => {
+            const s = stickyMap.get(columnId);
+            if (!s) return undefined;
+            return s.side === "left"
+                ? { position: "sticky", left: s.offset, zIndex: 2 }
+                : { position: "sticky", right: s.offset, zIndex: 2 };
+        },
+        [stickyMap],
     );
 
     // ── Virtualizer ─────────────────────────────────────────────
@@ -416,6 +567,7 @@ export function DataTableBody<TData>({
             if (isFirstCell) isFirstCell = false;
             const isDragSumEnabled = cell.column.columnDef.meta?.enableDragSum;
 
+            const stickyStyle = getStickyStyle(cell.column.id);
             return (
                 <TableCell
                     key={cell.id}
@@ -423,11 +575,12 @@ export function DataTableBody<TData>({
                     data-column-id={cell.column.id}
                     data-skip-on-enter={cell.column.columnDef.meta?.skipOnEnter ?? undefined}
                     tabIndex={-1}
-                    style={{ width: cell.column.getSize(), ...extraCellStyle }}
+                    style={{ width: cell.column.getSize(), ...extraCellStyle, ...stickyStyle }}
                     className={cn(
                         cell.column.columnDef.meta?.cellClassName,
                         enableEditing && !cell.column.columnDef.meta?.editable && "bg-muted",
                         isDragSumEnabled && "cursor-cell",
+                        stickyStyle && "bg-background",
                     )}
                     onClick={(e) => {
                         // Prevent drag-sum clicks from triggering onRowClick (navigation)
@@ -585,6 +738,7 @@ export function DataTableBody<TData>({
             if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
 
             const meta = col.meta;
+            const stickyStyle = getStickyStyle(key);
             if (!meta?.editable) {
                 const val = state.values[key];
                 const displayVal =
@@ -600,11 +754,13 @@ export function DataTableBody<TData>({
                         data-row-index={rowIndex}
                         data-column-id={key}
                         tabIndex={-1}
+                        style={stickyStyle}
                         className={cn(
                             "bg-muted text-sm",
                             meta?.align === "right" && "text-right",
                             meta?.align === "center" && "text-center",
                             "text-muted-foreground",
+                            stickyStyle && "bg-background",
                             meta?.cellClassName,
                         )}
                     >
@@ -626,7 +782,8 @@ export function DataTableBody<TData>({
                     data-column-id={key}
                     data-skip-on-enter={meta?.skipOnEnter ?? undefined}
                     tabIndex={-1}
-                    className={cn("relative", meta?.cellClassName)}
+                    style={stickyStyle}
+                    className={cn("relative", stickyStyle && "bg-background", meta?.cellClassName)}
                 >
                     <DataTableCellInput
                         meta={meta}
@@ -676,6 +833,7 @@ export function DataTableBody<TData>({
             if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
 
             const meta = col.meta;
+            const stickyStyle = getStickyStyle(key);
             if (!meta?.editable) {
                 const val = singleNewRowValues[key];
                 const displayVal =
@@ -691,11 +849,13 @@ export function DataTableBody<TData>({
                         data-row-index={rowIndex}
                         data-column-id={key}
                         tabIndex={-1}
+                        style={stickyStyle}
                         className={cn(
                             "bg-muted text-sm",
                             meta?.align === "right" && "text-right",
                             meta?.align === "center" && "text-center",
                             "text-muted-foreground",
+                            stickyStyle && "bg-background",
                             meta?.cellClassName,
                         )}
                     >
@@ -713,7 +873,8 @@ export function DataTableBody<TData>({
                     data-column-id={key}
                     data-skip-on-enter={meta?.skipOnEnter ?? undefined}
                     tabIndex={-1}
-                    className={cn("relative", meta?.cellClassName)}
+                    style={stickyStyle}
+                    className={cn("relative", stickyStyle && "bg-background", meta?.cellClassName)}
                 >
                     <DataTableCellInput
                         meta={meta}
@@ -750,66 +911,89 @@ export function DataTableBody<TData>({
         });
     };
 
+    // ── Stable wrappers (so MemoizedDataRow can skip re-renders) ──
+    // We thread the latest props through a ref and expose stable callback
+    // identities to the memoized row. Without this, every parent render
+    // produces fresh function instances that defeat React.memo.
+    const renderCellsRef = React.useRef(renderCells);
+    renderCellsRef.current = renderCells;
+    const stableRenderCells = React.useCallback(
+        (row: Row<unknown>, rowIndex: number) =>
+            renderCellsRef.current(row as Row<TData>, rowIndex),
+        [],
+    );
+
+    const onRowClickRef = React.useRef(onRowClick);
+    onRowClickRef.current = onRowClick;
+    const stableOnRowClick = React.useMemo(
+        () => (onRowClick ? (data: unknown) => onRowClickRef.current?.(data as TData) : undefined),
+        [onRowClick],
+    );
+
+    // Stable wrappers for multi-new-row callbacks + renderer so that
+    // MemoizedMultiNewRow can bail out when a sibling row changes.
+    const renderMultiNewRowCellsRef = React.useRef(renderMultiNewRowCells);
+    renderMultiNewRowCellsRef.current = renderMultiNewRowCells;
+    const stableRenderMultiNewRowCells = React.useCallback(
+        (state: NewRowState, stateIndex: number, rowIndex: number) =>
+            renderMultiNewRowCellsRef.current(state, stateIndex, rowIndex),
+        [],
+    );
+
+    const onMultiRowFocusRef = React.useRef(onMultiRowFocus);
+    onMultiRowFocusRef.current = onMultiRowFocus;
+    const stableOnMultiRowFocus = React.useMemo(
+        () =>
+            onMultiRowFocus ? (rowId: string) => onMultiRowFocusRef.current?.(rowId) : undefined,
+        [onMultiRowFocus],
+    );
+
+    const onMultiRowBlurRef = React.useRef(onMultiRowBlur);
+    onMultiRowBlurRef.current = onMultiRowBlur;
+    const stableOnMultiRowBlur = React.useMemo(
+        () => (onMultiRowBlur ? (rowId: string) => onMultiRowBlurRef.current?.(rowId) : undefined),
+        [onMultiRowBlur],
+    );
+
+    const dataRowClassName = cn(
+        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+        onRowClick ? "cursor-pointer" : "",
+    );
+
     // ── Render a unified row by kind ────────────────────────────
-    const renderUnifiedRow = (item: UnifiedRow<TData>, useMotion: boolean) => {
+    const renderUnifiedRow = (item: UnifiedRow<TData>) => {
         if (item.kind === "data") {
             const { row, rowIndex } = item;
-            if (useMotion) {
-                return (
-                    <motion.tr
-                        key={row.id}
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        data-state={row.getIsSelected() ? "selected" : undefined}
-                        className={cn(
-                            "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
-                            onRowClick ? "cursor-pointer" : "",
-                        )}
-                        onClick={() => onRowClick?.(row.original)}
-                    >
-                        {renderCells(row, rowIndex)}
-                    </motion.tr>
-                );
-            }
+            const rowOriginalId = (row.original as { id?: number }).id;
+            const isLoading =
+                loadingRowIds != null && rowOriginalId != null && loadingRowIds.has(rowOriginalId);
             return (
-                <tr
+                <MemoizedDataRow
                     key={row.id}
-                    data-state={row.getIsSelected() ? "selected" : undefined}
-                    className={cn(
-                        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
-                        onRowClick ? "cursor-pointer" : "",
-                    )}
-                    onClick={() => onRowClick?.(row.original)}
-                >
-                    {renderCells(row, rowIndex)}
-                </tr>
+                    row={row as Row<unknown>}
+                    rowIndex={rowIndex}
+                    isSelected={row.getIsSelected()}
+                    isLoading={isLoading}
+                    className={dataRowClassName}
+                    onRowClick={stableOnRowClick}
+                    renderCells={stableRenderCells}
+                />
             );
         }
 
         if (item.kind === "new-multi") {
             const { state, stateIndex, rowIndex } = item;
             return (
-                <tr
+                <MemoizedMultiNewRow
                     key={state.id}
-                    id={state.id}
-                    data-testid="new-row"
-                    data-row-id={state.id}
-                    onFocus={() => onMultiRowFocus?.(state.id)}
-                    onBlur={(e) => {
-                        if (!isBlurToPortal(e)) {
-                            setTimeout(() => onMultiRowBlur?.(state.id), 200);
-                        }
-                    }}
-                    className="border-b"
-                >
-                    {enableRowSelection && (
-                        <TableCell>
-                            <Checkbox />
-                        </TableCell>
-                    )}
-                    {renderMultiNewRowCells(state, stateIndex, rowIndex)}
-                </tr>
+                    state={state}
+                    rowIndex={rowIndex}
+                    stateIndex={stateIndex}
+                    enableRowSelection={!!enableRowSelection}
+                    onFocus={stableOnMultiRowFocus}
+                    onBlur={stableOnMultiRowBlur}
+                    renderCells={stableRenderMultiNewRowCells}
+                />
             );
         }
 
@@ -872,18 +1056,25 @@ export function DataTableBody<TData>({
                     const item = unifiedRows[virtualRow.index];
                     if (!item) return null;
                     if (item.kind === "data") {
+                        const rowOriginalId = (item.row.original as { id?: number }).id;
+                        const isLoading =
+                            loadingRowIds != null &&
+                            rowOriginalId != null &&
+                            loadingRowIds.has(rowOriginalId);
                         return (
-                            <TableRow
+                            <MemoizedDataRow
                                 key={item.row.id}
-                                data-state={item.row.getIsSelected() ? "selected" : undefined}
+                                row={item.row as Row<unknown>}
+                                rowIndex={item.rowIndex}
+                                isSelected={item.row.getIsSelected()}
+                                isLoading={isLoading}
                                 className={cn(onRowClick ? "cursor-pointer" : "")}
-                                onClick={() => onRowClick?.(item.row.original)}
-                            >
-                                {renderCells(item.row, item.rowIndex)}
-                            </TableRow>
+                                onRowClick={stableOnRowClick}
+                                renderCells={stableRenderCells}
+                            />
                         );
                     }
-                    return renderUnifiedRow(item, false);
+                    return renderUnifiedRow(item);
                 })}
                 {paddingBottom > 0 && (
                     <tr>
@@ -897,7 +1088,7 @@ export function DataTableBody<TData>({
     // ── Non-virtual mode ────────────────────────────────────────
     return (
         <TableBody className={"select-none"}>
-            {unifiedRows.map((item) => renderUnifiedRow(item, !enableInfiniteScroll))}
+            {unifiedRows.map((item) => renderUnifiedRow(item))}
             {enableMultipleNewRows && !isVirtualActive && (
                 <tr
                     ref={sentinelRef}

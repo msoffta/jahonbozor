@@ -1,6 +1,6 @@
 import { Trash2 } from "lucide-react";
 
-import { Badge, Button, motion } from "@jahonbozor/ui";
+import { Badge, Button } from "@jahonbozor/ui";
 
 import type { TokenStaff } from "@jahonbozor/schemas";
 import type { RoleItem } from "@jahonbozor/schemas/src/roles";
@@ -101,9 +101,8 @@ export function getStaffColumns(
                 const isSelf = row.original.id === currentUser?.id;
 
                 return (
-                    <motion.div
-                        whileTap={canDeleteThis ? { scale: 0.9 } : undefined}
-                        className="inline-flex w-full justify-center"
+                    <div
+                        className={`inline-flex w-full justify-center${canDeleteThis ? "transition-transform active:scale-90" : ""}`}
                     >
                         <Button
                             variant="ghost"
@@ -119,7 +118,7 @@ export function getStaffColumns(
                         >
                             <Trash2 className="h-4 w-4" />
                         </Button>
-                    </motion.div>
+                    </div>
                 );
             },
         },

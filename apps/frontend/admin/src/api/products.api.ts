@@ -12,6 +12,11 @@ import { i18n } from "@/i18n/config";
 
 import type { AdminProductItem, ImportProductRow } from "@jahonbozor/schemas/src/products";
 
+interface ProductsInfiniteCache {
+    pages: { count: number; products: AdminProductItem[] }[];
+    pageParams: number[];
+}
+
 export const productKeys = {
     all: ["products"] as const,
     lists: () => [...productKeys.all, "list"] as const,
@@ -172,8 +177,26 @@ export const useCreateProduct = () => {
     return useMutation({
         mutationKey: ["products", "create"],
         mutationFn: createProductFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: productKeys.all });
+        onSuccess: (newProduct) => {
+            queryClient.setQueriesData<ProductsInfiniteCache>(
+                { queryKey: productKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    const lastIdx = old.pages.length - 1;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page, index) =>
+                            index === lastIdx
+                                ? {
+                                      count: page.count + 1,
+                                      products: [...page.products, newProduct],
+                                  }
+                                : page,
+                        ),
+                    };
+                },
+            );
+            queryClient.setQueryData(productKeys.detail(newProduct.id), newProduct);
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -187,8 +210,23 @@ export const useUpdateProduct = () => {
     return useMutation({
         mutationKey: ["products", "update"],
         mutationFn: updateProductFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: productKeys.all });
+        onSuccess: (updatedProduct) => {
+            queryClient.setQueriesData<ProductsInfiniteCache>(
+                { queryKey: productKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => ({
+                            ...page,
+                            products: page.products.map((p) =>
+                                p.id === updatedProduct.id ? updatedProduct : p,
+                            ),
+                        })),
+                    };
+                },
+            );
+            queryClient.setQueryData(productKeys.detail(updatedProduct.id), updatedProduct);
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -202,8 +240,29 @@ export const useDeleteProduct = () => {
     return useMutation({
         mutationKey: ["products", "delete"],
         mutationFn: deleteProductFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: productKeys.all });
+        onSuccess: (deletedProduct) => {
+            const deletedId = deletedProduct?.id;
+            if (deletedId == null) return;
+            queryClient.setQueriesData<ProductsInfiniteCache>(
+                { queryKey: productKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => {
+                            const filtered = page.products.filter((p) => p.id !== deletedId);
+                            return {
+                                count: Math.max(
+                                    0,
+                                    page.count - (page.products.length - filtered.length),
+                                ),
+                                products: filtered,
+                            };
+                        }),
+                    };
+                },
+            );
+            queryClient.removeQueries({ queryKey: productKeys.detail(deletedId) });
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -217,8 +276,25 @@ export const useRestoreProduct = () => {
     return useMutation({
         mutationKey: ["products", "restore"],
         mutationFn: restoreProductFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: productKeys.all });
+        onSuccess: (restoredProduct) => {
+            queryClient.setQueriesData<ProductsInfiniteCache>(
+                { queryKey: productKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => ({
+                            ...page,
+                            products: page.products.map((p) =>
+                                p.id === restoredProduct.id
+                                    ? { ...p, ...restoredProduct, deletedAt: null }
+                                    : p,
+                            ),
+                        })),
+                    };
+                },
+            );
+            queryClient.setQueryData(productKeys.detail(restoredProduct.id), restoredProduct);
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -244,6 +320,9 @@ export const useImportProducts = () => {
         mutationKey: ["products", "import"],
         mutationFn: importProductsFn,
         onSuccess: () => {
+            // Bulk import can create/update many products at once — no single
+            // record to patch into the cache. Keep invalidateQueries here so the
+            // list refetches and shows all imported rows.
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
         onError: () => {

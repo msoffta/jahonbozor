@@ -3,9 +3,6 @@ import z from "zod";
 export const PaymentType = z.enum(["CASH", "CREDIT_CARD", "DEBT"]);
 export type PaymentType = z.infer<typeof PaymentType>;
 
-export const OrderStatus = z.enum(["DRAFT", "COMPLETED"]);
-export type OrderStatus = z.infer<typeof OrderStatus>;
-
 export const OrderType = z.enum(["ORDER", "LIST"]);
 export type OrderType = z.infer<typeof OrderType>;
 

@@ -64,7 +64,7 @@ const createMockRecipient = (overrides = {}) => ({
     sentAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
-    user: { id: 1, fullname: "Test User", username: "testuser" },
+    user: { id: 1, fullname: "Test User" },
     ...overrides,
 });
 

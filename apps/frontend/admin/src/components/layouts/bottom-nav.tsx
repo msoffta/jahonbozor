@@ -166,9 +166,6 @@ export function BottomNav() {
                                             pathname === `/orders/${order.id}`
                                                 ? "bg-primary text-primary-foreground border-primary font-bold shadow-md"
                                                 : "border-border text-foreground hover:bg-accent hover:text-accent-foreground font-semibold",
-                                            (order as { status?: string }).status === "DRAFT" &&
-                                                pathname !== `/orders/${order.id}` &&
-                                                "border-dashed border-yellow-500/60",
                                         )}
                                         initial={{
                                             scale: 0,

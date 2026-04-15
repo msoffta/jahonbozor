@@ -51,7 +51,7 @@ describe("api-client", () => {
 
             expect(result).toBe(true);
             expect(fetchSpy).toHaveBeenCalledTimes(2);
-            expect(fetchSpy).toHaveBeenCalledWith("/api/public/auth/refresh", {
+            expect(fetchSpy).toHaveBeenCalledWith("/api/public/users/refresh", {
                 method: "POST",
                 credentials: "include",
             });

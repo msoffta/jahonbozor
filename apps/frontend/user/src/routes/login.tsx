@@ -8,8 +8,6 @@ import { AnimatePresence, cn, motion, PageTransition } from "@jahonbozor/ui";
 import { useTelegramLogin } from "@/hooks/use-auth";
 import { useUIStore } from "@/stores/ui.store";
 
-const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? "";
-
 interface TelegramLoginData {
     id: number;
     first_name: string;
@@ -26,9 +24,10 @@ function LoginPage() {
     const telegramLogin = useTelegramLogin();
     const locale = useUIStore((state) => state.locale);
     const setLocale = useUIStore((state) => state.setLocale);
+    const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? "";
 
     useEffect(() => {
-        if (!TELEGRAM_BOT_USERNAME) return;
+        if (!botUsername) return;
 
         (window as unknown as Record<string, unknown>).onTelegramAuth = (
             user: TelegramLoginData,
@@ -47,14 +46,14 @@ function LoginPage() {
         return () => {
             delete (window as unknown as Record<string, unknown>).onTelegramAuth;
         };
-    }, [telegramLogin]);
+    }, [telegramLogin, botUsername]);
 
     useEffect(() => {
-        if (!TELEGRAM_BOT_USERNAME || !telegramRef.current) return;
+        if (!botUsername || !telegramRef.current) return;
 
         const script = document.createElement("script");
         script.src = "https://telegram.org/js/telegram-widget.js?22";
-        script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
+        script.setAttribute("data-telegram-login", botUsername);
         script.setAttribute("data-size", "large");
         script.setAttribute("data-radius", "8");
         script.setAttribute("data-onauth", "onTelegramAuth(user)");
@@ -62,7 +61,7 @@ function LoginPage() {
         script.async = true;
 
         telegramRef.current.appendChild(script);
-    }, []);
+    }, [botUsername]);
 
     return (
         <PageTransition className="bg-background flex min-h-screen items-center justify-center px-4">
@@ -134,7 +133,7 @@ function LoginPage() {
                     )}
                 </AnimatePresence>
 
-                {!TELEGRAM_BOT_USERNAME && (
+                {!botUsername && (
                     <p className="text-muted-foreground text-center text-xs">
                         {t("bot_username_not_configured")}
                     </p>

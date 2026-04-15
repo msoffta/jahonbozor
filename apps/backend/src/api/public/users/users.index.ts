@@ -3,17 +3,27 @@ import { Elysia, t } from "elysia";
 
 import { TelegramLoginBody, TelegramWebAppAuthBody } from "@jahonbozor/schemas/src/users";
 
+import { AuthService } from "@backend/api/public/auth/auth.service";
 import { authMiddleware } from "@backend/lib/middleware";
 import { requestContext } from "@backend/lib/request-context";
 
 import { PublicUsersService } from "./users.service";
 
+import type { LogoutResponse, RefreshResponse } from "@jahonbozor/schemas/src/auth";
 import type { ReturnSchema } from "@jahonbozor/schemas/src/base.model";
 import type { TelegramAuthResponse } from "@jahonbozor/schemas/src/users";
 
 const authCookieSchema = t.Cookie({
-    auth: t.Optional(t.String()),
+    user_auth: t.Optional(t.String()),
 });
+
+const USER_COOKIE_OPTIONS = {
+    path: "/api/public/users",
+    secure: process.env.NODE_ENV !== "development",
+    httpOnly: true,
+    maxAge: 30 * 24 * 60 * 60,
+    sameSite: true,
+} as const;
 
 export const publicUsers = new Elysia({ prefix: "/users" })
     .use(requestContext)
@@ -27,7 +37,7 @@ export const publicUsers = new Elysia({ prefix: "/users" })
         "/telegram",
         async ({
             body,
-            cookie: { auth },
+            cookie: { user_auth },
             jwt,
             set,
             logger,
@@ -61,15 +71,10 @@ export const publicUsers = new Elysia({ prefix: "/users" })
 
                 const { user, accessToken, refreshToken, refreshTokenExp } = result.data;
 
-                // Set refresh token cookie (HTTP concern — stays in route handler)
-                auth.set({
-                    path: "/api/public/auth",
-                    secure: process.env.NODE_ENV !== "development",
-                    httpOnly: true,
+                user_auth.set({
+                    ...USER_COOKIE_OPTIONS,
                     expires: refreshTokenExp,
-                    maxAge: 30 * 24 * 60 * 60,
                     value: refreshToken,
-                    sameSite: true,
                 });
 
                 return {
@@ -91,7 +96,7 @@ export const publicUsers = new Elysia({ prefix: "/users" })
         "/telegram-webapp",
         async ({
             body,
-            cookie: { auth },
+            cookie: { user_auth },
             jwt,
             set,
             logger,
@@ -122,14 +127,10 @@ export const publicUsers = new Elysia({ prefix: "/users" })
 
                 const { user, accessToken, refreshToken, refreshTokenExp } = result.data;
 
-                auth.set({
-                    path: "/api/public/auth",
-                    secure: process.env.NODE_ENV !== "development",
-                    httpOnly: true,
+                user_auth.set({
+                    ...USER_COOKIE_OPTIONS,
                     expires: refreshTokenExp,
-                    maxAge: 30 * 24 * 60 * 60,
                     value: refreshToken,
-                    sameSite: true,
                 });
 
                 return {
@@ -146,6 +147,65 @@ export const publicUsers = new Elysia({ prefix: "/users" })
             body: TelegramWebAppAuthBody,
             cookie: authCookieSchema,
         },
+    )
+    .post(
+        "/refresh",
+        async ({ cookie: { user_auth }, jwt, set, logger }): Promise<RefreshResponse> => {
+            try {
+                if (!user_auth.value) {
+                    set.status = 401;
+                    return { success: false, error: "Unauthorized" };
+                }
+
+                const result = await AuthService.refresh(user_auth.value, jwt, logger, "user");
+
+                if (!result.success) {
+                    if (result.error === "Unauthorized") {
+                        user_auth.remove();
+                        set.status = 401;
+                    } else {
+                        set.status = 500;
+                    }
+                    return { success: false, error: result.error };
+                }
+
+                const { accessToken, refreshToken, refreshTokenExp } = result.data;
+
+                user_auth.set({
+                    ...USER_COOKIE_OPTIONS,
+                    expires: refreshTokenExp,
+                    value: refreshToken,
+                });
+
+                return { success: true, data: { token: accessToken } };
+            } catch (error) {
+                logger.error("PublicUsers: Unhandled error in POST /refresh", { error });
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
+            }
+        },
+        { cookie: authCookieSchema },
+    )
+    .post(
+        "/logout",
+        async ({ cookie: { user_auth }, set, logger }): Promise<LogoutResponse> => {
+            try {
+                if (!user_auth.value) {
+                    set.status = 401;
+                    return { success: false, error: "Unauthorized" };
+                }
+
+                await AuthService.logout(user_auth.value, logger, "user");
+                user_auth.remove();
+
+                return { success: true, data: null };
+            } catch (error) {
+                logger.error("PublicUsers: Unhandled error in POST /logout", { error });
+                set.status = 500;
+                return { success: false, error: "Internal Server Error" };
+            }
+        },
+        { cookie: authCookieSchema },
     )
     .use(authMiddleware)
     .put(

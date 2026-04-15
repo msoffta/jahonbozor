@@ -118,7 +118,6 @@ describe("Snapshot Functions", () => {
             const user = {
                 id: 42,
                 fullname: "John Doe",
-                username: "johndoe",
                 phone: "+998901234567",
                 photo: "https://example.com/photo.jpg",
                 telegramId: BigInt(123456789),
@@ -132,7 +131,6 @@ describe("Snapshot Functions", () => {
             expect(snapshot).toEqual({
                 id: 42,
                 fullname: "John Doe",
-                username: "johndoe",
                 phone: "+998901234567",
                 photo: "https://example.com/photo.jpg",
                 telegramId: BigInt(123456789),
