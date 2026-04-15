@@ -12,7 +12,11 @@ import { i18n } from "@/i18n/config";
 
 import type { AdminOrderItem } from "@jahonbozor/schemas/src/orders";
 
-/** Extract the business error from Eden Treaty's Error wrapper (.value) or a direct throw. */
+interface OrdersInfiniteCache {
+    pages: { count: number; orders: AdminOrderItem[] }[];
+    pageParams: number[];
+}
+
 function getBusinessError(error: unknown): Record<string, unknown> | undefined {
     const value = (error as { value?: { error?: Record<string, unknown> } })?.value?.error;
     if (value) return value;
@@ -56,7 +60,6 @@ export const ordersListQueryOptions = (params?: {
     userId?: number;
     staffId?: number;
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
-    status?: "DRAFT" | "COMPLETED";
     dateFrom?: string;
     dateTo?: string;
     type?: "ORDER" | "LIST";
@@ -91,7 +94,6 @@ export const ordersInfiniteQueryOptions = (params?: {
     userId?: number;
     staffId?: number;
     paymentType?: "CASH" | "CREDIT_CARD" | "DEBT";
-    status?: "DRAFT" | "COMPLETED";
     dateFrom?: string;
     dateTo?: string;
     type?: "ORDER" | "LIST";
@@ -164,7 +166,6 @@ export const createOrderFn = async (body: {
     userId?: number | null;
     paymentType: "CASH" | "CREDIT_CARD" | "DEBT";
     comment?: string | null;
-    status?: "DRAFT" | "COMPLETED";
     type?: "ORDER" | "LIST";
     items: { productId: number | null; quantity: number; price: number }[];
 }) => {
@@ -179,8 +180,23 @@ export function useCreateOrder() {
     return useMutation({
         mutationKey: ["orders", "create"],
         mutationFn: createOrderFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        onSuccess: (newOrder) => {
+            queryClient.setQueriesData<OrdersInfiniteCache>({ queryKey: orderKeys.all }, (old) => {
+                if (!old?.pages?.length) return old;
+                const lastIdx = old.pages.length - 1;
+                return {
+                    ...old,
+                    pages: old.pages.map((page, index) =>
+                        index === lastIdx
+                            ? {
+                                  count: page.count + 1,
+                                  orders: [...page.orders, newOrder],
+                              }
+                            : page,
+                    ),
+                };
+            });
+            queryClient.setQueryData(orderKeys.detail(newOrder.id), newOrder);
         },
         onError: handleOrderError,
     });
@@ -192,11 +208,7 @@ export function useUpdateOrder() {
         mutationKey: ["orders", "update"],
         mutationFn: updateOrderFn,
         onSuccess: (updatedOrder) => {
-            // Optimistic: patch the order in-place across all cached pages
-            queryClient.setQueriesData<{
-                pages: { count: number; orders: AdminOrderItem[] }[];
-                pageParams: number[];
-            }>({ queryKey: orderKeys.all }, (old) => {
+            queryClient.setQueriesData<OrdersInfiniteCache>({ queryKey: orderKeys.all }, (old) => {
                 if (!old?.pages?.length) return old;
                 return {
                     ...old,
@@ -208,7 +220,6 @@ export function useUpdateOrder() {
                     })),
                 };
             });
-            // Also update detail cache if present
             queryClient.setQueryData(orderKeys.detail(updatedOrder.id), updatedOrder);
         },
         onError: handleOrderError,
@@ -220,32 +231,27 @@ export function useDeleteOrder() {
     return useMutation({
         mutationKey: ["orders", "delete"],
         mutationFn: deleteOrderFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.all });
+        onSuccess: (result) => {
+            const deletedId = result?.orderId;
+            if (deletedId == null) return;
+            queryClient.setQueriesData<OrdersInfiniteCache>({ queryKey: orderKeys.all }, (old) => {
+                if (!old?.pages?.length) return old;
+                return {
+                    ...old,
+                    pages: old.pages.map((page) => {
+                        const filtered = page.orders.filter((o) => o.id !== deletedId);
+                        return {
+                            count: Math.max(0, page.count - (page.orders.length - filtered.length)),
+                            orders: filtered,
+                        };
+                    }),
+                };
+            });
+            queryClient.removeQueries({ queryKey: orderKeys.detail(deletedId) });
         },
         onError: () => {
             toast.error(i18n.t("error"));
         },
-    });
-}
-
-export const finalizeOrderFn = async (id: number) => {
-    const { data, error } = await api.api.private.orders({ id }).finalize.post();
-    if (error) throw error;
-    if (!data.success) throw data.error;
-    return data.data as AdminOrderItem;
-};
-
-export function useFinalizeDraft() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationKey: ["orders", "finalize"],
-        mutationFn: finalizeOrderFn,
-        onSuccess: (updatedOrder) => {
-            queryClient.setQueryData(orderKeys.detail(updatedOrder.id), updatedOrder);
-            queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
-        },
-        onError: handleOrderError,
     });
 }
 
@@ -263,33 +269,6 @@ export function useRestoreOrder() {
         mutationFn: restoreOrderFn,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: orderKeys.all });
-        },
-        onError: () => {
-            toast.error(i18n.t("error"));
-        },
-    });
-}
-
-export const deleteEmptyDraftsFn = async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (api.api.private.orders as any)["empty-drafts"].delete();
-    if (error) throw error;
-    if (!data.success) throw new Error("Request failed");
-    return data.data as { deleted: number };
-};
-
-export function useDeleteEmptyDrafts() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationKey: ["orders", "delete-empty-drafts"],
-        mutationFn: deleteEmptyDraftsFn,
-        onSuccess: (result) => {
-            queryClient.invalidateQueries({ queryKey: orderKeys.all });
-            if (result.deleted > 0) {
-                toast.success(i18n.t("orders:empty_drafts_deleted", { count: result.deleted }));
-            } else {
-                toast.info(i18n.t("orders:no_empty_drafts"));
-            }
         },
         onError: () => {
             toast.error(i18n.t("error"));

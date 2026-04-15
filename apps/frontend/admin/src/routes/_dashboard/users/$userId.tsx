@@ -153,8 +153,6 @@ function UserDetailPage() {
                     <div>
                         <h1 className="text-xl font-bold md:text-2xl">{user.fullname}</h1>
                         <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-                            <span>@{user.username}</span>
-                            <span>&middot;</span>
                             <span>{user.phone ?? t("detail_phone_none")}</span>
                             <span className="hidden sm:inline">&middot;</span>
                             <span>

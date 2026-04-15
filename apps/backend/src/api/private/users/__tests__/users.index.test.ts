@@ -13,7 +13,6 @@ import type { Users as UsersType } from "@backend/generated/prisma/client";
 const mockUser: UsersType = {
     id: 1,
     fullname: "John Doe",
-    username: "johndoe",
     phone: "+998901234567",
     photo: null,
     telegramId: "123456789",
@@ -89,7 +88,6 @@ const createTestApp = () => {
             return await UsersService.createUser(
                 body as {
                     fullname: string;
-                    username: string;
                     phone: string;
                     photo: string | null;
                     telegramId: string | null;
@@ -102,7 +100,7 @@ const createTestApp = () => {
         .put("/users/:id", async ({ params, body, set, logger, requestId }) => {
             const result = await UsersService.updateUser(
                 Number(params.id),
-                body as { fullname?: string; username?: string; phone?: string },
+                body as { fullname?: string; phone?: string },
                 { staffId: mockStaffToken.id, user: mockStaffToken, requestId },
                 logger,
             );
@@ -226,7 +224,6 @@ describe("Users API Endpoints", () => {
             // Arrange
             const newUserData = {
                 fullname: "Jane Doe",
-                username: "janedoe",
                 phone: "+998901234568",
                 photo: null,
                 telegramId: null,

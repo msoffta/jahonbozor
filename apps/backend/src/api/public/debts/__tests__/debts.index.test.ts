@@ -9,7 +9,6 @@ const mockUserToken = {
     id: 10,
     type: "user" as const,
     fullname: "Test User",
-    username: "testuser",
     phone: "+998901234567",
     telegramId: "123456",
 };

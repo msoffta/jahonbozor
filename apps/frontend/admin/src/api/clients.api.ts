@@ -12,6 +12,11 @@ import { i18n } from "@/i18n/config";
 
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
 
+interface ClientsInfiniteCache {
+    pages: { count: number; users: AdminUserItem[] }[];
+    pageParams: number[];
+}
+
 export const clientKeys = {
     all: ["clients"] as const,
     lists: () => [...clientKeys.all, "list"] as const,
@@ -86,6 +91,24 @@ export const clientsInfiniteQueryOptions = (params?: {
         },
     });
 
+export const searchClientsFn = async (
+    query: string,
+): Promise<{ label: string; value: string }[]> => {
+    const { data, error } = await api.api.private.users.get({
+        query: {
+            searchQuery: query,
+            limit: 20,
+            page: 1,
+            sortBy: "id",
+            sortOrder: "asc" as const,
+            includeDeleted: false,
+        },
+    });
+    if (error || !data.success) return [];
+    const result = data.data as { count: number; users: AdminUserItem[] };
+    return result.users.map((u) => ({ label: u.fullname, value: String(u.id) }));
+};
+
 export const clientDetailQueryOptions = (id: number) =>
     queryOptions({
         queryKey: clientKeys.detail(id),
@@ -102,7 +125,6 @@ export const clientDetailQueryOptions = (id: number) =>
 
 export const createClientFn = async (body: {
     fullname: string;
-    username: string;
     phone: string | null;
     telegramId: string | null;
     photo: string | null;
@@ -120,7 +142,6 @@ export const updateClientFn = async ({
 }: {
     id: number;
     fullname?: string;
-    username?: string;
     phone?: string | null;
     telegramId?: string | null;
     photo?: string | null;
@@ -154,8 +175,26 @@ export const useCreateClient = () => {
     return useMutation({
         mutationKey: ["clients", "create"],
         mutationFn: createClientFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: clientKeys.all });
+        onSuccess: (newClient) => {
+            queryClient.setQueriesData<ClientsInfiniteCache>(
+                { queryKey: clientKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    const lastIdx = old.pages.length - 1;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page, index) =>
+                            index === lastIdx
+                                ? {
+                                      count: page.count + 1,
+                                      users: [...page.users, newClient],
+                                  }
+                                : page,
+                        ),
+                    };
+                },
+            );
+            queryClient.setQueryData(clientKeys.detail(newClient.id), newClient);
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -169,8 +208,23 @@ export const useUpdateClient = () => {
     return useMutation({
         mutationKey: ["clients", "update"],
         mutationFn: updateClientFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: clientKeys.all });
+        onSuccess: (updatedClient) => {
+            queryClient.setQueriesData<ClientsInfiniteCache>(
+                { queryKey: clientKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => ({
+                            ...page,
+                            users: page.users.map((u) =>
+                                u.id === updatedClient.id ? updatedClient : u,
+                            ),
+                        })),
+                    };
+                },
+            );
+            queryClient.setQueryData(clientKeys.detail(updatedClient.id), updatedClient);
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -184,8 +238,29 @@ export const useDeleteClient = () => {
     return useMutation({
         mutationKey: ["clients", "delete"],
         mutationFn: deleteClientFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: clientKeys.all });
+        onSuccess: (deletedClient) => {
+            const deletedId = deletedClient?.id;
+            if (deletedId == null) return;
+            queryClient.setQueriesData<ClientsInfiniteCache>(
+                { queryKey: clientKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => {
+                            const filtered = page.users.filter((u) => u.id !== deletedId);
+                            return {
+                                count: Math.max(
+                                    0,
+                                    page.count - (page.users.length - filtered.length),
+                                ),
+                                users: filtered,
+                            };
+                        }),
+                    };
+                },
+            );
+            queryClient.removeQueries({ queryKey: clientKeys.detail(deletedId) });
         },
         onError: () => {
             toast.error(i18n.t("error"));
@@ -199,8 +274,25 @@ export const useRestoreClient = () => {
     return useMutation({
         mutationKey: ["clients", "restore"],
         mutationFn: restoreClientFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: clientKeys.all });
+        onSuccess: (restoredClient) => {
+            queryClient.setQueriesData<ClientsInfiniteCache>(
+                { queryKey: clientKeys.all },
+                (old) => {
+                    if (!old?.pages?.length) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page) => ({
+                            ...page,
+                            users: page.users.map((u) =>
+                                u.id === restoredClient.id
+                                    ? { ...u, ...restoredClient, deletedAt: null }
+                                    : u,
+                            ),
+                        })),
+                    };
+                },
+            );
+            queryClient.setQueryData(clientKeys.detail(restoredClient.id), restoredClient);
         },
         onError: () => {
             toast.error(i18n.t("error"));

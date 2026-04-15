@@ -24,7 +24,6 @@ const mockOrder: Order = {
     userId: 1,
     staffId: null,
     paymentType: "CASH",
-    status: "COMPLETED",
     type: "ORDER",
     comment: null,
     data: {},
@@ -52,7 +51,6 @@ const mockTokenUser: Token = {
     id: 1,
     type: "user" as const,
     fullname: "Test User",
-    username: "testuser",
     phone: "998901234567",
     telegramId: "123456789",
 };

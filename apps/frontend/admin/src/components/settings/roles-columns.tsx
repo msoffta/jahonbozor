@@ -1,6 +1,6 @@
 import { Edit, Trash2 } from "lucide-react";
 
-import { Badge, Button, motion } from "@jahonbozor/ui";
+import { Badge, Button } from "@jahonbozor/ui";
 
 import type { RoleItem } from "@jahonbozor/schemas/src/roles";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -94,7 +94,7 @@ export function getRolesColumns(
                 return (
                     <div className="flex items-center justify-center gap-1">
                         {canUpdate && (
-                            <motion.div whileTap={{ scale: 0.9 }}>
+                            <div className="transition-transform active:scale-90">
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -104,9 +104,13 @@ export function getRolesColumns(
                                 >
                                     <Edit className="h-4 w-4" />
                                 </Button>
-                            </motion.div>
+                            </div>
                         )}
-                        <motion.div whileTap={canDeleteThis ? { scale: 0.9 } : undefined}>
+                        <div
+                            className={
+                                canDeleteThis ? "transition-transform active:scale-90" : undefined
+                            }
+                        >
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -125,7 +129,7 @@ export function getRolesColumns(
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
-                        </motion.div>
+                        </div>
                     </div>
                 );
             },

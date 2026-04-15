@@ -35,7 +35,6 @@ export interface StaffProfileData {
 export interface UserProfileData {
     id: number;
     fullname: string;
-    username: string;
     phone: string | null;
     telegramId: unknown;
     photo: string | null;

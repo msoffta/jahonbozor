@@ -59,7 +59,7 @@ const mockServe = vi.fn((opts: { fetch: (req: Request) => Response | Promise<Res
 if (typeof globalThis.Bun === "undefined") {
     vi.stubGlobal("Bun", { serve: mockServe });
 } else {
-    vi.spyOn(globalThis.Bun, "serve").mockImplementation(mockServe as typeof Bun.serve);
+    vi.spyOn(globalThis.Bun, "serve").mockImplementation(mockServe as unknown as typeof Bun.serve);
 }
 
 // Set required env vars

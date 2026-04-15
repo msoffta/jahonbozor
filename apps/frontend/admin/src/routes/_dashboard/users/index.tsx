@@ -122,7 +122,7 @@ function UsersPage() {
     const isMobile = useIsMobile();
     const initialColumnVisibility = useMemo(
         (): Record<string, boolean> =>
-            isMobile ? { username: false, language: false, status: false, createdAt: false } : {},
+            isMobile ? { language: false, status: false, createdAt: false } : {},
         [isMobile],
     );
 
@@ -145,7 +145,6 @@ function UsersPage() {
             if (linkedId) {
                 const body: Record<string, unknown> = {};
                 if (data.fullname != null) body.fullname = String(data.fullname as string);
-                if (data.username != null) body.username = String(data.username as string);
                 if (data.phone !== undefined) body.phone = String(data.phone as string) || null;
                 if (data.language) body.language = data.language;
 
@@ -156,14 +155,13 @@ function UsersPage() {
                 return result?.id;
             }
 
-            // For initial creation, fullname and username are strictly required
-            if (!data.fullname || !data.username) {
+            // For initial creation, fullname is strictly required
+            if (!data.fullname) {
                 return; // Wait for essential data
             }
 
             const result = await createClient.mutateAsync({
                 fullname: String(data.fullname as string),
-                username: String(data.username as string),
                 phone: data.phone != null ? String(data.phone as string) : null,
                 telegramId: null,
                 photo: null,
@@ -234,7 +232,7 @@ function UsersPage() {
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={50}
+                            multiRowCount={10}
                             multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onRowDelete={

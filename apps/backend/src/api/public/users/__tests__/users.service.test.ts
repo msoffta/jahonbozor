@@ -28,7 +28,6 @@ vi.mock("@telegram-apps/init-data-node/web", () => ({
 const mockUser: UsersType = {
     id: 1,
     fullname: "John Doe",
-    username: "johndoe",
     phone: "+998901234567",
     photo: "https://photo.url/avatar.jpg",
     telegramId: "123456789",
@@ -361,7 +360,6 @@ describe("PublicUsersService", () => {
                 ...mockUser,
                 id: 2,
                 fullname: "Jane",
-                username: "987654321",
                 telegramId: "987654321",
             };
             prismaMock.users.findUnique.mockResolvedValue(null);
@@ -462,7 +460,6 @@ describe("PublicUsersService", () => {
                 id: 123456789,
                 first_name: "John",
                 last_name: "Doe",
-                username: "johndoe",
                 photo_url: "https://photo.url/avatar.jpg",
             },
         };

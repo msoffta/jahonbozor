@@ -1,6 +1,6 @@
 import { RotateCcw, Trash2 } from "lucide-react";
 
-import { Badge, Button, motion } from "@jahonbozor/ui";
+import { Badge, Button } from "@jahonbozor/ui";
 
 import { formatCurrency } from "@/lib/format";
 
@@ -154,10 +154,7 @@ export function getProductColumns(
             cell: ({ row }) => {
                 const isDeleted = row.original.deletedAt !== null;
                 return (
-                    <motion.div
-                        whileTap={{ scale: 0.9 }}
-                        className="inline-flex w-full justify-center"
-                    >
+                    <div className="inline-flex w-full justify-center transition-transform active:scale-90">
                         {isDeleted ? (
                             <Button
                                 variant="ghost"
@@ -179,7 +176,7 @@ export function getProductColumns(
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         )}
-                    </motion.div>
+                    </div>
                 );
             },
         });

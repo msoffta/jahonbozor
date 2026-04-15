@@ -40,6 +40,8 @@ export interface DataTableCellInputProps {
     inputRef?: (el: HTMLInputElement | null) => void;
     className?: string;
     placeholder?: string;
+    /** Display label override for combobox when the value is not in selectOptions */
+    labelOverride?: string;
 }
 
 /**
@@ -59,6 +61,7 @@ export const DataTableCellInput = React.memo(function DataTableCellInput({
     inputRef,
     className,
     placeholder,
+    labelOverride,
 }: DataTableCellInputProps) {
     const ghost = className ?? GHOST_INPUT_CLASS;
     const resolvedPlaceholder = placeholder ?? meta.placeholder;
@@ -100,6 +103,7 @@ export const DataTableCellInput = React.memo(function DataTableCellInput({
                 error={!!error}
                 onSearch={meta.onSearchOptions}
                 className={ghost}
+                labelOverride={labelOverride}
             />
         );
     }

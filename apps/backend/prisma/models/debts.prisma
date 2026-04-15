@@ -1,8 +1,8 @@
 model DebtPayment {
-  id      Int     @id @default(autoincrement())
+  id      Int      @id @default(autoincrement())
   orderId Int
   userId  Int
-  amount  Decimal @db.Decimal(10, 2)
+  amount  Decimal  @db.Decimal(10, 2)
   paidAt  DateTime @default(now())
   staffId Int
   comment String?

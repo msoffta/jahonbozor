@@ -18,7 +18,7 @@ import type {
 } from "@jahonbozor/schemas/src/auth";
 
 const authCookieSchema = t.Cookie({
-    auth: t.Optional(t.String()),
+    staff_auth: t.Optional(t.String()),
 });
 
 const COOKIE_OPTIONS = {
@@ -39,7 +39,14 @@ export const auth = new Elysia({ prefix: "/auth" })
     )
     .post(
         "/login",
-        async ({ body, cookie: { auth }, jwt, set, logger, requestId }): Promise<LoginResponse> => {
+        async ({
+            body,
+            cookie: { staff_auth },
+            jwt,
+            set,
+            logger,
+            requestId,
+        }): Promise<LoginResponse> => {
             try {
                 const result = await AuthService.login(body, jwt, logger);
 
@@ -50,7 +57,11 @@ export const auth = new Elysia({ prefix: "/auth" })
 
                 const { staff, accessToken, refreshToken, refreshTokenExp } = result.data;
 
-                auth.set({ ...COOKIE_OPTIONS, expires: refreshTokenExp, value: refreshToken });
+                staff_auth.set({
+                    ...COOKIE_OPTIONS,
+                    expires: refreshTokenExp,
+                    value: refreshToken,
+                });
 
                 await audit(
                     { requestId, user: { id: staff.id, type: "staff" } as Token, logger },
@@ -79,19 +90,25 @@ export const auth = new Elysia({ prefix: "/auth" })
     )
     .post(
         "/refresh",
-        async ({ cookie: { auth }, jwt, set, logger, requestId }): Promise<RefreshResponse> => {
+        async ({
+            cookie: { staff_auth },
+            jwt,
+            set,
+            logger,
+            requestId,
+        }): Promise<RefreshResponse> => {
             try {
-                if (!auth.value) {
+                if (!staff_auth.value) {
                     logger.warn("Auth: Refresh token cookie not found");
                     set.status = 401;
                     return { success: false, error: "Unauthorized" };
                 }
 
-                const result = await AuthService.refresh(auth.value, jwt, logger);
+                const result = await AuthService.refresh(staff_auth.value, jwt, logger, "staff");
 
                 if (!result.success) {
                     if (result.error === "Unauthorized") {
-                        auth.remove();
+                        staff_auth.remove();
                         set.status = 401;
                     } else {
                         set.status = 500;
@@ -102,7 +119,11 @@ export const auth = new Elysia({ prefix: "/auth" })
                 const { accessToken, refreshToken, refreshTokenExp, entityId, entityType } =
                     result.data;
 
-                auth.set({ ...COOKIE_OPTIONS, expires: refreshTokenExp, value: refreshToken });
+                staff_auth.set({
+                    ...COOKIE_OPTIONS,
+                    expires: refreshTokenExp,
+                    value: refreshToken,
+                });
 
                 await audit(
                     { requestId, user: { id: entityId, type: entityType } as Token, logger },
@@ -124,16 +145,16 @@ export const auth = new Elysia({ prefix: "/auth" })
     )
     .post(
         "/logout",
-        async ({ cookie: { auth }, set, logger, requestId }): Promise<LogoutResponse> => {
+        async ({ cookie: { staff_auth }, set, logger, requestId }): Promise<LogoutResponse> => {
             try {
-                if (!auth.value) {
+                if (!staff_auth.value) {
                     logger.warn("Auth: Logout attempted without token");
                     set.status = 401;
                     return { success: false, error: "Unauthorized" };
                 }
 
-                const result = await AuthService.logout(auth.value, logger);
-                auth.remove();
+                const result = await AuthService.logout(staff_auth.value, logger, "staff");
+                staff_auth.remove();
 
                 if (result.success && result.data.entityId && result.data.entityType) {
                     await audit(

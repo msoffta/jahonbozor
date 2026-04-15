@@ -85,13 +85,13 @@ describe("DatePicker", () => {
             expect(input.placeholder).toBe("Pick a date");
         });
 
-        test("applies custom className to wrapper", () => {
+        test("applies custom className to the input", () => {
             render(<DatePicker onChange={vi.fn()} className="my-custom-class" />);
             const input = getInput();
-            // className is on the wrapper div, not the input itself
-            const wrapper = input.parentElement!;
-            expect(wrapper.className).toContain("my-custom-class");
-            // Input still has pr-8 for the calendar icon
+            // className flows onto the <Input> itself so callers (e.g. compact
+            // DataTable cells) can override height, padding, and rounding.
+            expect(input.className).toContain("my-custom-class");
+            // Input still has pr-8 reserved for the calendar icon.
             expect(input.className).toContain("pr-8");
         });
 

@@ -19,7 +19,7 @@ import {
     useIsMobile,
 } from "@jahonbozor/ui";
 
-import { clientsListQueryOptions } from "@/api/clients.api";
+import { clientsListQueryOptions, searchClientsFn } from "@/api/clients.api";
 import {
     ordersInfiniteQueryOptions,
     useCreateOrder,
@@ -27,7 +27,7 @@ import {
     useRestoreOrder,
     useUpdateOrder,
 } from "@/api/orders.api";
-import { productsListQueryOptions } from "@/api/products.api";
+import { productsListQueryOptions, searchProductsFn } from "@/api/products.api";
 import { OrderReceiptContainer } from "@/components/orders/order-receipt";
 import { getOrderColumns } from "@/components/orders/orders-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
@@ -126,11 +126,11 @@ function OrdersPage() {
     );
 
     const { data: productsData, isLoading: isProductsLoading } = useQuery(
-        productsListQueryOptions({ limit: 10000, includeDeleted: false }),
+        productsListQueryOptions({ limit: 50, includeDeleted: false }),
     );
 
     const { data: clientsData, isLoading: isClientsLoading } = useQuery(
-        clientsListQueryOptions({ limit: 100, includeDeleted: false }),
+        clientsListQueryOptions({ limit: 50, includeDeleted: false }),
     );
 
     const deleteOrder = useDeleteOrder();
@@ -159,6 +159,8 @@ function OrdersPage() {
                 setDeleteTargetId(id);
                 setDeleteConfirmOpen(true);
             },
+            onSearchProducts: searchProductsFn,
+            onSearchClients: searchClientsFn,
         }),
         [],
     );
@@ -454,7 +456,7 @@ function OrdersPage() {
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={50}
+                            multiRowCount={10}
                             multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onRowDelete={

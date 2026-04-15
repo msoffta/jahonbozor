@@ -39,7 +39,6 @@ export abstract class UsersService {
             if (searchQuery) {
                 whereClause.OR = [
                     { fullname: { contains: searchQuery } },
-                    { username: { contains: searchQuery } },
                     { phone: { contains: searchQuery } },
                 ];
             }
@@ -313,7 +312,6 @@ export abstract class UsersService {
                         where: { id: existingUserByTelegram.id },
                         data: {
                             fullname,
-                            username: telegramData.username ?? existingUserByTelegram.username,
                             photo: telegramData.photo_url,
                             ...(language ? { language } : {}),
                             deletedAt: null, // Restore if was deleted
@@ -353,7 +351,6 @@ export abstract class UsersService {
                             data: {
                                 telegramId: telegramData.id,
                                 fullname,
-                                username: telegramData.username ?? existingUserByPhone.username,
                                 photo: telegramData.photo_url,
                                 ...(language ? { language } : {}),
                                 deletedAt: null, // Restore if was deleted
@@ -388,7 +385,6 @@ export abstract class UsersService {
                     data: {
                         telegramId: telegramData.id,
                         fullname,
-                        username: telegramData.username ?? telegramData.id,
                         phone: phone ?? null,
                         photo: telegramData.photo_url,
                         language: language ?? "uz",

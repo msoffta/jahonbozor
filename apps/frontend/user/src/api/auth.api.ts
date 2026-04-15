@@ -11,7 +11,6 @@ export const authKeys = {
 export interface UserProfile {
     id: number;
     fullname: string;
-    username?: string;
     telegramId: string | number;
     phone?: string | null;
     photo?: string | null;

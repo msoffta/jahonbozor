@@ -256,7 +256,7 @@ function ProductsPage() {
                             enableColumnResizing
                             enableEditing={canUpdate}
                             enableMultipleNewRows={canCreate}
-                            multiRowCount={50}
+                            multiRowCount={10}
                             multiRowMaxCount={50}
                             onCellEdit={handleCellEdit}
                             onRowDelete={

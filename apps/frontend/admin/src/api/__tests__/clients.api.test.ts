@@ -213,7 +213,6 @@ describe("clients.api", () => {
         test("should call api with body", async () => {
             const body = {
                 fullname: "New",
-                username: "new_user",
                 phone: null,
                 telegramId: null,
                 photo: null,
@@ -231,7 +230,6 @@ describe("clients.api", () => {
             await expect(
                 createClientFn({
                     fullname: "",
-                    username: "",
                     phone: null,
                     telegramId: null,
                     photo: null,

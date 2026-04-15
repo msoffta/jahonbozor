@@ -13,6 +13,11 @@ import { i18n } from "@/i18n/config";
 
 import type { HistoryEntryItem } from "@jahonbozor/schemas/src/products/product-history.dto";
 
+interface IncomeInfiniteCache {
+    pages: { count: number; history: HistoryEntryItem[] }[];
+    pageParams: number[];
+}
+
 export const incomeKeys = {
     all: ["income"] as const,
     lists: () => [...incomeKeys.all, "list"] as const,
@@ -125,8 +130,32 @@ export const useDeleteIncome = () => {
     return useMutation({
         mutationKey: ["income", "delete"],
         mutationFn: deleteIncomeFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: incomeKeys.all });
+        onSuccess: (deletedEntry) => {
+            const deletedId = (deletedEntry as HistoryEntryItem | undefined)?.id;
+            if (deletedId != null) {
+                queryClient.setQueriesData<IncomeInfiniteCache>(
+                    { queryKey: incomeKeys.all },
+                    (old) => {
+                        if (!old?.pages?.length) return old;
+                        return {
+                            ...old,
+                            pages: old.pages.map((page) => {
+                                const filtered = page.history.filter((h) => h.id !== deletedId);
+                                return {
+                                    count: Math.max(
+                                        0,
+                                        page.count - (page.history.length - filtered.length),
+                                    ),
+                                    history: filtered,
+                                };
+                            }),
+                        };
+                    },
+                );
+            }
+            // Cross-domain: deleting an income entry affects product.remaining.
+            // Own income cache is patched optimistically above; product list is
+            // on a different page so invalidating is safe (no flicker on this screen).
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
         onError: () => {
@@ -141,8 +170,32 @@ export const useCreateIncome = () => {
     return useMutation({
         mutationKey: ["income", "create"],
         mutationFn: createIncomeFn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: incomeKeys.all });
+        onSuccess: (result) => {
+            const historyEntry = (result as { historyEntry?: HistoryEntryItem } | undefined)
+                ?.historyEntry;
+            if (historyEntry) {
+                queryClient.setQueriesData<IncomeInfiniteCache>(
+                    { queryKey: incomeKeys.all },
+                    (old) => {
+                        if (!old?.pages?.length) return old;
+                        const lastIdx = old.pages.length - 1;
+                        return {
+                            ...old,
+                            pages: old.pages.map((page, index) =>
+                                index === lastIdx
+                                    ? {
+                                          count: page.count + 1,
+                                          history: [...page.history, historyEntry],
+                                      }
+                                    : page,
+                            ),
+                        };
+                    },
+                );
+            }
+            // Cross-domain: creating an income entry changes product.remaining.
+            // The products list is not visible on the income page, so invalidating
+            // it here doesn't cause any visible flicker on the current screen.
             queryClient.invalidateQueries({ queryKey: productKeys.all });
         },
         onError: () => {

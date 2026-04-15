@@ -2,7 +2,6 @@
   "title": "Клиенты",
   "client_id": "ID",
   "client_fullname": "ФИО",
-  "client_username": "Логин",
   "client_phone": "Телефон",
   "client_language": "Язык",
   "client_status": "Статус",

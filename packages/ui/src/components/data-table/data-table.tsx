@@ -155,9 +155,54 @@ export function DataTable<TData>({
         ref,
         () => ({
             flushPendingRows: multiRow.flushPendingRows,
+            appendRow: multiRow.appendRow,
         }),
-        [multiRow.flushPendingRows],
+        [multiRow.flushPendingRows, multiRow.appendRow],
     );
+
+    // ── Auto-append on Enter in last enter-cell ─────────────────────
+    // use-cell-navigation dispatches "datatable:request-append-row" when
+    // the user presses Enter in the last enter-flow cell. We append a new
+    // pending row and focus its first enter-flow input on the next frame.
+    React.useEffect(() => {
+        if (!enableMultipleNewRows) return;
+        const container = containerRef.current;
+        if (!container) return;
+
+        function focusFirstEnterCellInRow(newRowId: string) {
+            const cont = containerRef.current;
+            if (!cont) return;
+            const tr = cont.querySelector<HTMLElement>(`tr[data-row-id="${newRowId}"]`);
+            if (!tr) return;
+            const cells = Array.from(
+                tr.querySelectorAll<HTMLTableCellElement>("td[data-row-index][data-column-id]"),
+            );
+            for (const td of cells) {
+                if (td.hasAttribute("data-skip-on-enter")) continue;
+                const input = td.querySelector<HTMLInputElement>('input, [role="combobox"]');
+                if (input) {
+                    input.focus();
+                    input.select?.();
+                    return;
+                }
+            }
+        }
+
+        function handleRequestAppendRow() {
+            const newRowId = multiRow.appendRow();
+            if (!newRowId) return;
+            requestAnimationFrame(() => {
+                // Two rAFs: one to let React commit the new row, another to
+                // let the DOM mount before focusing.
+                requestAnimationFrame(() => focusFirstEnterCellInRow(newRowId));
+            });
+        }
+
+        container.addEventListener("datatable:request-append-row", handleRequestAppendRow);
+        return () => {
+            container.removeEventListener("datatable:request-append-row", handleRequestAppendRow);
+        };
+    }, [enableMultipleNewRows, multiRow.appendRow]);
 
     // ── Spreadsheet keyboard navigation ──────────────────────────
     useCellNavigation({
@@ -318,26 +363,44 @@ export function DataTable<TData>({
     const [showScrollBtn, setShowScrollBtn] = React.useState(false);
     const [isScrollingToEnd, setIsScrollingToEnd] = React.useState(false);
 
+    // Throttle scroll work to once per frame. Native scroll fires ~60× per
+    // second, and this handler causes parent re-renders via setState — without
+    // throttling it would retrigger the full DataTable tree on every tick.
+    const scrollRafRef = React.useRef<number | null>(null);
     const handleScroll = React.useCallback(
         (e: React.UIEvent<HTMLDivElement>) => {
             const el = e.currentTarget;
-            const scrollable = el.scrollHeight - el.clientHeight;
-            if (scrollable < SCROLL_BUTTON_THRESHOLD_PX) {
-                setShowScrollBtn(false);
-                return;
-            }
-            setShowScrollBtn(true);
-            setIsNearBottom(el.scrollTop > scrollable / 2);
-
-            // Infinite scroll: fetch next page when near bottom
-            if (enableInfiniteScroll && hasNextPage && !isFetchingNextPage && onFetchNextPage) {
-                const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-                if (distanceFromBottom < INFINITE_SCROLL_THRESHOLD_PX) {
-                    onFetchNextPage();
+            if (scrollRafRef.current != null) return;
+            scrollRafRef.current = requestAnimationFrame(() => {
+                scrollRafRef.current = null;
+                const scrollable = el.scrollHeight - el.clientHeight;
+                if (scrollable < SCROLL_BUTTON_THRESHOLD_PX) {
+                    setShowScrollBtn(false);
+                    return;
                 }
-            }
+                setShowScrollBtn(true);
+                setIsNearBottom(el.scrollTop > scrollable / 2);
+
+                // Infinite scroll: fetch next page when near bottom
+                if (enableInfiniteScroll && hasNextPage && !isFetchingNextPage && onFetchNextPage) {
+                    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+                    if (distanceFromBottom < INFINITE_SCROLL_THRESHOLD_PX) {
+                        onFetchNextPage();
+                    }
+                }
+            });
         },
         [enableInfiniteScroll, hasNextPage, isFetchingNextPage, onFetchNextPage],
+    );
+
+    React.useEffect(
+        () => () => {
+            if (scrollRafRef.current != null) {
+                cancelAnimationFrame(scrollRafRef.current);
+                scrollRafRef.current = null;
+            }
+        },
+        [],
     );
 
     const scrollToEdge = React.useCallback(async () => {

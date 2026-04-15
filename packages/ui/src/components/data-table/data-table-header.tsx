@@ -32,6 +32,34 @@ export function DataTableColumnHeader<TData>({
 
     const meta = header.column.columnDef.meta;
 
+    // Compute sticky style: the header row is always sticky to the top of the
+    // scroll container. If the column is also pinned left/right, combine both
+    // axes so the cell stays in place during vertical AND horizontal scroll.
+    const columnSide = meta?.sticky;
+    const headerStickyStyle: React.CSSProperties = {
+        position: "sticky",
+        top: 0,
+        zIndex: columnSide ? 4 : 3,
+    };
+    if (columnSide) {
+        const allCols = header.getContext().table.getAllLeafColumns();
+        let offset = 0;
+        if (columnSide === "left") {
+            for (const c of allCols) {
+                if (c.id === header.column.id) break;
+                if (c.columnDef.meta?.sticky === "left") offset += c.getSize();
+            }
+            headerStickyStyle.left = offset;
+        } else {
+            for (let i = allCols.length - 1; i >= 0; i--) {
+                const c = allCols[i];
+                if (c.id === header.column.id) break;
+                if (c.columnDef.meta?.sticky === "right") offset += c.getSize();
+            }
+            headerStickyStyle.right = offset;
+        }
+    }
+
     return (
         <TableHead
             key={header.id}
@@ -39,9 +67,10 @@ export function DataTableColumnHeader<TData>({
             style={{
                 width: header.getSize(),
                 ...(isVirtualActive ? { display: "flex", alignItems: "center" } : {}),
+                ...headerStickyStyle,
             }}
             className={cn(
-                "relative select-none",
+                "bg-background relative select-none",
                 enableColumnResizing && "group/th",
                 meta?.headerClassName,
             )}

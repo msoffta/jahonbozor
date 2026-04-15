@@ -57,7 +57,6 @@ import type { ReturnSchema } from "../common/base.model";
 export interface AdminUserItem {
     id: number;
     fullname: string;
-    username: string;
     phone: string | null;
     telegramId: unknown;
     photo: string | null;

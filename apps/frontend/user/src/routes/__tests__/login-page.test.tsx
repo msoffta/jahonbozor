@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const { mockMutate, mocks } = vi.hoisted(() => ({
     mockMutate: vi.fn(),
@@ -79,6 +79,10 @@ describe("LoginPage", () => {
         useUIStore.setState({ locale: "uz" });
     });
 
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
     test("should render logo", () => {
         const { container } = render(<LoginPage />);
         const logo = container.querySelector("img[alt='Jahon Bozor']");
@@ -114,6 +118,8 @@ describe("LoginPage", () => {
     });
 
     test("should show bot not configured message when env var empty", () => {
+        vi.stubEnv("VITE_TELEGRAM_BOT_USERNAME", "");
+
         const { getByText } = render(<LoginPage />);
         expect(getByText("bot_username_not_configured")).toBeDefined();
     });

@@ -194,7 +194,7 @@ function DatePicker({
     return (
         <Popover open={open} onOpenChange={handleOpenChange}>
             <PopoverAnchor asChild>
-                <div className={cn("relative", className)}>
+                <div className="relative w-full">
                     <Input
                         ref={setRef}
                         value={inputText}
@@ -204,7 +204,7 @@ function DatePicker({
                         onKeyDown={handleInputKeyDown}
                         placeholder={placeholder ?? displayFormat}
                         disabled={disabled}
-                        className="pr-8"
+                        className={cn("pr-8", className)}
                     />
                     <PopoverTrigger asChild>
                         <button

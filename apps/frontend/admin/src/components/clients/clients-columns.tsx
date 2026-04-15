@@ -1,6 +1,6 @@
 import { RotateCcw, Trash2 } from "lucide-react";
 
-import { Badge, Button, motion } from "@jahonbozor/ui";
+import { Badge, Button } from "@jahonbozor/ui";
 
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -34,12 +34,6 @@ export function getClientColumns(
             header: t("client_fullname"),
             size: 200,
             meta: { flex: 2, editable: true, inputType: "text" as const },
-        },
-        {
-            accessorKey: "username",
-            header: t("client_username"),
-            size: 150,
-            meta: { flex: 1, editable: true, inputType: "text" as const },
         },
         {
             accessorKey: "phone",
@@ -105,10 +99,7 @@ export function getClientColumns(
             cell: ({ row }) => {
                 const isDeleted = row.original.deletedAt !== null;
                 return (
-                    <motion.div
-                        whileTap={{ scale: 0.9 }}
-                        className="inline-flex w-full justify-center"
-                    >
+                    <div className="inline-flex w-full justify-center transition-transform active:scale-90">
                         {isDeleted ? (
                             <Button
                                 variant="ghost"
@@ -136,7 +127,7 @@ export function getClientColumns(
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         )}
-                    </motion.div>
+                    </div>
                 );
             },
         });

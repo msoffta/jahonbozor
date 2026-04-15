@@ -295,6 +295,38 @@ export function useMultiRowState({
         });
     }, [maxCount, increment, defaultValues]);
 
+    /**
+     * Append a single new pending row and return its id.
+     *
+     * Returns the id synchronously (not awaiting React commit). Returns null
+     * when maxCount has been reached, so callers can decide whether to fall
+     * back to another behavior (e.g. blur instead of focus next row).
+     */
+    const appendRow = React.useCallback((): string | null => {
+        const prev = rowStatesRef.current;
+        if (prev.length >= maxCount) return null;
+
+        const currentCount = prev.length;
+        const newRow: NewRowState = {
+            id: `__new_row_${Date.now()}_${currentCount}`,
+            values:
+                typeof defaultValues === "function"
+                    ? defaultValues(currentCount)
+                    : { ...defaultValues },
+            errors: {},
+        };
+        // Optimistically update the ref so repeated synchronous calls don't
+        // collide on the same id timestamp slot in the same tick.
+        rowStatesRef.current = [...prev, newRow];
+        setRowStates((current) => {
+            if (current.length >= maxCount) return current;
+            // If React already committed an extra row elsewhere, keep it in sync
+            if (current.some((r) => r.id === newRow.id)) return current;
+            return [...current, newRow];
+        });
+        return newRow.id;
+    }, [maxCount, defaultValues]);
+
     const flushPendingRows = React.useCallback(async () => {
         const pendingRows = rowStatesRef.current.filter((row) => {
             if (row.isSaving || savingRowsRef.current.has(row.id)) return false;
@@ -318,6 +350,7 @@ export function useMultiRowState({
         handleFocusNext,
         handleSaveAndLoop,
         handleNeedMoreRows,
+        appendRow,
         flushPendingRows,
     };
 }

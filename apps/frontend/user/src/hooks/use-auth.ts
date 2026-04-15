@@ -79,7 +79,7 @@ export function useLogout() {
 
     return useMutation({
         mutationFn: async () => {
-            unwrapRaw(await api.api.public.auth.logout.post());
+            unwrapRaw(await api.api.public.users.logout.post());
         },
         onSettled: () => {
             useAuthStore.getState().logout();

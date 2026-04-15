@@ -27,7 +27,6 @@ function ProfilePage() {
     const { data: debtSummary } = useQuery(myDebtSummaryOptions());
 
     const displayName = profile?.fullname ?? user?.name ?? "User";
-    const username = profile?.username ?? "";
     const initials = displayName
         .split(" ")
         .map((n) => n[0])
@@ -75,7 +74,6 @@ function ProfilePage() {
             </Avatar>
 
             <h2 className="mt-3 text-3xl font-bold">{displayName}</h2>
-            {username && <p className="text-foreground text-base font-medium">@{username}</p>}
             {user?.telegramId && <p className="text-xs font-light">ID: {user.telegramId}</p>}
             {profile?.createdAt && (
                 <p className="text-base font-normal">

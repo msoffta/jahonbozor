@@ -43,7 +43,7 @@ const mockRecipient = {
     sentAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
-    user: { id: 1, fullname: "Test User", username: "testuser" },
+    user: { id: 1, fullname: "Test User" },
 };
 
 const mockUser = {

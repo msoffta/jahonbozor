@@ -12,7 +12,6 @@ export type Language = z.infer<typeof LanguageSchema>;
 
 export const User = BaseModel.extend({
     fullname: z.string(),
-    username: z.string(),
     phone: z.string().nullable(),
     photo: z.string().nullable(),
     telegramId: telegramIdSchema.nullable(),
@@ -23,7 +22,6 @@ export const User = BaseModel.extend({
 export const TokenUser = User.pick({
     id: true,
     fullname: true,
-    username: true,
     phone: true,
     telegramId: true,
 }).extend({

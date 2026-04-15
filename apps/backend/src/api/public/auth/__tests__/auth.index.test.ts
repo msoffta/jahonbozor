@@ -31,7 +31,6 @@ const mockStaffWithRole = {
 const mockUserData = {
     id: 1,
     fullname: "Test User",
-    username: "testuser",
     phone: "+998901234567",
     telegramId: "987654321",
     photo: null,
@@ -547,7 +546,7 @@ describe("Auth API Routes", () => {
             expect(response.status).toBe(200);
             expect(body.success).toBe(true);
             expect(body.data.type).toBe("user");
-            expect(body.data.username).toBe("testuser");
+            expect(body.data.fullname).toBe("Test User");
 
             getUserByIdSpy.mockRestore();
         });
