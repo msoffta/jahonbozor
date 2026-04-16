@@ -1,7 +1,6 @@
 import * as React from "react";
 
 import { flexRender } from "@tanstack/react-table";
-import { motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
 import { DataTableCellInput, GHOST_INPUT_CLASS, toDisplayString } from "./data-table-cell-input";
@@ -148,16 +147,7 @@ export function DataTableEditableCell<TData>({
                 className={GHOST_INPUT_CLASS}
                 labelOverride={meta?.resolveLabel?.(cell.row.original)}
             />
-            {error && (
-                <motion.p
-                    initial={{ opacity: 0, x: 0 }}
-                    animate={{ opacity: 1, x: [0, -4, 4, -4, 0] }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                    className="text-destructive absolute -bottom-5 left-0 text-xs"
-                >
-                    {error}
-                </motion.p>
-            )}
+            {error && <p className="text-destructive absolute -bottom-5 left-0 text-xs">{error}</p>}
         </div>
     );
 }
