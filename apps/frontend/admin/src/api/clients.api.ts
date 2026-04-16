@@ -12,9 +12,126 @@ import { i18n } from "@/i18n/config";
 
 import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
 
+interface ClientsListCache {
+    count: number;
+    users: AdminUserItem[];
+}
+
 interface ClientsInfiniteCache {
-    pages: { count: number; users: AdminUserItem[] }[];
+    pages: ClientsListCache[];
     pageParams: number[];
+}
+
+type ClientsCache = ClientsInfiniteCache | ClientsListCache;
+
+function isInfiniteCache(cache: ClientsCache | undefined): cache is ClientsInfiniteCache {
+    return !!cache && "pages" in cache && Array.isArray(cache.pages);
+}
+
+function isListCache(cache: ClientsCache | undefined): cache is ClientsListCache {
+    return !!cache && "users" in cache && Array.isArray(cache.users);
+}
+
+export function addClientToListCache<T extends ClientsCache | undefined>(
+    old: T,
+    newClient: AdminUserItem,
+): T {
+    if (!old) return old;
+    if (isInfiniteCache(old)) {
+        if (!old.pages.length) return old;
+        const lastIdx = old.pages.length - 1;
+        return {
+            ...old,
+            pages: old.pages.map((page, index) =>
+                index === lastIdx
+                    ? { count: page.count + 1, users: [...page.users, newClient] }
+                    : page,
+            ),
+        } as T;
+    }
+    if (isListCache(old)) {
+        return { count: old.count + 1, users: [...old.users, newClient] } as T;
+    }
+    return old;
+}
+
+export function updateClientInListCache<T extends ClientsCache | undefined>(
+    old: T,
+    updatedClient: AdminUserItem,
+): T {
+    if (!old) return old;
+    if (isInfiniteCache(old)) {
+        if (!old.pages.length) return old;
+        return {
+            ...old,
+            pages: old.pages.map((page) => ({
+                ...page,
+                users: page.users.map((user) =>
+                    user.id === updatedClient.id ? updatedClient : user,
+                ),
+            })),
+        } as T;
+    }
+    if (isListCache(old)) {
+        return {
+            ...old,
+            users: old.users.map((user) => (user.id === updatedClient.id ? updatedClient : user)),
+        } as T;
+    }
+    return old;
+}
+
+export function removeClientFromListCache<T extends ClientsCache | undefined>(
+    old: T,
+    deletedId: number,
+): T {
+    if (!old) return old;
+    if (isInfiniteCache(old)) {
+        if (!old.pages.length) return old;
+        return {
+            ...old,
+            pages: old.pages.map((page) => {
+                const filtered = page.users.filter((user) => user.id !== deletedId);
+                const removed = page.users.length - filtered.length;
+                return {
+                    count: Math.max(0, page.count - removed),
+                    users: filtered,
+                };
+            }),
+        } as T;
+    }
+    if (isListCache(old)) {
+        const filtered = old.users.filter((user) => user.id !== deletedId);
+        const removed = old.users.length - filtered.length;
+        return {
+            count: Math.max(0, old.count - removed),
+            users: filtered,
+        } as T;
+    }
+    return old;
+}
+
+export function restoreClientInListCache<T extends ClientsCache | undefined>(
+    old: T,
+    restoredClient: AdminUserItem,
+): T {
+    if (!old) return old;
+    const apply = (user: AdminUserItem) =>
+        user.id === restoredClient.id ? { ...user, ...restoredClient, deletedAt: null } : user;
+    if (isInfiniteCache(old)) {
+        if (!old.pages.length) return old;
+        return {
+            ...old,
+            pages: old.pages.map((page) => ({
+                ...page,
+                users: page.users.map(apply),
+            })),
+        } as T;
+    }
+    if (isListCache(old)) {
+        return { ...old, users: old.users.map(apply) } as T;
+    }
+    return old;
 }
 
 export const clientKeys = {
@@ -176,23 +293,8 @@ export const useCreateClient = () => {
         mutationKey: ["clients", "create"],
         mutationFn: createClientFn,
         onSuccess: (newClient) => {
-            queryClient.setQueriesData<ClientsInfiniteCache>(
-                { queryKey: clientKeys.all },
-                (old) => {
-                    if (!old?.pages?.length) return old;
-                    const lastIdx = old.pages.length - 1;
-                    return {
-                        ...old,
-                        pages: old.pages.map((page, index) =>
-                            index === lastIdx
-                                ? {
-                                      count: page.count + 1,
-                                      users: [...page.users, newClient],
-                                  }
-                                : page,
-                        ),
-                    };
-                },
+            queryClient.setQueriesData<ClientsCache>({ queryKey: clientKeys.lists() }, (old) =>
+                addClientToListCache(old, newClient),
             );
             queryClient.setQueryData(clientKeys.detail(newClient.id), newClient);
         },
@@ -209,20 +311,8 @@ export const useUpdateClient = () => {
         mutationKey: ["clients", "update"],
         mutationFn: updateClientFn,
         onSuccess: (updatedClient) => {
-            queryClient.setQueriesData<ClientsInfiniteCache>(
-                { queryKey: clientKeys.all },
-                (old) => {
-                    if (!old?.pages?.length) return old;
-                    return {
-                        ...old,
-                        pages: old.pages.map((page) => ({
-                            ...page,
-                            users: page.users.map((u) =>
-                                u.id === updatedClient.id ? updatedClient : u,
-                            ),
-                        })),
-                    };
-                },
+            queryClient.setQueriesData<ClientsCache>({ queryKey: clientKeys.lists() }, (old) =>
+                updateClientInListCache(old, updatedClient),
             );
             queryClient.setQueryData(clientKeys.detail(updatedClient.id), updatedClient);
         },
@@ -241,24 +331,8 @@ export const useDeleteClient = () => {
         onSuccess: (deletedClient) => {
             const deletedId = deletedClient?.id;
             if (deletedId == null) return;
-            queryClient.setQueriesData<ClientsInfiniteCache>(
-                { queryKey: clientKeys.all },
-                (old) => {
-                    if (!old?.pages?.length) return old;
-                    return {
-                        ...old,
-                        pages: old.pages.map((page) => {
-                            const filtered = page.users.filter((u) => u.id !== deletedId);
-                            return {
-                                count: Math.max(
-                                    0,
-                                    page.count - (page.users.length - filtered.length),
-                                ),
-                                users: filtered,
-                            };
-                        }),
-                    };
-                },
+            queryClient.setQueriesData<ClientsCache>({ queryKey: clientKeys.lists() }, (old) =>
+                removeClientFromListCache(old, deletedId),
             );
             queryClient.removeQueries({ queryKey: clientKeys.detail(deletedId) });
         },
@@ -275,22 +349,8 @@ export const useRestoreClient = () => {
         mutationKey: ["clients", "restore"],
         mutationFn: restoreClientFn,
         onSuccess: (restoredClient) => {
-            queryClient.setQueriesData<ClientsInfiniteCache>(
-                { queryKey: clientKeys.all },
-                (old) => {
-                    if (!old?.pages?.length) return old;
-                    return {
-                        ...old,
-                        pages: old.pages.map((page) => ({
-                            ...page,
-                            users: page.users.map((u) =>
-                                u.id === restoredClient.id
-                                    ? { ...u, ...restoredClient, deletedAt: null }
-                                    : u,
-                            ),
-                        })),
-                    };
-                },
+            queryClient.setQueriesData<ClientsCache>({ queryKey: clientKeys.lists() }, (old) =>
+                restoreClientInListCache(old, restoredClient),
             );
             queryClient.setQueryData(clientKeys.detail(restoredClient.id), restoredClient);
         },
