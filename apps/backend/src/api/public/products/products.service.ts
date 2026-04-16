@@ -29,7 +29,7 @@ export abstract class PublicProductsService {
             };
 
             if (searchQuery) {
-                whereClause.name = { contains: searchQuery };
+                whereClause.name = { contains: searchQuery, mode: "insensitive" };
             }
 
             // Hierarchical category filter - include all descendants

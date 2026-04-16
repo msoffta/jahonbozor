@@ -54,7 +54,7 @@ export abstract class CategoriesService {
             const whereClause: Prisma.CategoryWhereInput = { deletedAt: null };
 
             if (searchQuery) {
-                whereClause.name = { contains: searchQuery };
+                whereClause.name = { contains: searchQuery, mode: "insensitive" };
             }
 
             // parentId filter: undefined = all, null = root only, number = specific parent

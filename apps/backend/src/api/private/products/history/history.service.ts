@@ -40,7 +40,7 @@ export abstract class HistoryService {
                     },
                 }),
                 ...(searchQuery && {
-                    product: { name: { contains: searchQuery } },
+                    product: { name: { contains: searchQuery, mode: "insensitive" as const } },
                 }),
             };
 
