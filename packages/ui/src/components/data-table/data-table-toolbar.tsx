@@ -76,7 +76,7 @@ export function DataTableToolbar<TData>({
                                     column.setFilterValue(value === "__all__" ? undefined : value)
                                 }
                             >
-                                <SelectTrigger className="h-9 min-w-[130px]">
+                                <SelectTrigger className="h-9 min-w-32.5">
                                     <SelectValue placeholder={label} />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -140,7 +140,7 @@ export function DataTableToolbar<TData>({
                             value={(column.getFilterValue() as string) ?? ""}
                             onChange={(e) => column.setFilterValue(e.target.value || undefined)}
                             placeholder={`${translations?.filter ?? "Filter"} ${label.toLowerCase()}...`}
-                            className="h-9 max-w-[150px]"
+                            className="h-9 max-w-37.5"
                         />
                     </div>
                 );

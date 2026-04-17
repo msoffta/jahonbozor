@@ -9,6 +9,7 @@ import { Checkbox } from "../ui/checkbox";
 import { TableBody, TableCell, TableRow } from "../ui/table";
 import { DataTableCellInput, GHOST_INPUT_CLASS, toDisplayString } from "./data-table-cell-input";
 import { DataTableEditableCell } from "./data-table-editable-cell";
+import { DataTableScrollingContext, useIsScrolling } from "./use-is-scrolling";
 import { useMultiRowState } from "./use-multi-row-state";
 
 import type { NewRowState } from "./types";
@@ -366,7 +367,7 @@ export function DataTableBody<TData>({
         return () => {
             container.removeEventListener("datatable:request-append-row", handleRequestAppendRow);
         };
-    }, [enableMultipleNewRows, scrollContainerRef, multiRow.appendRow]);
+    }, [enableMultipleNewRows, scrollContainerRef, multiRow]);
 
     const rows = table.getRowModel().rows;
     const parentRef = React.useRef<HTMLTableSectionElement>(null);
@@ -460,6 +461,10 @@ export function DataTableBody<TData>({
         overscan: VIRTUALIZER_OVERSCAN,
         enabled: !!isVirtualActive,
     });
+
+    // Track scroll-in-progress so editable cells can swap heavy Radix
+    // inputs for lightweight display divs while the user is scrolling.
+    const isScrolling = useIsScrolling(scrollElementProp ?? scrollContainerRef?.current ?? null);
 
     // ── Lazy loading (virtual mode): trigger when near end ──────
     const range = virtualizer.range;
@@ -1126,16 +1131,18 @@ export function DataTableBody<TData>({
     // ── Empty state ─────────────────────────────────────────────
     if (rows.length === 0 && newRowMode === "none") {
         return (
-            <TableBody className={"select-none"}>
-                <TableRow>
-                    <TableCell
-                        colSpan={columns.length + (enableRowSelection ? 1 : 0)}
-                        className="h-24 text-center"
-                    >
-                        {translations?.noResults ?? "No results."}
-                    </TableCell>
-                </TableRow>
-            </TableBody>
+            <DataTableScrollingContext value={isScrolling}>
+                <TableBody className={"select-none"}>
+                    <TableRow>
+                        <TableCell
+                            colSpan={columns.length + (enableRowSelection ? 1 : 0)}
+                            className="h-24 text-center"
+                        >
+                            {translations?.noResults ?? "No results."}
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </DataTableScrollingContext>
         );
     }
 
@@ -1148,58 +1155,62 @@ export function DataTableBody<TData>({
             virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
 
         return (
-            <TableBody ref={parentRef} className={"select-none"}>
-                {paddingTop > 0 && (
-                    <tr>
-                        <td style={{ height: paddingTop, padding: 0 }} />
-                    </tr>
-                )}
-                {virtualRows.map((virtualRow) => {
-                    const item = unifiedRows[virtualRow.index];
-                    if (!item) return null;
-                    if (item.kind === "data") {
-                        const rowOriginalId = (item.row.original as { id?: number }).id;
-                        const isLoading =
-                            loadingRowIds != null &&
-                            rowOriginalId != null &&
-                            loadingRowIds.has(rowOriginalId);
-                        return (
-                            <MemoizedDataRow
-                                key={item.row.id}
-                                row={item.row as Row<unknown>}
-                                rowIndex={item.rowIndex}
-                                isSelected={item.row.getIsSelected()}
-                                isLoading={isLoading}
-                                className={cn(onRowClick ? "cursor-pointer" : "")}
-                                onRowClick={stableOnRowClick}
-                                renderCells={stableRenderCells}
-                            />
-                        );
-                    }
-                    return renderUnifiedRow(item);
-                })}
-                {paddingBottom > 0 && (
-                    <tr>
-                        <td style={{ height: paddingBottom, padding: 0 }} />
-                    </tr>
-                )}
-            </TableBody>
+            <DataTableScrollingContext value={isScrolling}>
+                <TableBody ref={parentRef} className={"select-none"}>
+                    {paddingTop > 0 && (
+                        <tr>
+                            <td style={{ height: paddingTop, padding: 0 }} />
+                        </tr>
+                    )}
+                    {virtualRows.map((virtualRow) => {
+                        const item = unifiedRows[virtualRow.index];
+                        if (!item) return null;
+                        if (item.kind === "data") {
+                            const rowOriginalId = (item.row.original as { id?: number }).id;
+                            const isLoading =
+                                loadingRowIds != null &&
+                                rowOriginalId != null &&
+                                loadingRowIds.has(rowOriginalId);
+                            return (
+                                <MemoizedDataRow
+                                    key={item.row.id}
+                                    row={item.row as Row<unknown>}
+                                    rowIndex={item.rowIndex}
+                                    isSelected={item.row.getIsSelected()}
+                                    isLoading={isLoading}
+                                    className={cn(onRowClick ? "cursor-pointer" : "")}
+                                    onRowClick={stableOnRowClick}
+                                    renderCells={stableRenderCells}
+                                />
+                            );
+                        }
+                        return renderUnifiedRow(item);
+                    })}
+                    {paddingBottom > 0 && (
+                        <tr>
+                            <td style={{ height: paddingBottom, padding: 0 }} />
+                        </tr>
+                    )}
+                </TableBody>
+            </DataTableScrollingContext>
         );
     }
 
     // ── Non-virtual mode ────────────────────────────────────────
     return (
-        <TableBody className={"select-none"}>
-            {unifiedRows.map((item) => renderUnifiedRow(item))}
-            {enableMultipleNewRows && !isVirtualActive && (
-                <tr
-                    ref={sentinelRef}
-                    style={{ height: 1, visibility: "hidden" }}
-                    aria-hidden="true"
-                >
-                    <td />
-                </tr>
-            )}
-        </TableBody>
+        <DataTableScrollingContext value={isScrolling}>
+            <TableBody className={"select-none"}>
+                {unifiedRows.map((item) => renderUnifiedRow(item))}
+                {enableMultipleNewRows && !isVirtualActive && (
+                    <tr
+                        ref={sentinelRef}
+                        style={{ height: 1, visibility: "hidden" }}
+                        aria-hidden="true"
+                    >
+                        <td />
+                    </tr>
+                )}
+            </TableBody>
+        </DataTableScrollingContext>
     );
 }

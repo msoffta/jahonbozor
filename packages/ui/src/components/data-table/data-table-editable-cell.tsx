@@ -4,6 +4,7 @@ import { flexRender } from "@tanstack/react-table";
 
 import { cn } from "../../lib/utils";
 import { DataTableCellInput, GHOST_INPUT_CLASS, toDisplayString } from "./data-table-cell-input";
+import { DataTableScrollingContext } from "./use-is-scrolling";
 
 import type { CellContext } from "@tanstack/react-table";
 
@@ -20,6 +21,16 @@ export function DataTableEditableCell<TData>({
 }: DataTableEditableCellProps<TData>) {
     const meta = cell.column.columnDef.meta;
     const isEditable = enableEditing && meta?.editable;
+    const isScrolling = React.use(DataTableScrollingContext);
+
+    // If the cell mounts WHILE scrolling, defer the heavy input mount until
+    // scrolling idles — this keeps virtualizer remounts cheap (display div
+    // only). Cells that mount when not scrolling stay as full inputs and are
+    // NOT swapped when a later scroll starts, so no unmount-storm mid-scroll.
+    const [deferInput, setDeferInput] = React.useState(() => isScrolling);
+    React.useEffect(() => {
+        if (deferInput && !isScrolling) setDeferInput(false);
+    }, [deferInput, isScrolling]);
 
     const rawValue = cell.getValue();
     const editValue = meta?.editValueAccessor
@@ -98,6 +109,29 @@ export function DataTableEditableCell<TData>({
                 {cell.column.columnDef.cell
                     ? flexRender(cell.column.columnDef.cell, cell)
                     : toDisplayString(rawValue)}
+            </div>
+        );
+    }
+
+    // Lightweight display only while the cell was brought in by the
+    // virtualizer during an active scroll. Already-mounted cells don't swap
+    // (no mid-scroll unmount storm); new cells upgrade to the full input on
+    // the next scroll-idle tick via the effect above.
+    if (deferInput) {
+        const displayNode = cell.column.columnDef.cell
+            ? flexRender(cell.column.columnDef.cell, cell)
+            : toDisplayString(value);
+        const labelOverride = meta?.resolveLabel?.(cell.row.original);
+        return (
+            <div
+                className={cn(
+                    "flex h-6 items-center truncate text-sm",
+                    meta?.align === "right" && "justify-end text-right",
+                    meta?.align === "center" && "justify-center text-center",
+                    meta?.className,
+                )}
+            >
+                {labelOverride ?? displayNode}
             </div>
         );
     }
