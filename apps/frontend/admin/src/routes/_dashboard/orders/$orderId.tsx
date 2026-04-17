@@ -19,7 +19,7 @@ import {
 } from "@jahonbozor/ui";
 
 import { orderDetailQueryOptions, useDeleteOrder, useUpdateOrder } from "@/api/orders.api";
-import { productsListQueryOptions, searchProductsFn } from "@/api/products.api";
+import { productsListQueryOptions, searchProductsDetailFn } from "@/api/products.api";
 import { getOrderItemColumns } from "@/components/orders/order-items-columns";
 import { OrderReceiptContainer } from "@/components/orders/order-receipt";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
@@ -106,15 +106,32 @@ function OrderDetailPage() {
         [items, persistItems],
     );
 
+    const asyncProductSearch = useMemo(() => {
+        const cache = new Map<number, (typeof products)[number]>();
+        return {
+            search: async (query: string) => {
+                const fullProducts = await searchProductsDetailFn(query);
+                for (const product of fullProducts) {
+                    cache.set(product.id, product);
+                }
+                return fullProducts.map((product) => ({
+                    label: product.name,
+                    value: String(product.id),
+                }));
+            },
+            getProduct: (id: number) => cache.get(id),
+        };
+    }, []);
+
     const columns = useMemo(
         () =>
             canUpdate
                 ? getOrderItemColumns(t, products, {
                       onDelete: handleDeleteItem,
-                      onSearchProducts: searchProductsFn,
+                      onSearchProducts: asyncProductSearch.search,
                   })
                 : getOrderItemColumns(t, products),
-        [t, products, canUpdate, handleDeleteItem],
+        [t, products, canUpdate, handleDeleteItem, asyncProductSearch],
     );
 
     const isMobile = useIsMobile();
@@ -134,7 +151,9 @@ function OrderDetailPage() {
 
             if (values.product) {
                 const productId = Number(values.product);
-                const product = products.find((candidate) => candidate.id === productId);
+                const product =
+                    products.find((candidate) => candidate.id === productId) ??
+                    asyncProductSearch.getProduct(productId);
                 const price = userPrice ?? product?.price ?? 0;
                 const remaining = product?.remaining ?? 0;
                 const costprice = product?.costprice ?? 0;
@@ -154,7 +173,7 @@ function OrderDetailPage() {
             const newTotal = price * currentQuantity;
             return { ...values, quantity: currentQuantity, total: newTotal };
         },
-        [products],
+        [products, asyncProductSearch],
     );
 
     const handleNewRowSave = useCallback(
@@ -164,7 +183,9 @@ function OrderDetailPage() {
             const productId = data.product ? Number(data.product) : null;
             const product =
                 productId != null
-                    ? (products.find((candidate) => candidate.id === productId) ?? null)
+                    ? (products.find((candidate) => candidate.id === productId) ??
+                      asyncProductSearch.getProduct(productId) ??
+                      null)
                     : null;
 
             const userPrice =
@@ -173,7 +194,7 @@ function OrderDetailPage() {
                     : (product?.price ?? 0);
             const quantity = Number(data.quantity) || 0;
 
-            if (productId == null || quantity <= 0) return undefined;
+            if (productId == null) return undefined;
 
             const baseItems = items.map((item) => ({
                 productId: item.productId,
@@ -195,7 +216,7 @@ function OrderDetailPage() {
             });
             return updated.items[updated.items.length - 1]?.id;
         },
-        [items, order, products, updateOrder],
+        [items, order, products, asyncProductSearch, updateOrder],
     );
 
     const handleCellEdit = useCallback(
@@ -211,7 +232,9 @@ function OrderDetailPage() {
 
             if (columnId === "product") {
                 const productId = Number(value);
-                const product = products.find((p) => p.id === productId);
+                const product =
+                    products.find((p) => p.id === productId) ??
+                    asyncProductSearch.getProduct(productId);
                 if (!product) return;
                 nextItem = { ...nextItem, productId, price: product.price };
             } else if (columnId === "quantity") {
@@ -232,7 +255,7 @@ function OrderDetailPage() {
             const nextItems = items.map((item, i) => (i === rowIndex ? nextItem : item));
             persistItems(nextItems);
         },
-        [items, persistItems, products],
+        [items, persistItems, products, asyncProductSearch],
     );
 
     const totalSum = items.reduce((sum, item) => sum + item.price * item.quantity, 0);

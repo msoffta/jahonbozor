@@ -101,10 +101,8 @@ export const productDetailQueryOptions = (id: number) =>
         enabled: id > 0,
     });
 
-/** Server-side product search for combobox (returns {label, value} pairs) */
-export const searchProductsFn = async (
-    query: string,
-): Promise<{ label: string; value: string }[]> => {
+/** Server-side product search for combobox (returns full product objects for caching) */
+export const searchProductsDetailFn = async (query: string): Promise<AdminProductItem[]> => {
     const { data, error } = await api.api.private.products.get({
         query: {
             searchQuery: query,
@@ -117,7 +115,15 @@ export const searchProductsFn = async (
     });
     if (error || !data.success) return [];
     const result = data.data as { count: number; products: AdminProductItem[] };
-    return result.products.map((p) => ({ label: p.name, value: String(p.id) }));
+    return result.products;
+};
+
+/** Server-side product search for combobox (returns {label, value} pairs) */
+export const searchProductsFn = async (
+    query: string,
+): Promise<{ label: string; value: string }[]> => {
+    const products = await searchProductsDetailFn(query);
+    return products.map((p) => ({ label: p.name, value: String(p.id) }));
 };
 
 // --- Mutation functions (exported for testing) ---

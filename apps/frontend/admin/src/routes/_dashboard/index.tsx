@@ -27,7 +27,7 @@ import {
     useRestoreOrder,
     useUpdateOrder,
 } from "@/api/orders.api";
-import { productsListQueryOptions, searchProductsFn } from "@/api/products.api";
+import { productsListQueryOptions, searchProductsDetailFn } from "@/api/products.api";
 import { OrderReceiptContainer } from "@/components/orders/order-receipt";
 import { getOrderColumns } from "@/components/orders/orders-columns";
 import { ConfirmDrawer } from "@/components/shared/confirm-drawer";
@@ -150,8 +150,28 @@ function OrdersPage() {
         deleteOrder.variables,
     ]);
 
-    const products = productsData?.products ?? [];
-    const users = clientsData?.users ?? [];
+    const products = useMemo(() => productsData?.products ?? [], [productsData]);
+    const users = useMemo(() => clientsData?.users ?? [], [clientsData]);
+
+    // Cache for products fetched via async search — lets handlers look up price/remaining/costprice
+    // for products that aren't in the initial limit-50 list.
+    // Map lives inside the useMemo closure to avoid hook-immutability lint rules.
+    const asyncProductSearch = useMemo(() => {
+        const cache = new Map<number, (typeof products)[number]>();
+        return {
+            search: async (query: string) => {
+                const fullProducts = await searchProductsDetailFn(query);
+                for (const product of fullProducts) {
+                    cache.set(product.id, product);
+                }
+                return fullProducts.map((product) => ({
+                    label: product.name,
+                    value: String(product.id),
+                }));
+            },
+            getProduct: (id: number) => cache.get(id),
+        };
+    }, []);
 
     const actions = useMemo(
         () => ({
@@ -159,10 +179,10 @@ function OrdersPage() {
                 setDeleteTargetId(id);
                 setDeleteConfirmOpen(true);
             },
-            onSearchProducts: searchProductsFn,
+            onSearchProducts: asyncProductSearch.search,
             onSearchClients: searchClientsFn,
         }),
-        [],
+        [asyncProductSearch],
     );
 
     const columns = useMemo(() => {
@@ -207,7 +227,9 @@ function OrdersPage() {
                 const item = order.items[0];
                 if (!item) return;
                 const newProductId = Number(value);
-                const newProduct = products.find((p) => p.id === newProductId);
+                const newProduct =
+                    products.find((p) => p.id === newProductId) ??
+                    asyncProductSearch.getProduct(newProductId);
                 updateOrder.mutate({
                     id: order.id,
                     items: order.items.map((it, i) =>
@@ -257,7 +279,7 @@ function OrdersPage() {
 
             updateOrder.mutate({ id: order.id, ...body });
         },
-        [orders, products, updateOrder, navigate, t],
+        [orders, products, asyncProductSearch, updateOrder, navigate, t],
     );
 
     const handleNewRowSave = useCallback(
@@ -301,7 +323,10 @@ function OrdersPage() {
 
             const productId = data.product ? Number(data.product) : null;
             const product =
-                productId != null ? products.find((p) => p.id === productId) : undefined;
+                productId != null
+                    ? (products.find((p) => p.id === productId) ??
+                      asyncProductSearch.getProduct(productId))
+                    : undefined;
             const price =
                 data.price != null && data.price !== ""
                     ? Number(data.price)
@@ -321,17 +346,21 @@ function OrdersPage() {
 
             return result?.id;
         },
-        [createOrder, updateOrder, navigate, products, orders, t],
+        [createOrder, updateOrder, navigate, products, asyncProductSearch, orders, t],
     );
 
     const handleNewRowChange = useCallback(
         (values: Record<string, unknown>, _rowId: string) => {
             const currentQuantity = Number(values.quantity) || 0;
+            const userPriceProvided = values.price != null && values.price !== "";
+            const userPrice = userPriceProvided ? Number(values.price) : null;
 
             if (values.product) {
                 const productId = Number(values.product);
-                const product = products.find((p) => p.id === productId);
-                const price = product?.price ?? 0;
+                const product =
+                    products.find((p) => p.id === productId) ??
+                    asyncProductSearch.getProduct(productId);
+                const price = userPrice ?? product?.price ?? 0;
                 const remaining = product?.remaining ?? 0;
                 const costprice = product?.costprice ?? 0;
                 const newTotal = price * currentQuantity;
@@ -346,11 +375,11 @@ function OrdersPage() {
                 };
             }
 
-            const price = Number(values.price) || 0;
+            const price = userPrice ?? 0;
             const newTotal = price * currentQuantity;
             return { ...values, quantity: currentQuantity, total: newTotal };
         },
-        [products],
+        [products, asyncProductSearch],
     );
 
     const isLoading = isOrdersLoading || isProductsLoading || isClientsLoading || !isReady;
