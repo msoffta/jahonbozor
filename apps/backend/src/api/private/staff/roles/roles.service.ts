@@ -28,7 +28,7 @@ export abstract class RolesService {
             const whereClause: Prisma.RoleWhereInput = { deletedAt: null };
 
             if (searchQuery) {
-                whereClause.name = { contains: searchQuery };
+                whereClause.name = { contains: searchQuery, mode: "insensitive" };
             }
 
             const [count, roles] = await prisma.$transaction([

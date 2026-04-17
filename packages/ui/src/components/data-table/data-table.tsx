@@ -14,19 +14,17 @@ import {
     type VisibilityState,
 } from "@tanstack/react-table";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Table, TableHeader, TableRow } from "../ui/table";
-import { DataTableBody } from "./data-table-body";
+import { DataTableBody, type DataTableBodyApi } from "./data-table-body";
 import { DataTableColumnHeader } from "./data-table-header";
 import { DataTableInfiniteStatus } from "./data-table-infinite-status";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { useCellNavigation } from "./use-cell-navigation";
-import { useMultiRowState } from "./use-multi-row-state";
 
 import type { DataTableProps, DataTableRef } from "./types";
 
@@ -136,73 +134,20 @@ export function DataTable<TData>({
     const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
-    // ── Multi-row state management ─────────────────────────────
-    const multiRow = useMultiRowState({
-        enabled: enableMultipleNewRows,
-        initialCount: multiRowCount,
-        increment: multiRowIncrement,
-        maxCount: multiRowMaxCount,
-        defaultValues: multiRowDefaultValues as
-            | Record<string, unknown>
-            | ((index: number) => Record<string, unknown>)
-            | undefined,
-        validate: multiRowValidate,
-        onSave: onMultiRowSave,
-        onChange: onMultiRowChange,
-    });
+    // ── Multi-row state lives inside DataTableBody (see bodyApiRef wiring
+    //    below). Keeping rowStates out of this component prevents a
+    //    keystroke in a pending row from rerendering Toolbar, Headers, and
+    //    filter Selects. ──
+    const bodyApiRef = React.useRef<DataTableBodyApi | null>(null);
 
     React.useImperativeHandle(
         ref,
         () => ({
-            flushPendingRows: multiRow.flushPendingRows,
-            appendRow: multiRow.appendRow,
+            flushPendingRows: () => bodyApiRef.current?.flushPendingRows() ?? Promise.resolve(),
+            appendRow: () => bodyApiRef.current?.appendRow() ?? null,
         }),
-        [multiRow.flushPendingRows, multiRow.appendRow],
+        [],
     );
-
-    // ── Auto-append on Enter in last enter-cell ─────────────────────
-    // use-cell-navigation dispatches "datatable:request-append-row" when
-    // the user presses Enter in the last enter-flow cell. We append a new
-    // pending row and focus its first enter-flow input on the next frame.
-    React.useEffect(() => {
-        if (!enableMultipleNewRows) return;
-        const container = containerRef.current;
-        if (!container) return;
-
-        function focusFirstEnterCellInRow(newRowId: string) {
-            const cont = containerRef.current;
-            if (!cont) return;
-            const tr = cont.querySelector<HTMLElement>(`tr[data-row-id="${newRowId}"]`);
-            if (!tr) return;
-            const cells = Array.from(
-                tr.querySelectorAll<HTMLTableCellElement>("td[data-row-index][data-column-id]"),
-            );
-            for (const td of cells) {
-                if (td.hasAttribute("data-skip-on-enter")) continue;
-                const input = td.querySelector<HTMLInputElement>('input, [role="combobox"]');
-                if (input) {
-                    input.focus();
-                    input.select?.();
-                    return;
-                }
-            }
-        }
-
-        function handleRequestAppendRow() {
-            const newRowId = multiRow.appendRow();
-            if (!newRowId) return;
-            requestAnimationFrame(() => {
-                // Two rAFs: one to let React commit the new row, another to
-                // let the DOM mount before focusing.
-                requestAnimationFrame(() => focusFirstEnterCellInRow(newRowId));
-            });
-        }
-
-        container.addEventListener("datatable:request-append-row", handleRequestAppendRow);
-        return () => {
-            container.removeEventListener("datatable:request-append-row", handleRequestAppendRow);
-        };
-    }, [enableMultipleNewRows, multiRow.appendRow]);
 
     // ── Spreadsheet keyboard navigation ──────────────────────────
     useCellNavigation({
@@ -507,15 +452,15 @@ export function DataTable<TData>({
                                     onRowClick={onRowClick}
                                     translations={translations}
                                     enableMultipleNewRows={enableMultipleNewRows}
-                                    multiRowStates={multiRow.rowStates}
+                                    multiRowCount={multiRowCount}
+                                    multiRowIncrement={multiRowIncrement}
+                                    multiRowMaxCount={multiRowMaxCount}
                                     multiRowPosition={multiRowPosition}
-                                    onMultiRowChange={multiRow.handleChange}
-                                    onMultiRowSave={multiRow.handleSave}
-                                    onMultiRowFocus={multiRow.handleFocus}
-                                    onMultiRowBlur={multiRow.handleBlur}
-                                    onMultiRowFocusNext={multiRow.handleFocusNext}
-                                    onMultiRowSaveAndLoop={multiRow.handleSaveAndLoop}
-                                    onNeedMoreRows={multiRow.handleNeedMoreRows}
+                                    multiRowDefaultValues={multiRowDefaultValues}
+                                    multiRowValidate={multiRowValidate}
+                                    onMultiRowSave={onMultiRowSave}
+                                    onMultiRowChange={onMultiRowChange}
+                                    bodyApiRef={bodyApiRef}
                                     onDragSumChange={setDragSumInfo}
                                     onDragSelectionChange={onDragSelectionChange}
                                     dragSumFilter={dragSumFilter}
@@ -537,37 +482,25 @@ export function DataTable<TData>({
                     })()}
                 </div>
 
-                <AnimatePresence>
-                    {showScrollBtn && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 500,
-                                damping: 30,
-                            }}
-                            className="absolute right-3 bottom-3 z-10"
+                {showScrollBtn && (
+                    <div className="absolute right-3 bottom-3 z-10">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="bg-background/90 h-8 w-8 rounded-full shadow-md backdrop-blur-sm"
+                            onClick={scrollToEdge}
+                            disabled={isScrollingToEnd}
                         >
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="bg-background/90 h-8 w-8 rounded-full shadow-md backdrop-blur-sm"
-                                onClick={scrollToEdge}
-                                disabled={isScrollingToEnd}
-                            >
-                                {isScrollingToEnd ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : isNearBottom ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                )}
-                            </Button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                            {isScrollingToEnd ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : isNearBottom ? (
+                                <ChevronUp className="h-4 w-4" />
+                            ) : (
+                                <ChevronDown className="h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {(enableInfiniteScroll || dragSumInfo) && (

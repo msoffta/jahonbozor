@@ -57,7 +57,7 @@ export abstract class BroadcastsService {
             }
 
             if (searchQuery) {
-                whereClause.name = { contains: searchQuery };
+                whereClause.name = { contains: searchQuery, mode: "insensitive" };
             }
 
             if (status) {

@@ -1,7 +1,6 @@
 import * as React from "react";
 
 import { Check, Copy, Loader2 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 
 import { Button } from "../ui/button";
 
@@ -66,66 +65,51 @@ export function DataTableInfiniteStatus({
             <div className="flex flex-1 items-center gap-4">
                 {showingText && <div className="text-muted-foreground text-sm">{showingText}</div>}
 
-                <AnimatePresence>
-                    {dragSumInfo && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, x: -10 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, x: -10 }}
-                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            className="flex items-center gap-2"
-                        >
-                            <div className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                {dragSumInfo && (
+                    <div className="flex items-center gap-2">
+                        <div className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                            <span className="text-muted-foreground">
+                                {translations?.sumLabel ?? "Sum"} ({dragSumInfo.count}):
+                            </span>
+                            <span className="text-foreground font-semibold">
+                                {dragSumInfo.sum.toLocaleString()}
+                            </span>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hover:bg-muted ml-1 h-6 w-6"
+                                onClick={() => void handleCopySum()}
+                            >
+                                {copied ? (
+                                    <Check className="text-success h-3.5 w-3.5" />
+                                ) : (
+                                    <Copy className="text-muted-foreground h-3.5 w-3.5" />
+                                )}
+                            </Button>
+                        </div>
+                        {dragSumInfo.excludedSum != null && dragSumInfo.excludedSum > 0 && (
+                            <div className="border-destructive/30 bg-destructive/5 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
                                 <span className="text-muted-foreground">
-                                    {translations?.sumLabel ?? "Sum"} ({dragSumInfo.count}):
+                                    {translations?.excludedSumLabel ?? "Debt"} (
+                                    {dragSumInfo.excludedCount}):
                                 </span>
-                                <span className="text-foreground font-semibold">
-                                    {dragSumInfo.sum.toLocaleString()}
+                                <span className="text-destructive font-semibold">
+                                    {dragSumInfo.excludedSum.toLocaleString()}
                                 </span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="hover:bg-muted ml-1 h-6 w-6"
-                                    onClick={() => void handleCopySum()}
-                                >
-                                    {copied ? (
-                                        <Check className="text-success h-3.5 w-3.5" />
-                                    ) : (
-                                        <Copy className="text-muted-foreground h-3.5 w-3.5" />
-                                    )}
-                                </Button>
                             </div>
-                            {dragSumInfo.excludedSum != null && dragSumInfo.excludedSum > 0 && (
-                                <div className="border-destructive/30 bg-destructive/5 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
-                                    <span className="text-muted-foreground">
-                                        {translations?.excludedSumLabel ?? "Debt"} (
-                                        {dragSumInfo.excludedCount}):
-                                    </span>
-                                    <span className="text-destructive font-semibold">
-                                        {dragSumInfo.excludedSum.toLocaleString()}
-                                    </span>
-                                </div>
-                            )}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        )}
+                    </div>
+                )}
             </div>
 
-            <AnimatePresence>
-                {isLoading && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="flex items-center gap-2"
-                    >
-                        <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-                        <span className="text-muted-foreground text-sm">
-                            {translations?.loadingMore ?? "Loading..."}
-                        </span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {isLoading && (
+                <div className="flex items-center gap-2">
+                    <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                    <span className="text-muted-foreground text-sm">
+                        {translations?.loadingMore ?? "Loading..."}
+                    </span>
+                </div>
+            )}
         </div>
     );
 }

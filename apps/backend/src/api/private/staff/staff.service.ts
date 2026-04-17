@@ -45,8 +45,18 @@ export abstract class StaffService {
                     searchQuery
                         ? {
                               OR: [
-                                  { fullname: { contains: searchQuery } },
-                                  { username: { contains: searchQuery } },
+                                  {
+                                      fullname: {
+                                          contains: searchQuery,
+                                          mode: "insensitive" as const,
+                                      },
+                                  },
+                                  {
+                                      username: {
+                                          contains: searchQuery,
+                                          mode: "insensitive" as const,
+                                      },
+                                  },
                               ],
                           }
                         : {},

@@ -3,16 +3,24 @@ import * as React from "react";
 import { flexRender } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Loader2 } from "lucide-react";
-import { motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
 import { Checkbox } from "../ui/checkbox";
 import { TableBody, TableCell, TableRow } from "../ui/table";
 import { DataTableCellInput, GHOST_INPUT_CLASS, toDisplayString } from "./data-table-cell-input";
 import { DataTableEditableCell } from "./data-table-editable-cell";
+import { DataTableScrollingContext, useIsScrolling } from "./use-is-scrolling";
+import { useMultiRowState } from "./use-multi-row-state";
 
 import type { NewRowState } from "./types";
 import type { ColumnDef, Row, Table as TanStackTable } from "@tanstack/react-table";
+
+/** Imperative API exposed by DataTableBody for parent-level access to
+ *  multi-row state (e.g. flushing pending saves before unmount). */
+export interface DataTableBodyApi {
+    flushPendingRows: () => Promise<void>;
+    appendRow: () => string | null;
+}
 
 const VIRTUAL_ROW_HEIGHT_PX = 36;
 const VIRTUALIZER_OVERSCAN = 12;
@@ -216,17 +224,27 @@ interface DataTableBodyProps<TData> {
     onRowClick?: (row: TData) => void;
     translations?: { noResults?: string };
 
-    // Multi-row props
+    // Multi-row config. useMultiRowState lives inside the body so that keystrokes
+    // in a pending row don't rerender the whole table (Toolbar, Headers, etc.).
     enableMultipleNewRows?: boolean;
-    multiRowStates?: NewRowState[];
+    multiRowCount?: number;
+    multiRowIncrement?: number;
+    multiRowMaxCount?: number;
     multiRowPosition?: "start" | "end";
-    onMultiRowChange?: (rowId: string, values: Record<string, unknown>) => void;
-    onMultiRowSave?: (rowId: string) => void;
-    onMultiRowFocus?: (rowId: string) => void;
-    onMultiRowBlur?: (rowId: string) => void;
-    onMultiRowFocusNext?: (rowId: string) => void;
-    onMultiRowSaveAndLoop?: (rowId: string) => Promise<boolean>;
-    onNeedMoreRows?: () => void;
+    multiRowDefaultValues?: Record<string, unknown> | ((index: number) => Record<string, unknown>);
+    multiRowValidate?: (values: Record<string, unknown>) => boolean | string;
+    onMultiRowSave?: (
+        values: Record<string, unknown>,
+        rowId: string,
+        linkedId?: unknown,
+        // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- intentional: mirrors useMultiRowState.onSave
+    ) => unknown | Promise<unknown>;
+    onMultiRowChange?: (
+        values: Record<string, unknown>,
+        rowId: string,
+    ) => Record<string, unknown> | void;
+    onMultiRowError?: (error: unknown, rowId: string) => void;
+    bodyApiRef?: React.RefObject<DataTableBodyApi | null>;
     onDragSumChange?: (
         sumInfo: {
             sum: number;
@@ -259,21 +277,98 @@ export function DataTableBody<TData>({
     translations,
 
     enableMultipleNewRows,
-    multiRowStates = [],
+    multiRowCount = 15,
+    multiRowIncrement = 15,
+    multiRowMaxCount = 100,
     multiRowPosition = "end",
+    multiRowDefaultValues,
+    multiRowValidate,
+    onMultiRowSave,
     onMultiRowChange,
-    onMultiRowSave: _onMultiRowSave,
-    onMultiRowFocus,
-    onMultiRowBlur,
-    onMultiRowFocusNext: _onMultiRowFocusNext,
-    onMultiRowSaveAndLoop: _onMultiRowSaveAndLoop,
-    onNeedMoreRows,
+    onMultiRowError,
+    bodyApiRef,
     onDragSumChange,
     onDragSelectionChange,
     dragSumFilter,
     enableInfiniteScroll: _enableInfiniteScroll,
     loadingRowIds,
 }: DataTableBodyProps<TData>) {
+    // ── Multi-row state management (kept local to body so keystrokes
+    //    in a pending row don't rerender the entire DataTable) ──
+    const multiRow = useMultiRowState({
+        enabled: !!enableMultipleNewRows,
+        initialCount: multiRowCount,
+        increment: multiRowIncrement,
+        maxCount: multiRowMaxCount,
+        defaultValues: multiRowDefaultValues,
+        validate: multiRowValidate,
+        onSave: onMultiRowSave,
+        onChange: onMultiRowChange,
+        onError: onMultiRowError,
+    });
+
+    const multiRowStates = multiRow.rowStates;
+    const handleMultiRowChange = multiRow.handleChange;
+    const onMultiRowFocus = multiRow.handleFocus;
+    const onMultiRowBlur = multiRow.handleBlur;
+    const onNeedMoreRows = multiRow.handleNeedMoreRows;
+
+    // Expose imperative API to the parent DataTable via ref
+    React.useEffect(() => {
+        if (!bodyApiRef) return;
+        bodyApiRef.current = {
+            flushPendingRows: multiRow.flushPendingRows,
+            appendRow: multiRow.appendRow,
+        };
+        return () => {
+            if (bodyApiRef.current) bodyApiRef.current = null;
+        };
+    }, [bodyApiRef, multiRow.flushPendingRows, multiRow.appendRow]);
+
+    // ── Auto-append on Enter in last enter-cell ─────────────────────
+    // use-cell-navigation dispatches "datatable:request-append-row" on the
+    // table container; we append a new pending row and focus its first
+    // enter-flow input on the next frame.
+    React.useEffect(() => {
+        if (!enableMultipleNewRows) return;
+        const container = scrollContainerRef?.current;
+        if (!container) return;
+
+        function focusFirstEnterCellInRow(newRowId: string) {
+            const cont = scrollContainerRef?.current;
+            if (!cont) return;
+            const tr = cont.querySelector<HTMLElement>(`tr[data-row-id="${newRowId}"]`);
+            if (!tr) return;
+            const cells = Array.from(
+                tr.querySelectorAll<HTMLTableCellElement>("td[data-row-index][data-column-id]"),
+            );
+            for (const td of cells) {
+                if (td.hasAttribute("data-skip-on-enter")) continue;
+                const input = td.querySelector<HTMLInputElement>('input, [role="combobox"]');
+                if (input) {
+                    input.focus();
+                    input.select?.();
+                    return;
+                }
+            }
+        }
+
+        const handleRequestAppendRow = () => {
+            const newRowId = multiRow.appendRow();
+            if (!newRowId) return;
+            requestAnimationFrame(() => {
+                // Two rAFs: one to let React commit the new row, another to
+                // let the DOM mount before focusing.
+                requestAnimationFrame(() => focusFirstEnterCellInRow(newRowId));
+            });
+        };
+
+        container.addEventListener("datatable:request-append-row", handleRequestAppendRow);
+        return () => {
+            container.removeEventListener("datatable:request-append-row", handleRequestAppendRow);
+        };
+    }, [enableMultipleNewRows, scrollContainerRef, multiRow]);
+
     const rows = table.getRowModel().rows;
     const parentRef = React.useRef<HTMLTableSectionElement>(null);
 
@@ -366,6 +461,10 @@ export function DataTableBody<TData>({
         overscan: VIRTUALIZER_OVERSCAN,
         enabled: !!isVirtualActive,
     });
+
+    // Track scroll-in-progress so editable cells can swap heavy Radix
+    // inputs for lightweight display divs while the user is scrolling.
+    const isScrolling = useIsScrolling(scrollElementProp ?? scrollContainerRef?.current ?? null);
 
     // ── Lazy loading (virtual mode): trigger when near end ──────
     const range = virtualizer.range;
@@ -679,16 +778,14 @@ export function DataTableBody<TData>({
         [columns],
     );
 
-    const makeNewRowKeyDown = () => {
-        return (e: React.KeyboardEvent) => {
-            if (e.key === "Escape") {
-                e.preventDefault();
-                (e.target as HTMLInputElement)?.blur();
-            }
-            // Enter and Tab navigation handled by use-cell-navigation.ts (capture phase).
-            // Save is handled by blur-save in use-multi-row-state.ts handleBlur.
-        };
-    };
+    const handleNewRowKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+        if (e.key === "Escape") {
+            e.preventDefault();
+            (e.target as HTMLInputElement)?.blur();
+        }
+        // Enter and Tab navigation handled by use-cell-navigation.ts (capture phase).
+        // Save is handled by blur-save in use-multi-row-state.ts handleBlur.
+    }, []);
 
     // ── Single new row save handler ─────────────────────────────
     const handleSingleNewRowSave = React.useCallback(
@@ -726,190 +823,201 @@ export function DataTableBody<TData>({
     );
 
     // ── Multi new row cell renderer ─────────────────────────────
-    const renderMultiNewRowCells = (state: NewRowState, _stateIndex: number, rowIndex: number) => {
-        // Ensure refs map exists for this row
-        if (!multiRowInputRefs.current.has(state.id)) {
-            multiRowInputRefs.current.set(state.id, new Map());
-        }
-        const inputRefsMap = multiRowInputRefs.current.get(state.id)!;
+    const renderMultiNewRowCells = React.useCallback(
+        (state: NewRowState, _stateIndex: number, rowIndex: number) => {
+            // Ensure refs map exists for this row
+            if (!multiRowInputRefs.current.has(state.id)) {
+                multiRowInputRefs.current.set(state.id, new Map());
+            }
+            const inputRefsMap = multiRowInputRefs.current.get(state.id)!;
 
-        return columns.map((col, colIndex) => {
-            const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
-            if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
+            return columns.map((col, colIndex) => {
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
 
-            const meta = col.meta;
-            const stickyStyle = getStickyStyle(key);
-            if (!meta?.editable) {
-                const val = state.values[key];
-                const displayVal =
-                    typeof val === "number"
-                        ? val.toLocaleString()
-                        : val !== undefined && val !== ""
-                          ? toDisplayString(val)
-                          : "";
+                const meta = col.meta;
+                const stickyStyle = getStickyStyle(key);
+                if (!meta?.editable) {
+                    const val = state.values[key];
+                    const displayVal =
+                        typeof val === "number"
+                            ? val.toLocaleString()
+                            : val !== undefined && val !== ""
+                              ? toDisplayString(val)
+                              : "";
+
+                    return (
+                        <TableCell
+                            key={key}
+                            data-row-index={rowIndex}
+                            data-column-id={key}
+                            tabIndex={-1}
+                            style={stickyStyle}
+                            className={cn(
+                                "bg-muted text-sm",
+                                meta?.align === "right" && "text-right",
+                                meta?.align === "center" && "text-center",
+                                "text-muted-foreground",
+                                stickyStyle && "bg-background",
+                                meta?.cellClassName,
+                            )}
+                        >
+                            {state.isSaving && colIndex === 0 ? (
+                                <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                            ) : (
+                                displayVal
+                            )}
+                        </TableCell>
+                    );
+                }
+
+                const error = state.errors[key];
 
                 return (
                     <TableCell
                         key={key}
                         data-row-index={rowIndex}
                         data-column-id={key}
+                        data-skip-on-enter={meta?.skipOnEnter ?? undefined}
                         tabIndex={-1}
                         style={stickyStyle}
                         className={cn(
-                            "bg-muted text-sm",
-                            meta?.align === "right" && "text-right",
-                            meta?.align === "center" && "text-center",
-                            "text-muted-foreground",
+                            "relative",
                             stickyStyle && "bg-background",
                             meta?.cellClassName,
                         )}
                     >
-                        {state.isSaving && colIndex === 0 ? (
-                            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-                        ) : (
-                            displayVal
+                        <DataTableCellInput
+                            meta={meta}
+                            value={state.values[key]}
+                            error={error}
+                            onChange={(newValue) => {
+                                handleMultiRowChange(state.id, {
+                                    ...state.values,
+                                    [key]: newValue,
+                                });
+                            }}
+                            onSelect={
+                                meta.inputType === "combobox" || meta.inputType === "select"
+                                    ? (newValue) => {
+                                          handleMultiRowChange(state.id, {
+                                              ...state.values,
+                                              [key]: newValue,
+                                          });
+                                      }
+                                    : undefined
+                            }
+                            onKeyDown={handleNewRowKeyDown}
+                            inputRef={(el) => {
+                                if (el) inputRefsMap.set(key, el);
+                            }}
+                            className={GHOST_INPUT_CLASS}
+                        />
+                        {error && (
+                            <p className="text-destructive absolute -bottom-1 left-2 text-xs">
+                                {error}
+                            </p>
                         )}
                     </TableCell>
                 );
-            }
-
-            const error = state.errors[key];
-
-            return (
-                <TableCell
-                    key={key}
-                    data-row-index={rowIndex}
-                    data-column-id={key}
-                    data-skip-on-enter={meta?.skipOnEnter ?? undefined}
-                    tabIndex={-1}
-                    style={stickyStyle}
-                    className={cn("relative", stickyStyle && "bg-background", meta?.cellClassName)}
-                >
-                    <DataTableCellInput
-                        meta={meta}
-                        value={state.values[key]}
-                        error={error}
-                        onChange={(newValue) => {
-                            onMultiRowChange?.(state.id, {
-                                ...state.values,
-                                [key]: newValue,
-                            });
-                        }}
-                        onSelect={
-                            meta.inputType === "combobox" || meta.inputType === "select"
-                                ? (newValue) => {
-                                      onMultiRowChange?.(state.id, {
-                                          ...state.values,
-                                          [key]: newValue,
-                                      });
-                                  }
-                                : undefined
-                        }
-                        onKeyDown={makeNewRowKeyDown()}
-                        inputRef={(el) => {
-                            if (el) inputRefsMap.set(key, el);
-                        }}
-                        className={GHOST_INPUT_CLASS}
-                    />
-                    {error && (
-                        <motion.p
-                            initial={{ opacity: 0, x: 0 }}
-                            animate={{ opacity: 1, x: [0, -4, 4, -4, 0] }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                            className="text-destructive absolute -bottom-1 left-2 text-xs"
-                        >
-                            {error}
-                        </motion.p>
-                    )}
-                </TableCell>
-            );
-        });
-    };
+            });
+        },
+        [columns, getStickyStyle, handleMultiRowChange, handleNewRowKeyDown],
+    );
 
     // ── Single new row cell renderer ────────────────────────────
-    const renderSingleNewRowCells = (rowIndex: number) => {
-        return columns.map((col, colIndex) => {
-            const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
-            if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
+    const renderSingleNewRowCells = React.useCallback(
+        (rowIndex: number) => {
+            return columns.map((col, colIndex) => {
+                const key = "accessorKey" in col ? String(col.accessorKey) : col.id;
+                if (!key) return <TableCell key={col.id ?? `empty-${colIndex}`} />;
 
-            const meta = col.meta;
-            const stickyStyle = getStickyStyle(key);
-            if (!meta?.editable) {
-                const val = singleNewRowValues[key];
-                const displayVal =
-                    typeof val === "number"
-                        ? val.toLocaleString()
-                        : val !== undefined && val !== ""
-                          ? toDisplayString(val)
-                          : "";
+                const meta = col.meta;
+                const stickyStyle = getStickyStyle(key);
+                if (!meta?.editable) {
+                    const val = singleNewRowValues[key];
+                    const displayVal =
+                        typeof val === "number"
+                            ? val.toLocaleString()
+                            : val !== undefined && val !== ""
+                              ? toDisplayString(val)
+                              : "";
+
+                    return (
+                        <TableCell
+                            key={key}
+                            data-row-index={rowIndex}
+                            data-column-id={key}
+                            tabIndex={-1}
+                            style={stickyStyle}
+                            className={cn(
+                                "bg-muted text-sm",
+                                meta?.align === "right" && "text-right",
+                                meta?.align === "center" && "text-center",
+                                "text-muted-foreground",
+                                stickyStyle && "bg-background",
+                                meta?.cellClassName,
+                            )}
+                        >
+                            {displayVal}
+                        </TableCell>
+                    );
+                }
+
+                const error = singleNewRowErrors[key];
 
                 return (
                     <TableCell
                         key={key}
                         data-row-index={rowIndex}
                         data-column-id={key}
+                        data-skip-on-enter={meta?.skipOnEnter ?? undefined}
                         tabIndex={-1}
                         style={stickyStyle}
                         className={cn(
-                            "bg-muted text-sm",
-                            meta?.align === "right" && "text-right",
-                            meta?.align === "center" && "text-center",
-                            "text-muted-foreground",
+                            "relative",
                             stickyStyle && "bg-background",
                             meta?.cellClassName,
                         )}
                     >
-                        {displayVal}
+                        <DataTableCellInput
+                            meta={meta}
+                            value={singleNewRowValues[key]}
+                            error={error}
+                            onChange={(newValue) => {
+                                const updated = { ...singleNewRowValues, [key]: newValue };
+                                setSingleNewRowValues(updated);
+                                setSingleNewRowErrors((prev) => {
+                                    const next = { ...prev };
+                                    delete next[key];
+                                    return next;
+                                });
+                                onNewRowChange?.(updated);
+                            }}
+                            onKeyDown={handleNewRowKeyDown}
+                            inputRef={(el) => {
+                                if (el) singleNewRowInputRefs.current.set(key, el);
+                            }}
+                            className={GHOST_INPUT_CLASS}
+                        />
+                        {error && (
+                            <p className="text-destructive absolute -bottom-1 left-2 text-xs">
+                                {error}
+                            </p>
+                        )}
                     </TableCell>
                 );
-            }
-
-            const error = singleNewRowErrors[key];
-
-            return (
-                <TableCell
-                    key={key}
-                    data-row-index={rowIndex}
-                    data-column-id={key}
-                    data-skip-on-enter={meta?.skipOnEnter ?? undefined}
-                    tabIndex={-1}
-                    style={stickyStyle}
-                    className={cn("relative", stickyStyle && "bg-background", meta?.cellClassName)}
-                >
-                    <DataTableCellInput
-                        meta={meta}
-                        value={singleNewRowValues[key]}
-                        error={error}
-                        onChange={(newValue) => {
-                            const updated = { ...singleNewRowValues, [key]: newValue };
-                            setSingleNewRowValues(updated);
-                            setSingleNewRowErrors((prev) => {
-                                const next = { ...prev };
-                                delete next[key];
-                                return next;
-                            });
-                            onNewRowChange?.(updated);
-                        }}
-                        onKeyDown={makeNewRowKeyDown()}
-                        inputRef={(el) => {
-                            if (el) singleNewRowInputRefs.current.set(key, el);
-                        }}
-                        className={GHOST_INPUT_CLASS}
-                    />
-                    {error && (
-                        <motion.p
-                            initial={{ opacity: 0, x: 0 }}
-                            animate={{ opacity: 1, x: [0, -4, 4, -4, 0] }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                            className="text-destructive absolute -bottom-1 left-2 text-xs"
-                        >
-                            {error}
-                        </motion.p>
-                    )}
-                </TableCell>
-            );
-        });
-    };
+            });
+        },
+        [
+            columns,
+            getStickyStyle,
+            singleNewRowValues,
+            singleNewRowErrors,
+            onNewRowChange,
+            handleNewRowKeyDown,
+        ],
+    );
 
     // ── Stable wrappers (so MemoizedDataRow can skip re-renders) ──
     // We thread the latest props through a ref and expose stable callback
@@ -943,16 +1051,15 @@ export function DataTableBody<TData>({
     const onMultiRowFocusRef = React.useRef(onMultiRowFocus);
     onMultiRowFocusRef.current = onMultiRowFocus;
     const stableOnMultiRowFocus = React.useMemo(
-        () =>
-            onMultiRowFocus ? (rowId: string) => onMultiRowFocusRef.current?.(rowId) : undefined,
-        [onMultiRowFocus],
+        () => (rowId: string) => onMultiRowFocusRef.current(rowId),
+        [],
     );
 
     const onMultiRowBlurRef = React.useRef(onMultiRowBlur);
     onMultiRowBlurRef.current = onMultiRowBlur;
     const stableOnMultiRowBlur = React.useMemo(
-        () => (onMultiRowBlur ? (rowId: string) => onMultiRowBlurRef.current?.(rowId) : undefined),
-        [onMultiRowBlur],
+        () => (rowId: string) => onMultiRowBlurRef.current(rowId),
+        [],
     );
 
     const dataRowClassName = cn(
@@ -1024,16 +1131,18 @@ export function DataTableBody<TData>({
     // ── Empty state ─────────────────────────────────────────────
     if (rows.length === 0 && newRowMode === "none") {
         return (
-            <TableBody className={"select-none"}>
-                <TableRow>
-                    <TableCell
-                        colSpan={columns.length + (enableRowSelection ? 1 : 0)}
-                        className="h-24 text-center"
-                    >
-                        {translations?.noResults ?? "No results."}
-                    </TableCell>
-                </TableRow>
-            </TableBody>
+            <DataTableScrollingContext value={isScrolling}>
+                <TableBody className={"select-none"}>
+                    <TableRow>
+                        <TableCell
+                            colSpan={columns.length + (enableRowSelection ? 1 : 0)}
+                            className="h-24 text-center"
+                        >
+                            {translations?.noResults ?? "No results."}
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </DataTableScrollingContext>
         );
     }
 
@@ -1046,58 +1155,62 @@ export function DataTableBody<TData>({
             virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
 
         return (
-            <TableBody ref={parentRef} className={"select-none"}>
-                {paddingTop > 0 && (
-                    <tr>
-                        <td style={{ height: paddingTop, padding: 0 }} />
-                    </tr>
-                )}
-                {virtualRows.map((virtualRow) => {
-                    const item = unifiedRows[virtualRow.index];
-                    if (!item) return null;
-                    if (item.kind === "data") {
-                        const rowOriginalId = (item.row.original as { id?: number }).id;
-                        const isLoading =
-                            loadingRowIds != null &&
-                            rowOriginalId != null &&
-                            loadingRowIds.has(rowOriginalId);
-                        return (
-                            <MemoizedDataRow
-                                key={item.row.id}
-                                row={item.row as Row<unknown>}
-                                rowIndex={item.rowIndex}
-                                isSelected={item.row.getIsSelected()}
-                                isLoading={isLoading}
-                                className={cn(onRowClick ? "cursor-pointer" : "")}
-                                onRowClick={stableOnRowClick}
-                                renderCells={stableRenderCells}
-                            />
-                        );
-                    }
-                    return renderUnifiedRow(item);
-                })}
-                {paddingBottom > 0 && (
-                    <tr>
-                        <td style={{ height: paddingBottom, padding: 0 }} />
-                    </tr>
-                )}
-            </TableBody>
+            <DataTableScrollingContext value={isScrolling}>
+                <TableBody ref={parentRef} className={"select-none"}>
+                    {paddingTop > 0 && (
+                        <tr>
+                            <td style={{ height: paddingTop, padding: 0 }} />
+                        </tr>
+                    )}
+                    {virtualRows.map((virtualRow) => {
+                        const item = unifiedRows[virtualRow.index];
+                        if (!item) return null;
+                        if (item.kind === "data") {
+                            const rowOriginalId = (item.row.original as { id?: number }).id;
+                            const isLoading =
+                                loadingRowIds != null &&
+                                rowOriginalId != null &&
+                                loadingRowIds.has(rowOriginalId);
+                            return (
+                                <MemoizedDataRow
+                                    key={item.row.id}
+                                    row={item.row as Row<unknown>}
+                                    rowIndex={item.rowIndex}
+                                    isSelected={item.row.getIsSelected()}
+                                    isLoading={isLoading}
+                                    className={cn(onRowClick ? "cursor-pointer" : "")}
+                                    onRowClick={stableOnRowClick}
+                                    renderCells={stableRenderCells}
+                                />
+                            );
+                        }
+                        return renderUnifiedRow(item);
+                    })}
+                    {paddingBottom > 0 && (
+                        <tr>
+                            <td style={{ height: paddingBottom, padding: 0 }} />
+                        </tr>
+                    )}
+                </TableBody>
+            </DataTableScrollingContext>
         );
     }
 
     // ── Non-virtual mode ────────────────────────────────────────
     return (
-        <TableBody className={"select-none"}>
-            {unifiedRows.map((item) => renderUnifiedRow(item))}
-            {enableMultipleNewRows && !isVirtualActive && (
-                <tr
-                    ref={sentinelRef}
-                    style={{ height: 1, visibility: "hidden" }}
-                    aria-hidden="true"
-                >
-                    <td />
-                </tr>
-            )}
-        </TableBody>
+        <DataTableScrollingContext value={isScrolling}>
+            <TableBody className={"select-none"}>
+                {unifiedRows.map((item) => renderUnifiedRow(item))}
+                {enableMultipleNewRows && !isVirtualActive && (
+                    <tr
+                        ref={sentinelRef}
+                        style={{ height: 1, visibility: "hidden" }}
+                        aria-hidden="true"
+                    >
+                        <td />
+                    </tr>
+                )}
+            </TableBody>
+        </DataTableScrollingContext>
     );
 }

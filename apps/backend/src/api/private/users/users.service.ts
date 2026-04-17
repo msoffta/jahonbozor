@@ -38,8 +38,8 @@ export abstract class UsersService {
 
             if (searchQuery) {
                 whereClause.OR = [
-                    { fullname: { contains: searchQuery } },
-                    { phone: { contains: searchQuery } },
+                    { fullname: { contains: searchQuery, mode: "insensitive" as const } },
+                    { phone: { contains: searchQuery, mode: "insensitive" as const } },
                 ];
             }
 

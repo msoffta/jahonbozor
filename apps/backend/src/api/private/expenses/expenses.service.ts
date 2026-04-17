@@ -38,7 +38,7 @@ export abstract class ExpensesService {
             }
 
             if (searchQuery) {
-                whereClause.name = { contains: searchQuery };
+                whereClause.name = { contains: searchQuery, mode: "insensitive" };
             }
 
             if (staffId) {

@@ -53,7 +53,7 @@ export abstract class TelegramSessionsService {
             }
 
             if (searchQuery) {
-                whereClause.name = { contains: searchQuery };
+                whereClause.name = { contains: searchQuery, mode: "insensitive" };
             }
 
             const [count, sessions] = await prisma.$transaction([

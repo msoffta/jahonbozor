@@ -74,19 +74,38 @@ vi.mock("@/api/client", () => ({
 }));
 
 import {
+    addClientToListCache,
     clientDetailQueryOptions,
     clientKeys,
     clientsListQueryOptions,
     createClientFn,
     deleteClientFn,
+    removeClientFromListCache,
     restoreClientFn,
+    restoreClientInListCache,
     updateClientFn,
+    updateClientInListCache,
 } from "../clients.api";
+
+import type { AdminUserItem } from "@jahonbozor/schemas/src/users";
 
 type ListCtx = QueryFunctionContext<
     readonly ["clients", "list", Record<string, unknown> | undefined]
 >;
 type DetailCtx = QueryFunctionContext<readonly ["clients", "detail", number]>;
+
+interface ClientsListCache {
+    count: number;
+    users: AdminUserItem[];
+}
+
+interface ClientsInfiniteCache {
+    pages: ClientsListCache[];
+    pageParams: number[];
+}
+
+const client = (id: number, extra: Partial<AdminUserItem> = {}): AdminUserItem =>
+    ({ id, fullname: `Client ${id}`, ...extra }) as unknown as AdminUserItem;
 
 describe("clients.api", () => {
     beforeEach(() => {
@@ -275,6 +294,142 @@ describe("clients.api", () => {
                 error: { status: 404 },
             });
             await expect(restoreClientFn(999)).rejects.toBeDefined();
+        });
+    });
+
+    describe("addClientToListCache", () => {
+        test("appends client to regular list cache and increments count (CreateOrderDialog)", () => {
+            const cache: ClientsListCache = { count: 2, users: [client(1), client(2)] };
+            const result = addClientToListCache(cache, client(3));
+            expect(result.count).toBe(3);
+            expect(result.users).toHaveLength(3);
+            expect(result.users[2]).toMatchObject({ id: 3 });
+        });
+
+        test("does not mutate source list cache", () => {
+            const cache: ClientsListCache = { count: 1, users: [client(1)] };
+            const snapshot = { count: cache.count, users: [...cache.users] };
+            addClientToListCache(cache, client(2));
+            expect(cache.count).toBe(snapshot.count);
+            expect(cache.users).toEqual(snapshot.users);
+        });
+
+        test("appends client to last page of infinite list cache (users page)", () => {
+            const cache: ClientsInfiniteCache = {
+                pages: [
+                    { count: 2, users: [client(1), client(2)] },
+                    { count: 1, users: [client(3)] },
+                ],
+                pageParams: [1, 2],
+            };
+            const result = addClientToListCache(cache, client(4));
+            expect(result.pages[0].users).toHaveLength(2);
+            expect(result.pages[1].users).toHaveLength(2);
+            expect(result.pages[1].count).toBe(2);
+            expect(result.pages[1].users[1]).toMatchObject({ id: 4 });
+        });
+
+        test("returns infinite cache unchanged when pages are empty", () => {
+            const cache: ClientsInfiniteCache = { pages: [], pageParams: [] };
+            expect(addClientToListCache(cache, client(1))).toBe(cache);
+        });
+
+        test("returns undefined when cache is undefined", () => {
+            expect(addClientToListCache(undefined, client(1))).toBeUndefined();
+        });
+    });
+
+    describe("updateClientInListCache", () => {
+        test("replaces matching client in regular list cache", () => {
+            const cache: ClientsListCache = {
+                count: 2,
+                users: [client(1, { fullname: "Old" }), client(2)],
+            };
+            const result = updateClientInListCache(cache, client(1, { fullname: "New" }));
+            expect(result.users[0]).toMatchObject({ fullname: "New" });
+            expect(result.users[1]).toMatchObject({ id: 2 });
+            expect(result.count).toBe(2);
+        });
+
+        test("leaves unrelated clients untouched in regular list cache", () => {
+            const cache: ClientsListCache = { count: 2, users: [client(1), client(2)] };
+            const result = updateClientInListCache(cache, client(99, { fullname: "Ghost" }));
+            expect(result.users).toEqual(cache.users);
+        });
+
+        test("replaces client across pages of infinite list cache", () => {
+            const cache: ClientsInfiniteCache = {
+                pages: [
+                    { count: 1, users: [client(1, { fullname: "Old" })] },
+                    { count: 1, users: [client(2)] },
+                ],
+                pageParams: [1, 2],
+            };
+            const result = updateClientInListCache(cache, client(1, { fullname: "New" }));
+            expect(result.pages[0].users[0]).toMatchObject({ fullname: "New" });
+            expect(result.pages[1].users[0]).toMatchObject({ id: 2 });
+        });
+    });
+
+    describe("removeClientFromListCache", () => {
+        test("filters client out of regular list cache and decrements count", () => {
+            const cache: ClientsListCache = { count: 2, users: [client(1), client(2)] };
+            const result = removeClientFromListCache(cache, 1);
+            expect(result.users).toHaveLength(1);
+            expect(result.users[0]).toMatchObject({ id: 2 });
+            expect(result.count).toBe(1);
+        });
+
+        test("leaves regular list cache unchanged when id is not present", () => {
+            const cache: ClientsListCache = { count: 2, users: [client(1), client(2)] };
+            const result = removeClientFromListCache(cache, 999);
+            expect(result.users).toHaveLength(2);
+            expect(result.count).toBe(2);
+        });
+
+        test("filters client out of infinite list cache", () => {
+            const cache: ClientsInfiniteCache = {
+                pages: [
+                    { count: 2, users: [client(1), client(2)] },
+                    { count: 1, users: [client(3)] },
+                ],
+                pageParams: [1, 2],
+            };
+            const result = removeClientFromListCache(cache, 3);
+            expect(result.pages[1].users).toHaveLength(0);
+            expect(result.pages[1].count).toBe(0);
+            expect(result.pages[0].users).toHaveLength(2);
+        });
+
+        test("count does not go below zero", () => {
+            const cache: ClientsListCache = { count: 0, users: [client(1)] };
+            const result = removeClientFromListCache(cache, 1);
+            expect(result.count).toBe(0);
+        });
+    });
+
+    describe("restoreClientInListCache", () => {
+        test("clears deletedAt on matching client in regular list cache", () => {
+            const deletedClient = client(1, {
+                deletedAt: "2026-01-01T00:00:00Z",
+            } as Partial<AdminUserItem>);
+            const cache: ClientsListCache = { count: 1, users: [deletedClient] };
+            const restored = client(1, { deletedAt: null } as Partial<AdminUserItem>);
+            const result = restoreClientInListCache(cache, restored);
+            expect(result.users[0]).toMatchObject({ id: 1, deletedAt: null });
+        });
+
+        test("clears deletedAt in infinite list cache", () => {
+            const deletedClient = client(1, {
+                deletedAt: "2026-01-01T00:00:00Z",
+            } as Partial<AdminUserItem>);
+            const cache: ClientsInfiniteCache = {
+                pages: [{ count: 1, users: [deletedClient] }],
+                pageParams: [1],
+            };
+            const restored = client(1, { deletedAt: null } as Partial<AdminUserItem>);
+            const result = restoreClientInListCache(cache, restored);
+            expect(result.pages[0].users[0]).toMatchObject({ id: 1, deletedAt: null });
         });
     });
 });

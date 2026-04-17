@@ -28,7 +28,7 @@ export abstract class BroadcastTemplatesService {
             }
 
             if (searchQuery) {
-                whereClause.name = { contains: searchQuery };
+                whereClause.name = { contains: searchQuery, mode: "insensitive" };
             }
 
             const [count, templates] = await prisma.$transaction([

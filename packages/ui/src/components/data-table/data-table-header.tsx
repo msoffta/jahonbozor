@@ -1,6 +1,5 @@
 import { flexRender, type Header } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
-import { motion } from "motion/react";
 
 import { cn } from "../../lib/utils";
 import { TableHead } from "../ui/table";
@@ -76,16 +75,14 @@ export function DataTableColumnHeader<TData>({
             )}
         >
             {header.isPlaceholder ? null : canSort ? (
-                <motion.button
+                <button
                     type="button"
-                    className="flex items-center font-medium"
+                    className="flex items-center font-medium transition-transform active:scale-[0.98]"
                     onClick={header.column.getToggleSortingHandler()}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                     {sortIcon}
-                </motion.button>
+                </button>
             ) : (
                 <div className="flex items-center font-medium">
                     {flexRender(header.column.columnDef.header, header.getContext())}
