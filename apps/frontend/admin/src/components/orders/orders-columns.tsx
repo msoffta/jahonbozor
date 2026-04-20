@@ -94,6 +94,7 @@ export function getOrderColumns(
                     selectOptions: productOptions,
                     editValueAccessor: (row: AdminOrderItem) =>
                         row.items[0]?.productId ? String(row.items[0].productId) : "",
+                    resolveLabel: (row: AdminOrderItem) => row.items[0]?.product?.name ?? "",
                     enableDragSum: true,
                     onSearchOptions: actions.onSearchProducts,
                 },
