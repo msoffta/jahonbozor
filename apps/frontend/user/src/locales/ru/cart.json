@@ -1,5 +1,14 @@
 {
   "empty_cart": "Корзина пуста",
   "checkout": "Оформить заказ",
-  "buy": "Купить"
+  "buy": "Купить",
+  "select_all": "Выбрать все",
+  "total": "Итого",
+  "sum": "сум",
+  "loading": "Загрузка...",
+  "order_comment": "Комментарий к заказу",
+  "payment_card": "Карта",
+  "payment_cash": "Наличные",
+  "payment_debt": "Долг",
+  "items_count": "{{count}} товар(ов)"
 }

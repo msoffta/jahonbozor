@@ -1,5 +1,14 @@
 {
   "empty_cart": "Savatcha bo'sh",
   "checkout": "Buyurtma berish",
-  "buy": "Sotib olish"
+  "buy": "Sotib olish",
+  "select_all": "Hammasini tanlash",
+  "total": "Jami",
+  "sum": "so'm",
+  "loading": "Yuklanmoqda...",
+  "order_comment": "Buyurtmaga izoh",
+  "payment_card": "Karta",
+  "payment_cash": "Naqd",
+  "payment_debt": "Qarz",
+  "items_count": "{{count}} ta mahsulot"
 }

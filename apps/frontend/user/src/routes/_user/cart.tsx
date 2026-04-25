@@ -27,7 +27,7 @@ const PAYMENT_TYPES = [
 ] as const;
 
 function CartPage() {
-    const { t } = useTranslation(["cart", "orders"]);
+    const { t } = useTranslation("cart");
     const navigate = useNavigate();
     const locale = useUIStore((state) => state.locale);
     const localeCode = getLocaleCode(locale);
